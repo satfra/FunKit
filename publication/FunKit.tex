@@ -1,0 +1,179 @@
+\documentclass[aps,10pt,prd,nofootinbib,superscriptaddress,twocolumn]{revtex4-2}
+\pdfoutput=1
+
+%%%%%%%%%%%%% Packages %%%%%%%%%%%%%
+% general
+\usepackage[utf8]{inputenc}
+\usepackage{geometry}
+\geometry{
+	a4paper,
+	total={170mm,257mm},
+	left=20mm,
+	top=20mm,
+}
+
+% math
+\usepackage{mathtools}
+\usepackage{amsfonts}
+\usepackage{dsfont}
+\usepackage{mathrsfs}
+\usepackage{bbm}
+\usepackage[normalem]{ulem}
+\usepackage{slashed}
+\usepackage{tensor}
+
+\usepackage{pifont}
+\newcommand{\xmark}{\ding{55}}
+
+% graphics and colours
+\usepackage{graphicx}
+\usepackage{array}
+
+% floats
+\usepackage{placeins}
+\usepackage{makecell}
+\usepackage{float}
+
+% units and refs
+\usepackage{xspace}
+\usepackage{xfrac}
+\usepackage{hyperref}
+\usepackage[nameinlink]{cleveref}
+\usepackage{appendix}
+\usepackage{units}
+
+
+% other
+\usepackage{xifthen}
+\usepackage{booktabs}
+\usepackage{multirow}
+\usepackage[dvipsnames]{xcolor}
+\hypersetup{
+	colorlinks,
+	linkcolor={red!75!black},
+	citecolor={blue!75!black},
+	urlcolor={blue!75!black},
+	pdftitle={Juggling with Tensor Bases in Functional Approaches},
+	pdfauthor={Braun, Geissel, Pawlowski, Sattler, Wink},
+}
+\usepackage{enumerate}
+
+
+\newcommand{\innerproduct}[2]{\left\langle #1, #2 \right\rangle}
+\newcommand{\imag}{\text{i}}
+\newcommand{\norm}[1]{\left\lVert#1\right\rVert}
+
+%%%%%%%%%%%%% Comments %%%%%%%%%%%%%
+\newcommand{\commentFS}[1]{\textcolor{blue}{[\textbf{FS:} #1]}}
+\newcommand{\commentNW}[1]{\textcolor{orange}{[\textbf{NW:} #1]}}
+\newcommand{\commentAG}[1]{\textcolor{purple}{[\textbf{AG:} #1]}}
+\newcommand{\cJMP}[1]{\textcolor{blue}{\textbf{Jan: #1}}}
+
+%%%%%%%%%%%%% Math commands %%%%%%%%%%%%%
+% symbols
+\newcommand{\tinytext}[1]{\text{\tiny{#1}}}
+\newcommand{\TensorBases}{\texttt{TensorBases}\xspace}
+
+%%%%%%%%%%%%%%%%%%% MARCROS %%%%%%%%%%%%%
+\newcommand{\LEGO}{LEGO\textsuperscript{\textregistered}}
+\newcommand{\DiFfRG}{\texttt{DiFfRG}\xspace}
+
+%%%%%%%%%%%%% Graphic paths %%%%%%%%%%%%%
+\graphicspath{{./figures/}}
+
+\renewcommand{\floatpagefraction}{.8}
+
+
+%%%%%%%%%%%%% Title and hypersetup %%%%%%%%%%%%%
+\newcommand{\gettitle}{FunKit: A toolkit for functional approaches}
+
+\newcommand{\getHeidelbergAffiliation}{\affiliation{Institut f{\"u}r Theoretische Physik, Universit{\"a}t Heidelberg, Philosophenweg 16, 69120 Heidelberg, Germany}}
+\newcommand{\getDarmstadtAffiliation}{\affiliation{Institut f\"ur Kernphysik (Theoriezentrum), Technische Universit\"at Darmstadt, 64289 Darmstadt, Germany}}
+\newcommand{\getEMMIAffiliation}{\affiliation{ExtreMe Matter Institute EMMI, GSI, Planckstr. 1, 64291 Darmstadt, Germany}}
+
+
+\begin{document}
+
+\title{\gettitle}
+
+\begin{abstract}
+
+We give tool to compute cross-section
+\end{abstract}
+
+\maketitle
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{Rules}
+\label{sec:rules}
+
+\subsection{Index \& derivative rules}
+\label{sec:rules_indicesDerivatives}
+
+Metric:
+%
+\begin{align}
+	\gamma^{ab}=\gamma_{ab} = \begin{pmatrix}
+		0&-1\\
+		1&\phantom{-}0
+	\end{pmatrix}
+	\,.
+\end{align}
+%
+Metric contractions:
+%
+\begin{align}
+	\gamma^{a}_{\phantom{a}c} &= \gamma^{ab}\gamma_{bc} = (-1)^{ac}\delta^a_c
+	\,,\notag\\[1ex]
+	\gamma_{a}^{\phantom{a}c} &= \gamma_{bc}\gamma_{ba} = \delta^a_c
+	\,.
+\end{align}
+%
+As a consequence, $\gamma^{a}_{\phantom{a}c}\gamma^{c}_{\phantom{c}d} = \delta^{ad}$.
+
+Field derivatives:
+%
+\begin{align}
+	\frac{\delta \Phi^b}{\delta \Phi^a} &= \gamma_a^{\phantom{a}b}
+	\,,\qquad
+	\frac{\delta \Phi_b}{\delta \Phi^a} = \gamma_{ab}
+	\,,\notag\\[1ex]
+	\frac{\delta \Phi_b}{\delta \Phi_a} &= \gamma^{ba}
+	\,,\qquad
+	\frac{\delta \Phi_b}{\delta \Phi_a} = \gamma^{a}_{\phantom{a}b}
+	\,.
+\end{align}
+%
+N-point functions:
+%
+\begin{align}
+	\frac{\delta }{\delta \Phi^a} \Gamma_{bc\ldots} = \Gamma_{abc\ldots}
+	\,,\notag\\[1ex]
+	\frac{\delta }{\delta \Phi_a} \Gamma_{bc\ldots} = \Gamma^{a}_{\phantom{a}bc\ldots}
+	\,.
+\end{align}
+%
+Propagator:
+%
+\begin{align}
+	G^{ab}\Gamma_{bc} &= \gamma^{a}_{\phantom{a}c} =	\Gamma_{cb}G^{ba}
+	\,\notag\\[1ex]
+	\left(\frac{\delta}{\delta \Phi^f}G^{ba}\right) &= (-1)\gamma^a_{\phantom{a}e}\, G^{bc}\Gamma_{fcd}G^{de}
+	\,.
+\end{align}
+%
+Getting the rule for the propagator:
+%
+\begin{align}
+	\left(\frac{\delta}{\delta \Phi^f}G^{bc}\right)\Gamma_{cd} &= (-1)\,G^{bc}\Gamma_{fcd}
+	\,,\notag\\[1ex]
+	\Leftrightarrow\left(\frac{\delta}{\delta \Phi^f}G^{bc}\right)(\Gamma_{cd}G^{de}) &= (-1)\,G^{bc}\Gamma_{fcd}G^{de}
+	\,,\notag\\[1ex]
+	\Leftrightarrow\left(\frac{\delta}{\delta \Phi^f}G^{bc}\right)\gamma^e_{\phantom{e}c} &= (-1)\,G^{bc}\Gamma_{fcd}G^{de}
+	\,,\notag\\[1ex]
+	\Leftrightarrow\left(\frac{\delta}{\delta \Phi^f}G^{ba}\right) &= (-1)\gamma^a_{\phantom{a}e}\, G^{bc}\Gamma_{fcd}G^{de}
+\end{align}
+%%%%%%%%%%%%%%%%%%%%
+
+\end{document}

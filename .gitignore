@@ -1,0 +1,7 @@
+publication/*.pdf
+publication/*.aux
+publication/*.synctex.*
+publication/*.bbl
+publication/*.out
+publication/*.log
+
