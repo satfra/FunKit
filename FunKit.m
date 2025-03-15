@@ -39,13 +39,31 @@ Return[True];
 ];
 
 If[Not@TensorBasesInstalled[],
-If[ChoiceDialog["TensorBases does not seem to be installed. Do you want to install it?",WindowTitle->"Install TensorBases",WindowSize->{Medium,All}],
+If[ChoiceDialog["\!\(\*
+StyleBox[\"TensorBases\",\nFontWeight->\"Bold\"]\) does not seem to be installed. Do you want to install it?",WindowTitle->"Install \!\(\*
+StyleBox[\"TensorBases\",\nFontWeight->\"Bold\"]\)",WindowSize->{Medium,All}],
 Import["https://raw.githubusercontent.com/satfra/TensorBases/main/TensorBasesInstaller.m"],
-Print["The \!\(\*
-StyleBox[\"DiFfRG\",\nFontWeight->\"Bold\"]\) package requires \!\(\*
+Print["\!\(\*
+StyleBox[\"FunKit\",\nFontWeight->\"Bold\"]\) requires \!\(\*
 StyleBox[\"TensorBases\",\nFontWeight->\"Bold\"]\) to run."];Abort[];
 ];
 ];
+
+
+(* ::Input::Initialization:: *)
+$FunKitDirectory=SelectFirst[
+Join[
+{
+FileNameJoin[{$UserBaseDirectory,"Applications","FunKit"}],
+FileNameJoin[{$BaseDirectory,"Applications","FunKit"}],
+FileNameJoin[{$InstallationDirectory,"AddOns","Applications","FunKit"}],
+FileNameJoin[{$InstallationDirectory,"AddOns","Packages","FunKit"}],
+FileNameJoin[{$InstallationDirectory,"AddOns","ExtraPackages","FunKit"}]
+},
+Select[$Path,StringContainsQ[#,"FunKit"]&]
+],
+DirectoryQ[#]&
+]<>"/";
 
 
 (* ::Input::Initialization:: *)
@@ -60,7 +78,7 @@ StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"TensorBases\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontSlant->\"Italic\"]\)"];
-Get["./FEDeriK.m"];
+Get[$FunKitDirectory<>"FEDeriK.m"];
 Print["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"FEDeriK\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*

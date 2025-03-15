@@ -1,0 +1,305 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Mathematica 13.3' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       158,          7]
+NotebookDataLength[     10723,        297]
+NotebookOptionsPosition[      9619,        267]
+NotebookOutlinePosition[     10377,        292]
+CellTagsIndexPosition[     10334,        289]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"FunKit", "::", "allowinternetuse"}], "=", 
+   "\"\<You have forbidden Mathematica to access the internet. Either allow \
+Mathematica to access the internet or download FunKit from github manually.\>\
+\""}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"If", "[", 
+    RowBox[{
+     RowBox[{"Not", "[", 
+      RowBox[{"\"\<AllowInternetUse\>\"", " ", "/.", " ", 
+       RowBox[{"SystemInformation", "[", "\"\<Network\>\"", "]"}]}], "]"}], 
+     ",", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"Message", "[", 
+       RowBox[{"FunKit", "::", "allowinternetuse"}], "]"}], ";", 
+      "\[IndentingNewLine]", 
+      RowBox[{"Abort", "[", "]"}], ";"}]}], "\n", "]"}], ";"}], "\n", 
+  "\[IndentingNewLine]", 
+  RowBox[{"(*", " ", 
+   RowBox[{"just", " ", "for", " ", "backwards", " ", "compatibility"}], " ", 
+   "*)"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"If", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"ToString", "[", 
+      RowBox[{"Context", "[", "URLDownload", "]"}], "]"}], "=!=", 
+     "\"\<System`\>\""}], ",", "\[IndentingNewLine]", 
+    RowBox[{"URLDownload", "=", "URLSave"}]}], "\[IndentingNewLine]", "]"}], 
+  ";"}]}], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{{3.9338221749212503`*^9, 3.933822238305461*^9}, {
+  3.93382235298545*^9, 3.933822360841133*^9}, {3.951052863962606*^9, 
+  3.9510528650554*^9}},ExpressionUUID->"5e9522b9-2f7e-4e0e-9eec-6cc300d345bd"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+  "FunKitRepositoryAddress", "=", 
+   "\"\<https://raw.githubusercontent.com/satfra/FunKit/main/\>\""}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"FunKitZipLocation", "=", 
+   RowBox[{"FunKitRepositoryAddress", "<>", "\"\<FunKit.zip\>\""}]}], 
+  ";"}], "\n", 
+ RowBox[{
+  RowBox[{"FunKitInstallDir", "=", 
+   RowBox[{"FileNameJoin", "[", 
+    RowBox[{"{", 
+     RowBox[{"$UserBaseDirectory", ",", "\"\<Applications\>\""}], "}"}], 
+    "]"}]}], ";"}]}], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{{3.9338222444491177`*^9, 3.933822266489155*^9}, {
+  3.933822298185457*^9, 3.93382229932106*^9}, {3.951052866254958*^9, 
+  3.951052867564941*^9}},ExpressionUUID->"6b7ea9e5-32ff-4d82-afae-\
+bcbf82eeadc0"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{"FunKitInstaller", "::", "zipdownloadfailed"}], "=", 
+   RowBox[{
+   "\"\<Download from \>\"", "<>", "FunKitZipLocation", "<>", 
+    "\"\< failed.\>\""}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+    RowBox[{"FunKitInstaller", "::", "installationfailed"}], "=", 
+    "\"\<\\nInstallation failed. Please read the error messages for more \
+information!\>\""}], ";"}], "\n"}], "\n", 
+ RowBox[{
+  RowBox[{"Print", "[", "\"\<Downloading FunKit ...\>\"", "]"}], 
+  ";"}], "\n", 
+ RowBox[{
+  RowBox[{"FunKitArchive", "=", 
+   RowBox[{"FileNameJoin", "[", 
+    RowBox[{"{", 
+     RowBox[{"$TemporaryDirectory", ",", "\"\<FunKit.zip\>\""}], "}"}], 
+    "]"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"URLDownload", "[", 
+   RowBox[{"FunKitZipLocation", ",", "FunKitArchive"}], "]"}], "\n"}], "\n", 
+ RowBox[{
+  RowBox[{"tmpFunKitImport", "=", 
+   RowBox[{"Import", "[", "FunKitArchive", "]"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"If", "[", 
+    RowBox[{
+     RowBox[{
+      RowBox[{
+      "tmpFunKitImport", "===", "\"\<{\\\"error\\\":\\\"Not Found\\\"}\>\""}],
+       "||", 
+      RowBox[{"tmpFunKitImport", "===", "\"\<404: Not Found\>\""}]}], ",", 
+     "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"Message", "[", 
+       RowBox[{"FunKitInstaller", "::", "zipdownloadfailed"}], "]"}], ";", 
+      RowBox[{"Abort", "[", "]"}], ";"}]}], "\[IndentingNewLine]", "]"}], 
+   ";"}], "\n"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"newVersionString", "=", 
+    RowBox[{
+     RowBox[{
+      RowBox[{"(", 
+       RowBox[{"List", "@@", 
+        RowBox[{"Import", "[", 
+         RowBox[{"FunKitArchive", ",", 
+          RowBox[{"FileNameJoin", "[", 
+           RowBox[{"{", 
+            RowBox[{"\"\<FunKit\>\"", ",", "\"\<PacletInfo.m\>\""}], "}"}], 
+           "]"}]}], "]"}]}], ")"}], "[", 
+      RowBox[{"[", "1", "]"}], "]"}], "[", "\"\<Version\>\"", "]"}]}], ";"}], 
+  "\n"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"FunKitFiles", "=", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"FileNameJoin", "[", 
+      RowBox[{"{", 
+       RowBox[{"FunKitInstallDir", ",", "#"}], "}"}], "]"}], "&"}], "/@", 
+    RowBox[{"Import", "[", "FunKitArchive", "]"}]}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"FunKitFilesExist", "=", 
+   RowBox[{"FileExistsQ", "/@", "FunKitFiles"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"FunKitExistingInstallation", "=", 
+   RowBox[{"Or", "@@", "FunKitFilesExist"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"FunKitExistingPacletInfo", "=", 
+   RowBox[{"FileNameJoin", "[", 
+    RowBox[{"{", 
+     RowBox[{
+     "FunKitInstallDir", ",", "\"\<FunKit\>\"", ",", "\"\<PacletInfo.m\>\""}],
+      "}"}], "]"}]}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"FunKitExistingVersionString", "=", 
+   RowBox[{"If", "[", 
+    RowBox[{
+     RowBox[{"FileExistsQ", "[", "FunKitExistingPacletInfo", "]"}], ",", 
+     RowBox[{
+      RowBox[{
+       RowBox[{"(", 
+        RowBox[{"List", "@@", 
+         RowBox[{"Import", "[", 
+          RowBox[{"FunKitArchive", ",", 
+           RowBox[{"FileNameJoin", "[", 
+            RowBox[{"{", 
+             RowBox[{"\"\<FunKit\>\"", ",", "\"\<PacletInfo.m\>\""}], "}"}], 
+            "]"}]}], "]"}]}], ")"}], "[", 
+       RowBox[{"[", "1", "]"}], "]"}], "[", "\"\<Version\>\"", "]"}], ",", 
+     "\"\<unknown\>\""}], "]"}]}], ";"}]}], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{{3.933822305729846*^9, 3.933822381049712*^9}, {
+  3.95105286774564*^9, 
+  3.951052873305923*^9}},ExpressionUUID->"cc951cea-7723-4d89-a3a3-\
+f55db97330d4"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"deleteExisting", "=", "False"}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"deleteExisting", "=", 
+    RowBox[{"If", "[", 
+     RowBox[{"FunKitExistingInstallation", ",", "\n", 
+      RowBox[{"ChoiceDialog", "[", 
+       RowBox[{
+        RowBox[{
+        "\"\<The installer has found an existing FunKit installation.\nDo you \
+want to overwrite the existing installation version \>\"", "<>", 
+         "FunKitExistingVersionString", "<>", "\"\< with version \>\"", "<>", 
+         "newVersionString", "<>", 
+         "\"\<?\nOtherwise the installation will be aborted.\>\""}], ",", 
+        "\n", 
+        RowBox[{"WindowTitle", "->", "\"\<FunKit Installation\>\""}], ",", 
+        RowBox[{"WindowSize", "->", 
+         RowBox[{"{", 
+          RowBox[{"Medium", ",", "All"}], "}"}]}]}], "]"}], ",", "False"}], 
+     "]"}]}], ";"}], "\n"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"If", "[", 
+    RowBox[{"deleteExisting", ",", 
+     RowBox[{"DeleteFile", "[", 
+      RowBox[{"Pick", "[", 
+       RowBox[{"FunKitFiles", ",", "FunKitFilesExist"}], "]"}], "]"}]}], 
+    "]"}], ";"}], "\n"}], "\n", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"If", "[", 
+    RowBox[{
+     RowBox[{"FunKitExistingInstallation", "&&", 
+      RowBox[{"deleteExisting", "===", "False"}]}], ",", 
+     "\[IndentingNewLine]", 
+     RowBox[{"(*", 
+      RowBox[{"abort", " ", "installation"}], "*)"}], "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"Print", "[", "\"\<FunKit installation aborted.\>\"", "]"}], 
+      ";"}], ",", "\[IndentingNewLine]", 
+     RowBox[{"(*", 
+      RowBox[{"install", " ", "FunKit"}], "*)"}], "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"installationSuccess", "=", 
+       RowBox[{"Check", "[", "\[IndentingNewLine]", 
+        RowBox[{
+         RowBox[{
+          RowBox[{"ExtractArchive", "[", 
+           RowBox[{"FunKitArchive", ",", "FunKitInstallDir"}], "]"}], ";", 
+          "\[IndentingNewLine]", 
+          RowBox[{"Get", "[", "\"\<FunKit`\>\"", "]"}]}], 
+         "\[IndentingNewLine]", ",", "$Failed"}], "]"}]}], ";", 
+      "\[IndentingNewLine]", 
+      RowBox[{"If", "[", 
+       RowBox[{
+        RowBox[{"installationSuccess", "===", "$Failed"}], ",", 
+        "\[IndentingNewLine]", 
+        RowBox[{"(*", 
+         RowBox[{"installation", " ", "failed"}], "*)"}], 
+        "\[IndentingNewLine]", 
+        RowBox[{
+         RowBox[{"Message", "[", 
+          RowBox[{"FunKitInstaller", "::", "installationfailed"}], "]"}], 
+         ";"}], ",", "\[IndentingNewLine]", 
+        RowBox[{"(*", 
+         RowBox[{"installation", " ", "successful"}], "*)"}], 
+        "\[IndentingNewLine]", 
+        RowBox[{
+         RowBox[{"PacletDataRebuild", "[", "]"}], ";", "\[IndentingNewLine]", 
+         
+         RowBox[{"Print", "[", "\"\<Installation was successful.\>\"", "]"}], 
+         ";"}]}], "\[IndentingNewLine]", "]"}], ";"}]}], 
+    "\[IndentingNewLine]", "]"}], ";"}], "\n"}], "\n", 
+ RowBox[{
+  RowBox[{"Quiet", "[", 
+   RowBox[{"DeleteFile", "[", "FunKitArchive", "]"}], "]"}], ";"}]}], "Input",\
+
+ InitializationCell->True,
+ CellChangeTimes->{{3.933822322880705*^9, 3.9338223338405046`*^9}, {
+  3.9338224972818108`*^9, 3.933822532913733*^9}, {3.951052873506914*^9, 
+  3.951052876058304*^9}},ExpressionUUID->"1478e074-aad1-4852-86c3-\
+5552259c7b89"]
+},
+AutoGeneratedPackage->Automatic,
+InitializationCellEvaluation->False,
+InitializationCellWarning->False,
+WindowSize->{1200, 750},
+WindowMargins->{{0, Automatic}, {Automatic, 0}},
+FrontEndVersion->"14.1 for Linux x86 (64-bit) (July 16, 2024)",
+StyleDefinitions->Notebook[{
+   Cell[
+    StyleData[StyleDefinitions -> "Default.nb"]], 
+   Cell[
+    StyleData["Input"], InitializationCell -> True]}, Visible -> False, 
+  FrontEndVersion -> "14.1 for Linux x86 (64-bit) (July 16, 2024)", 
+  StyleDefinitions -> "PrivateStylesheetFormatting.nb"],
+ExpressionUUID->"3149dff9-433b-4831-b0e6-7a8267329937"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[558, 20, 1450, 36, 276, "Input",ExpressionUUID->"5e9522b9-2f7e-4e0e-9eec-6cc300d345bd",
+ InitializationCell->True],
+Cell[2011, 58, 759, 20, 87, "Input",ExpressionUUID->"6b7ea9e5-32ff-4d82-afae-bcbf82eeadc0",
+ InitializationCell->True],
+Cell[2773, 80, 3527, 100, 452, "Input",ExpressionUUID->"cc951cea-7723-4d89-a3a3-f55db97330d4",
+ InitializationCell->True],
+Cell[6303, 182, 3312, 83, 602, "Input",ExpressionUUID->"1478e074-aad1-4852-86c3-5552259c7b89",
+ InitializationCell->True]
+}
+]
+*)
+
