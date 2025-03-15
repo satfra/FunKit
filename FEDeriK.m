@@ -20,6 +20,212 @@
 
 
 (* ::Input::Initialization:: *)
+Unprotect[FEq,FTerm];
+ClearAll[FEq,FTerm];
+
+FTerm::TimesError="An FTerm cannot be multiplied using Times[__]. To multiply FTerms, use term1**term2, also with scalars, a**term.";
+FEq::TimesError="A FEq cannot be multiplied using Times[__]. To multiply FEqs, use eq1**eq2, also with scalars, a**eq.";
+
+(*Multiplication of FTerms*)
+FTerm/:Times[pre___,FTerm[a__],post___]:=(Message[FTerm::TimesError];Abort[])
+FTerm/:NonCommutativeMultiply[FTerm[a__],FTerm[b__]]:=FTerm[a,b]
+
+(*Reduction of immediately nested FTerms*)
+FTerm[pre___,FTerm[in__],post___]:=FTerm[pre,in,post] 
+
+(*Sum splitting of FTerms*)
+FEq[preEq___,FTerm[preTerm___,Plus[a_,b__],postTerm___],postEq___]:=FEq[preEq,FTerm[preTerm,a,postTerm],FTerm[preTerm,Plus[b],postTerm],postEq]
+
+(*Sums of FTerms*)
+FEq[preEq___,Plus[FTerm[a__],FTerm[b__],c___],postEq___]:=FEq[preEq,FTerm[a],Plus[FTerm[b],c],postEq]
+
+(*Sums of FEqs*)
+FEq/:Plus[preEq___,FEq[terms1___],midEq___,FEq[terms2___],postEq___]:=Plus[preEq,midEq,postEq,FEq[terms1,terms2]]
+
+(*Multiplication of FEqs*)
+FEq/:Times[pre___,FEq[a__],post___]:=(Message[FEq::TimesError];Abort[])
+FEq/:NonCommutativeMultiply[FTerm[b__],FEq[c__]]:=FEq[Map[FTerm[b]**#&,FEq[c]]]
+FEq/:NonCommutativeMultiply[FEq[a__],FEq[b__]]:=FEq@@(Flatten@Table[FEq[{a}[[i]]**{b}[[j]]],{i,1,Length[{a}]},{j,1,Length[{b}]}])
+
+(*Reduction of immediately nested FEqs*)
+FEq[pre___,FEq[in___],post___]:=FEq[pre,in,post]
+FEq[pre___,FTerm[],post___]:=FEq[pre,post]
+
+Protect[FEq,FTerm];
+
+
+(* ::Input::Initialization:: *)
+FTermQ[expr_]:=Head[expr]===FTerm;
+FTerm::notFTerm="The term `1` is not an FTerm.";
+AssertFTerm[expr_]:=If[Not@FTermQ[expr],Message[FTerm::notFTerm,expr];Abort[]];
+
+FEqQ[expr_]:=Head[expr]===FEq;
+FEq::notFEq="The term `1` is not an FEq.";
+AssertFEq[expr_]:=If[Not@FEqQ[expr],Message[FEq::notFEq,expr];Abort[]];
+
+
+(* ::Input::Initialization:: *)
+(* Check if a given field definition is valid. Can be either its own anti-field or a pair {af,f} *)
+FieldDefQ[expr_]:=Module[{},
+If[Head[expr]===List,
+If[Length[expr]=!=2,
+Print["A field definition must be either of form f[x...] or {af[x...],f[x...]}. \"",expr,"\" does not fit."];Return[False]];
+
+If[Head[expr[[1]]]===Head[expr[[2]]],
+Print["A field definition {af[x...],f[x...]} must have different field names af and f. \"",expr,"\" does not fit."];
+Return[False]];
+
+If[Not@(List@@(expr[[1]])===List@@(expr[[2]])),
+Print["A field definition {af[x...],f[x...]} must have identical indices. \"",expr,"\" does not fit."];
+Return[False]];
+
+Do[
+If[Not@(MatchQ[expr[[i]],_Symbol[_,{__Symbol}]]||MatchQ[expr[[i]],_Symbol[_]]),
+Print["A field definition f[x...] must have indices f[p] or f[p,{a,b,...}]. \"",expr[[i]],"\" does not fit."];
+Return[False]],
+{i,1,2}
+];
+
+Return[True];
+];
+
+If[Not@(MatchQ[expr,_Symbol[_,{__Symbol}]]||MatchQ[expr,_Symbol[_]]),
+Print["A field definition f[x...] must have indices f[p] or f[p,{a,b,...}]. \"",expr,"\" does not fit."];
+Return[False]];
+
+Return[True];
+];
+
+FieldDef::invalidFieldDefinition="The given field definition `1` is not valid.";
+
+AssertFieldDef[expr_]:=If[Not@FieldDefQ[expr],
+Message[FieldDefinition::invalidFieldDefinition];
+Abort[]];
+
+
+(* ::Input::Initialization:: *)
+(* Check if a given field space definition is valid *)
+FieldSpaceDefQ[fieldSpace_]:=Module[{},
+If[Head[fieldSpace]=!=Association,Print["An FSetup must be an association"];Return[False]];
+
+If[Not@(Keys[fieldSpace]==={"cField","Grassmann"}),
+Print["fields must contain the two keys {\"cField\",\"Grassmann\"}!"];
+Return[False]];
+
+If[Not@ListQ[fieldSpace["cField"]],
+Print["fields[\"cField\"] must be a list!"];
+Return[False]];
+
+If[Not@(And@@Map[FieldDefQ,fieldSpace["cField"]]),
+Print["fields[\"cField\"] must contain valid fields!"];
+Return[False]];
+
+If[Not@ListQ[fieldSpace["Grassmann"]],
+Print["fields[\"Grassmann\"] must be a list!"];
+Return[False]];
+
+If[Not@(And@@Map[FieldDefQ,fieldSpace["Grassmann"]]),
+Print["fields[\"Grassmann\"] must contain valid fields!"];
+Return[False]];
+
+Return[True];
+];
+
+FieldSpaceDefinition::invalidFieldDefinition="The given field space definition is invalid.";
+
+AssertFieldSpaceDef[fields_]:=If[Not@FieldSpaceDefQ[fields],
+Message[FieldSpaceDefinition::invalidFieldDefinition];Abort[]];
+
+
+(* ::Input::Initialization:: *)
+FSetup::notFSetup="The given setup is not valid!";
+
+FSetupQ[setup_]:=Module[{},
+If[Not@(Head[setup]===Association),
+Print["A valid setup must be an Association!"];
+Return[False]];
+
+If[Not@MemberQ[Keys[setup],"FieldSpace"],
+Print["A valid setup must have the key \"FieldSpace\"!"];
+Return[False]];
+
+If[Not@FieldSpaceDefQ[setup["FieldSpace"]],
+Return[False]];
+
+Return[True];
+];
+
+AssertFSetup[setup_]:=Module[{},
+If[Not@(Head[setup]===Association),
+Print["A valid setup must be an Association!"];
+Message[FSetup::notFSetup];
+Abort[]];
+
+If[Not@MemberQ[Keys[setup],"FieldSpace"],
+Print["A valid setup must have the key \"FieldSpace\"!"];
+Message[FSetup::notFSetup];
+Abort[]];
+
+AssertFieldSpaceDef[setup["FieldSpace"]];
+];
+
+
+(* ::Input::Initialization:: *)
+(* Check if a given field definition is valid. Can be either its own anti-field or a pair {af,f} *)
+FieldQ[setup_,expr_]:=Module[{},
+If[Not@(MatchQ[expr,_Symbol[_,{__Symbol}]]||MatchQ[expr,_Symbol[_]]),
+Print["A field f[x...] must have indices f[p] or f[p,{a,b,...}]. \"",expr,"\" does not fit."];
+Return[False]];
+
+If[Not@(MemberQ[Map[Head,setup["FieldSpace"]//Values//Flatten],Head[expr]]),
+Print["The field \"",expr,"\" is not contained in the field space."];
+Return[False]];
+
+Return[True];
+];
+
+Field::invalidField="The given field `1` does not exist.";
+
+AssertField[setup_,expr_]:=If[Not@FieldQ[setup,expr],
+Message[FieldDefinition::invalidField];
+Abort[]];
+
+
+(* ::Input::Initialization:: *)
+(*Check a derivative list for correct formatting.*)
+DerivativeListQ[setup_,derivativeList_]:=Module[{},
+
+If[Not@(Head[derivativeList]===List),
+Print["A valid derivativeList must be an List!"];
+Return[False]];
+
+If[Not@AllTrue[derivativeList,FieldQ[setup,#]&],
+Print["A valid derivativeList must be an List of fields f_[p_,{___}] of f_[p_] which have been defined in the setup!"];
+Return[False]];
+
+Return[True];
+];
+
+DeriveEquation::invalidDerivativeList="The given derivativeList `1` is not valid.";
+
+AssertDerivativeList[setup_,expr_]:=If[Not@DerivativeListQ[setup,expr],
+Message[DeriveEquation::invalidDerivativeList];
+Abort[]];
+
+
+(* ::Input::Initialization:: *)
+Protect[GammaN,Propagator,AnyField,ABasis,VBasis];
+
+
+(* ::Input::Initialization:: *)
+exclusions[a_]:=And@@{a=!=List,a=!=Complex,a=!=Plus,a=!=Power}
+GetAllSymbols[expr_]:=DeleteDuplicates@Cases[
+Flatten[{expr}//.Times[a_,b__]:>{a,b}//.a_Symbol[b__]/;exclusions[a]:>{a,b}],
+_Symbol,
+Infinity]
+
+
+(* ::Input::Initialization:: *)
 FunctionalD[expr_,v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=Internal`InheritedBlock[{f,GammaN,Propagator,nonConst},
 
 nonConst={f,GammaN,Propagator};
@@ -44,6 +250,252 @@ Propagator[{b,AnyField},{ib,ic}]GammaN[{f,AnyField,AnyField},{-if,-ic,-id}]Propa
 Protect[GammaN,Propagator];
 
 D[expr,v,NonConstants->nonConst]
+];
+
+FunctionalD::badArgumentFTerm="Cannot take derivative of an FTerm. Use DeriveFunctional instead.";
+FunctionalD[FTerm[expr_],v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=(Message[FunctionalD::badArgumentFTerm];Abort[]);
+
+FunctionalD::badArgumentFEq="Cannot take derivative of an FEq. Use DeriveFunctional instead.";
+FunctionalD[FEq[___],v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=(Message[FunctionalD::badArgumentFEq];Abort[]);
+
+
+
+(* ::Input::Initialization:: *)
+GetcFields[setup_]:=Map[
+If[Head[#]===List,Head[#[[2]]],Head[#]]&,
+setup["FieldSpace"]["cField"]
+];
+GetAnticFields[setup_]:=Select[Map[
+If[Head[#]===List,Head[#[[1]]],{}]&,
+setup["FieldSpace"]["cField"]
+],#=!={}&];
+
+GetGrassmanns[setup_]:=Map[
+If[Head[#]===List,Head[#[[2]]],Head[#]]&,
+setup["FieldSpace"]["Grassmann"]
+];
+GetAntiGrassmanns[setup_]:=Select[Map[
+If[Head[#]===List,Head[#[[1]]],{}]&,
+setup["FieldSpace"]["Grassmann"]
+],#=!={}&];
+
+
+(* ::Input::Initialization:: *)
+GetFieldPairs[setup_]:=Map[{Head[#[[1]]],Head[#[[2]]]}&,
+Select[
+Join[setup["FieldSpace"]["Grassmann"],setup["FieldSpace"]["cField"]],
+Head[#]===List&
+]
+];
+
+GetSingleFields[setup_]:=Map[Head[#]&,Select[
+Join[setup["FieldSpace"]["Grassmann"],setup["FieldSpace"]["cField"]],
+Head[#]=!=List&
+]
+];
+
+GetAllFields[setup_]:=Join[Flatten@GetFieldPairs[setup],GetSingleFields[setup]];
+
+HasPartnerField[setup_,field_]:=MemberQ[
+Flatten@GetFieldPairs[setup],
+field
+];
+HasPartnerField[setup_,field_[__]]:=HasPartnerField[setup,field];
+
+IsGrassmann[setup_,field_]:=MemberQ[GetGrassmanns[setup],field,Infinity];
+IsGrassmann[setup_,field_[__]]:=IsGrassmann[setup,field];
+
+IsAntiGrassmann[setup_,field_]:=MemberQ[GetAntiGrassmanns[setup],field,Infinity];
+IsAntiGrassmann[setup_,field_[__]]:=IsAntiGrassmann[setup,field];
+
+IscField[setup_,field_]:=MemberQ[GetcFields[setup],field,Infinity];
+IscField[setup_,field_[__]]:=IscField[setup,field];
+
+IsAnticField[setup_,field_]:=MemberQ[GetAnticFields[setup],field,Infinity];
+IsAnticField[setup_,field_[__]]:=IsAnticField[setup,field];
+
+
+(* ::Input::Initialization:: *)
+GetPartnerField[setup_,field_Symbol]:=Module[{pairs,sel},
+If[Not@HasPartnerField[setup,field],Return[field]];
+
+pairs=GetFieldPairs[setup];
+
+sel=Select[pairs,MemberQ[#,field,Infinity]&][[1]];
+sel=DeleteCases[sel,field];
+If[Length[sel]>0,Return[sel[[1]]]];
+
+Print["field ",field," not found!"];Abort[];
+];
+GetPartnerField[setup_,field_Symbol[i__]]:=GetPartnerField[setup,field][i]
+
+
+(* ::Input::Initialization:: *)
+ExtractFields[setup_Association,expr_]:=Module[{symbols},
+symbols=GetAllSymbols[expr];
+Return@Select[symbols,MemberQ[GetAllFields[setup],#]&];
+];
+ExtractFieldsWithIndex[setup_Association,expr_]:=Module[{fields,extracted},
+fields=ExtractFields[setup,expr];
+extracted={};
+expr//.{a_[b_]/;MemberQ[fields,a]:>(AppendTo[extracted,a[b]];1)};
+Return[extracted]
+];
+
+
+(* ::Input::Initialization:: *)
+ContainsGrassmann[setup_Association,expr_]:=Module[{fields},
+fields=ExtractFields[setup,expr];
+Return[
+AnyTrue[fields,IsGrassmann[setup,#]||IsAntiGrassmann[setup,#]&]
+];
+]
+GrassmannCount[setup_Association,expr_]:=Module[{fields},
+fields=ExtractFieldsWithIndex[setup,expr];
+Return[Length@
+Select[fields,IsGrassmann[setup,Head[#]]||IsAntiGrassmann[setup,Head[#]]&]
+];
+]
+
+
+(* ::Input::Initialization:: *)
+$indexedObjects={ABasis,VBasis,GammaN,Propagator};
+
+
+(* ::Input::Initialization:: *)
+(*Get a list of all unique super-indices within the expression expr*)
+GetAllSuperIndices[setup_,expr_]:=Module[{fields,indices},
+fields=ExtractFieldsWithIndex[setup,expr];
+indices={};
+fields//.
+p_[Times[-1,a_]]/;exclusions[p]:>(AppendTo[indices,a];1)//.
+p_[a_]/;exclusions[p]:>(AppendTo[indices,a];1);
+Do[
+expr//.{
+extObj[[i]][{f__},{\!\(\*
+TagBox[
+StyleBox[
+RowBox[{"Times", "[", 
+RowBox[{
+RowBox[{"-", "1"}], ",", "a_Symbol"}], "]"}],
+ShowSpecialCharacters->False,
+ShowStringCharacters->True,
+NumberMarks->True],
+FullForm]\),b___}]:>(AppendTo[indices,a];extObj[[i]][{f},{b}]),
+extObj[[i]][{f__},{\!\(\*
+TagBox[
+StyleBox["a_Symbol",
+ShowSpecialCharacters->False,
+ShowStringCharacters->True,
+NumberMarks->True],
+FullForm]\),b___}]:>(AppendTo[indices,a];extObj[[i]][{f},{b}])
+},
+{i,1,Length[$indexedObjects]}
+];
+expr//.{
+\[Delta][\!\(\*
+TagBox[
+StyleBox[
+RowBox[{"Times", "[", 
+RowBox[{
+RowBox[{"-", "1"}], ",", "a_Symbol"}], "]"}],
+ShowSpecialCharacters->False,
+ShowStringCharacters->True,
+NumberMarks->True],
+FullForm]\),b___]:>(AppendTo[indices,a];\[Delta][b]),
+\[Delta][a_Symbol,b___]:>(AppendTo[indices,a];\[Delta][b])
+};
+expr//.{
+\[Gamma][\!\(\*
+TagBox[
+StyleBox[
+RowBox[{"Times", "[", 
+RowBox[{
+RowBox[{"-", "1"}], ",", "a_Symbol"}], "]"}],
+ShowSpecialCharacters->False,
+ShowStringCharacters->True,
+NumberMarks->True],
+FullForm]\),b___]:>(AppendTo[indices,a];\[Gamma][b]),
+\[Gamma][a_Symbol,b___]:>(AppendTo[indices,a];\[Gamma][b])
+};
+Return[indices//DeleteDuplicates];
+];
+
+
+(* ::Input::Initialization:: *)
+ExtractObjectsWithIndex[setup_Association,expr_]:=Module[{
+indices,flattened,objects
+},
+indices=GetAllSuperIndices[Setup,expr];
+
+If[FTermQ[expr],
+flattened=Times@@expr;
+
+objects={};
+flattened//.a_Symbol[b__]/;ContainsAny[{b},indices\[Union](-indices)]&&exclusions[a]:>(AppendTo[objects,a[b]];1);
+
+Return[objects];
+];
+
+If[FEqQ[expr],
+flattened=Times@@(Join@@Map[List@@#&,expr]);
+
+objects={};
+flattened//.a_Symbol[b__]/;ContainsAny[{b},indices\[Union](-indices)]&&exclusions[a]:>(AppendTo[objects,a[b]];1);
+flattened//.a_Symbol[{f__},{i__}]/;ContainsAny[{i},indices\[Union](-indices)]&&exclusions[a]:>(AppendTo[objects,a[{f},{i}]];1);
+Return[objects];
+];
+
+Print["Expression \"",expr,"\" is neither an FTerm nor an FEq!"];Abort[];
+];
+
+
+(* ::Input::Initialization:: *)
+(*Get a list of all open super-indices within the expression expr*)
+GetOpenSuperIndices[setup_,expr_]:=Module[{objects,indices,count,pick},
+objects=ExtractObjectsWithIndex[setup,expr];
+indices=GetAllSuperIndices[setup,expr];
+
+count=Map[Count[objects,#,Infinity]&,indices];
+pick=Table[If [Mod[count[[i]],2]==0,False,True],{i,1,Length[indices]}];
+If[AnyTrue[count,#>2&],Print["There are indices with count > 2. This is not allowed for valid terms/equations!"];Abort[]];
+
+Return[Pick[indices,pick]];
+];
+
+(*Get a list of all closed super-indices within the expression expr*)
+GetClosedSuperIndices[setup_,expr_]:=Module[{objects,indices,count,pick},
+objects=ExtractObjectsWithIndex[setup,expr];
+indices=GetAllSuperIndices[setup,expr];
+
+count=Map[Count[objects,#,Infinity]&,indices];
+If[AnyTrue[count,#>2&],Print["There are indices with count > 2. This is not allowed for valid terms/equations!"];Abort[]];
+
+pick=Table[If [Mod[count[[i]],2]!=0,False,True],{i,1,Length[indices]}];
+Return[Pick[indices,pick]];
+];
+
+(*Get a list of all open super-indices within the expression expr*)
+SuperIndicesValid[setup_,expr_]:=Module[{objects,indices,count},
+objects=ExtractObjectsWithIndex[setup,expr];
+indices=GetAllSuperIndices[setup,expr];
+
+count=Map[Count[objects,#,Infinity]&,indices];
+If[AnyTrue[count,#>2&],Print["There are indices with count > 2. This is not allowed for valid terms/equations!"];Return[False]];
+Return[True];
+];
+
+
+(* ::Input::Initialization:: *)
+(*Check whether all indices are closed within expr. 
+This disallows also multiple use of a single index name, !anywhere!*)
+AllIndicesClosed[setup_,expr_]:=Module[{objects,indices,count,valid},
+objects=ExtractObjectsWithIndex[setup,expr];
+indices=GetAllSuperIndices[setup,expr];
+
+count=Map[Count[objects,#,Infinity]&,indices];
+valid=AllTrue[count,#==2&];
+Return[valid];
 ];
 
 
@@ -174,7 +626,7 @@ curi--;
 
 Return[prefactor*obj[nfields,nindices]];
 ];
-OrderEquation[setup_,expr_]:=Map[OrderObject[setup,#]&,expr,{1,3}];
+OrderFields[setup_,expr_]:=Map[OrderObject[setup,#]&,expr,{1,3}];
 
 
 (* ::Input::Initialization:: *)
@@ -210,403 +662,21 @@ QMeSForm[Setup,#]&[{{GammaN[{A,cb,c},{x,y,z}]A[c]GammaN[{c,cb,c,cb},{x,y,z,k}]}}
 
 
 (* ::Input::Initialization:: *)
-IsValidSetup[setup_]:=Module[{valid=True},
-valid=valid&&Head[setup]===Association;
-If[Not@valid,Print["A valid setup must be an Association!"];Return[valid]];
-
-valid=valid&&MemberQ[Keys[setup],"FieldSpace"];
-If[Not@valid,Print["A valid setup must have the key \"FieldSpace\"!"];Return[valid]];
-
-valid=valid&&IsValidFieldDefinition[setup["FieldSpace"]];
-If[Not@valid,Print["A valid setup must have the a valid \"FieldSpace\"!"];Return[valid]];
-
-Return[valid];
-];
-
-
-(* ::Input::Initialization:: *)
-(*Get the field definition with its kind from the setup, for the field named fieldName.*)
-GetFieldDefinition[setup_,fieldName_]:=Module[{def,sig,pick},
-If[IsGrassmann[setup,fieldName],
-def=setup["FieldSpace"]["fermionic"];
-If[IsFermion[setup,fieldName],
-pick=Map[Head[#]===fieldName&,def[[All,2]]];
-Return[Pick[def[[All,2]],pick][[1]]],
-pick=Map[Head[#]===fieldName&,def[[All,1]]];
-Return[Pick[def[[All,1]],pick][[1]]]
-];
-Print[pick];
-];
-
-def=setup["FieldSpace"]["bosonic"];
-pick=Map[Head[#]===fieldName&,def];
-pick=Pick[def,pick];
-If[Length[pick]===0,Print["Field \"",fieldName,"\" not found!"];Abort[]];
-Return[pick[[1]]]
-];
-
-
-(* ::Input::Initialization:: *)
-(*See if a field is included in the setup, and if it has the correct index structure.*)
-SetupHasField[setup_,field_]:=Module[{head,body,template,templateBody},
-If[Not@IsValidField[field],Print["A valid field has the shape f_[p_,{___}], which is not fulfilled for \"",field,"\"!"];Return[False]];
-
-head=Head[field];
-body=List@@field;
-template=GetFieldDefinition[setup,head];
-templateBody=List@@template;
-
-(*Check if the body structure is generally correct*)
-If[Length[body]>2||Length[body]==0||Head[body[[1]]]===List,
-Print["The body \"",body,"\" of the field \"",field,"\" is wrongly formatted!"];Return[False]
-];
-
-(*Check the group index structure, if there is any*)
-If[Length[body]==2,
-If[Head[body[[2]]]=!=List,
-Print["The body \"",body,"\" of the field \"",field,"\" is wrongly formatted!"];Return[False]
-];
-
-If[Length[body[[2]]]=!=Length[templateBody[[2]]],
-Print["The body \"",body,"\" of the field \"",field,"\"  does not match the template \"",templateBody,"\"!"];Return[False]
-];
-];
-
-(*Check if the group index structure is missing*)
-If[Length[body]==1&&Length[templateBody]==2,
-Print["The body \"",body,"\" of the field \"",field,"\"  does not match the template \"",templateBody,"\"!"];Return[False]
-];
-
-Return[True];
-];
-
-
-(* ::Input::Initialization:: *)
-(*Check a derivative list for correct formatting.*)
-IsValidDerivativeList[setup_,derivativeList_]:=Module[{valid=True},
-valid=valid&&Head[derivativeList]===List;
-If[Not@valid,Print["A valid derivativeList must be an List!"];Return[valid]];
-
-valid=valid&&AllTrue[derivativeList,IsValidField];
-If[Not@valid,Print["A valid derivativeList must be an List of fields f_[p_,{___}]!"];Return[valid]];
-
-valid=valid&&AllTrue[derivativeList,SetupHasField[setup,#]&];
-If[Not@valid,Print["A valid derivativeList must be an List of fields f_[p_,{___}]!"];Return[valid]];
-
-Return[valid];
-];
-
-
-(* ::Input::Initialization:: *)
-IsValidField[field_]:=MatchQ[field,_Symbol[_,{__Symbol}]]||MatchQ[field,_Symbol[_]];
-
-IsValidFieldDefinition[fields_Association]:=Module[{valid=True},
-valid=valid&&Keys[fields]==={"bosonic","fermionic"};
-If[Not@valid,Print["fields must contain the two keys {\"bosonic\",\"fermionic\"}!"];Return[valid]];
-
-valid=valid&&ListQ[fields["bosonic"]];
-If[Not@valid,Print["fields[\"bosonic\"] must be a list!"];Return[valid]];
-valid=valid&&(And@@Map[IsValidField,fields["bosonic"]]);
-If[Not@valid,Print["fields[\"bosonic\"] must contain valid fields!"];Return[valid]];
-
-valid=valid&&ListQ[fields["fermionic"]];
-If[Not@valid,Print["fields[\"fermionic\"] must be a list!"];Return[valid]];
-valid=valid&&(And@@Map[ListQ,fields["fermionic"]]);
-valid=valid&&(And@@Map[Length[#]===2&,fields["fermionic"]]);
-If[Not@valid,Print["fields[\"fermionic\"] must contain pairs of fields!"];Return[valid]];
-valid=valid&&(And@@Map[List@@(#[[1]])===List@@(#[[2]])&,fields["fermionic"]]);
-If[Not@valid,Print["fields[\"fermionic\"] must contain pairs of fields with identical indices!"];Return[valid]];
-valid=valid&&(And@@Map[IsValidField,Flatten[fields["fermionic"]]]);
-If[Not@valid,Print["fields[\"fermionic\"] must contain valid fields!"];Return[valid]];
-
-Return[valid];
-];
-
-
-(* ::Input::Initialization:: *)
-IsValidTerm[expr_]:=Module[{valid=True},
-valid=valid&&Head[expr]===List;
-valid=valid&&Length[expr]>0;
-If[Not@valid,Print["Terms are non-empty lists!"];Return[valid]];
-
-valid=valid&&(And@@Map[Head[#]=!=List&,expr]);
-If[Not@valid,Print["Terms are lists of non-lists!"];Return[valid]];
-
-Return[valid];
-];
-IsTerm[expr_]:=Module[{valid=True},
-Return[
-Block[{Print},IsValidTerm[expr]]
-];
-];
-
-
-(* ::Input::Initialization:: *)
-IsValidMasterEq[masterEq_List]:=Module[{valid=True},
-valid=Length[masterEq]>0;
-valid=valid&&(And@@Map[ListQ,masterEq]);
-If[Not@valid,Print["MasterEq must be a list of lists!"];Return[valid]];
-
-valid=valid&&(And@@Map[(Length[#]>0)&,masterEq]);
-If[Not@valid,Print["MasterEq must be a list of lists with length > 0!"];Return[valid]];
-
-valid=valid&&(And@@Map[IsValidTerm,masterEq]);
-If[Not@valid,Print["MasterEq must be a list of valid terms!"];Return[valid]];
-
-Return[valid];
-];
-IsMasterEq[expr_]:=Module[{valid=True},
-Return[
-Block[{Print},IsValidMasterEq[expr]]
-];
-];
-
-
-(* ::Input::Initialization:: *)
-GetAllObjectsWithIndex[setup_Association,expr_]:=Module[{
-fields,extracted,indices,
-flattened,objects
-},
-
-fields=GetAllFieldsWithIndex[setup,expr];
-indices={};
-fields//._[\!\(\*
-TagBox[
-StyleBox[
-RowBox[{"Times", "[", 
-RowBox[{
-RowBox[{"-", "1"}], ",", "a_Symbol"}], "]"}],
-ShowSpecialCharacters->False,
-ShowStringCharacters->True,
-NumberMarks->True],
-FullForm]\)]:>(AppendTo[indices,a];1)//._[\!\(\*
-TagBox[
-StyleBox["a_Symbol",
-ShowSpecialCharacters->False,
-ShowStringCharacters->True,
-NumberMarks->True],
-FullForm]\)]:>(AppendTo[indices,a];1);
-expr//.{
-ABasis[{f__},{\!\(\*
-TagBox[
-StyleBox[
-RowBox[{"Times", "[", 
-RowBox[{
-RowBox[{"-", "1"}], ",", "a_Symbol"}], "]"}],
-ShowSpecialCharacters->False,
-ShowStringCharacters->True,
-NumberMarks->True],
-FullForm]\),b___}]:>(AppendTo[indices,a];ABasis[{f},{b}]),
-ABasis[{f__},{\!\(\*
-TagBox[
-StyleBox["a_Symbol",
-ShowSpecialCharacters->False,
-ShowStringCharacters->True,
-NumberMarks->True],
-FullForm]\),b___}]:>(AppendTo[indices,a];ABasis[{f},{b}])
-};
-expr//.{
-VBasis[{f__},{\!\(\*
-TagBox[
-StyleBox[
-RowBox[{"Times", "[", 
-RowBox[{
-RowBox[{"-", "1"}], ",", "a_Symbol"}], "]"}],
-ShowSpecialCharacters->False,
-ShowStringCharacters->True,
-NumberMarks->True],
-FullForm]\),b___}]:>(AppendTo[indices,a];VBasis[{f},{b}]),
-VBasis[{f__},{\!\(\*
-TagBox[
-StyleBox["a_Symbol",
-ShowSpecialCharacters->False,
-ShowStringCharacters->True,
-NumberMarks->True],
-FullForm]\),b___}]:>(AppendTo[indices,a];VBasis[{f},{b}])
-};
-expr//.{
-\[Delta][\!\(\*
-TagBox[
-StyleBox[
-RowBox[{"Times", "[", 
-RowBox[{
-RowBox[{"-", "1"}], ",", "a_Symbol"}], "]"}],
-ShowSpecialCharacters->False,
-ShowStringCharacters->True,
-NumberMarks->True],
-FullForm]\),b___]:>(AppendTo[indices,a];\[Delta][b]),
-\[Delta][a_Symbol,b___]:>(AppendTo[indices,a];\[Delta][b])
-};
-expr//.{
-\[Gamma][\!\(\*
-TagBox[
-StyleBox[
-RowBox[{"Times", "[", 
-RowBox[{
-RowBox[{"-", "1"}], ",", "a_Symbol"}], "]"}],
-ShowSpecialCharacters->False,
-ShowStringCharacters->True,
-NumberMarks->True],
-FullForm]\),b___]:>(AppendTo[indices,a];\[Delta][b]),
-\[Gamma][a_Symbol,b___]:>(AppendTo[indices,a];\[Delta][b])
-};
-
-indices=DeleteDuplicates[indices];
-If[IsTerm[expr],
-flattened=Times@@expr;
-
-objects={};
-flattened//.a_Symbol[b__]/;ContainsAny[{b},indices\[Union](-indices)]&&a=!=Times:>(AppendTo[objects,a[b]];1);
-
-Return[objects];
-];
-If[IsMasterEq[expr],
-flattened=Times@@(Join@@expr);
-
-objects={};
-flattened//.a_Symbol[b__]/;ContainsAny[{b},indices\[Union](-indices)]&&a=!=Times:>(AppendTo[objects,a[b]];1);
-Return[objects];
-];
-
-Print["Expression \"",expr,"\" is neither a term nor a master equation!"];Abort[];
-];
-
-
-(* ::Input::Initialization:: *)
-(*Get a list of all unique super-indices within the expression expr*)
-GetAllSuperIndices[setup_,expr_]:=Module[{fields,indices},
-fields=GetAllObjectsWithIndex[setup,expr];
-indices={};
-fields//._[Times[-1,a_]]:>(AppendTo[indices,a];1)//._[a_]:>(AppendTo[indices,a];1);
-Return[indices//DeleteDuplicates];
-];
-
-(*Get a list of all open super-indices within the expression expr*)
-GetOpenSuperIndices[setup_,expr_]:=Module[{objects,indices,count,pick},
-objects=GetAllObjectsWithIndex[setup,expr];
-indices=GetAllSuperIndices[setup,expr];
-
-count=Map[Count[objects,#,Infinity]&,indices];
-pick=Table[If [Mod[count[[i]],2]==0,False,True],{i,1,Length[indices]}];
-If[AnyTrue[count,#>2&],Print["There are indices with count > 2. This is not allowed for valid terms/equations!"];Abort[]];
-
-Return[Pick[indices,pick]];
-];
-
-(*Get a list of all closed super-indices within the expression expr*)
-GetClosedSuperIndices[setup_,expr_]:=Module[{objects,indices,count,pick},
-objects=GetAllObjectsWithIndex[setup,expr];
-indices=GetAllSuperIndices[setup,expr];
-
-count=Map[Count[objects,#,Infinity]&,indices];
-If[AnyTrue[count,#>2&],Print["There are indices with count > 2. This is not allowed for valid terms/equations!"];Abort[]];
-
-pick=Table[If [Mod[count[[i]],2]!=0,False,True],{i,1,Length[indices]}];
-Return[Pick[indices,pick]];
-];
-
-(*Get a list of all open super-indices within the expression expr*)
-TermSuperIndicesValid[setup_,expr_]:=Module[{objects,indices,count},
-objects=GetAllObjectsWithIndex[setup,expr];
-indices=GetAllSuperIndices[setup,expr];
-
-count=Map[Count[objects,#,Infinity]&,indices];
-If[AnyTrue[count,#>2&],Print["There are indices with count > 2. This is not allowed for valid terms/equations!"];Return[False]];
-Return[True];
-];
-
-
-(* ::Input::Initialization:: *)
-(*Check whether all indices are closed within expr. 
-This disallows also multiple use of a single index name, !anywhere!*)
-AllIndicesClosed[setup_,expr_]:=Module[{objects,indices,count,valid},
-objects=GetAllObjectsWithIndex[setup,expr];
-indices=GetAllSuperIndices[setup,expr];
-
-count=Map[Count[objects,#,Infinity]&,indices];
-valid=AllTrue[count,#==2&];
-Return[valid];
-];
-
-
-(* ::Input::Initialization:: *)
-GetBosons[setup_Association]:=Map[Head,setup["FieldSpace"]["bosonic"]];
-GetFermionPairs[setup_Association]:=Map[{Head[#[[1]]],Head[#[[2]]]}&,setup["FieldSpace"]["fermionic"]];
-GetFermions[setup_Association]:=Map[Head[#[[2]]]&,setup["FieldSpace"]["fermionic"]];
-GetAntiFermions[setup_Association]:=Map[Head[#[[1]]]&,setup["FieldSpace"]["fermionic"]];
-
-IsFermion[setup_Association,field_]:=MemberQ[GetFermions[setup],field,Infinity];
-IsFermion[setup_Association,field_[__]]:=IsFermion[setup,field];
-
-IsAntiFermion[setup_Association,field_]:=MemberQ[GetAntiFermions[setup],field,Infinity];
-IsAntiFermion[setup_Association,field_[__]]:=IsAntiFermion[setup,field];
-
-IsBoson[setup_Association,field_]:=MemberQ[GetBosons[setup],field,Infinity];
-IsBoson[setup_Association,field_[__]]:=IsBoson[setup,field];
-
-IsGrassmann[setup_Association,field_]:=IsFermion[setup,field]||IsAntiFermion[setup,field];
-IsGrassmann[setup_Association,field_[__]]:=IsGrassmann[setup,field];
-
-
-(* ::Input::Initialization:: *)
-GetPartnerField[setup_Association,field_]:=Module[{fermions,bosons,sel},
-fermions=GetFermionPairs[setup];
-bosons=GetBosons[setup];
-
-If[MemberQ[fermions,field,Infinity],
-sel=Select[fermions,MemberQ[#,field,Infinity]&][[1]];
-sel=DeleteCases[sel,field];
-Return[sel[[1]]];
-];
-
-If[MemberQ[bosons,field,Infinity],
-Return[field]
-];
-
-Print["field ",field," not found!"];Abort[];
-];
-
-
-(* ::Input::Initialization:: *)
-exclusions[a_]:=And@@{a=!=List,a=!=Complex,a=!=Plus,a=!=Power}
-GetAllSymbols[expr_]:=DeleteDuplicates@Cases[Flatten[{expr}//.Times[a_,b__]:>{a,b}/.a_Symbol[b__]/;exclusions[a]:>{a,b}],_Symbol,Infinity]
-
-
-(* ::Input::Initialization:: *)
-GetAllFields[setup_Association,expr_]:=Module[{symbols},
-symbols=GetAllSymbols[expr];
-Return@Select[symbols,(IsFermion[setup,#]||IsAntiFermion[setup,#]||IsBoson[setup,#])&];
-];
-GetAllFieldsWithIndex[setup_Association,expr_]:=Module[{fields,extracted},
-fields=GetAllFields[setup,expr];
-extracted={};
-expr//.{a_[b_]/;MemberQ[fields,a]:>(AppendTo[extracted,a[b]];1)};
-Return[extracted]
-];
-ContainsGrassmann[setup_Association,expr_]:=Module[{fields},
-fields=GetAllFields[setup,expr];
-Return[
-AnyTrue[fields,IsGrassmann[setup,#]&]
-];
-]
-GrassmannCount[setup_Association,expr_]:=Module[{fields},
-fields=GetAllFieldsWithIndex[setup,expr];
-Return[Length@
-Select[fields,IsGrassmann[setup,Head[#]]&]
-];
-]
-
-
-(* ::Input::Initialization:: *)
 (*Given a user-defined term or master equation, give all (closed) indices unique names.*)
-FixIndices[setup_Association,expr_]:=Module[{
+FixIndices[setup_,expr_]:=Module[{
 indices,newIndices,replacements,indexedObjects
 },
-If[IsMasterEq[expr],
+AssertFSetup[setup];
+
+Print[FTermQ[expr]];
+
+If[FEqQ[expr],
 Return[FixIndices[setup,#]&/@expr];
 ];
-If[IsTerm[expr],
-If[Not@TermSuperIndicesValid[setup,expr],Abort[]];
+If[FTermQ[expr],
+Print["hi"];
+If[Not@TermSuperIndicesValid[setup,expr],Print["oi"];Abort[]];
+Print["df"];
 
 indices=GetClosedSuperIndices[setup,expr];
 newIndices=Map[Unique[ToString[#]]&,indices];
@@ -618,38 +688,19 @@ Return[expr/.replacements];
 Print["Expression \"",expr,"\" is neither a term nor a master equation!"];Abort[];
 ];
 
-
-(* ::Input::Initialization:: *)
-Unprotect[FEq,FTerm];
-ClearAll[FEq,FTerm];
-
-(*Sum splitting of functional terms*)
-FEq[preEq___,FTerm[preTerm___,Plus[a_,b__],postTerm___],postEq___]:=FEq[preEq,FTerm[preTerm,a,postTerm],FTerm[preTerm,Plus[b],postTerm],postEq]
-
-(*Sums of functional Equations*)
-FEq/:Plus[preEq___,FEq[terms1___],midEq___,FEq[terms2___],postEq___]:=Plus[preEq,midEq,postEq,FEq[terms1,terms2]]
-
-Protect[FEq,FTerm];
-
-
-(* ::Input::Initialization:: *)
-FTermQ[expr_]:=Head[expr]===FTerm;
-FTerm::notFTerm="The term `1` is not an FTerm.";
-AssertFTerm[expr_]:=If[Not@FTermQ[expr],Message[FTerm::notFTerm,expr];Abort[]];
-
-FEqQ[expr_]:=Head[expr]===FEq;
-FEq::notFEq="The term `1` is not an FEq.";
-AssertFEq[expr_]:=If[Not@FEqQ[expr],Message[FEq::notFEq,expr];Abort[]];
+FEq[FTerm[a],FTerm[b,c+d]]
+Map[FixIndices[Setup,#]&,%]
 
 
 (* ::Input::Initialization:: *)
 (* Simplify a term appearing in an equation. Remove all parts that are multiplied with 0 and try to merge as many factors as possible, while not changing the Grassmann structure of the term.
 Returns {0} if the term is trivial.
 *)
-ReduceTerm[setup_,term_]:=Module[{reduced=term,mergeGrassmanFactors,i},
-If[Not@IsValidTerm[reduced],Print[reduced," is not a valid term!"];Abort[]];
+ReduceTerm[setup_,term_]:=Module[{reduced=List@@term,mergeGrassmanFactors,i},
+AssertFSetup[setup];
+AssertFTerm[term];
 
-If[MemberQ[term,Plus[a_,b__],Infinity],Print[reduced," is not a valid term! A term cannot contain a Plus[___]. Use expandTerm before reducing it."];Abort[]];
+If[MemberQ[reduced,Plus[a_,b__],Infinity],Print[reduced," is not a valid term! A term cannot contain a Plus[___]."];Abort[]];
 
 If[Length[reduced]===0,Return[{0}]];
 If[MemberQ[reduced,0],Return[{0}]];
@@ -670,49 +721,9 @@ i++;
 ];
 ];
 
-reduced=OrderEquation[setup,term];
+reduced=OrderEquation[setup,reduced];
 
-Return[reduced];
-];
-
-
-(* ::Input::Initialization:: *)
-(* Split the expression either in a list (if it has a Plus) or return it without change *)
-splitPlus[expr_]:=Module[{ret},
-ret=expr//.Plus[a_,b__]:>List[a,b];
-
-Return[
-If[Head[expr]===List,
-Flatten[ret],
-ret
-]
-];
-];
-expandTerm[expr_]:=Module[{factors={},newTerms},
-If[Not@IsValidTerm[expr],Print[expr," is not a term!"];Abort[]];
-
-(*Split all parts of the term into factors, i.e. either the element itself (no Plus inside the part) or a list (containing the sum)*)
-factors=Map[splitPlus,expr];
-
-(*Start the iteration for the expansion: If the first factor is an element, we start with a single term. Otherwise, the parts of the sum split into new terms.*)
-newTerms=If[Head[factors[[1]]]===List,List/@factors[[1]],{{factors[[1]]}}];
-factors=Delete[factors,1];
-
-(*Iterate. Simply append elements and if a split occurs, generate new terms. Pop the factors from the start point after each iteration, until no more factors exist.*)
-While[Length[factors]>0,
-If[
-Head[factors[[1]]]===List,
-newTerms=Join@@Table[
-Map[Append[#,factors[[1,i]]]&,newTerms]
-,{i,1,Length[factors[[1]]]}
-]
-,
-newTerms=Map[Append[#,factors[[1]]]&,newTerms];
-];
-factors=Delete[factors,1];
-];
-
-Return[newTerms]
+Return[FTerm@@reduced];
 ];
 
 
@@ -720,8 +731,8 @@ Return[newTerms]
 ReduceEquation[setup_,equation_]:=Module[
 {reduced=equation},
 
-(*Split all Plus[__]*)
-reduced=Join@@(expandTerm/@reduced);
+AssertFSetup[setup];
+AssertFEq[equation];
 
 (*Make sure all terms are reduced*)
 reduced=ReduceTerm[setup,#]&/@reduced;
@@ -736,6 +747,7 @@ reduced=FixIndices[setup,reduced];
 
 Return[reduced];
 ];
+ReduceEquation[Setup,FEq[FTerm[a,b]]]
 
 
 (* ::Input::Initialization:: *)
