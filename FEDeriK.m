@@ -541,47 +541,29 @@ Print["Canonical ordering set to ",$CanonicalOrdering];
 (*Returns true if f1 < f2, and false if f1 > f2*)
 FieldOrderLess[setup_,f1_Symbol,f2_Symbol]:=Module[
 {kind1,kind2,
-idxHigh,idxMid,idxLow,
-lessLow,lessMid,lessHigh},
+idxOrder,
+n1,n2},
 
-kind1={IsFermion[setup,#],IsAntiFermion[setup,#],IsBoson[setup,#]}&[f1];
-kind2={IsFermion[setup,#],IsAntiFermion[setup,#],IsBoson[setup,#]}&[f2];
+kind1={IsGrassmann[setup,#],IsAntiGrassmann[setup,#],IscField[setup,#],IsAnticField[setup,#]}&[f1];
+kind2={IsGrassmann[setup,#],IsAntiGrassmann[setup,#],IscField[setup,#],IsAnticField[setup,#]}&[f2];
 
 Switch[$CanonicalOrdering,
 "f>af>b",
-idxHigh=1;
-idxMid=2;
-idxLow=3;
-,
-
+idxOrder={4,3,2,1},
 "af>f>b",
-idxHigh=2;
-idxMid=1;
-idxLow=3;
-,
-
+idxOrder={3,4,1,2},
 "b>f>af",
-idxHigh=3;
-idxMid=1;
-idxLow=2;
-,
-
+idxOrder={2,1,4,3},
 "b>af>f",
-idxHigh=3;
-idxMid=2;
-idxLow=1;
-,
+idxOrder={1,2,3,4},
 _,
-Print["Order failure: order \""<>$CanonicalOrdering<>"\" unknown."];
-Abort[];
+Print["Order failure: order \""<>$CanonicalOrdering<>"\" unknown."];Abort[];
 ];
 
-lessLow=kind1[[idxLow]]&&Not[kind2[[idxLow]]];
-lessMid=kind1[[idxMid]]&&kind2[[idxHigh]];
-lessHigh=False;
-If[lessLow||lessMid||lessHigh,Return[True]];
+n1=Pick[idxOrder,kind1][[1]];
+n2=Pick[idxOrder,kind2][[1]];
 
-Return[False]
+Return[n1<n2]
 ];
 
 
@@ -590,8 +572,8 @@ Return[False]
 CommuteSign[setup_,f1_,f2_]:=Module[
 {kind1,kind2},
 
-kind1={IsGrassmann[setup,#],IsBoson[setup,#]}&[f1];
-kind2={IsGrassmann[setup,#],IsBoson[setup,#]}&[f2];
+kind1={IsGrassmann[setup,#]||IsAntiGrassmann[setup,#],IscField[setup,#]||IsAnticField[setup,#]}&[f1];
+kind2={IsGrassmann[setup,#]||IsAntiGrassmann[setup,#],IscField[setup,#]||IsAnticField[setup,#]}&[f2];
 
 Return[If[kind1[[1]]&&kind2[[1]],-1,1]];
 ];
@@ -626,7 +608,7 @@ curi--;
 
 Return[prefactor*obj[nfields,nindices]];
 ];
-OrderFields[setup_,expr_]:=Map[OrderObject[setup,#]&,expr,{1,3}];
+OrderFields[setup_,expr_]:=Map[OrderObject[setup,#]&,expr,Infinity];
 
 
 (* ::Input::Initialization:: *)
@@ -657,8 +639,7 @@ fieldPart=StringJoin[Map[ToString,mfields]];
 indexPart=Flatten[mindices];
 Return[prefactor*Symbol[prefix<>fieldPart][indexPart]];
 ];
-QMeSForm[setup_,expr_]:=Map[QMeSNaming[setup,#]&,expr,{1,3}];
-QMeSForm[Setup,#]&[{{GammaN[{A,cb,c},{x,y,z}]A[c]GammaN[{c,cb,c,cb},{x,y,z,k}]}}]
+QMeSForm[setup_,expr_]:=Map[QMeSNaming[setup,#]&,expr,{1,3}]//.{FEq:>List,FTerm:>List};
 
 
 (* ::Input::Initialization:: *)
