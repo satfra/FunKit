@@ -1,5 +1,6 @@
-\documentclass[aps,10pt,prd,nofootinbib,superscriptaddress,twocolumn]{revtex4-2}
+\documentclass[10pt,prd,nofootinbib,superscriptaddress,twocolumn]{revtex4-2}
 \pdfoutput=1
+
 
 %%%%%%%%%%%%% Packages %%%%%%%%%%%%%
 % general
@@ -74,6 +75,32 @@
 \newcommand{\tinytext}[1]{\text{\tiny{#1}}}
 \newcommand{\TensorBases}{\texttt{TensorBases}\xspace}
 
+%%%%%%%%%%%%% Inline code shortcuts %%%%%%%%%%%%%
+\newcommand{\mathem}{\mmaInlineCell{Code}}
+\newcommand{\mathcell}[1]{
+	\begin{mmaCell}{Input}
+		#1
+	\end{mmaCell}
+}
+
+%%%%%%%%%%%%% Mathematica code %%%%%%%%%%%%%
+\usepackage{mmacells}
+\mmaDefineMathReplacement[≤]{<=}{\leq}
+\mmaDefineMathReplacement[≥]{>=}{\geq}
+\mmaDefineMathReplacement[≠]{!=}{\neq}
+\mmaDefineMathReplacement[→]{->}{\to}[2]
+\mmaDefineMathReplacement[⧴]{:>}{:\hspace{-.2em}\to}[2]
+\mmaDefineMathReplacement{∉}{\notin}
+\mmaDefineMathReplacement{∞}{\infty}
+\mmaDefineMathReplacement{𝕕}{\mathbbm{d}}
+\mmaSet{
+	leftmargin=2.3em,
+	morefv={gobble=0},
+	linklocaluri=mma/symbol/definition:#1,
+	morecellgraphics={yoffset=1.9ex},
+	labelsep=0.1em
+}
+
 %%%%%%%%%%%%%%%%%%% MARCROS %%%%%%%%%%%%%
 \newcommand{\LEGO}{LEGO\textsuperscript{\textregistered}}
 \newcommand{\DiFfRG}{\texttt{DiFfRG}\xspace}
@@ -104,8 +131,14 @@ We give tool to compute cross-section
 \maketitle
 
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{FED\MakeLowercase{eri}K}
+
+abc
+
+
 %%%%%%%%%%%%%%%%%%%%
-\section{Rules}
+\subsection{Rules}
 \label{sec:rules}
 
 \subsection{Index \& derivative rules}
