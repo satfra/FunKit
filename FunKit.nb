@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       154,          7]
-NotebookDataLength[     10948,        271]
-NotebookOptionsPosition[     10044,        246]
-NotebookOutlinePosition[     10497,        264]
-CellTagsIndexPosition[     10454,        261]
+NotebookDataLength[     14583,        349]
+NotebookOptionsPosition[     13302,        316]
+NotebookOutlinePosition[     13755,        334]
+CellTagsIndexPosition[     13712,        331]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -33,10 +33,10 @@ Cell[BoxData[
 
 Cell[CellGroupData[{
 
-Cell["Load all modules", "Section",
+Cell["Installation of dependencies", "Chapter",
  CellChangeTimes->{{3.93548548465976*^9, 3.935485499970652*^9}, {
-  3.9510501856003942`*^9, 
-  3.951050189920801*^9}},ExpressionUUID->"291f640c-487b-4f30-9942-\
+  3.9510501856003942`*^9, 3.951050189920801*^9}, {3.951280175908622*^9, 
+  3.9512801816180983`*^9}},ExpressionUUID->"291f640c-487b-4f30-9942-\
 6958673dcd5e"],
 
 Cell[BoxData[{
@@ -144,7 +144,16 @@ TensorBasesInstaller.m\>\"", "]"}], ",", "\[IndentingNewLine]",
  CellChangeTimes->{{3.93548528018814*^9, 3.9354853778676157`*^9}, {
   3.9354855248021913`*^9, 3.935485575963646*^9}, {3.9510530279815073`*^9, 
   3.9510530404300413`*^9}},ExpressionUUID->"4600f702-b623-4c77-bc43-\
-2b8669b8e0af"],
+2b8669b8e0af"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Validate and confirm own installation", "Chapter",
+ CellChangeTimes->{{3.93548548465976*^9, 3.935485499970652*^9}, {
+  3.9510501856003942`*^9, 3.951050189920801*^9}, {3.951280175908622*^9, 
+  3.951280209142391*^9}},ExpressionUUID->"707785f5-b61b-4c6b-a8bc-\
+9995ab27ddc4"],
 
 Cell[BoxData[
  RowBox[{
@@ -202,15 +211,36 @@ Cell[BoxData[
    3.9510530055257807`*^9}},ExpressionUUID->"8bc199ff-ae99-4c54-bfe1-\
 60a0f32bb5fb"],
 
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"ModuleLoaded", "[", "FunKit", "]"}], "=", "True"}], 
+  ";"}]], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{{3.951279357886877*^9, 3.951279421240814*^9}, {
+  3.9512794606622543`*^9, 3.951279475842711*^9}, {3.951279581390761*^9, 
+  3.951279718714636*^9}, {3.951279760502161*^9, 
+  3.951279762930052*^9}},ExpressionUUID->"782d2e05-61cb-4a1e-995b-\
+58129b80f7bd"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Load sub-modules in", "Chapter",
+ CellChangeTimes->{{3.951280157526368*^9, 
+  3.951280164146823*^9}},ExpressionUUID->"e0bcd719-68cb-44c9-baed-\
+80f31c0888a8"],
+
 Cell[BoxData[{
  RowBox[{
   RowBox[{
   "Print", "[", 
-   "\"\<\!\(\*StyleBox[\"Loading\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*\
-StyleBox[\" \
-\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"modules\",FontSize->\
-10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"...\",FontSize->10,FontSlant->\"\
-Italic\"]\)\>\"", "]"}], ";"}], "\[IndentingNewLine]", 
+   "\"\<\!\(\*StyleBox[\"Loading\",FontSize->10,FontWeight->\"Plain\",\
+FontSlant->\"Italic\"]\)\!\(\*StyleBox[\" \",FontSize->10,FontWeight->\"Plain\
+\",FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"modules\",FontSize->10,FontWeight-\
+>\"Plain\",FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"...\",FontSize->10,\
+FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\>\"", "]"}], 
+  ";"}], "\[IndentingNewLine]", 
  RowBox[{"Block", "[", 
   RowBox[{
    RowBox[{"{", "Print", "}"}], ",", 
@@ -220,27 +250,67 @@ Italic\"]\)\>\"", "]"}], ";"}], "\[IndentingNewLine]",
   RowBox[{
   "Print", "[", 
    "\"\<\!\(\*StyleBox[\"...\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*\
-StyleBox[\"TensorBases\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\
-\" \",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"loaded\",FontSize-\
->10,FontSlant->\"Italic\"]\)\>\"", "]"}], ";"}], "\[IndentingNewLine]", 
+StyleBox[\"TensorBases\",FontSize->10,FontWeight->\"Bold\",FontSlant->\"\
+Italic\"]\)\!\(\*StyleBox[\" \
+\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"loaded\",FontSize->\
+10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\>\"", "]"}], 
+  ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{"Get", "[", 
-   RowBox[{"$FunKitDirectory", "<>", "\"\<FEDeriK.m\>\""}], "]"}], 
+   RowBox[{"$FunKitDirectory", "<>", "\"\<modules/FEDeriK.m\>\""}], "]"}], 
   ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
   "Print", "[", 
    "\"\<\!\(\*StyleBox[\"...\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*\
-StyleBox[\"FEDeriK\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\" \
+StyleBox[\"FEDeriK\",FontSize->10,FontWeight->\"Bold\",FontSlant->\"Italic\"]\
+\)\!\(\*StyleBox[\" \
 \",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"loaded\",FontSize->\
-10,FontSlant->\"Italic\"]\)\>\"", "]"}], ";"}]}], "Input",
+10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\>\"", "]"}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"Get", "[", 
+   RowBox[{"$FunKitDirectory", "<>", "\"\<modules/DiANE.m\>\""}], "]"}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+   "Print", "[", 
+    "\"\<\!\(\*StyleBox[\"...\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*\
+StyleBox[\"DiANE\",FontSize->10,FontWeight->\"Bold\",FontSlant->\"Italic\"]\)\
+\!\(\*StyleBox[\" \
+\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"loaded\",FontSize->\
+10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\>\"", "]"}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{"Print", "[", 
+  "\"\<Welcome to  \!\(\*StyleBox[\"\:2588\:2580\",FontColor->GrayLevel[0]]\)\
+\!\(\*StyleBox[\" \",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\"\:2590\:2584\
+\:2588\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\" \
+\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\"\:2588\:259a\:258c\",FontColor->\
+GrayLevel[0]]\)\!\(\*StyleBox[\" \",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\
+\"\:2590\[FilledLeftTriangle]\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\" \
+\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\"\:2588\",FontColor->GrayLevel[0]\
+]\)\!\(\*StyleBox[\" \",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\"\:2580\
+\:2588\:2580\",FontColor->GrayLevel[0]]\)\n\
+\!\(\*StyleBox[\"Author\",FontWeight->\"Bold\"]\): Franz Richard Sattler\n\
+\!\(\*StyleBox[\"Version\",FontWeight->\"Bold\"]\): 1.0\n\
+\!\(\*StyleBox[\"Year\",FontWeight->\"Bold\"]\): 2025\nFor more information, \
+call \!\(\*StyleBox[\"FunKitInfo\",FontColor->RGBColor[1, 0.5, 0]]\)[].\>\"", 
+  "]"}]}], "Input",
  InitializationCell->True,
  CellChangeTimes->{
   3.935485596659787*^9, {3.941266610456051*^9, 3.941266613472143*^9}, {
    3.9461106876753387`*^9, 3.946110705945713*^9}, {3.946110755338848*^9, 
    3.946110762582974*^9}, {3.951050051701705*^9, 3.951050145994526*^9}, {
-   3.95105301321815*^9, 
-   3.951053016376946*^9}},ExpressionUUID->"e55cdd8a-6045-4e30-8a2b-\
+   3.95105301321815*^9, 3.951053016376946*^9}, {3.9512372878451366`*^9, 
+   3.9512373702985783`*^9}, {3.9512375049488907`*^9, 
+   3.9512375295245132`*^9}, {3.951237570993801*^9, 3.951237580946706*^9}, {
+   3.9512376217284107`*^9, 3.951237650876657*^9}, {3.9512377689951277`*^9, 
+   3.951237849400688*^9}, {3.951237897192656*^9, 3.951237897372696*^9}, {
+   3.951237974933687*^9, 3.9512379760207233`*^9}, {3.951279166310658*^9, 
+   3.951279184659225*^9}, 3.951279721725441*^9, {3.9512797721552677`*^9, 
+   3.951279773746684*^9}, 
+   3.95128004114781*^9},ExpressionUUID->"e55cdd8a-6045-4e30-8a2b-\
 0448ee7472c1"]
 }, Open  ]]
 },
@@ -265,12 +335,20 @@ CellTagsIndex->{}
 Notebook[{
 Cell[554, 20, 581, 11, 28, "Input",ExpressionUUID->"33cd48af-4550-42b3-9c95-127f2f1ee635"],
 Cell[CellGroupData[{
-Cell[1160, 35, 211, 4, 59, "Section",ExpressionUUID->"291f640c-487b-4f30-9942-6958673dcd5e"],
-Cell[1374, 41, 4515, 105, 542, "Input",ExpressionUUID->"4600f702-b623-4c77-bc43-2b8669b8e0af",
+Cell[1160, 35, 271, 4, 61, "Chapter",ExpressionUUID->"291f640c-487b-4f30-9942-6958673dcd5e"],
+Cell[1434, 41, 4515, 105, 542, "Input",ExpressionUUID->"4600f702-b623-4c77-bc43-2b8669b8e0af",
+ InitializationCell->True]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[5986, 151, 278, 4, 61, "Chapter",ExpressionUUID->"707785f5-b61b-4c6b-a8bc-9995ab27ddc4"],
+Cell[6267, 157, 2426, 54, 292, "Input",ExpressionUUID->"8bc199ff-ae99-4c54-bfe1-60a0f32bb5fb",
  InitializationCell->True],
-Cell[5892, 148, 2426, 54, 292, "Input",ExpressionUUID->"8bc199ff-ae99-4c54-bfe1-60a0f32bb5fb",
- InitializationCell->True],
-Cell[8321, 204, 1707, 39, 126, "Input",ExpressionUUID->"e55cdd8a-6045-4e30-8a2b-0448ee7472c1",
+Cell[8696, 213, 417, 10, 42, "Input",ExpressionUUID->"782d2e05-61cb-4a1e-995b-58129b80f7bd",
+ InitializationCell->True]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[9150, 228, 164, 3, 61, "Chapter",ExpressionUUID->"e0bcd719-68cb-44c9-baed-80f31c0888a8"],
+Cell[9317, 233, 3969, 80, 294, "Input",ExpressionUUID->"e55cdd8a-6045-4e30-8a2b-0448ee7472c1",
  InitializationCell->True]
 }, Open  ]]
 }

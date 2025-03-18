@@ -67,20 +67,51 @@ DirectoryQ[#]&
 
 
 (* ::Input::Initialization:: *)
+ModuleLoaded[FunKit]=True;
+
+
+(* ::Input::Initialization:: *)
 Print["\!\(\*
-StyleBox[\"Loading\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
-StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
-StyleBox[\"modules\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
-StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)"];
+StyleBox[\"Loading\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"modules\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"...\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
 Block[{Print},Get["TensorBases`"]]
 Print["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
-StyleBox[\"TensorBases\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"TensorBases\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
-StyleBox[\"loaded\",\nFontSize->10,\nFontSlant->\"Italic\"]\)"];
-Get[$FunKitDirectory<>"FEDeriK.m"];
+StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+Get[$FunKitDirectory<>"modules/FEDeriK.m"];
 Print["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
-StyleBox[\"FEDeriK\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"FEDeriK\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
-StyleBox[\"loaded\",\nFontSize->10,\nFontSlant->\"Italic\"]\)"];
+StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+Get[$FunKitDirectory<>"modules/DiANE.m"];
+Print["\!\(\*
+StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"DiANE\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+
+Print["Welcome to  \!\(\*
+StyleBox[\"\:2588\:2580\",\nFontColor->GrayLevel[0]]\)\!\(\*
+StyleBox[\" \",\nFontColor->GrayLevel[0]]\)\!\(\*
+StyleBox[\"\:2590\:2584\:2588\",\nFontColor->GrayLevel[0]]\)\!\(\*
+StyleBox[\" \",\nFontColor->GrayLevel[0]]\)\!\(\*
+StyleBox[\"\:2588\:259a\:258c\",\nFontColor->GrayLevel[0]]\)\!\(\*
+StyleBox[\" \",\nFontColor->GrayLevel[0]]\)\!\(\*
+StyleBox[\"\:2590\[FilledLeftTriangle]\",\nFontColor->GrayLevel[0]]\)\!\(\*
+StyleBox[\" \",\nFontColor->GrayLevel[0]]\)\!\(\*
+StyleBox[\"\:2588\",\nFontColor->GrayLevel[0]]\)\!\(\*
+StyleBox[\" \",\nFontColor->GrayLevel[0]]\)\!\(\*
+StyleBox[\"\:2580\:2588\:2580\",\nFontColor->GrayLevel[0]]\)
+\!\(\*
+StyleBox[\"Author\",\nFontWeight->\"Bold\"]\): Franz Richard Sattler
+\!\(\*
+StyleBox[\"Version\",\nFontWeight->\"Bold\"]\): 1.0
+\!\(\*
+StyleBox[\"Year\",\nFontWeight->\"Bold\"]\): 2025
+For more information, call \!\(\*
+StyleBox[\"FunKitInfo\",\nFontColor->RGBColor[1, 0.5, 0]]\)[]."]

@@ -20,6 +20,17 @@
 
 
 (* ::Input::Initialization:: *)
+ModuleLoaded::dependency="The module `1` requires `2`, which has not been loaded.";
+
+If[ModuleLoaded[FunKit]=!=True,
+Message[ModuleLoaded::dependency,"FEDeriK","FunKit"];
+Abort[];
+];
+
+ModuleLoaded[FEDeriK]=True;
+
+
+(* ::Input::Initialization:: *)
 $OrderedObjects={Propagator,GammaN,Rdot};
 $indexedObjects={ABasis,VBasis,GammaN,Propagator,Rdot};
 $MaxDerivativeIterations=500;
@@ -61,6 +72,7 @@ FTerm::FTermPowerError="An FTerm cannot be taken to a power of an FTerm.";
 
 (*Multiplication of FTerms*)
 FTerm/:NonCommutativeMultiply[FTerm[a__],FTerm[b__]]:=FTerm[a,b]
+FTerm[pre___,NonCommutativeMultiply[in___],post___]:=FTerm[pre,in,post]
 FTerm[]:=FTerm[1]
 
 (*Pre-reduction of zero FTerms*)
@@ -85,7 +97,6 @@ FEq::TimesError="A FEq cannot be multiplied using Times[__]. To multiply FEqs, u
 
 (*Removal of zero FTerms*)
 FEq[pre___,FTerm[___,0,___],post___]:=FEq[pre,post]
-FEq[pre___,FTerm[],post___]:=FEq[pre,post]
 
 (*Sum splitting of FTerms*)
 FEq[preEq___,FTerm[preTerm___,Plus[a_,b__],postTerm___],postEq___]:=FEq[preEq,FTerm[preTerm,a,postTerm],FTerm[preTerm,Plus[b],postTerm],postEq]
@@ -106,30 +117,13 @@ FEq/:NonCommutativeMultiply[FEq[a__],FEq[b__]]:=FEq@@(Flatten@Table[FEq[{a}[[i]]
 FEq/:NonCommutativeMultiply[FTerm[b___],FEq[]]:=FEq[]
 FEq/:NonCommutativeMultiply[FTerm[],FEq[b___]]:=FEq[]
 FEq/:NonCommutativeMultiply[FTerm[0],FEq[b___]]:=FEq[]
+FEq/:FTerm[FEq[a__]]:=FEq[a];
+FEq/:FTerm[FEq[a__],FEq[b__]]:=FEq@@(Flatten@Table[FEq[{a}[[i]]**{b}[[j]]],{i,1,Length[{a}]},{j,1,Length[{b}]}])
 
 (*Reduction of immediately nested FEqs*)
 FEq[pre___,FEq[in___],post___]:=FEq[pre,in,post]
-FEq[pre___,FTerm[],post___]:=FEq[pre,post]
 
 Protect[FEq];
-
-
-(* ::Input::Initialization:: *)
-Unprotect[FDOp];
-ClearAll[FDOp];
-
-FDOp::invalidArgument="The argument \"`1`\" is not a valid argument for an FDOp. Only single fields with indices are allowed!";
-
-FDOp[a_,b__]:=(Message[FDOp::invalidArgument,{a,b}];Abort[])
-
-Protect[FDOp];
-
-
-(* ::Input::Initialization:: *)
-FExpand[expr_,order_Integer]:=Module[{ret=expr},
-ret=ret//.Power[a_FTerm,b_]:>Series[a^b,{a,0,order}]//.Power[a_,b_FTerm]:>Series[a^b,{b,0,order}]//Normal;
-ret=ret//.Power[FTerm[a__],b_Integer]/;b>0:>FTerm[a,FTerm[a]^(b-1)]
-];
 
 
 (* ::Input::Initialization:: *)
@@ -292,12 +286,23 @@ Abort[]];
 
 
 (* ::Input::Initialization:: *)
-FDOpQ[setup_,expr_]:=(Head[expr]===FDOp)&&MatchQ[expr,(_[_,{__}]|_[_])]&&FieldQ[setup,#]&@@expr;
+Unprotect[FDOp];
+ClearAll[FDOp];
 
 FDOp::invalid="`1` is not a valid FDOp.";
+FDOp::invalidArguments="`1` is not a valid FDOp. FDOp takes a single field with an index as argument.";
+FDOp::arithmetic="An FDOp cannot be included as anything but a factor in an FTerm. Error in 
+  `1`";
 
+FDOp/:Times[a___,FDOp[b___],c___]:=(Message[FDOp::arithmetic,StringTake[ToString@(Hold@Times[a,FDOp[b],c]),{6,-2}]];Abort[])
+FDOp/:Plus[a___,FDOp[b___],c___]:=(Message[FDOp::arithmetic,StringTake[ToString@(Hold@Plus[a,FDOp[b],c]),{6,-2}]];Abort[])
+
+FDOp[a_,b__]:=(Message[FDOp::invalidArguments,StringTake[ToString@(Hold@FDOp[a,b]),{6,-2}]];Abort[])
+
+FDOpQ[setup_,expr_]:=(Head[expr]===FDOp)&&MatchQ[expr,(_[_,{__}]|_[_])]&&FieldQ[setup,#]&@@expr;
 AssertFDOp[setup_,expr_]:=If[Not@FDOpQ[setup,expr],Message[FDOp::invalid,expr];Abort[]];
 
+Protect[FDOp];
 
 
 (* ::Input::Initialization:: *)
@@ -321,12 +326,12 @@ FunctionalD[expr_,v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=Internal`Inher
 
 nonConst=Sort@{f,GammaN,Propagator,Power};
 
+Unprotect[GammaN,Propagator,FTerm,FEq,AnyField];
+
 (*Rule for normal functional derivatives*)
 f/:D[f[x_],f[y_],NonConstants->nonConst]:=\[Gamma][-y,x];
 (*Ignore fields without indices. These are usually tags*)
 f/:D[f,f[y_],NonConstants->nonConst]:=0;(*\[Delta][#,y]&;*)
-
-Unprotect[GammaN,Propagator,FTerm,FEq];
 
 (*Derivative rule for GammaN*)
 GammaN/:D[GammaN[{a__},{b__}],f[if_],NonConstants->nonConst]:=GammaN[{f,a},{-if,b}];
@@ -347,7 +352,7 @@ f/:D[g_[FTerm[a___]],f[y_],NonConstants->nonConst]:=(FTerm[g'[FTerm[a]]]**FTerm[
 f/:D[Power[FTerm[a___],b_],f[y_],NonConstants->nonConst]:=(FTerm[b,Power[FTerm[a],b-1]]**FTerm[FDOp[f[y]],a]);
 f/:D[Power[a_,FTerm[b___]],f[y_],NonConstants->nonConst]:=(FTerm[Log[a],Power[a,FTerm[b]]]**FTerm[FDOp[f[y]],b]);
 
-Protect[GammaN,Propagator,FTerm,FEq];
+Protect[GammaN,Propagator,FTerm,FEq,AnyField];
 
 D[expr,v,NonConstants->nonConst]
 ];
@@ -529,25 +534,25 @@ Return[indices//DeleteDuplicates];
 
 (* ::Input::Initialization:: *)
 ExtractObjectsWithIndex[setup_Association,expr_]:=Module[{
-indices,flattened,objects
+indices,flattened,objects,dummy
 },
 indices=GetAllSuperIndices[Setup,expr];
 
 If[FTermQ[expr],
-flattened=Times@@expr;
+flattened=List@@expr;
 
 objects={};
-flattened//.a_Symbol[b__]/;ContainsAny[Flatten@{b},indices\[Union](-indices)]&&exclusions[a]:>(AppendTo[objects,a[b]];1);
+flattened//.a_Symbol[b__]/;ContainsAny[Flatten@{b},indices\[Union](-indices)]&&exclusions[a]:>(AppendTo[objects,a[b]];dummy);
 
 Return[objects];
 ];
 
 If[FEqQ[expr],
-flattened=Times@@(Join@@Map[List@@#&,expr]);
+flattened=List@@(Join@@Map[List@@#&,expr]);
 
 objects={};
-flattened//.a_Symbol[b__]/;ContainsAny[{b},indices\[Union](-indices)]&&exclusions[a]:>(AppendTo[objects,a[b]];1);
-flattened//.a_Symbol[{f__},{i__}]/;ContainsAny[{i},indices\[Union](-indices)]&&exclusions[a]:>(AppendTo[objects,a[{f},{i}]];1);
+flattened//.a_Symbol[b__]/;ContainsAny[{b},indices\[Union](-indices)]&&exclusions[a]:>(AppendTo[objects,a[b]];dummy);
+flattened//.a_Symbol[{f__},{i__}]/;ContainsAny[{i},indices\[Union](-indices)]&&exclusions[a]:>(AppendTo[objects,a[{f},{i}]];dummy);
 Return[objects];
 ];
 
@@ -569,7 +574,7 @@ Superscript[a_Symbol,b_:(_Integer|_Symbol)]:>Symbol[ToString[a]<>"SUPERSCRIPT"<>
 ];
 
 (*Get a list of all open super-indices within the expression expr*)
-GetOpenIndices[setup_,expr_]:=Module[{objects,indices,count,pick},
+GetOpenSuperIndices[setup_,expr_]:=Module[{objects,indices,count,pick},
 objects=ExtractObjectsWithIndex[setup,expr];
 indices=GetAllSuperIndices[setup,expr];
 
@@ -772,6 +777,7 @@ Return[FixIndices[setup,#]&/@ret];
 ];
 
 If[FTermQ[ret],
+
 (*First, take care of nested sub-terms*)
 ret=FTerm@@((List@@ret)/.FTerm[a__]:>FixIndices[setup,FTerm[a]]);
 
@@ -794,7 +800,16 @@ Print["Expression \"",expr,"\" is neither a term nor a master equation!"];Abort[
 
 
 (* ::Input::Initialization:: *)
-FTerm::GrassmannCountError="The term `1` has a multiple Grassmanns in a single factor.";FTerm::GrassmannOpen="The term `1` has open Grassmann factors.";
+FDOp::cannotProcess="The FDOp in `1` cannot be processed. Please expand the term first";
+FDOpCount[expr_]:=Module[{i},
+expr//.Power[FDOp[a__],n_Integer]/;n<0:>(Message[FDOp::cannotProcess,expr];Abort[]);
+expr//.Power[FDOp[a__],n_Integer]:>NonCommutativeMultiply@@(Table[FDOp[a],{i,1,n}])//Count[{#},FDOp[___],Infinity]&
+];
+
+
+(* ::Input::Initialization:: *)
+FTerm::GrassmannCountError="The factor `1` has multiple Grassmanns in a single factor.";
+FTerm::FDOpCountError="The factor `1` has multiple FDOps in a single factor.";FTerm::GrassmannOpen="The factor `1` has open Grassmann factors.";
 
 (* Simplify a term appearing in an equation. Try to merge as many factors as possible, while not changing the Grassmann structure of the term.
 *)
@@ -810,27 +825,30 @@ reduced=reduced//.FTerm[a__]:>ReduceFTerm[setup,FTerm[a]];
 reduced//.FTerm[a__]:>If[Mod[GrassmannCount[setup,FTerm[a]],2]=!=0,Message[FTerm::GrassmannOpen,FTerm[a]];Abort[]];
 
 (*Merge scalar terms with the closest Grassman term. We need to "vanish" nested FTerms, to make sure we do not overcount.*)
-If[GrassmannCount[setup,reduced[[1]]//.FTerm[__]:>1]>1,Message[FTerm::GrassmannCountError,term];Abort[]];
-While[(GrassmannCount[setup,reduced[[1]]//.FTerm[__]:>1]===0&&
-Length[reduced]>1&&
-FreeQ[reduced[[1]],FDOp,Infinity]&&
-FreeQ[reduced[[2]],FDOp,Infinity]),
-reduced=Join[{reduced[[1]]*reduced[[2]]},reduced[[3;;]]];
-];
+i=1;
+While[i<Length[reduced],
+If[FDOpCount[reduced[[-i]]//.FTerm[__]:>1]>1,
+Message[FTerm::FDOpCountError,reduced[[-i]]];Abort[]];
+If[GrassmannCount[setup,reduced[[-i]]//.FTerm[__]:>1]>1,
+Message[FTerm::GrassmannCountError,reduced[[-i]]];Abort[]];
 
-i=2;
-While[i<=Length[reduced],
-If[GrassmannCount[setup,reduced[[i]]//.FTerm[__]:>1]>1,Message[FTerm::GrassmannCountError,term];Abort[]];
-If[(GrassmannCount[setup,reduced[[i]]//.FTerm[__]:>1]==0&&
-FreeQ[reduced[[i]],FDOp,Infinity]),
-If[FreeQ[reduced[[i-1]],FDOp,Infinity],
-reduced=Join[reduced[[;;i-2]],{reduced[[i]]*reduced[[i-1]]},reduced[[i+1;;]]],
+If[(GrassmannCount[setup,reduced[[-i]]//.FTerm[__]:>1]==0||
+GrassmannCount[setup,reduced[[-i-1]]//.FTerm[__]:>1]==0),
+If[(FDOpCount[reduced[[-i]]//.FTerm[__]:>1]==0&&
+FDOpCount[reduced[[-(i+1)]]//.FTerm[__]:>1]==0),
+reduced=Join[reduced[[;;-i-2]],{reduced[[-i-1]]*reduced[[-i]]},reduced[[-i+1;;]]],
 i++
 ];
 ,
 i++;
 ];
 ];
+
+If[FDOpCount[reduced[[1]]//.FTerm[__]:>1]>1,
+Message[FTerm::FDOpCountError,reduced[[1]]];Abort[]];
+If[GrassmannCount[setup,reduced[[1]]//.FTerm[__]:>1]>1,
+Message[FTerm::GrassmannCountError,reduced[[1]]];Abort[]];
+
 reduced=OrderFields[setup,reduced];
 
 Return[FTerm@@reduced];
@@ -851,6 +869,38 @@ reduced=FixIndices[setup,reduced];
 reduced=ReduceFTerm[setup,#]&/@reduced;
 
 Return[reduced];
+];
+
+
+(* ::Input::Initialization:: *)
+FExpand[setup_,expr_,order_Integer]:=Module[{ret=expr,n,i},
+ret=ret//.Power[a_FTerm,b_]:>FEq@@Table[FTerm[
+SeriesCoefficient[a^b,{a,0,n}]NonCommutativeMultiply@@Table[FixIndices[setup,a],{i,1,n}]
+]
+,{n,0,order}];
+ret=ret//.Power[a_,b_FTerm]:>FEq@@Table[FTerm[
+SeriesCoefficient[a^b,{b,0,n}]NonCommutativeMultiply@@Table[FixIndices[setup,b],{i,1,n}]
+]
+,{n,0,order}];
+ret
+];
+FExpand[Setup,FTerm[Exp[FTerm[A[x]A[-x]]]],2]
+
+
+(* ::Input::Initialization:: *)
+DerivativeExpand[setup_,expr_,order_Integer]:=Module[{ret=expr,n,i},
+(*We need to block the FDOp definitions to use SeriesCoefficient with FDOp*)
+Block[{FDOp},
+ret=ret//.Power[a_FTerm,b_]/;MemberQ[{a},FDOp[__],Infinity]:>FEq@@Table[FTerm[
+SeriesCoefficient[a^b,{a,0,n}]**NonCommutativeMultiply@@Table[FixIndices[setup,a],{i,1,n}]
+]
+,{n,0,order}];
+ret=ret//.Power[a_,b_FTerm]/;MemberQ[{b},FDOp[__],Infinity]:>FEq@@Table[FTerm[
+SeriesCoefficient[a^b,{b,0,n}]**NonCommutativeMultiply@@Table[FixIndices[setup,b],{i,1,n}]
+]
+,{n,0,order}];
+];
+ret
 ];
 
 
@@ -953,194 +1003,6 @@ Return[ {result,outputReplacements}];
 
 Return[result//.outputReplacements];
 ];
-
-
-(* ::Input::Initialization:: *)
-If[Length@PacletFind["MaTeX"]===0,
-ResourceFunction["MaTeXInstall"][]
-]
-Get["MaTeX`"]
-Import[$FunKitDirectory<>"/utils/MathematicaTeXUtilities.m"]
-
-
-(* ::Input::Initialization:: *)
-MakeTexIndexList[{i__}]:=Module[
-{
-ni=Length[{i}],
-isLower,
-indices={i},
-lowerList,
-upperList,
-removeTrailingPhantoms
-},
-
-isLower=Map[MatchQ[#,Times[-1,_]]&,{i}];
-indices=Table[If[isLower[[idx]],-indices[[idx]],indices[[idx]]],{idx,1,ni}];
-
-lowerList=Table[
-If[isLower[[idx]],
-ToString@TeXForm[indices[[idx]]],
-"\\phantom{"<>ToString@TeXForm[indices[[idx]]]<>"}"
-],
-{idx,1,ni}];
-
-upperList=Table[
-If[isLower[[idx]],
-"\\phantom{"<>ToString@TeXForm[indices[[idx]]]<>"}",
-ToString@TeXForm[indices[[idx]]]
-],
-{idx,1,ni}];
-
-removeTrailingPhantoms[l_]:=Module[{ret=l},
-While[StringContainsQ[ret[[-1]],"\\phantom"],
-ret=Delete[ret,-1];
-If[Length[ret]===0,Return[{""}]];
-];
-Return[ret];
-];
-
-upperList=removeTrailingPhantoms@upperList;
-lowerList=removeTrailingPhantoms@lowerList;
-
-Return[{StringJoin@@lowerList,StringJoin@@upperList}]
-]
-
-
-(* ::Input::Initialization:: *)
-MakeIdxField[f_,i_,up]:=MakeIdxField[f,If[MatchQ[i,Times[-1,_]],-i,i]]
-MakeIdxField[f_,i_,down]:=MakeIdxField[f,If[MatchQ[i,Times[-1,_]],i,-i]]
-MakeIdxField[f_,i_]:=Module[{isLower,idx,idxStr,subSuper},
-isLower=MatchQ[i,Times[-1,_]];
-idx=If[isLower,-i,i];
-If[f===AnyField,Return[ToString[TeXForm[idx]]]];
-
-idxStr=If[Depth[idx]>1,"{"<>ToString[TeXForm[idx]]<>"}",ToString[TeXForm[idx]]];
-subSuper=If[isLower,"_","^"];
-
-ToString[TeXForm[f]]<>subSuper<>idxStr
-]
-
-MakeTexIndexList[{f__},{i__}]:=Module[
-{
-ni=Length[{f}],
-isLower,
-fields={f},
-indices={i},
-lowerList,
-upperList,
-removeTrailingPhantoms
-},
-
-isLower=Map[MatchQ[#,Times[-1,_]]&,{i}];
-
-lowerList=Table[
-If[isLower[[idx]],
-MakeIdxField[fields[[idx]],indices[[idx]],up],
-"\\phantom{"<>MakeIdxField[fields[[idx]],indices[[idx]],up]<>"}"
-],
-{idx,1,ni}];
-
-upperList=Table[
-If[isLower[[idx]],
-"\\phantom{"<>MakeIdxField[fields[[idx]],indices[[idx]],up]<>"}",
-MakeIdxField[fields[[idx]],indices[[idx]],up]
-],
-{idx,1,ni}];
-
-removeTrailingPhantoms[l_]:=Module[{ret=l},
-While[StringContainsQ[ret[[-1]],"\\phantom"],
-ret=Delete[ret,-1];
-If[Length[ret]===0,Return[{""}]];
-];
-Return[ret];
-];
-
-upperList=removeTrailingPhantoms@upperList;
-lowerList=removeTrailingPhantoms@lowerList;
-
-Return[{StringJoin@@lowerList,StringJoin@@upperList}]
-]
-
-
-(* ::Input::Initialization:: *)
-prettyIndices[setup_,expr_FEq]:=Map[prettyIndices[setup,#]&,expr];
-prettyIndices[setup_,expr_FTerm]:=Module[{closedIndices,openIndices,repl,indices},
-closedIndices=GetClosedSuperIndices[setup,expr];
-openIndices=GetOpenIndices[setup,expr];
-indices=Alphabet[];
-Do[
-indices=Select[indices,#=!=ToString[openIndices[[i]]]&],
-{i,1,Length[openIndices]}
-];
-repl=Thread[closedIndices->indices[[1;;Length[closedIndices]]]];
-Return[expr//.repl]
-];
-
-
-(* ::Input::Initialization:: *)
-Unprotect[GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta]];
-
-Format[GammaN[{f__},{i__}],TeXForm]:=Module[{sub,sup,ret},
-{sub,sup}=MakeTexIndexList[{f},{i}];
-ret="\\Gamma";
-If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
-If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
-TeXVerbatim[ret]
-]
-
-Format[Propagator[{f__},{i__}],TeXForm]:=Module[{sub,sup,ret},
-{sub,sup}=MakeTexIndexList[{f},{i}];
-ret="G";
-If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
-If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
-TeXVerbatim[ret]
-]
-
-Format[Rdot[{f__},{i__}],TeXForm]:=Module[{sub,sup,ret},
-{sub,sup}=MakeTexIndexList[{f},{i}];
-ret="\\partial_t R";
-If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
-If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
-TeXVerbatim[ret]
-]
-
-Format[\[Delta][a_,b_],TeXForm]:=Module[{isLower,sub,sup,ret},
-{sub,sup}=MakeTexIndexList[{a,b}];
-ret="\\delta";
-If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
-If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
-TeXVerbatim[ret]
-]
-
-Format[\[Gamma][a_,b_],TeXForm]:=Module[{isLower,sub,sup,ret},
-{sub,sup}=MakeTexIndexList[{a,b}];
-ret="\\gamma";
-If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
-If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
-TeXVerbatim[ret]
-]
-
-Format[FTerm[a__],TeXForm]:=TeXDelimited["",a,"","DelimSeparator"->"","BodySeparator"->""]
-Format[FEq[a___],TeXForm]:=TeXDelimited["",a,"","DelimSeparator"->"","BodySeparator"->"
-\,+\,"]
-
-Protect[GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta]];
-
-
-(* ::Input::Initialization:: *)
-ClearAll[FPrint,FTex];
-
-FTex[setup_,expr_,replacements_:{}]:=Module[{prExp=expr//.replacements,fields},
-AssertFSetup[setup];
-prExp=prettyIndices[setup,prExp];
-fields=GetAllFields[setup];
-prExp=prExp//.Map[#[Times[-1,a_]]:>Subscript[#,a]&,fields]//.Map[#[a_]:>Superscript[#,a]&,fields];
-Return[prExp//TeXForm];
-]
-
-FPrint[setup_,expr_,replacements_:{}]:=Module[{},
-FTex[setup,expr,replacements]//MaTeX
-]
 
 
 
