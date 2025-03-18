@@ -32,9 +32,19 @@ ModuleLoaded[FEDeriK]=True;
 
 (* ::Input::Initialization:: *)
 $OrderedObjects={Propagator,GammaN,Rdot};
-$indexedObjects={ABasis,VBasis,GammaN,Propagator,Rdot};
+$indexedObjects={ABasis,VBasis,GammaN,Propagator,Rdot,\[Delta],\[Gamma]};
+$userIndexedObjects={};
 $MaxDerivativeIterations=500;
 $CanonicalOrdering="f>af>b";
+
+
+(* ::Input::Initialization:: *)
+AddIndexedObject[name_Symbol]:=Module[{},
+AppendTo[$userIndexedObjects,name];
+$userIndexedObjects=DeleteDuplicates[$userIndexedObjects];
+AppendTo[$indexedObjects,name];
+$indexedObjects=DeleteDuplicates[$indexedObjects];
+]
 
 
 (* ::Input::Initialization:: *)
@@ -306,7 +316,7 @@ Protect[FDOp];
 
 
 (* ::Input::Initialization:: *)
-Protect[GammaN,Propagator,AnyField,ABasis,VBasis];
+Protect[GammaN,Propagator,AnyField,ABasis,VBasis,FieldIndices];
 
 
 (* ::Input::Initialization:: *)
@@ -329,7 +339,7 @@ nonConst=Sort@{f,GammaN,Propagator,Power};
 Unprotect[GammaN,Propagator,FTerm,FEq,AnyField];
 
 (*Rule for normal functional derivatives*)
-f/:D[f[x_],f[y_],NonConstants->nonConst]:=\[Gamma][-y,x];
+f/:D[f[x_],f[y_],NonConstants->nonConst]:=\[Gamma][{f,f},{-y,x}];
 (*Ignore fields without indices. These are usually tags*)
 f/:D[f,f[y_],NonConstants->nonConst]:=0;(*\[Delta][#,y]&;*)
 
@@ -340,7 +350,7 @@ GammaN/:D[GammaN[{a__},{b__}],f[if_],NonConstants->nonConst]:=GammaN[{f,a},{-if,
 Propagator/:D[Propagator[{b_,a_},{ib_,ia_}],f[if_],NonConstants->nonConst]:=Module[
 {ic,id,ie},
 Propagator[{b,AnyField},{ib,ic}]GammaN[{f,AnyField,AnyField},{-if,-ic,-id}]Propagator[{AnyField,a},{id,ie}]
-(-1)\[Gamma][ia,-ie]
+(-1)\[Gamma][{a,a},{ia,-ie}]
 ];
 
 (*No derivatives of FTerm, FEq*)
@@ -884,7 +894,6 @@ SeriesCoefficient[a^b,{b,0,n}]NonCommutativeMultiply@@Table[FixIndices[setup,b],
 ,{n,0,order}];
 ret
 ];
-FExpand[Setup,FTerm[Exp[FTerm[A[x]A[-x]]]],2]
 
 
 (* ::Input::Initialization:: *)
@@ -982,7 +991,7 @@ AssertDerivativeList[setup,derivativeList];
 
 (*While doing the derivatives, we want to use super-indices. Afterwards, we can replace these again with the given indices*)
 externalIndexNames=Map[Unique["eI"]&,derivativeList];
-outputReplacements=Thread[externalIndexNames->Map[FieldIndices@@Join[Head[#],List@@#]&,derivativeList]];
+outputReplacements=Thread[externalIndexNames->Map[FieldIndices@@#&,derivativeList]];
 derivativeListSIDX=Table[Head[derivativeList[[i]]][externalIndexNames[[i]]],{i,1,Length[derivativeList]}];
 
 (*We take them in reverse order.*)

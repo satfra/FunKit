@@ -162,11 +162,13 @@ Return[expr//.repl]
 
 
 (* ::Input::Initialization:: *)
+RenewFormatDefinitions[]:=Module[{},
+
 Unprotect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta]];
 
 Format[FDOp[f_],TeXForm]:=Module[{},
 TeXDelimited["\\frac{\\delta}{\\delta",f,"}"]
-]
+];
 
 Format[GammaN[{f__},{i__}],TeXForm]:=Module[{sub,sup,ret},
 {sub,sup}=MakeTexIndexList[{f},{i}];
@@ -174,7 +176,7 @@ ret="\\Gamma";
 If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
 If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
 TeXVerbatim[ret]
-]
+];
 
 Format[Propagator[{f__},{i__}],TeXForm]:=Module[{sub,sup,ret},
 {sub,sup}=MakeTexIndexList[{f},{i}];
@@ -182,7 +184,7 @@ ret="G";
 If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
 If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
 TeXVerbatim[ret]
-]
+];
 
 Format[Rdot[{f__},{i__}],TeXForm]:=Module[{sub,sup,ret},
 {sub,sup}=MakeTexIndexList[{f},{i}];
@@ -190,7 +192,7 @@ ret="\\partial_t R";
 If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
 If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
 TeXVerbatim[ret]
-]
+];
 
 Format[\[Delta][a_,b_],TeXForm]:=Module[{isLower,sub,sup,ret},
 {sub,sup}=MakeTexIndexList[{a,b}];
@@ -198,21 +200,32 @@ ret="\\delta";
 If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
 If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
 TeXVerbatim[ret]
-]
+];
 
-Format[\[Gamma][a_,b_],TeXForm]:=Module[{isLower,sub,sup,ret},
-{sub,sup}=MakeTexIndexList[{a,b}];
+Format[\[Gamma][{f__},{i__}],TeXForm]:=Module[{isLower,sub,sup,ret},
+{sub,sup}=MakeTexIndexList[{f},{i}];
 ret="\\gamma";
 If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
 If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
 TeXVerbatim[ret]
-]
+];
 
-Format[FTerm[a__],TeXForm]:=TeXDelimited["",a,"","DelimSeparator"->"","BodySeparator"->""]
+Format[FTerm[a__],TeXForm]:=TeXDelimited["",a,"","DelimSeparator"->"","BodySeparator"->""];
 Format[FEq[a___],TeXForm]:=TeXDelimited["",a,"","DelimSeparator"->"","BodySeparator"->"
-\,+\,"]
+\,+\,"];
+
+Map[
+(Format[#[{f__},{i__}],TeXForm]:=Module[{sub,sup,ret},
+{sub,sup}=MakeTexIndexList[{f},{i}];
+ret=TeXForm[#]//ToString;
+If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
+If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
+TeXVerbatim[ret]
+])&,
+$userIndexedObjects];
 
 Protect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta]];
+];
 
 
 (* ::Input::Initialization:: *)
@@ -220,6 +233,8 @@ ClearAll[FPrint,FTex];
 
 FTex[setup_,expr_,replacements_:{}]:=Module[{prExp=expr//.replacements,fields},
 AssertFSetup[setup];
+RenewFormatDefinitions[];
+
 prExp=prettyIndices[setup,prExp];
 fields=GetAllFields[setup];
 prExp=prExp//.Map[#[Times[-1,a_]]:>Subscript[#,a]&,fields]//.Map[#[a_]:>Superscript[#,a]&,fields];
