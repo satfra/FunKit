@@ -93,15 +93,12 @@ Return[{StringJoin@@lowerList,StringJoin@@upperList}]
 (* ::Input::Initialization:: *)
 MakeIdxField[f_,i_,up]:=MakeIdxField[f,If[MatchQ[i,Times[-1,_]],-i,i]]
 MakeIdxField[f_,i_,down]:=MakeIdxField[f,If[MatchQ[i,Times[-1,_]],i,-i]]
-MakeIdxField[f_,i_]:=Module[{isLower,idx,idxStr,subSuper},
+MakeIdxField[f_,i_]:=Module[{isLower,idx},
 isLower=MatchQ[i,Times[-1,_]];
 idx=If[isLower,-i,i];
 If[f===AnyField,Return[ToString[TeXForm[idx]]]];
-
-idxStr=If[Depth[idx]>1,"{"<>ToString[TeXForm[idx]]<>"}",ToString[TeXForm[idx]]];
-subSuper=If[isLower,"_","^"];
-
-ToString[TeXForm[f]]<>subSuper<>idxStr
+If[isLower,Return[ToString@TeXForm[Subscript[f,idx]]]];
+Return[ToString@TeXForm[Superscript[f,idx]]]
 ]
 
 MakeTexIndexList[{f__},{i__}]:=Module[
@@ -162,9 +159,61 @@ Return[expr//.repl]
 
 
 (* ::Input::Initialization:: *)
+$TexStyles={};
+
+
+(* ::Input::Initialization:: *)
+AddTexStyles::invalidRule="The given set of style rules does not follow the pattern Symbol->String.";
+
+AddTexStyles[a__Rule]:=Module[{},
+If[Or@@Map[Head[#]=!=String&,Values[{a}]],
+Message[AddTexStyles::invalidRule];Abort[]];
+$TexStyles=DeleteDuplicates[Join[$TexStyles,{a}]];
+]
+
+SetTexStyles[a__Rule]:=Module[{},
+If[Or@@Map[Head[#]=!=String&,Values[{a}]],
+Message[AddTexStyles::invalidRule];Abort[]];
+$TexStyles=DeleteDuplicates[{a}];
+]
+
+SetTexStyles[]:=Module[{},
+$TexStyles={};
+]
+
+
+(* ::Input::Initialization:: *)
 RenewFormatDefinitions[]:=Module[{},
 
-Unprotect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta]];
+Unprotect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus];
+
+(*Field formatting*)
+
+Map[
+(Format[Keys[#][any__],TeXForm]:=Module[{head,arg},
+head=Keys[#]//.$TexStyles;
+arg=Format[any,TeXForm]//ToString;
+TeXVerbatim[head<>arg]
+])&,
+$TexStyles];
+
+Map[
+(Format[Superscript[Keys[#],any_],TeXForm]:=Module[{head,arg},
+head=Keys[#]//.$TexStyles;
+arg=Format[any,TeXForm]//ToString;
+TeXVerbatim[head<>"^"<>arg]
+])&,
+$TexStyles];
+
+Map[
+(Format[Subscript[Keys[#],any_],TeXForm]:=Module[{head,arg},
+head=Keys[#]//.$TexStyles;
+arg=Format[any,TeXForm]//ToString;
+TeXVerbatim[head<>"_"<>arg]
+])&,
+$TexStyles];
+
+(*Other formatting*)
 
 Format[FDOp[f_],TeXForm]:=Module[{},
 TeXDelimited["\\frac{\\delta}{\\delta",f,"}"]
@@ -210,9 +259,23 @@ If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
 TeXVerbatim[ret]
 ];
 
-Format[FTerm[a__],TeXForm]:=TeXDelimited["",a,"","DelimSeparator"->"","BodySeparator"->""];
-Format[FEq[a___],TeXForm]:=TeXDelimited["",a,"","DelimSeparator"->"","BodySeparator"->"
-\,+\,"];
+Format[FMinus[{f__},{i__}],TeXForm]:=Module[{isLower,sub,sup,ret},
+{sub,sup}=MakeTexIndexList[{f},{i}];
+ret="(-1)";
+If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
+If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
+TeXVerbatim[ret]
+];
+
+
+Format[FTerm[a__],TeXForm]:=If[MemberQ[{a}[[1]],b_/;NumericQ[b]&&b<0],
+TeXDelimited["(",a,")","DelimSeparator"->"","BodySeparator"->""],
+TeXDelimited["",a,"","DelimSeparator"->"","BodySeparator"->""]
+];
+Format[FEq[a___],TeXForm]:=If[Length[{a}]<=3,
+TeXDelimited["",a,"","DelimSeparator"->"","BodySeparator"->"\,+\,"],
+TeXDelimited["\\begin{aligned}&",a,"\\end{aligned}","DelimSeparator"->"","BodySeparator"->"\\\\ &\,+\,"]
+];
 
 Map[
 (Format[#[{f__},{i__}],TeXForm]:=Module[{sub,sup,ret},
@@ -224,12 +287,13 @@ TeXVerbatim[ret]
 ])&,
 $userIndexedObjects];
 
-Protect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta]];
+Protect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus];
 ];
 
 
 (* ::Input::Initialization:: *)
 ClearAll[FPrint,FTex];
+
 
 FTex[setup_,expr_,replacements_:{}]:=Module[{prExp=expr//.replacements,fields},
 AssertFSetup[setup];
@@ -244,6 +308,154 @@ Return[prExp//TeXForm];
 FPrint[setup_,expr_,replacements_:{}]:=Module[{},
 FTex[setup,expr,replacements]//MaTeX
 ]
+
+
+(* ::Input::Initialization:: *)
+GetEdgeRule[setup_,vertices_,fields_]:=Module[{fermions,bosons,sel},
+If[Length[obj]!=Length[fields]||Length[obj]!=2,Print["Mismatch!"];Abort[]];
+fermions=GetFermionPairs[setup];
+bosons=GetBosons[setup];
+
+If[MemberQ[fermions,fields[[1]],Infinity]&&MemberQ[fermions,fields[[2]],Infinity],
+sel=Select[fermions,MemberQ[#,fields[[1]],Infinity]&][[1]];
+If[fields===sel,
+Return[obj[[1]]->obj[[2]]],
+Return[obj[[2]]->obj[[1]]];
+]
+];
+
+If[MemberQ[bosons,fields[[1]],Infinity]&&MemberQ[bosons,fields[[2]],Infinity],
+Return[obj[[1]]<->obj[[2]]]
+];
+
+Print["fields ",fields," not found!"];
+Abort[];
+];
+
+
+(* ::Input::Initialization:: *)
+MakeEdgeStyle[style_,setup_]:=Module[{corStyle,havePairs,allPairs,missingPairs},
+corStyle=style/.{
+a_[c_,d_]/;
+a===Rule&&Head[c]=!=List:>
+Sort[{c,GetPartnerField[c,setup]}]->d};
+corStyle=corStyle/.{a_[{c__},d_]/;a===Rule:>Sort[{c}]->d};
+
+havePairs=corStyle/.{a_[{c__},d_]/;a===Rule:>{c}};
+allPairs=Join[Map[{#,#}&,GetBosons[setup]],Map[Sort,GetFermionPairs[setup]]];
+missingPairs=DeleteCases[allPairs,Alternatives@@havePairs];
+corStyle=Join[corStyle,Thread[missingPairs->ColorData[97,"ColorList"][[1;;Length[missingPairs]]]]];
+Return[corStyle]
+];
+
+
+(* ::Input::Initialization:: *)
+PlotOneSuperindexDiagram[diag_,setup_,OptionsPattern[]]:=Module[
+{ShowEdgeLabels,EdgeStyle,
+transformedDiag,vertices,edges,prefactor,
+externalLegs,externalIndices,idx,field,partnerField,outerIdx,externalLeg,
+regulatorVertex,curVertex,rules,corStyle,cross,
+explVertices,explEdges,vertexShapes,vertexLabels,edgeLabels,
+graph},
+
+AssertIsSuperindexDiagram[diag];
+
+EdgeStyle=OptionValue["EdgeStyle"];
+ShowEdgeLabels=OptionValue["ShowEdgeLabels"];
+
+transformedDiag=Map[
+If[Head[#]===Association,
+If[#["type"]=="Propagator",
+<|
+"Rule"->GetEdgeRule[{#["indices"][[1,2]],#["indices"][[2,2]]},{#["indices"][[1,1]],#["indices"][[2,1]]},setup],
+"Style"->Sort[{#["indices"][[1,1]],#["indices"][[2,1]]}]
+|>,
+<|
+"Vertex"->#["indices"][[All,2]],
+"Style"->#["type"]
+|>],
+#]&
+,diag];
+
+vertices=Select[transformedDiag,MemberQ[Keys[#],"Vertex",Infinity]&];
+edges=Select[transformedDiag,MemberQ[Keys[#],"Rule",Infinity]&];
+prefactor=("Prefactor"/.transformedDiag[[1]])[[1]];
+
+externalLegs=GetExternalIndices[diag];
+externalIndices={};
+For[idx=1,idx<=Length[externalLegs],idx++,
+field=externalLegs[[idx,1]];
+partnerField=GetPartnerField[field,setup];
+outerIdx=Unique[externalLeg];
+externalIndices=Join[externalIndices,{outerIdx}];
+vertices=vertices\[Union]{<|
+"Vertex"->{{outerIdx}},
+"Style"->externalLeg[field]
+|>};
+edges=edges\[Union]{<|
+"Rule"->GetEdgeRule[{externalLegs[[idx,2]],{outerIdx}},{field,partnerField},setup],"Style"->Sort[{field,partnerField}]
+|>};
+];
+
+regulatorVertex=0;
+For[idx=1,idx<=Length[vertices],idx++,
+curVertex=vertices[[idx]]["Vertex"];
+If[Length[curVertex]>1,
+rules=Map[#->curVertex[[1]]&,curVertex[[2;;]]];
+vertices=vertices/.rules;
+edges=edges/.rules;
+];
+vertices[[idx]]=<|"Vertex"->vertices[[idx]]["Vertex"][[1]],"Style"->vertices[[idx]]["Style"]|>;
+If[vertices[[idx]]["Style"]=="Regulatordot",regulatorVertex=vertices[[idx]]["Vertex"]];
+];
+
+corStyle=MakeEdgeStyle[EdgeStyle,setup];
+
+ cross[r_] := Graphics[{Thick, Line[{{r / Sqrt[2], r / Sqrt[2]
+            }, {-r / Sqrt[2], -r / Sqrt[2]}}], Line[{{r / Sqrt[2], -r / Sqrt[2]},
+             {-r / Sqrt[2], r / Sqrt[2]}}], Circle[{0, 0}, r]}];
+
+explVertices=Map[#["Vertex"]&,vertices];
+vertexShapes=Join[
+{regulatorVertex->cross[1]}
+];
+vertexLabels=Map[
+#["Vertex"]->(#["Style"]/.a_[b_]:>b)&
+,
+Select[vertices,Head[#["Style"]]===externalLeg&]
+];
+explEdges=Map[Style[#["Rule"],#["Style"]/.corStyle]&,edges];
+edgeLabels=If[ShowEdgeLabels,
+Map[#["Rule"]->ToString[#["Style"][[1]]]<>ToString[#["Style"][[2]]]&,edges],
+{}
+];
+
+Return[
+{prefactor,
+graph=Graph[explVertices,explEdges];
+Graph[graph,
+VertexShape->vertexShapes,
+VertexLabels->vertexLabels,
+VertexSize -> {regulatorVertex -> Medium},
+EdgeLabels->edgeLabels,
+EdgeShapeFunction->{x_\[DirectedEdge]x_:>arcFunc[graph,20.0],x_\[UndirectedEdge]x_:>arcFuncUn[graph,20.0]},
+PerformanceGoal->"Quality"
+]
+}
+];
+];
+Options[PlotOneSuperindexDiagram]={"ShowEdgeLabels"->False,"EdgeStyle"->{}};
+
+PlotSuperindexDiagram[diags_List,setup_,a___]:=Module[{},
+If[AllTrue[diags,TestIsSuperindexDiagram],
+Return[Map[PlotOneSuperindexDiagram[#,setup,a]&,diags]];
+];
+If[TestIsSuperindexDiagram[diags],
+Return[PlotOneSuperindexDiagram[diags,setup,a]];
+];
+Print["PlotSuperindexDiagram: diagram argument is not a superindex diagram or a list thereof!"];
+Abort[];
+];
 
 
 
