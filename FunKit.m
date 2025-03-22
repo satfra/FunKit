@@ -88,6 +88,12 @@ StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"FEDeriK\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+Get[$FunKitDirectory<>"modules/AnSEL.m"];
+Print["\!\(\*
+StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"AnSEL\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
 Get[$FunKitDirectory<>"modules/DiANE.m"];
 Print["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
