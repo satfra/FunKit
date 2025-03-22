@@ -55,7 +55,9 @@ $FunKitDirectory=SelectFirst[Join[{FileNameJoin[{$UserBaseDirectory,"Application
 
 
 (* ::Input::Initialization:: *)
-WetterichEquation=FEq[FTerm[Propagator[{AnyField,AnyField},{a,b}],Rdot[{AnyField,AnyField},{-a,-b}]/2]];
+WetterichEquation:=Module[{a,b},
+FEq[FTerm[Propagator[{AnyField,AnyField},{a,b}],Rdot[{AnyField,AnyField},{-a,-b}]/2]]
+];
 
 
 (* ::Input::Initialization:: *)
@@ -91,13 +93,14 @@ FTerm::FTermPowerError="An FTerm cannot be taken to a power of an FTerm.";
 FTerm/:NonCommutativeMultiply[FTerm[a__],FTerm[b__]]:=FTerm[a,b]
 FTerm[pre___,NonCommutativeMultiply[in___],post___]:=FTerm[pre,in,post]
 FTerm[pre___,Times[inpre__,NonCommutativeMultiply[in___],inpost__],post___]:=FTerm[pre,inpre*inpost,in,post]
-FTerm[first_,pre___,Times[a_,other2_],post___]/;NumericQ[a]&&Head[first]=!=FDOp:=FTerm[first*a,pre,other2,post]
+FTerm[first_,pre___,Times[a_,other2_],post___]/;NumericQ[first]&&NumericQ[a]&&Head[first]=!=FDOp:=FTerm[first*a,pre,other2,post]
+FTerm[first_,pre___,Times[a_,other2_],post___]/;Not[NumericQ[first]]&&NumericQ[a]&&Head[first]=!=FDOp:=FTerm[a,first,pre,other2,post]
+FTerm[first_,pre___,a_,post___]/;NumericQ[first]&&NumericQ[a]:=FTerm[first*a,pre,post]
+FTerm[first_,pre___,a_,post___]/;Not[NumericQ[first]]&&NumericQ[a]:=FTerm[a,first,pre,post]
 FTerm[]:=FTerm[1]
 
 (*Pre-reduction of zero FTerms*)
 FTerm[___,0,___]:=FTerm[0]
-FTerm[pre___,a_,b:(_Integer|_Real|_Rational|_Complex),post___]:=FTerm[pre,a*b,post]
-FTerm[a:(_Integer|_Real|_Rational|_Complex),b_,post___]:=FTerm[a*b,post]
 
 (*Reduction of immediately nested FTerms*)
 FTerm[pre___,FTerm[in__],post___]:=FTerm[pre,in,post] 
@@ -105,8 +108,6 @@ FTerm[pre___,FTerm[in__],post___]:=FTerm[pre,in,post]
 FTerm/:Power[FTerm[a___],FTerm[b___]]:=(Message[FTerm::FTermPowerError];Abort[]);
 
 Protect[FTerm];
-
-SetCanonicalOrdering["b>af>f"]
 
 
 (* ::Input::Initialization:: *)
@@ -874,6 +875,9 @@ FreeQ[Sort/@setup["Truncation"][#],Sort@f],
 ,{Rdot}
 ];
 
+
+
+Return[ret];
 Return[
 (*Finally, remove the metric factors*)
 ReduceIndices[setup,ret]
@@ -916,7 +920,6 @@ If[Length[closedIndices]===0||FreeQ[ret,AnyField,Infinity]||curi>Length[closedIn
 
 (*We have to update these global quantities after each iteration*)
 allObj=ExtractObjectsWithIndex[setup,FTerm@@(ret/.FTerm[__]:>ignore)];
-
 idx=closedIndices[[curi]];
 idxOccur={};
 subObj=Select[allObj,MemberQ[#,idx,Infinity]&];
@@ -931,7 +934,6 @@ Return[LTrunc[setup,FTerm@@ret,curi+1]];
 If[subObj[[1,1,idxPos[[1]]]]===AnyField&&subObj[[2,1,idxPos[[2]]]]===AnyField,
 ret=FEq@@Map[
 Module[{s1=subObj[[1]],s2=subObj[[2]],t},
-
 s1[[1,idxPos[[1]]]]=#;
 s2[[1,idxPos[[2]]]]=#;
 truncationPass[setup,FTerm@@(ret/.{
@@ -939,13 +941,13 @@ subObj[[1]]:>s1,
 subObj[[2]]:>s2,
 
 FMinus[{a_,a_},{s1[[2,idxPos[[1]]]],s1[[2,idxPos[[1]]]]}]:>FMinus[{#,#},{s1[[2,idxPos[[1]]]],s1[[2,idxPos[[1]]]]}],
-FMinus[{a_,a_},{s1[[2,idxPos[[2]]]],s1[[2,idxPos[[2]]]]}]:>FMinus[{#,#},{s1[[2,idxPos[[2]]]],s1[[2,idxPos[[2]]]]}],
+FMinus[{a_,a_},{s2[[2,idxPos[[2]]]],s2[[2,idxPos[[2]]]]}]:>FMinus[{#,#},{s2[[2,idxPos[[2]]]],s2[[2,idxPos[[2]]]]}],
 
 FMinus[{a_,b_},{s1[[2,idxPos[[1]]]],ib_}]:>FMinus[{#,b},{s1[[2,idxPos[[1]]]],ib}],
-FMinus[{a_,b_},{s1[[2,idxPos[[2]]]],ib_}]:>FMinus[{#,b},{s1[[2,idxPos[[2]]]],ib}],
+FMinus[{a_,b_},{s2[[2,idxPos[[2]]]],ib_}]:>FMinus[{#,b},{s2[[2,idxPos[[2]]]],ib}],
 
 FMinus[{a_,b_},{ia_,s1[[2,idxPos[[1]]]]}]:>FMinus[{a,#},{ia,s1[[2,idxPos[[1]]]]}],
-FMinus[{a_,b_},{ia_,s1[[2,idxPos[[2]]]]}]:>FMinus[{a,#},{ia,s1[[2,idxPos[[2]]]]}]
+FMinus[{a_,b_},{ia_,s2[[2,idxPos[[2]]]]}]:>FMinus[{a,#},{ia,s2[[2,idxPos[[2]]]]}]
 }
 )]
 ]&
@@ -962,7 +964,7 @@ Truncate[setup_,expr_]:=Module[{ret,
 mmap=If[Total[Length/@(List@@FEq[expr])]>10,ParallelMap,Map]
 },
 AssertFSetup[setup];
-If[KeyFreeQ[setup,"Truncation"],Print["oi"];
+If[KeyFreeQ[setup,"Truncation"],
 Message[Truncate::noTruncation];Abort[];
 ];
 ret=mmap[LTrunc[setup,#]&,FEq[expr]];

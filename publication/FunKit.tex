@@ -190,26 +190,26 @@ N-point functions:
 Propagator inverse:
 %
 \begin{align}
-	\frac{\delta \Gamma}{\delta \Phi^a} &= J_a
+	\frac{\delta \Gamma}{\delta \Phi^a} &= \gamma^d_{\phantom{d}a}J_d
 	\,,\notag\\[1ex]\Leftrightarrow 
-	\frac{\delta \Gamma}{\delta J_b\delta \Phi^a} &= \delta_a^{\phantom{a}b} = \gamma_a^{\phantom{a}b}
+	\frac{\delta \Gamma}{\delta J_b\delta \Phi^a} &= \gamma^b_{\phantom{b}a}
 	\,,\notag\\[1ex]\Leftrightarrow 
-	\frac{\delta \Phi^c}{\delta J_b}\frac{\delta \Gamma}{\delta \Phi^c\delta \Phi^a} &= \gamma_a^{\phantom{a}b}
+	\frac{\delta \Phi^c}{\delta J_b}\frac{\delta \Gamma}{\delta \Phi^c\delta \Phi^a} &= \gamma^b_{\phantom{b}a}
 	\,,\notag\\[1ex]\Leftrightarrow 
-	G^{bc}\Gamma_{ca} &= \gamma_a^{\phantom{a}b}
+	G^{bc}\Gamma_{ca} &= \gamma^b_{\phantom{b}a}
 	\,.
 \end{align}
 %
-and
+and, using right-derivatives
 %
 \begin{align}
-	\frac{\delta \Gamma}{\delta \Phi^a} &= J_a
+	\frac{\delta \Gamma}{\delta \Phi^a} &= \gamma^d_{\phantom{d}a}J_d
 	\,,\notag\\[1ex]\Leftrightarrow 
-	\frac{\delta \Gamma}{\delta \Phi^a\delta J_b} &= \gamma^b_{\phantom{b}a}
+	\frac{\delta \Gamma}{\delta \Phi^a\delta J_b} &= \gamma_a^{\phantom{a}b}
 	\,,\notag\\[1ex]\Leftrightarrow 
-	\frac{\delta \Gamma}{\delta \Phi^a\delta \Phi^c}\frac{\delta \Phi^c}{\delta J_b} &= \gamma^b_{\phantom{b}a}
+	\frac{\delta \Gamma}{\delta \Phi^a\delta \Phi^c}\gamma^c_{\phantom{c}d}\left(\Phi^d\frac{\overset{\leftarrow}{\delta}}{\delta J_b}\right) &= \gamma_a^{\phantom{a}b}
 	\,,\notag\\[1ex]\Leftrightarrow 
-	\Gamma_{ac}G^{bc} &= \gamma^b_{\phantom{b}a}
+	\Gamma_{ac}\gamma^c_{\phantom{c}d}G^{db} &= \gamma_a^{\phantom{a}b}
 	\,.
 \end{align}
 %
@@ -222,13 +222,14 @@ and
 Getting the rule for the propagator:
 %
 \begin{align}
-	\left(\frac{\delta}{\delta \Phi^f}G^{bc}\right)\Gamma_{cd} &= (-1)(-1)^{bf}\,G^{bc}\Gamma_{cfd}
+	\left(\frac{\delta}{\delta \Phi^f}G^{bc}\right)\Gamma_{cd} 
+	&= (-1)(-1)^{bf}\,G^{bc}\Gamma_{cfd}
 	\,,\notag\\[1ex]
-	\Leftrightarrow\left(\frac{\delta}{\delta \Phi^f}G^{bc}\right)(\Gamma_{cd}G^{ed}) &= (-1)(-1)^{bf}\,G^{bc}\Gamma_{cfd}G^{ed}
+	\Leftrightarrow\left(\frac{\delta}{\delta \Phi^f}G^{bc}\right)(\Gamma_{cd}\gamma^{d}_{\phantom{d}e}G^{eg}) 
+	&= (-1)(-1)^{bf}\,G^{bc}\Gamma_{cfd}\gamma^{d}_{\phantom{d}e}G^{eg}
 	\,,\notag\\[1ex]
-	\Leftrightarrow\left(\frac{\delta}{\delta \Phi^f}G^{bc}\right)\gamma^e_{\phantom{e}c} &= (-1)(-1)^{bf}\,G^{bc}\Gamma_{cfd}G^{ed}
-	\,,\notag\\[1ex]
-	\Leftrightarrow\left(\frac{\delta}{\delta \Phi^f}G^{ba}\right) &= (-1)(-1)^{bf}\gamma^a_{\phantom{a}e}\, G^{bc}\Gamma_{cfd}G^{ed}
+	\Leftrightarrow\left(\frac{\delta}{\delta \Phi^f}G^{ba}\right) 
+	&= (-1)(-1)^{bf}(-1)^{dd}\, G^{bc}\Gamma_{cfd}G^{da}
 \end{align}
 %%%%%%%%%%%%%%%%%%%%
 

@@ -268,8 +268,11 @@ TeXVerbatim[ret]
 ];
 
 
-Format[FTerm[a__],TeXForm]:=If[MemberQ[{a}[[1]],b_/;NumericQ[b]&&b<0],
-TeXDelimited["(",a,")","DelimSeparator"->"","BodySeparator"->""],
+Format[FTerm[a__],TeXForm]:=If[MatchQ[{a}[[1]],b_/;NumericQ[b]&&b<0],
+If[{a}[[1]]===-1,
+TeXDelimited["(-",##,")","DelimSeparator"->"","BodySeparator"->""]&@@{a}[[2;;]],
+TeXDelimited["(",a,")","DelimSeparator"->"","BodySeparator"->""]
+],
 TeXDelimited["",a,"","DelimSeparator"->"","BodySeparator"->""]
 ];
 Format[FEq[a___],TeXForm]:=If[Length[{a}]<=3,
@@ -293,7 +296,6 @@ Protect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus];
 
 (* ::Input::Initialization:: *)
 ClearAll[FPrint,FTex];
-
 
 FTex[setup_,expr_,replacements_:{}]:=Module[{prExp=expr//.replacements,fields},
 AssertFSetup[setup];
