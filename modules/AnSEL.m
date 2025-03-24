@@ -20,6 +20,13 @@
 
 
 (* ::Input::Initialization:: *)
+SetLoopMomentumName::usage=""
+
+RouteIndices::usage=""
+RouteIndices[expr_FEq]/;Head[$GlobalSetup]=!=Symbol:=RouteIndices[$GlobalSetup,expr];
+
+
+(* ::Input::Initialization:: *)
 ModuleLoaded::dependency="The module `1` requires `2`, which has not been loaded.";
 
 If[ModuleLoaded[FunKit]=!=True,
@@ -34,12 +41,33 @@ Abort[];
 
 ModuleLoaded[AnSEL]=True;
 
+$loopMomentumName="l";
+Unprotect@@Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
+ClearAll@@Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
+Protect@@Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
+Unprotect[$availableLoopMomenta];
+$availableLoopMomenta=Table[Symbol[$loopMomentumName<>ToString[idx]],{idx,1,50}];
+Protect[$availableLoopMomenta];
+
+
+(* ::Input::Initialization:: *)
+SetLoopMomentumName[name_String]:=Module[{},
+Unprotect@@Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
+$loopMomentumName=name;
+ClearAll@@Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
+Protect@@Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
+Unprotect[$availableLoopMomenta];
+$availableLoopMomenta=Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
+Protect[$availableLoopMomenta];
+];
+
 
 (* ::Input::Initialization:: *)
 $FunKitDirectory=SelectFirst[Join[{FileNameJoin[{$UserBaseDirectory,"Applications","FunKit"}],FileNameJoin[{$BaseDirectory,"Applications","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","Applications","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","Packages","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","ExtraPackages","FunKit"}]},Select[$Path,StringContainsQ[#,"FunKit"]&]],DirectoryQ[#]&]<>"/";
 
 
 (* ::Input::Initialization:: *)
+(*A convenience function to quickly obtain the index structure of a given field.*)
 FieldSetupIndices[setup_,field_]:=Module[{},
 List@@SelectFirst[
 Flatten@Values[setup["FieldSpace"]],
@@ -54,7 +82,7 @@ RouteIndices::momentaFailed="Cannot route momenta in the given expression.";
 
 RouteIndices[setup_,expr_FTerm]:=Module[
 {openIndices,closedIndices,objects,
-ret=ReduceIndices[setup,expr],doFields,idx,a,
+ret=ReduceFTerm[setup,ReduceIndices[setup,expr]],doFields,idx,a,
 indPos,assocField,subObj,subMom,subExtMom,
 indStruct,externalIndices,externalMomenta,
 f,momRepl,A1111111,AA111111,i,mom,loopMomenta
@@ -190,14 +218,12 @@ If[Total[subObj[[2,All,1]]]=!=0,Message[RouteIndices::momentaFailed];Abort[]];
 ,{idx,1,Length[objects]}];
 
 (*replace the loopMomenta[...] by l1, l2, ...*)
-ClearAll@@Table["l"<>ToString[idx],{idx,1,50}];
 loopMomenta=Cases[objects[[All,2,1]],loopMomentum[_],Infinity]//DeleteDuplicates;
-ret=ret/.Thread[loopMomenta->Table[Symbol["l"<>ToString[idx]],{idx,1,Length[loopMomenta]}]];
-loopMomenta=loopMomenta/.Thread[loopMomenta->Table[Symbol["l"<>ToString[idx]],{idx,1,Length[loopMomenta]}]];
-
+ret=ret/.Thread[loopMomenta->Table[Symbol[$loopMomentumName<>ToString[idx]],{idx,1,Length[loopMomenta]}]];
+loopMomenta=loopMomenta/.Thread[loopMomenta->Table[Symbol[$loopMomentumName<>ToString[idx]],{idx,1,Length[loopMomenta]}]];
 
 Return[<|
-"result"->ret,
+"result"->FEq[ret],
 "externalIndices"->externalIndices,
 "loopMomenta"->loopMomenta
 |>];
@@ -237,8 +263,6 @@ Return[SortBy[ret,Length[#["loopMomenta"]]&]]
 (*All terms are different*)
 Return[results];
 ];
-(MakeDSE[A[x]]//.A[_]:>0)//Truncate;
-RouteIndices[Setup,%]
 
 
 

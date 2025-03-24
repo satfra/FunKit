@@ -164,6 +164,7 @@ indices=Select[indices,#=!=ToString[openIndices[[i]]]&],
 repl=Thread[closedIndices->indices[[1;;Length[closedIndices]]]];
 Return[expr//.repl]
 ];
+prettySuperIndices[setup_,expr_]:=expr/.FEq[a___]:>prettySuperIndices[setup,FEq[a]]
 
 
 (* ::Input::Initialization:: *)
@@ -177,10 +178,12 @@ indices=Alphabet[];
 repl=Thread[closedIndices->indices[[1;;Length[closedIndices]]]]\[Union]Thread[openIndices->indices[[Length[closedIndices]+1;;Length[closedIndices]+Length[openIndices]]]];
 Return[expr//.repl]
 ];
+prettyExplicitIndices[setup_,expr_]:=expr/.FEq[a___]:>prettyExplicitIndices[setup,FEq[a]]
 
 
 (* ::Input::Initialization:: *)
 $TexStyles={};
+$Fields={};
 
 
 (* ::Input::Initialization:: *)
@@ -204,64 +207,67 @@ $TexStyles={};
 
 
 (* ::Input::Initialization:: *)
+isRoutedAssociation[expr_]:=Module[{},
+If[Head[expr]=!=Association,Return[False]];
+If[FreeQ[Keys[expr],"result"],Return[False]];
+If[FreeQ[Keys[expr],"externalIndices"],Return[False]];
+If[FreeQ[Keys[expr],"loopMomenta"],Return[False]];
+Return[True];
+]
+Protect[routedContainer];
+
+
+(* ::Input::Initialization:: *)
 RenewFormatDefinitions[]:=Module[{},
 
-Unprotect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus,S];
+Unprotect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus,S,routedContainer];
 Unprotect@@$allObjects;
 
-(*Field formatting*)
-
+(*Field formatting with superindices*)
 Map[
-(Format[Keys[#][any__],TeXForm]:=Module[{head,arg},
-head=Keys[#]//.$TexStyles;
+(
+Format[Keys[#][any_],TeXForm]:=Module[{head,arg},
+head=Keys[#]//.$TexStyles//.$Fields;
 arg=Format[any,TeXForm]//ToString;
 TeXVerbatim[head<>arg]
-])&,
-$TexStyles];
-
-Map[
-(Format[Superscript[Keys[#],any_],TeXForm]:=Module[{head,arg},
-head=Keys[#]//.$TexStyles;
+];
+Format[Superscript[Keys[#],any_],TeXForm]:=Module[{head,arg},
+head=Keys[#]//.$TexStyles//.$Fields;
 arg=Format[any,TeXForm]//ToString;
 TeXVerbatim[head<>"^"<>arg]
-])&,
-$TexStyles];
-
-Map[
-(Format[Subscript[Keys[#],any_],TeXForm]:=Module[{head,arg},
-head=Keys[#]//.$TexStyles;
+];
+Format[Subscript[Keys[#],any_],TeXForm]:=Module[{head,arg},
+head=Keys[#]//.$TexStyles//.$Fields;
 arg=Format[any,TeXForm]//ToString;
 TeXVerbatim[head<>"_"<>arg]
-])&,
-$TexStyles];
+];
+)&,
+$TexStyles\[Union]Select[$Fields,FreeQ[Keys[$TexStyles],Keys[#]]&]];
+
+(*Field formatting with explicit indices*)
+Map[
+(
+Format[Keys[#][{p_,indices_}],TeXForm]:=Module[{head,arg},
+head=Keys[#]//.$TexStyles//.$Fields;
+arg=Format[indices,TeXForm]//ToString;
+TeXVerbatim[head<>arg<>"("<>ToString[TeXForm[p]]<>")"]
+];
+Format[Superscript[Keys[#],{p_,indices_}],TeXForm]:=Module[{head,arg},
+head=Keys[#]//.$TexStyles//.$Fields;
+arg=Format[indices,TeXForm]//ToString;
+TeXVerbatim[head<>"^"<>arg<>"("<>ToString[TeXForm[p]]<>")"]
+];
+Format[Subscript[Keys[#],{p_,indices_}],TeXForm]:=Module[{head,arg},
+head=Keys[#]//.$TexStyles//.$Fields;
+arg=Format[indices,TeXForm]//ToString;
+TeXVerbatim[head<>"_"<>arg<>"("<>ToString[TeXForm[p]]<>")"]
+];
+)&,
+$TexStyles\[Union]Select[$Fields,FreeQ[Keys[$TexStyles],Keys[#]]&]];
 
 (*Other formatting*)
-
 Format[FDOp[f_],TeXForm]:=Module[{},
 TeXDelimited["\\frac{\\delta}{\\delta",f,"}"]
-];
-
-Format[FTerm[a___],TeXForm]:=If[MatchQ[{a}[[1]],b_/;NumericQ[b]&&b<0],
-If[{a}[[1]]===-1,
-TeXDelimited["(-",##,")",
-"DelimSeparator"->"","BodySeparator"->"",
-"BodyConverter"->(ToString[RenewFormatDefinitions[];Format[#,TeXForm]]&)
-]&@@{a}[[2;;]],
-TeXDelimited["(",a,")",
-"DelimSeparator"->"","BodySeparator"->"",
-"BodyConverter"->(ToString[RenewFormatDefinitions[];Format[#,TeXForm]]&)]
-],
-TeXDelimited["",a,"",
-"DelimSeparator"->"","BodySeparator"->"",
-"BodyConverter"->(ToString[RenewFormatDefinitions[];Format[#,TeXForm]]&)]
-];
-Format[FEq[a___],TeXForm]:=If[Length[{a}]<=3,
-TeXDelimited["",a,"",
-"DelimSeparator"->"","BodySeparator"->"\,+\,",
-"BodyConverter"->(ToString[RenewFormatDefinitions[];Format[#,TeXForm]]&)],
-TeXDelimited["\\begin{aligned}&",a,"\\end{aligned}",
-"DelimSeparator"->"","BodySeparator"->"\\\\ &\,+\,",
-"BodyConverter"->(ToString[RenewFormatDefinitions[];Format[#,TeXForm]]&)]
 ];
 
 Map[
@@ -294,36 +300,105 @@ _,TeXForm[#]//ToString
 ];
 If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
 If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
-TeXVerbatim[ret<>"("<>StringRiffle[Map[ToString@TeXForm[#]&,{i}[[All,1]],","],","]<>")"]
+TeXVerbatim[ret<>"("<>StringRiffle[Map[ToString@TeXForm[#]&,{i}[[All,1]]],","]<>")"]
 ])&,
 $indexedObjects];
 
-Protect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus,S];
-Protect@@$allObjects;
+Format[FTerm[a___],TeXForm]:=Module[{obj,integrals,replNames,idx,prefix,postfix,body={a}},
+integrals=Pick[$availableLoopMomenta,Map[MemberQ[{a},#,Infinity]&,$availableLoopMomenta]];
+replNames=Thread[$availableLoopMomenta->Table[Subscript[Symbol[$loopMomentumName],idx],{idx,1,Length[$availableLoopMomenta]}]];
+prefix=StringJoin[Map["\\int_{"<>ToString[TeXForm[#]]<>"}"&,integrals//.replNames]];
+postfix="";
+
+If[MatchQ[{a}[[1]],b_/;NumericQ[b]&&b<0],
+If[{a}[[1]]===-1,
+prefix=prefix<>"(-";
+postfix=")"<>postfix;
+body=body[[2;;]];
+,
+prefix=prefix<>"(";
+postfix=")"<>postfix;
+]
+];
+
+body=body//.replNames;
+body=body//.Map[#->Subscript[Symbol[StringTake[SymbolName[#],{1}]],ToExpression@StringTake[SymbolName[#],{2,-1}]]&,
+Select[GetAllSymbols[body],StringMatchQ[SymbolName[#],LetterCharacter~~DigitCharacter..]&]
+];
+
+TeXDelimited[prefix,##,postfix,
+"DelimSeparator"->"","BodySeparator"->"\\,",
+(*It is not clear why the call to RenewFormatDefinitions[] is necessary here. However, removing it leads to TeXForm ignoring all custom TeXStyles.*)
+"BodyConverter"->(ToString[RenewFormatDefinitions[];Format[#,TeXForm]]&)
+]&@@body
+];
+
+Format[FEq[a___],TeXForm]:=If[Length[Flatten[(List@@#&)/@{a}]]<=10,
+TeXDelimited["",a,"",
+"DelimSeparator"->"\n","BodySeparator"->"\n\\,+\\,\n",
+"BodyConverter"->(ToString[Format[#,TeXForm]]&)],
+TeXDelimited["\\begin{aligned}&",a,"\\end{aligned}",
+"DelimSeparator"->"\n","BodySeparator"->"\n\\\\ &\\,+\\,\n",
+"BodyConverter"->(ToString[Format[#,TeXForm]]&)]
+];
+
+Format[routedContainer[a__],TeXForm]/;(And@@(isRoutedAssociation/@{a})):=Module[{parts},
+parts={a}[[All,Key["result"]]];
+parts=ToString[TeXForm[FEq[#]]]&/@parts;
+
+parts=Join[
+{parts[[1]]},
+Map[
+If[StringTake[#,{1,17}]==="\\begin{aligned}&\n",
+StringJoin[{"\\begin{aligned}&\n\\,+\\,",StringTake[#,{18,-1}]}],
+StringJoin[{"\\,+\\,",#}]]&,
+parts[[2;;]]]
+];
+
+TeXVerbatim["\\begin{aligned}&\n"<>
+StringRiffle[parts,"\n \\\&\n"]<>
+"\n\\end{aligned}"]
 ];
 
 
+Protect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus,S,routedContainer];
+Protect@@$allObjects;
+];
+
+TakeDerivatives[MakeDSE[c[x]],{A[z],cb[y]}]//.{A[_]:>0,c[_]:>0,cb[_]:>0}//Truncate;
+RouteIndices[Setup,%];
+%//FPrint
+
+
 (* ::Input::Initialization:: *)
-FTex[setup_,expr_]:=Module[{prExp=expr,fields},
+(*Turn a given expression into LaTeX code*)
+FTex[setup_,expr_]:=Module[
+{prExp=expr,fields},
 AssertFSetup[setup];
+fields=GetAllFields[setup];
+
+(*update the formatting definitions for TeXForm*)
+$Fields=Thread[fields->Map[ToString[TeXForm[#]]&,fields]];
 RenewFormatDefinitions[];
 
+(*Assign human-readable superindices*)
 prExp=prettySuperIndices[setup,prExp];
 prExp=prettyExplicitIndices[setup,prExp];
-fields=GetAllFields[setup];
+
+(*make fields with indices to sub-/super-script*)
 prExp=prExp//.Map[#[Times[-1,a_]]:>Subscript[#,a]&,fields]//.Map[#[a_]:>Superscript[#,a]&,fields];
+
 (*For correct rendering, fully expand any FTerms*)
 prExp=prExp//.FTerm[pre___,Times[a_,b_],post___]:>FTerm[pre,a,b,post];
+
 Return[prExp//TeXForm];
-]
+];
 
-FPrint[setup_,expr_]:=FTex[setup,expr]//MaTeX
+(*For the output of a full routing*)
+FTex[setup_,expr_List]/;(And@@(isRoutedAssociation/@expr)):=FTex[setup,routedContainer@@expr];
 
-(MakeDSE[A[x]]//.A[_]:>0)[[4]]//Truncate;
-%//FPrint
-RouteIndices[Setup,%%][[1]];
-prettyExplicitIndices[Setup,%[[1]]]
-%//FPrint
+(*For direct printing*)
+FPrint[setup_,expr_]:=Print[FTex[setup,expr]//MaTeX];
 
 
 (* ::Input::Initialization:: *)

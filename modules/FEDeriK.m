@@ -42,7 +42,7 @@ MakeClassicalAction[]/;Head[$GlobalSetup]=!=Symbol:=MakeClassicalAction[$GlobalS
 
 WetterichEquation::usage="";
 
-MakeDSE::usage=""
+MakeDSE::usage="";
 MakeDSE[field_]/;Head[$GlobalSetup]=!=Symbol:=MakeDSE[$GlobalSetup,field];
 
 
@@ -1112,13 +1112,15 @@ FTerm::FDOpCountError="The factor `1` has multiple FDOps in a single factor.";FT
 (* Simplify a term appearing in an equation. Try to merge as many factors as possible, while not changing the Grassmann structure of the term.
 *)
 ReduceFTerm[setup_,term_]:=Module[
-{reduced=List@@term,
+{reduced=Join[{1},List@@term],fields,
 mergeGrassmanFactors,
 curRedIg,nextRedIg,curGCount,nextGCount,
 i,ignore},
 
 AssertFSetup[setup];
 AssertFTerm[term];
+
+fields=GetAllFields[setup];
 
 (*Reduce nested FTerms and such first*)
 reduced=reduced/.FEq[a__]:>ReduceFEq[setup,FEq[a]];
@@ -1139,6 +1141,10 @@ If[FDOpCount[curRedIg]>1,
 Message[FTerm::FDOpCountError,curRedIg];Abort[]];
 If[curGCount>1,
 Message[FTerm::GrassmannCountError,reduced[[-i]]];Abort[]];
+
+reduced[[-i]]=Replace[reduced[[-i]],Times[pre___,a_,post___]/;FreeQ[$indexedObjects,Head[a]]&&FreeQ[fields,Head[a]]:>(
+reduced[[1]]*=a;
+Times[pre,post]),{1}];
 
 If[(curGCount==0||nextGCount==0)&&
 (FDOpCount[curRedIg]==0&&FDOpCount[nextRedIg]==0)&&
