@@ -20,6 +20,33 @@
 
 
 (* ::Input::Initialization:: *)
+SetGlobalSetup::usage="";
+
+Truncate::usage="";
+Truncate[expr_]/;Head[$GlobalSetup]=!=Symbol:=Truncate[$GlobalSetup,expr];
+
+TakeDerivatives::usage="";
+TakeDerivatives[expr_,derivativeList_]/;Head[$GlobalSetup]=!=Symbol:=TakeDerivatives[$GlobalSetup,expr,derivativeList];
+
+QMeSForm::usage="";
+QMeSForm[expr_]/;Head[$GlobalSetup]=!=Symbol:=QMeSForm[$GlobalSetup,expr];
+
+FExpand::usage="";
+FExpand[expr_,order_Integer]/;Head[$GlobalSetup]=!=Symbol:=FExpand[$GlobalSetup,expr,order];
+
+DExpand::usage="";
+DExpand[expr_,order_Integer]/;Head[$GlobalSetup]=!=Symbol:=DExpand[$GlobalSetup,expr,order];
+
+MakeClassicalAction::usage="";
+MakeClassicalAction[]/;Head[$GlobalSetup]=!=Symbol:=MakeClassicalAction[$GlobalSetup];
+
+WetterichEquation::usage="";
+
+MakeDSE::usage=""
+MakeDSE[field_]/;Head[$GlobalSetup]=!=Symbol:=MakeDSE[$GlobalSetup,field];
+
+
+(* ::Input::Initialization:: *)
 ModuleLoaded::dependency="The module `1` requires `2`, which has not been loaded.";
 
 If[ModuleLoaded[FunKit]=!=True,
@@ -55,6 +82,24 @@ Protect@@$allObjects;
 
 (* ::Input::Initialization:: *)
 $FunKitDirectory=SelectFirst[Join[{FileNameJoin[{$UserBaseDirectory,"Applications","FunKit"}],FileNameJoin[{$BaseDirectory,"Applications","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","Applications","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","Packages","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","ExtraPackages","FunKit"}]},Select[$Path,StringContainsQ[#,"FunKit"]&]],DirectoryQ[#]&]<>"/";
+
+
+(* ::Input::Initialization:: *)
+Protect[$GlobalSetup];
+
+SetGlobalSetup[setup_]:=Module[{},
+AssertFSetup[setup];
+
+Unprotect[$GlobalSetup];
+$GlobalSetup=setup;
+Protect[$GlobalSetup];
+];
+
+SetGlobalSetup[]:=Module[{},
+Unprotect[$GlobalSetup];
+ClearAll[$GlobalSetup];
+Protect[$GlobalSetup];
+]
 
 
 (* ::Input::Initialization:: *)
@@ -142,9 +187,18 @@ FEq[prefeq__,Times[pre___,FTerm[a__],post___],postfeq__]:=(Message[FTerm::TimesE
 
 FEq/:NonCommutativeMultiply[FTerm[b__],FEq[c__]]:=FEq[Map[FTerm[b]**#&,FEq[c]]]
 FEq/:NonCommutativeMultiply[FEq[a__],FEq[b__]]:=FEq@@(Flatten@Table[FEq[{a}[[i]]**{b}[[j]]],{i,1,Length[{a}]},{j,1,Length[{b}]}])
+
+(*Removing zeros and ones*)
 FEq/:NonCommutativeMultiply[FTerm[b___],FEq[]]:=FEq[]
-FEq/:NonCommutativeMultiply[FTerm[],FEq[b___]]:=FEq[]
+
+FEq/:NonCommutativeMultiply[FTerm[],FEq[b___]]:=FEq[b]
+FEq/:NonCommutativeMultiply[FEq[b___],FTerm[]]:=FEq[b]
+
 FEq/:NonCommutativeMultiply[FTerm[0],FEq[b___]]:=FEq[]
+FEq/:NonCommutativeMultiply[FEq[b___],FTerm[0]]:=FEq[]
+
+FEq[pre___,0,post___]:=FEq[pre,post]
+
 FEq/:FTerm[FEq[a__]]:=FEq[a];
 FEq/:FTerm[FEq[a__],FEq[b__]]:=FEq@@(Flatten@Table[FEq[{a}[[i]]**{b}[[j]]],{i,1,Length[{a}]},{j,1,Length[{b}]}])
 
@@ -152,7 +206,7 @@ FEq/:FTerm[FEq[a__],FEq[b__]]:=FEq@@(Flatten@Table[FEq[{a}[[i]]**{b}[[j]]],{i,1,
 FEq[pre___,FEq[in___],post___]:=FEq[pre,in,post]
 
 (*Expand nested FEq in sub-terms*)
-FEq[pre___,FTerm[prein___,FEq[in___],postin___],post___]:=FEq[pre,NonCommutativeMultiply[prein,Plus[in],postin],post]
+FEq[pre___,FTerm[prein___,FEq[in___],postin___],post___]:=FEq[pre,NonCommutativeMultiply[FTerm[prein],FEq[in],FTerm[postin]],post]
 
 Protect[FEq];
 
@@ -291,12 +345,12 @@ AssertFieldSpaceDef[setup["FieldSpace"]];
 (* ::Input::Initialization:: *)
 (* Check if a given field definition is valid. Can be either its own anti-field or a pair {af,f} *)
 FieldQ[setup_,expr_]:=Module[{},
-If[Not@(MatchQ[expr,_Symbol[_,{__Symbol}]]||MatchQ[expr,_Symbol[_]]),
-Print["A field f[x...] must have indices f[p] or f[p,{a,b,...}]. \"",expr,"\" does not fit."];
+If[Not@MatchQ[expr,_Symbol[_Symbol]],
+Print["A field f must have a single super-index f[i]. \"",expr,"\" does not fit."];
 Return[False]];
 
 If[Not@(MemberQ[Map[Head,setup["FieldSpace"]//Values//Flatten],Head[expr]]),
-Print["The field \"",expr,"\" is not contained in the field space."];
+Print["The field \"",expr,"\" is not present in the given field space."];
 Return[False]];
 
 Return[True];
@@ -363,8 +417,8 @@ Infinity]
 FunctionalD::malformed="Cannot take a derivative of `1`. Expression is either malformed or this is a bug.";
 
 ClearAll[FunctionalD]
-FunctionalD[expr_,v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=Internal`InheritedBlock[
-{f,GammaN,Propagator,nonConst,FTerm,FEq,AnyField},
+FunctionalD[setup_,expr_,v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=Internal`InheritedBlock[
+{f,GammaN,Propagator,nonConst,FTerm,FEq},
 
 nonConst=Sort@{f,GammaN,Propagator,Power};
 
@@ -373,7 +427,14 @@ Unprotect[GammaN,Propagator,FTerm,FEq,AnyField];
 (*Rule for normal functional derivatives*)
 f/:D[f[x_],f[y_],NonConstants->nonConst]:=\[Gamma][{f,f},{-y,x}];
 (*Rule for normal functional derivatives, but AnyField*)
-AnyField/:D[AnyField[x_],f[y_],NonConstants->nonConst]:=\[Gamma][{f,AnyField},{-y,x}];
+f/:D[AnyField[x_],f[y_],NonConstants->nonConst]:=\[Gamma][{f,AnyField},{-y,x}];
+(*Rule for taking derivatives with AnyField*)
+If[f===AnyField,
+Map[
+(f/:D[#[x_],f[y_],NonConstants->nonConst]:=\[Gamma][{f,#},{-y,x}])&
+,GetAllFields[setup]
+];
+];
 (*Ignore fields without indices. These are usually tags*)
 f/:D[f,f[y_],NonConstants->nonConst]:=0;(*\[Delta][#,y]&;*)
 
@@ -404,10 +465,10 @@ D[expr,v,NonConstants->nonConst]
 ];
 
 FunctionalD::badArgumentFTerm="Cannot take derivative of an FTerm. Use TakeDerivatives instead.";
-FunctionalD[FTerm[expr_],v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=(Message[FunctionalD::badArgumentFTerm];Abort[]);
+FunctionalD[setup_,FTerm[expr_],v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=(Message[FunctionalD::badArgumentFTerm];Abort[]);
 
 FunctionalD::badArgumentFEq="Cannot take derivative of an FEq. Use TakeDerivatives instead.";
-FunctionalD[FEq[___],v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=(Message[FunctionalD::badArgumentFEq];Abort[]);
+FunctionalD[setup_,FEq[___],v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=(Message[FunctionalD::badArgumentFEq];Abort[]);
 
 
 
@@ -421,11 +482,11 @@ If[Head[#]===List,Head[#[[1]]],{}]&,
 setup["FieldSpace"]["cField"]
 ],#=!={}&];
 
-GetGrassmanns[setup_]:=Map[
+GetFermions[setup_]:=Map[
 If[Head[#]===List,Head[#[[2]]],Head[#]]&,
 setup["FieldSpace"]["Grassmann"]
 ];
-GetAntiGrassmanns[setup_]:=Select[Map[
+GetAntiFermions[setup_]:=Select[Map[
 If[Head[#]===List,Head[#[[1]]],{}]&,
 setup["FieldSpace"]["Grassmann"]
 ],#=!={}&];
@@ -464,17 +525,19 @@ field
 ];
 HasPartnerField[setup_,field_[__]]:=HasPartnerField[setup,field];
 
-IsGrassmann[setup_,field_]:=MemberQ[GetGrassmanns[setup],field];
-IsGrassmann[setup_,field_[__]]:=IsGrassmann[setup,field];
+IsFermion[setup_,field_]:=MemberQ[GetFermions[setup],field];
+IsFermion[setup_,field_[__]]:=IsFermion[setup,field];
 
-IsAntiGrassmann[setup_,field_]:=MemberQ[GetAntiGrassmanns[setup],field];
-IsAntiGrassmann[setup_,field_[__]]:=IsAntiGrassmann[setup,field];
+IsAntiFermion[setup_,field_]:=MemberQ[GetAntiFermions[setup],field];
+IsAntiFermion[setup_,field_[__]]:=IsAntiFermion[setup,field];
 
 IscField[setup_,field_]:=MemberQ[GetcFields[setup],field];
 IscField[setup_,field_[__]]:=IscField[setup,field];
 
 IsAnticField[setup_,field_]:=MemberQ[GetAnticFields[setup],field];
 IsAnticField[setup_,field_[__]]:=IsAnticField[setup,field];
+
+IsGrassmann[setup_,field_]:=IsFermion[setup,field]||IsAntiFermon[setup,field];
 
 
 (* ::Input::Initialization:: *)
@@ -510,11 +573,11 @@ Infinity
 (* ::Input::Initialization:: *)
 ContainsGrassmann[setup_Association,expr_]:=Module[{},
 Return@
-AnyTrue[ExtractFields[setup,expr],IsGrassmann[setup,#]||IsAntiGrassmann[setup,#]&];
+AnyTrue[ExtractFields[setup,expr],IsFermion[setup,#]||IsAntiFermion[setup,#]&];
 ]
 GrassmannCount[setup_Association,expr_]:=Module[{},
 Return[Length@
-Select[ExtractFieldsWithIndex[setup,expr],IsGrassmann[setup,Head[#]]||IsAntiGrassmann[setup,Head[#]]&]
+Select[ExtractFieldsWithIndex[setup,expr],IsFermion[setup,Head[#]]||IsAntiFermion[setup,Head[#]]&]
 ];
 ]
 
@@ -528,7 +591,7 @@ Alternatives@@(Map[Blank[#]&,$indexedObjects]),
 idxF=Cases[expr,
 Alternatives@@(Map[Blank[#]&,GetAllFields[setup]]),
 {1,2}];
-Return[makePosIdx/@(idxF[[All,1]]\[Union]Flatten[idxO[[All,2]]])//DeleteDuplicates]
+Return[makePosIdx/@(idxF[[All,1]]\[Union]Join@@idxO[[All,2]])//DeleteDuplicates]
 ];
 GetAllSuperIndices[setup_Association,expr_FEq]:=Module[{},
 Return@(GetAllSuperIndices[setup,#]&/@(List@@expr))
@@ -557,10 +620,10 @@ idxF=Cases[expr,
 Alternatives@@(Map[Blank[#]&,GetAllFields[setup]]),
 {1,2}];
 Return[{idxO\[Union]idxF,
-(makePosIdx/@(idxF[[All,1]]\[Union]Flatten[idxO[[All,2]]])//DeleteDuplicates)}]
+(makePosIdx/@(idxF[[All,1]]\[Union]Join@@idxO[[All,2]])//DeleteDuplicates)}]
 ];
 ExtractObjectsAndIndices[setup_Association,expr_FEq]:=Module[{},
-Return@DeleteDuplicates@({Flatten[#[[All,1]]],Flatten[#[[All,2]]]}&@
+Return@DeleteDuplicates@({Flatten[#[[All,1]]],Join@@#[[All,2]]}&@
 (ExtractObjectsAndIndices[setup,#]&/@(List@@expr))
 )
 ];
@@ -577,6 +640,7 @@ This is not allowed for valid terms/equation. Problematic indices:
 (*Get a list of all closed super-indices within the expression expr*)
 GetClosedSuperIndices[setup_,expr_]:=Module[{objects,indices,count},
 {objects,indices}=ExtractObjectsAndIndices[setup,expr];
+indices=Select[indices,Head[#]=!=List&];
 count=Map[Count[objects,#,{1,5}]&,indices];
 
 Return[
@@ -591,6 +655,7 @@ Map[Mod[#,2]===0&,count]
 (*Get a list of all open super-indices within the expression expr*)
 GetOpenSuperIndices[setup_,expr_]:=Module[{objects,indices,count},
 {objects,indices}=ExtractObjectsAndIndices[setup,expr];
+indices=Select[indices,Head[#]=!=List&];
 count=Map[Count[objects,#,Infinity]&,indices];
 
 Return[
@@ -604,17 +669,18 @@ Map[Mod[#,2]=!=0&,count]
 (* ::Input::Initialization:: *)
 (*Check whether all indices are closed within expr. 
 This disallows also multiple use of a single index name, !anywhere!*)
-AllIndicesClosed[setup_,expr_FTerm]:=Module[{objects,indices,count},
+AllSuperIndicesClosed[setup_,expr_FTerm]:=Module[{objects,indices,count},
 {objects,indices}=ExtractObjectsAndIndices[setup,expr];
 
 count=Map[Count[objects,#,Infinity]&,indices];
 Return[AllTrue[count,#==2&]];
 ];
-AllIndicesClosed[setup_,expr_FEq]:=And@@(AllIndicesClosed[setup,#]&/@expr)
-AllIndicesClosed[setup_,expr_]:=(Message[type::error];Abort[])
+AllSuperIndicesClosed[setup_,expr_FEq]:=And@@(AllSuperIndicesClosed[setup,#]&/@expr)
+AllSuperIndicesClosed[setup_,expr_]:=(Message[type::error];Abort[])
 
 SuperIndicesValid[setup_,expr_FTerm]:=Module[{objects,indices,count},
 {objects,indices}=ExtractObjectsAndIndices[setup,expr];
+indices=Select[indices,Head[#]=!=List&];
 count=Map[Count[objects,#,Infinity]&,indices];
 
 If[AnyTrue[count,#>2&],Message[SuperIndices::undeterminedSums,expr,Pick[indices,#>2&/@count]];Return[False]];
@@ -669,8 +735,8 @@ FieldOrderLess[setup_,f1_Symbol,f2_Symbol]:=Module[
 idxOrder,
 n1,n2},
 
-kind1={IsGrassmann[setup,#],IsAntiGrassmann[setup,#],IscField[setup,#],IsAnticField[setup,#],#===AnyField}&[f1];
-kind2={IsGrassmann[setup,#],IsAntiGrassmann[setup,#],IscField[setup,#],IsAnticField[setup,#],#===AnyField}&[f2];
+kind1={IsFermion[setup,#],IsAntiFermion[setup,#],IscField[setup,#],IsAnticField[setup,#],#===AnyField}&[f1];
+kind2={IsFermion[setup,#],IsAntiFermion[setup,#],IscField[setup,#],IsAnticField[setup,#],#===AnyField}&[f2];
 
 Switch[$CanonicalOrdering,
 "f>af>b",
@@ -794,7 +860,7 @@ makePosIdx[i_]:=i;
 
 (*AntiGrassmann-Grassmann gives 1, otherwise -1*)
 GrassOrder[setup_,f1_,f2_,sign_]:=Module[{},
-(2*Boole[IsGrassmann[setup,f1]]-1)^Boole[!(sign===1)]
+(2*Boole[IsFermion[setup,f1]]-1)^Boole[!(sign===1)]
 ];
 
 (*Return Subscript[\[Gamma], ab] = \[Gamma]^ab = (0	-1
@@ -860,7 +926,7 @@ makePosIdx[cases[[i,2,2]]]->both*makePosIdx[cases[[i,2,1]]]
 ];
 
 (*Resolve all FMinus factors*)
-result=result/.Map[#->CommuteSign[setup,#[[1,1]],#[[1,2]]]&,casesFMinus];
+result=result//.Map[#->CommuteSign[setup,#[[1,1]],#[[1,2]]]&,casesFMinus];
 
 Return[result];
 ];
@@ -913,27 +979,31 @@ Map[LTrunc[setup,#]&,expr]
 LTrunc[setup_,expr_FTerm]:=Module[
 {ret=List@@expr,curi,
 allObj,closedIndices,i,allFields=GetAllFields[setup],
-idx,subObj,idxOccur,idxPos,ignore,notFoundCuri
+idx,subObj,idxOccur,idxPos,ignore,notFoundCuri,doFields,a,
+undoFields
 },
+doFields=Thread[(#[a__]&/@GetAllFields[setup])->(Field[{#},{a}]&/@GetAllFields[setup])];
+undoFields=Thread[(Field[{#},{a__}]&/@GetAllFields[setup])->(#[a]&/@GetAllFields[setup])];
+ret=ret//.doFields;
 
 (*Start off with the nested FTerms*)
 ret=ret/.FTerm[a__]:>LTrunc[setup,FTerm[a]];
 (*Abort if there is nothing to do*)
-If[FreeQ[ret,AnyField,Infinity],Return[FTerm@@ret]];
+If[FreeQ[ret,AnyField,Infinity],Return[FTerm@@ret/.undoFields]];
 
 (*Get all closed indices*)
 closedIndices=GetClosedSuperIndices[setup,FTerm@@(ret/.FTerm[__]:>ignore)];
 (*Abort if there is nothing to do*)
-If[Length[closedIndices]===0||FreeQ[ret,AnyField,Infinity],Return[FTerm@@ret]];
+If[Length[closedIndices]===0||FreeQ[ret,AnyField,Infinity],Return[FTerm@@ret/.undoFields]];
 
 (*We have to update these global quantities after each iteration*)
-allObj=ExtractObjectsWithIndex[setup,FTerm@@(ret/.FTerm[__]:>ignore)];
+allObj=ExtractObjectsWithIndex[setup,FTerm@@(ret/.FTerm[__]:>ignore)]/.doFields;
 
 (*Next, try to find the first factor that needs to be expanded*)
 notFoundCuri=True;
 curi=1;
 While[notFoundCuri,
-If[curi>Length[closedIndices],Return[FTerm@@ret]];
+If[curi>Length[closedIndices],Return[FTerm@@ret/.undoFields]];
 
 idx=closedIndices[[curi]];
 subObj=Select[allObj,MemberQ[#[[2]],idx,{1,3}]&];
@@ -972,7 +1042,7 @@ FMinus[{a_,b_},{ia_,s2[[2,idxPos[[2]]]]}]:>FMinus[{a,#},{ia,s2[[2,idxPos[[2]]]]}
 })]
 ]&
 ,allFields];
-Return[LTrunc[setup,ret]];
+Return[LTrunc[setup,ret/.undoFields]];
 ];
 If[subObj[[1,1]][[idxPos[[1]]]]=!=GetPartnerField[subObj[[2,1]][[idxPos[[2]]]]],Message[indices::inconsistentFieldContractions,{subObj[[1,1]][[idxPos[[1]]]],subObj[[2,1]][[idxPos[[2]]]]},expr];Abort[]];
 Abort[];
@@ -986,7 +1056,7 @@ If[KeyFreeQ[setup,"Truncation"],Message[Truncate::noTruncation];Abort[]];
 If[MemberQ[expr,FDOp[__],Infinity],Message[Truncate::FDOp];Abort[]];
 
 ret=mmap[LTrunc[setup,#]&,FEq[expr]];
-ret=ReduceIndices[setup,ret];
+ret=ReduceIndices[setup,ReduceIndices[setup,ret]];
 OrderFields[setup,FixIndices[setup,#]&/@ret]
 ];
 
@@ -1158,8 +1228,6 @@ ret
 ResolveFDOp::nested="The given term contains nested FDOp. Before proceeding, you need to expand these with DExpand. 
 Error in `1`";
 
-$t={0,0,0,0,0,0,0};
-
 (*Resolve a single occurence of FDOp*)
 ResolveFDOp[setup_,feq_FEq]:=Module[
 {},
@@ -1170,8 +1238,7 @@ ResolveFDOp[setup_,term_FTerm]:=Module[
 FDOpPos,
 termsNoFDOp,dF,
 idx,i,obj,ind,a,
-dTerms,nPre,nPost,ret,cTerm,doFields,
-$s={0,0,0,0,0,0,0,0}
+dTerms,nPre,nPost,ret,cTerm,doFields
 },
 
 (*We cannot proceed if any nested FDOp are present*)
@@ -1183,8 +1250,8 @@ If[FreeQ[rTerm,FDOp[__]],Return[rTerm]];
 FDOpPos=Length[rTerm]-FirstPosition[Reverse@(List@@rTerm),FDOp[_]][[1]]+1;
 termsNoFDOp=rTerm[[1;;FDOpPos-1]]**rTerm[[FDOpPos+1;;]];
 
-(*If the derivative operator is trailing, simply remove it*)
-If[FDOpPos>=Length[rTerm],Return[termsNoFDOp]];
+(*If the derivative operator is trailing, it acts on nothing and the term is zero.*)
+If[FDOpPos>=Length[rTerm],Return[FEq[0]]];
 
 dF=rTerm[[FDOpPos,1]];
 
@@ -1197,7 +1264,7 @@ cTerm=1;
 dTerms=Table[0,{idx,1,nPost}];
 doFields=Thread[(#[a__]&/@GetAllFields[setup])->(#[{#},{a}]&/@GetAllFields[setup])];
 Do[
-dTerms[[idx]]=termsNoFDOp[[;;nPre+idx-1]]**FTerm[cTerm*FunctionalD[termsNoFDOp[[nPre+idx]],dF]]**termsNoFDOp[[nPre+idx+1;;]];
+dTerms[[idx]]=termsNoFDOp[[;;nPre+idx-1]]**FTerm[cTerm*FunctionalD[setup,termsNoFDOp[[nPre+idx]],dF]]**termsNoFDOp[[nPre+idx+1;;]];
 
 obj=ExtractObjectsWithIndex[setup,FTerm[termsNoFDOp[[nPre+idx]]]];
 obj=Select[obj,MemberQ[$OrderedObjects,Head[#]]||MatchQ[#,_Symbol[_]]&];
@@ -1211,7 +1278,9 @@ Transpose[{Flatten[obj[[All,1]]],Flatten[obj[[All,2]]]}]
 ,{idx,1,nPost}
 ];
 
-Return[ReduceFEq[setup,FEq@@dTerms]];
+dTerms=ReduceIndices[setup,FEq@@dTerms];
+
+Return[ReduceFEq[setup,dTerms]];
 ];
 
 
@@ -1242,13 +1311,8 @@ Message[ResolveDerivatives::argument,ret];Abort[];
 
 
 (* ::Input::Initialization:: *)
-Protect[OutputLevel,SuperIndexForm,FieldIndices];
-Options[TakeDerivatives]={OutputLevel->SuperIndexForm};
-
-
-(* ::Input::Initialization:: *)
 (* Perform multiple functional derivatives on a master equation.*)
-TakeDerivatives[setup_,expr_,derivativeList_,OptionsPattern[]]:=Module[
+TakeDerivatives[setup_,expr_,derivativeList_]:=Module[
 {result,
 externalIndexNames,outputReplacements,
 derivativeListSIDX
@@ -1258,13 +1322,8 @@ AssertFSetup[setup];
 AssertFEq[expr];
 AssertDerivativeList[setup,derivativeList];
 
-(*While doing the derivatives, we want to use super-indices. Afterwards, we can replace these again with the given indices*)
-externalIndexNames=Map[Unique["eI"]&,derivativeList];
-outputReplacements=Thread[externalIndexNames->Map[#[[1]]&,derivativeList]];
-derivativeListSIDX=Table[Head[derivativeList[[i]]][externalIndexNames[[i]]],{i,1,Length[derivativeList]}];
-
 (*We take them in reverse order.*)
-derivativeListSIDX=Reverse[derivativeListSIDX];
+derivativeListSIDX=Reverse[derivativeList];
 
 (*First, fix the indices in the input equation, i.e. make everything have unique names*)
 result=FixIndices[setup,expr];
@@ -1275,11 +1334,26 @@ result=ResolveDerivatives[setup,FTerm[FDOp[derivativeListSIDX[[pass]]]]**result]
 {pass,1,Length[derivativeList]}
 ];
 
-If[OptionValue[OutputLevel]===SuperIndexForm,
-Return[ {result,outputReplacements}];
+Return[result];
 ];
 
-Return[result//.outputReplacements];
+
+(* ::Input::Initialization:: *)
+MakeClassicalAction::noTruncation="The given setup does not have a truncation for S!";
+
+MakeClassicalAction[setup_]:=Module[
+{indices,i},
+AssertFSetup[setup];
+
+If[FreeQ[Keys[setup["Truncation"]],S],Message[MakeClassicalAction::noTruncation];Abort[]];
+
+FEq@@Map[
+(
+indices=Map[Unique["i"]&,#];
+FTerm[S[#,-indices]]**(FTerm@@Table[Construct[#[[i]],indices[[i]]],{i,1,Length[#]}])
+)&,
+OrderFieldList[setup,#]&/@setup["Truncation"][S]
+]
 ];
 
 
@@ -1287,6 +1361,35 @@ Return[result//.outputReplacements];
 WetterichEquation:=Module[{a,b},
 FEq[FTerm[Propagator[{AnyField,AnyField},{a,b}],Rdot[{AnyField,AnyField},{-a,-b}]/2]]
 ];
+
+
+(* ::Input::Initialization:: *)
+MakeDSE[setup_,field_]:=Module[
+{classAct,dS},
+
+AssertFSetup[setup];
+AssertDerivativeList[setup,{field}];
+
+(*Make a classical action*)
+classAct=MakeClassicalAction[setup];
+
+(*Take one derivative with "field" classical action*)
+dS=ResolveDerivatives[setup,FTerm[FDOp[field]]**classAct]//ReduceIndices[setup,#]&//ReduceIndices[setup,#]&;
+
+(*Separate powers out into factors in the FTerm. Need this to insert FDOp in the next step*)
+dS=dS//.Times[pre___,f1_[id1_],post___]:>NonCommutativeMultiply[pre,f1[id1],post];
+
+(*Insert \[Phi]^a->\[CapitalPhi]^a+G^ab\[Delta]/\[Delta]\[CapitalPhi]^b *)
+dS=dS/.(Map[
+#[id_]:>Module[{i},
+FEq[FTerm[#[id]],FTerm[Propagator[{#,AnyField},{id,i}],FDOp[AnyField[i]]]]
+]&
+,GetAllFields[setup]
+]);
+
+dS//ResolveDerivatives[setup,#]&
+];
+MakeDSE[A[x]]//.A[_]:>0//FPrint
 
 
 

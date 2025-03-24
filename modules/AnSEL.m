@@ -39,4 +39,206 @@ ModuleLoaded[AnSEL]=True;
 $FunKitDirectory=SelectFirst[Join[{FileNameJoin[{$UserBaseDirectory,"Applications","FunKit"}],FileNameJoin[{$BaseDirectory,"Applications","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","Applications","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","Packages","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","ExtraPackages","FunKit"}]},Select[$Path,StringContainsQ[#,"FunKit"]&]],DirectoryQ[#]&]<>"/";
 
 
+(* ::Input::Initialization:: *)
+FieldSetupIndices[setup_,field_]:=Module[{},
+List@@SelectFirst[
+Flatten@Values[setup["FieldSpace"]],
+Head[#]===field&
+]
+];
+
+
+(* ::Input::Initialization:: *)
+RouteIndices::undeterminedFields="Cannot route indices in expressions with undetermined fields.";
+RouteIndices::momentaFailed="Cannot route momenta in the given expression.";
+
+RouteIndices[setup_,expr_FTerm]:=Module[
+{openIndices,closedIndices,objects,
+ret=ReduceIndices[setup,expr],doFields,idx,a,
+indPos,assocField,subObj,subMom,subExtMom,
+indStruct,externalIndices,externalMomenta,
+f,momRepl,A1111111,AA111111,i,mom,loopMomenta
+},
+
+(*We first get all closed, open indices and all indexed objects.*)
+doFields=Thread[(#[a__]&/@GetAllFields[setup])->(Field[{#},{a}]&/@GetAllFields[setup])];
+openIndices=Sort@GetOpenSuperIndices[setup,ret];
+closedIndices=GetClosedSuperIndices[setup,ret];
+objects=ExtractObjectsWithIndex[setup,ret]//.doFields;
+
+(*If there are any undetermined fields, we cannot route indices.*)
+If[MemberQ[objects[[All,1]],AnyField,{1,4}],Message[RouteIndices::undeterminedFields];Abort[]];
+
+(*As a first step, we insert the correct index structures into all superindices and define momentum variables at every single vertex.
+We loop over all closed indices.*)
+Do[
+(*The indexed object we currently modify. There are always two and we simply grab the first.*)
+subObj=Select[objects,MemberQ[#,closedIndices[[idx]],Infinity]&][[1]];
+(*The position of the current index inside the subObj*)
+indPos=FirstPosition[subObj[[2]],closedIndices[[idx]]][[1]];
+(*See what kind of field is associated with the index*)
+assocField=subObj[[1,indPos]];
+(*Grab the index structure of this field from the setup and assign a new momentum variable*)
+indStruct=Map[If[MatchQ[#,_Symbol],Unique[SymbolName[#]],#]&,FieldSetupIndices[setup,assocField],{1,3}];
+indStruct[[1]]=loopMomentum[indStruct[[1]]];
+
+(*replace all occurences of the superindex with the fitting index structure. 
+We want to keep the index sign in the momenta, but remove it from the group indices*)
+ret=ret/.closedIndices[[idx]]->indStruct;
+ret=ret/.(-indStruct[[2]])->indStruct[[2]];
+objects=objects/.closedIndices[[idx]]->indStruct;
+objects=objects/.(-indStruct[[2]])->indStruct[[2]];
+
+,{idx,1,Length[closedIndices]}];
+
+(*Next, we treat the external superindices. We assign to each an open group structure and a new momentum p1,p2,... 
+Momentum conservation is already enforced here, i.e. \!\(
+\*SubscriptBox[\(\[Sum]\), \(i\)]
+\*SubscriptBox[\(p\), \(i\)]\)=0 and we choose Subscript[p, n]=-\!\(
+\*SubscriptBox[\(\[Sum]\), \(i < n\)]\(
+\*SubscriptBox[\(p\), \(i\)]\ for\ the\ last\ momentum\ \(
+\*SubscriptBox[\(p\), \(n\)]\(.\)\)\)\)*)
+externalIndices=Table[{},{idx,1,Length[openIndices]}];
+Do[
+(*see above*)
+subObj=Select[objects,MemberQ[#,openIndices[[idx]],Infinity]&][[1]];
+indPos=FirstPosition[subObj[[2]],openIndices[[idx]]][[1]];
+assocField=subObj[[1,indPos]];
+indStruct=Map[If[MatchQ[#,_Symbol],Symbol[SymbolName[#]<>ToString[idx]],#]&,FieldSetupIndices[setup,assocField],{1,3}];
+
+(*Subscript[p, n]=-\!\(
+\*SubscriptBox[\(\[Sum]\), \(i < n\)]
+\*SubscriptBox[\(p\), \(i\)]\)*)
+If[idx===Length[openIndices],indStruct[[1]]=-Total[Values[externalIndices][[;;idx-1,1]]]];
+
+ret=ret/.openIndices[[idx]]->indStruct;
+ret=ret/.(-indStruct)->indStruct;
+objects=objects/.openIndices[[idx]]->indStruct;
+objects=objects/.(-indStruct)->indStruct;
+
+(*This is information for the user, which we will return.*)
+externalIndices[[idx]]=openIndices[[idx]]->indStruct;
+
+,{idx,1,Length[openIndices]}];
+
+(*extract a list of all new external momenta*)
+externalMomenta=Values[externalIndices][[All,1]];
+
+(*Now, we do the momentum routing.*)
+Do[
+subObj=objects[[idx]];
+subMom=subObj[[2,All,1]];
+(*See if the object has any external (sub-)momenta*)
+subExtMom=Select[subMom,(ContainsAny[externalMomenta,makePosIdx/@Flatten[{#/.Plus[a_,b__]:>List[a,b]}]])&];
+
+(*if momentum conservation is already fulfilled, do nothing*)
+If[Total@subMom===0,Continue[]];
+
+(*Case 1: we have no external momentum anywhere in the legs of the current object*)
+If[Length[subExtMom]===0,
+(*for safety, we try to route our momenta through fermions. At 1-loop this is irrelevant, at n-loop it is not.*)
+f=FirstPosition[IsFermion[setup,#]&/@subObj[[1]],True][[1]];
+If[f==="NotFound",f=1];
+
+mom=Select[Flatten[{subObj[[2,f,1]]/.Plus[a_,b__]:>List[a,b]}],(MatchQ[#,loopMomentum[_]]||MatchQ[-#,loopMomentum[_]])&][[1]];
+momRepl=If[isNeg[mom],
+-mom->-mom+Total[subObj[[2,All,1]]],
+mom->mom-Total[subObj[[2,All,1]]]
+];
+
+objects=objects/.momRepl;
+ret=ret/.momRepl;
+
+Continue[];
+];
+
+(*Case 2: we have at least one momentum without an external one*)
+If[Length[subExtMom]<Length[subMom],
+(*for safety, we try to route our momenta through fermions.*)
+f=FirstPosition[
+Table[
+(IsFermion[setup,subObj[[1,i]]]&&ContainsNone[externalMomenta,makePosIdx/@Flatten[{subObj[[2,i,1]]/.Plus[a_,b__]:>List[a,b]}]])
+,{i,1,Length[subObj[[1]]]}]
+,True][[1]];
+(*If no fermions are present, simply grab the index which does not contain external momenta.*)
+If[f==="NotFound",
+f=FirstPosition[
+Table[(ContainsNone[externalMomenta,makePosIdx/@Flatten[{subObj[[2,i,1]]/.Plus[a_,b__]:>List[a,b]}]])
+,{i,1,Length[subObj[[1]]]}]
+,True][[1]];
+];
+
+mom=Select[Flatten[{subObj[[2,f,1]]/.Plus[a_,b__]:>List[a,b]}],(MatchQ[#,loopMomentum[_]]||MatchQ[-#,loopMomentum[_]])&][[1]];
+momRepl=If[isNeg[mom],
+-mom->-mom+Total[subObj[[2,All,1]]],
+mom->mom-Total[subObj[[2,All,1]]]
+];
+
+objects=objects/.momRepl;
+ret=ret/.momRepl;
+
+Continue[];
+];
+
+Abort[];
+,{idx,1,Length[objects]}];
+
+(*Sanity check to see that we did not make an error*)
+Do[
+subObj=objects[[idx]];
+If[Total[subObj[[2,All,1]]]=!=0,Message[RouteIndices::momentaFailed];Abort[]];
+,{idx,1,Length[objects]}];
+
+(*replace the loopMomenta[...] by l1, l2, ...*)
+ClearAll@@Table["l"<>ToString[idx],{idx,1,50}];
+loopMomenta=Cases[objects[[All,2,1]],loopMomentum[_],Infinity]//DeleteDuplicates;
+ret=ret/.Thread[loopMomenta->Table[Symbol["l"<>ToString[idx]],{idx,1,Length[loopMomenta]}]];
+loopMomenta=loopMomenta/.Thread[loopMomenta->Table[Symbol["l"<>ToString[idx]],{idx,1,Length[loopMomenta]}]];
+
+
+Return[<|
+"result"->ret,
+"externalIndices"->externalIndices,
+"loopMomenta"->loopMomenta
+|>];
+];
+
+RouteIndices[setup_,expr_FEq]:=Module[{results,ret,idx,subidx},
+results=RouteIndices[setup,#]&/@(List@@expr);
+
+(*All terms have the same loop momenta and external legs*)
+If[Equal@@Map[#["loopMomenta"]&,results]&&
+Equal@@Map[#["externalIndices"]&,results],
+Return[<|
+"result"->FEq@@Map[#["result"]&,results],
+"externalIndices"->results[[1]]["externalIndices"],
+"loopMomenta"->results[[1]]["loopMomenta"]
+|>]
+];
+
+(*All terms have the same external legs, but different loop orders*)
+If[Equal@@Map[#["externalIndices"]&,results],
+ret={results[[1]]};
+Do[
+For[subidx=1,subidx<=Length[ret]+1,subidx++,
+If[subidx===Length[ret]+1,
+AppendTo[ret,results[[idx]]];
+Break[];
+];
+If[ret[[subidx]]["loopMomenta"]===results[[idx]]["loopMomenta"],
+ret[[subidx,Key["result"]]]=FEq[ret[[subidx,Key["result"]]],results[[idx]]["result"]];
+Break[];
+];
+];
+,{idx,2,Length[results]}];
+Return[SortBy[ret,Length[#["loopMomenta"]]&]]
+];
+
+(*All terms are different*)
+Return[results];
+];
+(MakeDSE[A[x]]//.A[_]:>0)//Truncate;
+RouteIndices[Setup,%]
+
+
 
