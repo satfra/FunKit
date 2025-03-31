@@ -63,7 +63,7 @@ $userIndexedObjects={};
 
 $CorrelationFunctions:={Propagator,GammaN}\[Union]$userCorrelationFunctions;
 $OrderedObjects:=$CorrelationFunctions\[Union]{Rdot,S};
-$indexedObjects:=$OrderedObjects\[Union]{ABasis,VBasis,\[Gamma]}\[Union]$userIndexedObjects;
+$indexedObjects:=$OrderedObjects\[Union]{ABasis,VBasis,\[Gamma],Field}\[Union]$userIndexedObjects;
 $allObjects:={FMinus}\[Union]$indexedObjects
 
 $MaxDerivativeIterations=500;
@@ -78,6 +78,14 @@ AppendTo[$userIndexedObjects,name];
 $userIndexedObjects=DeleteDuplicates[$userIndexedObjects];
 Protect@@$allObjects;
 ];
+ShowIndexedObjects[]:=Print[TableForm[Sort@$indexedObjects]]
+
+AddCorrelationFunction[name_Symbol]:=Module[{},
+AppendTo[$userCorrelationFunctions,name];
+$userCorrelationFunctions=DeleteDuplicates[$userCorrelationFunctions];
+Protect@@$allObjects;
+];
+ShowCorrelationFunctions[]:=Print[TableForm[Sort@$CorrelationFunctions]]
 
 
 (* ::Input::Initialization:: *)
@@ -149,9 +157,18 @@ FTerm[first_,pre___,Times[a_,other2_],post___]/;NumericQ[first]&&NumericQ[a]&&He
 FTerm[first_,pre___,Times[a_,other2_],post___]/;Not[NumericQ[first]]&&NumericQ[a]&&Head[first]=!=FDOp:=FTerm[a,first,pre,other2,post]
 FTerm[first_,pre___,a_,post___]/;NumericQ[first]&&NumericQ[a]:=FTerm[first*a,pre,post]
 FTerm[first_,pre___,a_,post___]/;Not[NumericQ[first]]&&NumericQ[a]:=FTerm[a,first,pre,post]
+FTerm/:FTerm[]*FTerm[a_]:=FTerm[a]
+FTerm/:Power[FTerm[],n_]:=FTerm[]
 
 (*Pre-reduction of zero FTerms*)
 FTerm[___,0,___]:=FTerm[0]
+FTerm[pre___,FTerm[],post___]:=FTerm[pre,post]
+
+FTerm/:Plus[FTerm[a_],FTerm[b_]]:=FTerm[a+b];
+FTerm/:Plus[FTerm[],FTerm[b_]]:=FTerm[1+b];
+FTerm/:Times[FTerm[a_],FTerm[b_]]:=FTerm[a*b];
+FTerm/:Times[a_,FTerm[]]:=FTerm[a];
+FTerm/:Power[FTerm[a_],-1]:=FTerm[1/a];
 
 (*Reduction of immediately nested FTerms*)
 FTerm[pre___,FTerm[in__],post___]:=FTerm[pre,in,post] 
@@ -537,7 +554,7 @@ IscField[setup_,field_[__]]:=IscField[setup,field];
 IsAnticField[setup_,field_]:=MemberQ[GetAnticFields[setup],field];
 IsAnticField[setup_,field_[__]]:=IsAnticField[setup,field];
 
-IsGrassmann[setup_,field_]:=IsFermion[setup,field]||IsAntiFermon[setup,field];
+IsGrassmann[setup_,field_]:=IsFermion[setup,field]||IsAntiFermion[setup,field];
 
 
 (* ::Input::Initialization:: *)
@@ -689,6 +706,92 @@ Return[True];
 SuperIndicesValid[setup_,expr_FEq]:=SuperIndicesValid[setup,#]&/@expr
 SuperIndicesValid[setup_,expr_]:=(Message[type::error];Abort[])
 
+
+
+(* ::Input::Initialization:: *)
+replFields[setup_]:=Join[
+Thread[(#[a_]&/@GetAllFields[setup]):>Evaluate[(Field[{#},{a}]&/@GetAllFields[setup])]],
+Thread[(#[a_,b_List]&/@GetAllFields[setup]):>Evaluate[(Field[{#},{{a,b}}]&/@GetAllFields[setup])]]
+];
+unreplFields[setup_]:=Thread[(Field[{#},{a_}]&/@GetAllFields[setup]):>Evaluate[(#[a]&/@GetAllFields[setup])]]
+
+
+(* ::Input::Initialization:: *)
+GetSuperIndexTermTransformations::momentumConservation="Momentum conservation for the momentum `1` has been violated.";
+GetSuperIndexTermTransformations::multiContraction="The indices `1` have been contracted with more than one other object.";
+
+Unprotect[$momentum,$groupIndex];
+$momentum[-i_]:=-$momentum[i];
+Protect[$momentum,$groupIndex];
+
+GetSuperIndexTermTransformations::usage="Returns a set {fw,bw}, where fw is a transformation from explicit to super indices, and bw the backwards transformation.
+fw is a list of three lists. The fw[[1]] is a list that transforms the explicit index lists as they occur in the given expression, fw[[2]] transforms the momenta, fw[[3]] transforms the group indices. bw has the same structure.";
+
+GetSuperIndexTermTransformations[setup_,term_FTerm]:=Module[
+{doFields,allObj,idx,jdx,newObj,indexPosToChange,indicesToChange,newSuperIndices,
+repl,
+replForward,replBackward},
+
+(*Get all objects and bring them in standard form*)
+doFields=replFields[setup];
+allObj=ExtractObjectsWithIndex[setup,term]//.doFields;
+
+(*We find all positions where indices are given explicitly*)
+indexPosToChange=
+Map[
+Join[
+Position[#[[2]],{_Symbol|Times[-1,_Symbol],_List},{1}],
+Position[#[[2]],{_Symbol|Times[-1,_Symbol]},{1}]
+]&,allObj];
+indexPosToChange=Map[Flatten,indexPosToChange];
+If[Length[indexPosToChange]===0,Return[{{{},{},{}},{{},{},{}}}]];
+
+(*Next, we isolate the group indices and try to group according to these. If no group indices are present, we try to group by momenta.*)
+indicesToChange=Flatten[Table[allObj[[idx,2,indexPosToChange[[idx]]]],{idx,1,Length[allObj]}],1];
+indexPosToChange=PositionIndex[
+Join[
+(*group indices:*)
+Select[indicesToChange,Length[#]===2&][[All,2]],
+(*momenta:*)
+Abs[Select[indicesToChange,Length[#]===1&][[All]]]]/.Abs[a_]:>a
+];
+(*We assign each unique index group a new superindex*)
+newSuperIndices=Map[Unique["i"]&,indexPosToChange];
+repl=AssociationMap[indicesToChange[[indexPosToChange[Keys[#]]]]->Values[#]&,newSuperIndices];
+(*This is the resulting full replacement:*)
+repl=Flatten@KeyValueMap[
+If[Length[#1]===1,
+#1[[1]]->#2,
+If[Length[#1]===2,
+If[(-#1[[1,1]])=!=#1[[2,1]],Message[GetSuperIndexTermTransformations::momentumConservation,#1[[2,1]]];Abort[]];
+{#1[[1]]->#2,#1[[2]]->-#2},
+Message[GetSuperIndexTermTransformations::multiContraction,#1];Abort[]
+]
+]&
+,repl];
+(*Furthermore, we isolate the group index replacements and the momentum replacements:*)
+replForward={
+repl,
+Map[Keys[#][[1]]->$momentum[Values[#]]&,repl],
+Flatten@Table[
+If[Length[Keys[repl[[idx]]]]>1,
+Table[(Keys[repl[[idx]]][[2,jdx]]->$groupIndex[Values[repl[[idx]]],jdx])
+,{jdx,1,Length[Keys[repl[[idx]]][[2]]]}],{}
+]
+,{idx,1,Length[repl]}]
+};
+(*Finally, construct the back-transformation and return:*)
+replBackward=Map[Map[Values[#]->Keys[#]&,#]&,replForward];
+replBackward[[1]]=Join[Map[-Keys[#]->Join[{-Values[#][[1]]},Values[#][[2;;]]]&,replBackward[[1]]],replBackward[[1]]];
+Return[{replForward,replBackward}];
+];
+
+GetSuperIndexTermTransformations[setup_,eq_FEq]:=Module[{repl,replForward,replBackward},
+repl=Map[GetSuperIndexTermTransformations[setup,#]&,List@@eq];
+replForward={Join@@repl[[All,1,1]],Join@@repl[[All,1,2]],Join@@repl[[All,1,3]]};
+replBackward={Join@@repl[[All,2,1]],Join@@repl[[All,2,2]],Join@@repl[[All,2,3]]};
+Return[{replForward,replBackward}];
+];
 
 
 (* ::Input::Initialization:: *)
@@ -982,8 +1085,8 @@ allObj,closedIndices,i,allFields=GetAllFields[setup],
 idx,subObj,idxOccur,idxPos,ignore,notFoundCuri,doFields,a,
 undoFields
 },
-doFields=Thread[(#[a__]&/@GetAllFields[setup])->(Field[{#},{a}]&/@GetAllFields[setup])];
-undoFields=Thread[(Field[{#},{a__}]&/@GetAllFields[setup])->(#[a]&/@GetAllFields[setup])];
+doFields=replFields[setup];
+undoFields=unreplFields[setup];
 ret=ret//.doFields;
 
 (*Start off with the nested FTerms*)
@@ -1244,7 +1347,8 @@ ResolveFDOp[setup_,term_FTerm]:=Module[
 FDOpPos,
 termsNoFDOp,dF,
 idx,i,obj,ind,a,
-dTerms,nPre,nPost,ret,cTerm,doFields
+dTerms,nPre,nPost,ret,cTerm,doFields,
+fw,bw
 },
 
 (*We cannot proceed if any nested FDOp are present*)
@@ -1252,6 +1356,9 @@ If[MemberQ[(List@@rTerm),FTerm[pre___,FDOp[__],post___],{1,5}],Message[ResolveFD
 
 (*If no derivatives are present, do nothing*)
 If[FreeQ[rTerm,FDOp[__]],Return[rTerm]];
+
+{fw,bw}=GetSuperIndexTermTransformations[setup,term];
+rTerm=rTerm/.replFields[setup]/.fw[[1]]/.fw[[3]]/.fw[[2]]/.unreplFields[setup];
 
 FDOpPos=Length[rTerm]-FirstPosition[Reverse@(List@@rTerm),FDOp[_]][[1]]+1;
 termsNoFDOp=rTerm[[1;;FDOpPos-1]]**rTerm[[FDOpPos+1;;]];
@@ -1268,7 +1375,7 @@ nPost=Length[rTerm]-FDOpPos;
 (*commuting it past*)
 cTerm=1;
 dTerms=Table[0,{idx,1,nPost}];
-doFields=Thread[(#[a__]&/@GetAllFields[setup])->(#[{#},{a}]&/@GetAllFields[setup])];
+doFields=replFields[setup];
 Do[
 dTerms[[idx]]=termsNoFDOp[[;;nPre+idx-1]]**FTerm[cTerm*FunctionalD[setup,termsNoFDOp[[nPre+idx]],dF]]**termsNoFDOp[[nPre+idx+1;;]];
 
@@ -1285,6 +1392,7 @@ Transpose[{Flatten[obj[[All,1]]],Flatten[obj[[All,2]]]}]
 ];
 
 dTerms=ReduceIndices[setup,FEq@@dTerms];
+dTerms=dTerms/.replFields[setup]/.bw[[1]]/.bw[[3]]/.bw[[2]]/.unreplFields[setup];
 
 Return[ReduceFEq[setup,dTerms]];
 ];
@@ -1325,14 +1433,17 @@ derivativeListSIDX
 },
 
 AssertFSetup[setup];
-AssertFEq[expr];
+AssertFEq[FEq[expr]];
 AssertDerivativeList[setup,derivativeList];
 
 (*We take them in reverse order.*)
 derivativeListSIDX=Reverse[derivativeList];
 
 (*First, fix the indices in the input equation, i.e. make everything have unique names*)
-result=FixIndices[setup,expr];
+result=FixIndices[setup,FEq[expr]];
+
+If[Length[derivativeListSIDX]===0,Return[ResolveDerivatives[setup,result]]];
+
 (*Perform all the derivatives, one after the other*)
 Do[
 result=ResolveDerivatives[setup,FTerm[FDOp[derivativeListSIDX[[pass]]]]**result]
@@ -1395,7 +1506,6 @@ FEq[FTerm[#[id]],FTerm[Propagator[{#,AnyField},{id,i}],FDOp[AnyField[i]]]]
 
 dS//ResolveDerivatives[setup,#]&
 ];
-MakeDSE[A[x]]//.A[_]:>0//FPrint
 
 
 

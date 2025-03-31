@@ -20,11 +20,14 @@
 
 
 (* ::Input::Initialization:: *)
-FPrint::usage=""
+FPrint::usage="";
 FPrint[expr_]/;Head[$GlobalSetup]=!=Symbol:=FPrint[$GlobalSetup,expr];
 
-FTex::usage=""
+FTex::usage="";
 FTex[expr_]/;Head[$GlobalSetup]=!=Symbol:=FTex[$GlobalSetup,expr];
+
+PlotDiagrams::usage="";
+PlotDiagrams[expr_]/;Head[$GlobalSetup]=!=Symbol:=PlotDiagrams[$GlobalSetup,expr];
 
 
 (* ::Input::Initialization:: *)
@@ -333,7 +336,7 @@ TeXDelimited[prefix,##,postfix,
 ]&@@body
 ];
 
-Format[FEq[a___],TeXForm]:=If[Length[Flatten[(List@@#&)/@{a}]]<=10,
+Format[FEq[a___],TeXForm]:=If[Length[Flatten[(List@@#&)/@{a}]]<=8,
 TeXDelimited["",a,"",
 "DelimSeparator"->"\n","BodySeparator"->"\n\\,+\\,\n",
 "BodyConverter"->(ToString[Format[#,TeXForm]]&)],
@@ -402,150 +405,116 @@ FPrint[setup_,expr_]:=Print[FTex[setup,expr]//MaTeX];
 
 
 (* ::Input::Initialization:: *)
-GetEdgeRule[setup_,vertices_,fields_]:=Module[{fermions,bosons,sel},
-If[Length[obj]!=Length[fields]||Length[obj]!=2,Print["Mismatch!"];Abort[]];
-fermions=GetFermionPairs[setup];
-bosons=GetBosons[setup];
-
-If[MemberQ[fermions,fields[[1]],Infinity]&&MemberQ[fermions,fields[[2]],Infinity],
-sel=Select[fermions,MemberQ[#,fields[[1]],Infinity]&][[1]];
-If[fields===sel,
-Return[obj[[1]]->obj[[2]]],
-Return[obj[[2]]->obj[[1]]];
-]
-];
-
-If[MemberQ[bosons,fields[[1]],Infinity]&&MemberQ[bosons,fields[[2]],Infinity],
-Return[obj[[1]]<->obj[[2]]]
-];
-
-Print["fields ",fields," not found!"];
-Abort[];
+MakeEdgeRule[setup_,obj_]:=Module[{},
+If[IsAntiFermion[setup,obj[[1,1]]]&&IsFermion[setup,obj[[1,2]]],Return [obj[[2,1]]->obj[[2,2]]]];
+If[IsFermion[setup,obj[[1,1]]]&&IsAntiFermion[setup,obj[[1,2]]],Return [obj[[2,2]]->obj[[2,1]]]];
+Return [obj[[2,1]]<->obj[[2,2]]];
 ];
 
 
 (* ::Input::Initialization:: *)
-MakeEdgeStyle[style_,setup_]:=Module[{corStyle,havePairs,allPairs,missingPairs},
-corStyle=style/.{
-a_[c_,d_]/;
-a===Rule&&Head[c]=!=List:>
-Sort[{c,GetPartnerField[c,setup]}]->d};
-corStyle=corStyle/.{a_[{c__},d_]/;a===Rule:>Sort[{c}]->d};
-
-havePairs=corStyle/.{a_[{c__},d_]/;a===Rule:>{c}};
-allPairs=Join[Map[{#,#}&,GetBosons[setup]],Map[Sort,GetFermionPairs[setup]]];
-missingPairs=DeleteCases[allPairs,Alternatives@@havePairs];
-corStyle=Join[corStyle,Thread[missingPairs->ColorData[97,"ColorList"][[1;;Length[missingPairs]]]]];
-Return[corStyle]
-];
-
-
-(* ::Input::Initialization:: *)
-PlotOneSuperindexDiagram[diag_,setup_,OptionsPattern[]]:=Module[
-{ShowEdgeLabels,EdgeStyle,
-transformedDiag,vertices,edges,prefactor,
-externalLegs,externalIndices,idx,field,partnerField,outerIdx,externalLeg,
-regulatorVertex,curVertex,rules,corStyle,cross,
-explVertices,explEdges,vertexShapes,vertexLabels,edgeLabels,
-graph},
-
-AssertIsSuperindexDiagram[diag];
-
-EdgeStyle=OptionValue["EdgeStyle"];
-ShowEdgeLabels=OptionValue["ShowEdgeLabels"];
-
-transformedDiag=Map[
-If[Head[#]===Association,
-If[#["type"]=="Propagator",
-<|
-"Rule"->GetEdgeRule[{#["indices"][[1,2]],#["indices"][[2,2]]},{#["indices"][[1,1]],#["indices"][[2,1]]},setup],
-"Style"->Sort[{#["indices"][[1,1]],#["indices"][[2,1]]}]
-|>,
-<|
-"Vertex"->#["indices"][[All,2]],
-"Style"->#["type"]
-|>],
-#]&
-,diag];
-
-vertices=Select[transformedDiag,MemberQ[Keys[#],"Vertex",Infinity]&];
-edges=Select[transformedDiag,MemberQ[Keys[#],"Rule",Infinity]&];
-prefactor=("Prefactor"/.transformedDiag[[1]])[[1]];
-
-externalLegs=GetExternalIndices[diag];
-externalIndices={};
-For[idx=1,idx<=Length[externalLegs],idx++,
-field=externalLegs[[idx,1]];
-partnerField=GetPartnerField[field,setup];
-outerIdx=Unique[externalLeg];
-externalIndices=Join[externalIndices,{outerIdx}];
-vertices=vertices\[Union]{<|
-"Vertex"->{{outerIdx}},
-"Style"->externalLeg[field]
-|>};
-edges=edges\[Union]{<|
-"Rule"->GetEdgeRule[{externalLegs[[idx,2]],{outerIdx}},{field,partnerField},setup],"Style"->Sort[{field,partnerField}]
-|>};
-];
-
-regulatorVertex=0;
-For[idx=1,idx<=Length[vertices],idx++,
-curVertex=vertices[[idx]]["Vertex"];
-If[Length[curVertex]>1,
-rules=Map[#->curVertex[[1]]&,curVertex[[2;;]]];
-vertices=vertices/.rules;
-edges=edges/.rules;
-];
-vertices[[idx]]=<|"Vertex"->vertices[[idx]]["Vertex"][[1]],"Style"->vertices[[idx]]["Style"]|>;
-If[vertices[[idx]]["Style"]=="Regulatordot",regulatorVertex=vertices[[idx]]["Vertex"]];
-];
-
-corStyle=MakeEdgeStyle[EdgeStyle,setup];
-
- cross[r_] := Graphics[{Thick, Line[{{r / Sqrt[2], r / Sqrt[2]
+ crosscircle[r_] := Graphics[{Thick, Line[{{r / Sqrt[2], r / Sqrt[2]
             }, {-r / Sqrt[2], -r / Sqrt[2]}}], Line[{{r / Sqrt[2], -r / Sqrt[2]},
              {-r / Sqrt[2], r / Sqrt[2]}}], Circle[{0, 0}, r]}];
+ cross[r_] := Graphics[{ Line[{{r / Sqrt[2], r / Sqrt[2]
+            }, {-r / Sqrt[2], -r / Sqrt[2]}}], Line[{{r / Sqrt[2], -r / Sqrt[2]},
+             {-r / Sqrt[2], r / Sqrt[2]}}]}];
+$standardVertexStyles={
+GammaN->Graphics@Style[Disk[{0,0},0.5],Gray],
+S->Graphics@Style[Disk[{0,0}],Black],
+Rdot->crosscircle[1],
+Field->cross[1]
+};
+$standardVertexSize={
+GammaN->0.15,
+S->0.05,
+Rdot->0.25,
+Field->0.1
+};
 
-explVertices=Map[#["Vertex"]&,vertices];
-vertexShapes=Join[
-{regulatorVertex->cross[1]}
-];
-vertexLabels=Map[
-#["Vertex"]->(#["Style"]/.a_[b_]:>b)&
-,
-Select[vertices,Head[#["Style"]]===externalLeg&]
-];
-explEdges=Map[Style[#["Rule"],#["Style"]/.corStyle]&,edges];
-edgeLabels=If[ShowEdgeLabels,
-Map[#["Rule"]->ToString[#["Style"][[1]]]<>ToString[#["Style"][[2]]]&,edges],
-{}
-];
 
-Return[
-{prefactor,
-graph=Graph[explVertices,explEdges];
-Graph[graph,
-VertexShape->vertexShapes,
-VertexLabels->vertexLabels,
-VertexSize -> {regulatorVertex -> Medium},
-EdgeLabels->edgeLabels,
-EdgeShapeFunction->{x_\[DirectedEdge]x_:>arcFunc[graph,20.0],x_\[UndirectedEdge]x_:>arcFuncUn[graph,20.0]},
-PerformanceGoal->"Quality"
+(* ::Input::Initialization:: *)
+PlotDiagrams[setup_,diag_FTerm]:=Module[
+{PossibleVertices,PossibleEdges,Styles,
+allObj,fieldObj,vertices,edges,vertexReplacements,graph,phantomVertices,edgeFields,
+fieldVertices,fieldEdges,fieldEdgeFields,
+externalVertices,externalEdges,externalFields,idx,prefactor,doFields,eWeights},
+doFields=replFields[setup];
+
+PossibleVertices=Join[{GammaN,S,Rdot,Field},
+If[KeyExistsQ[setup,"DiagramStyling"]&&KeyExistsQ[setup["DiagramStyling"],"Vertices"],
+setup["DiagramStyling"]["Vertices"],{}]];
+PossibleEdges=Join[{Propagator},
+If[KeyExistsQ[setup,"DiagramStyling"]&&KeyExistsQ[setup["DiagramStyling"],"Edges"],
+setup["DiagramStyling"]["Edges"],{}]];
+Styles=If[KeyExistsQ[setup,"DiagramStyling"]&&KeyExistsQ[setup["DiagramStyling"],"Styles"],
+setup["DiagramStyling"]["Styles"],
+Thread[(#->ColorData[97,"ColorList"][[1;;Length[#]]])&@DeleteDuplicates[GetAllFields[setup]/.Map[#[[1]]->#[[2]]&,GetFieldPairs[setup]]]]
+];
+Styles=Join[Styles,Map[GetPartnerField[setup,#[[1]]]->#[[2]]&,Select[Styles,HasPartnerField[setup,#[[1]]]&]]];
+
+allObj=ExtractObjectsWithIndex[setup,diag]//.doFields;
+fieldObj=Flatten[Select[allObj,Head[#]===Field&]/.Field[{f_},{i_}]:>Module[{oi},{Propagator[{f,GetPartnerField[setup,f]},{oi,i}],Field[{f},{oi}]}]];
+allObj=Select[allObj,Head[#]=!=Field&];
+
+(*prepare vertices*)
+vertices=Select[allObj,
+MemberQ[PossibleVertices,Head[#]]&&
+(FreeQ[PossibleEdges,Head[#]]||Length[#[[2]]]=!=2)&
+];
+vertexReplacements=Flatten@Module[{v},Map[(v=Unique["v"];Map[(makePosIdx[#]->v)&,#[[2]]])&,vertices]];
+vertices=Map[Head[#]@@((makePosIdx/@#[[2]]/.vertexReplacements)//DeleteDuplicates)&,vertices];
+
+(*Props and vertices for attached fields*)
+fieldVertices=Select[fieldObj,(Head[#]===Field)&];
+fieldVertices=Map[Head[#]@@((makePosIdx/@#[[2]]/.vertexReplacements)//DeleteDuplicates)&,fieldVertices];
+fieldEdges=Select[fieldObj,(Head[#]=!=Field)&];
+fieldEdgeFields=Table[SelectFirst[fieldEdges[[idx,1]],MemberQ[Styles,#,Infinity]&],{idx,1,Length[fieldEdges]}];
+fieldEdges=Map[MakeEdgeRule[setup,#]&,fieldEdges/.vertexReplacements];
+fieldEdges=Table[Style[fieldEdges[[idx]],##]&@@Flatten@{fieldEdgeFields[[idx]]/.Styles},{idx,1,Length[fieldEdges]}];
+
+(*prepare edges*)
+edges=Select[allObj,
+MemberQ[PossibleEdges,Head[#]]&&
+Length[#[[2]]]===2&
+];
+edgeFields=Table[SelectFirst[edges[[idx,1]],MemberQ[Styles,#,Infinity]&],{idx,1,Length[edges]}];
+edges=Map[MakeEdgeRule[setup,#]&,edges/.vertexReplacements];
+edges=Table[Style[edges[[idx]],##]&@@Flatten@{edgeFields[[idx]]/.Styles},{idx,1,Length[edges]}];
+
+(*Add additional vertices for external indices*)
+externalVertices=GetOpenSuperIndices[setup,diag];
+externalFields=Table[SelectFirst[allObj,MemberQ[makePosIdx/@#[[2]],externalVertices[[idx]]]&],{idx,1,Length[externalVertices]}];
+externalFields=Table[
+externalFields[[idx,1,FirstPosition[makePosIdx/@externalFields[[idx,2]],externalVertices[[idx]]][[1]]]]
+,{idx,1,Length[externalVertices]}];
+externalEdges=Table[
+MakeEdgeRule[setup,Propagator[{GetPartnerField[setup,externalFields[[idx]]],externalFields[[idx]]},{externalVertices[[idx]],externalVertices[[idx]]/.vertexReplacements}]]
+,{idx,1,Length[externalVertices]}];
+externalEdges=Table[Style[externalEdges[[idx]],##]&@@Flatten@{externalFields[[idx]]/.Styles},{idx,1,Length[externalEdges]}];
+
+phantomVertices=Table[Symbol["phantom"<>ToString[idx]],{idx,1,Length[edges]}];
+(*edges=Flatten@Table[{Head[edges[[idx]]][edges[[idx,1]],phantomVertices[[idx]]],Head[edges[[idx]]][phantomVertices[[idx]],edges[[idx,2]]]},{idx,1,Length[edges]}];*)
+
+(*get the prefactor*)
+prefactor=Times@@(diag/.doFields/.Map[Blank[#]->1&,Join[{Field},$allObjects]]);
+
+prefactor*Graph[Join[vertices[[All,1]],externalVertices,fieldVertices[[All,1]]],Join[edges,externalEdges,fieldEdges],
+VertexShape->Join[
+Thread[vertices[[All,1]]->(vertices[[All,0]]/.$standardVertexStyles)],
+Thread[externalVertices->Map[Graphics@Style[Disk[{0,0},0.0],Gray]&,externalVertices]],
+Thread[fieldVertices[[All,1]]->(fieldVertices[[All,0]]/.$standardVertexStyles)]
+],
+VertexSize->Thread[vertices[[All,1]]->(vertices[[All,0]]/.$standardVertexSize)],
+GraphLayout->{"SpringElectricalEmbedding"},
+PerformanceGoal->"Quality",
+ImageSize->Small,
+EdgeStyle->Arrowheads[{{.07,.6}}]
 ]
-}
 ];
-];
-Options[PlotOneSuperindexDiagram]={"ShowEdgeLabels"->False,"EdgeStyle"->{}};
 
-PlotSuperindexDiagram[diags_List,setup_,a___]:=Module[{},
-If[AllTrue[diags,TestIsSuperindexDiagram],
-Return[Map[PlotOneSuperindexDiagram[#,setup,a]&,diags]];
-];
-If[TestIsSuperindexDiagram[diags],
-Return[PlotOneSuperindexDiagram[diags,setup,a]];
-];
-Print["PlotSuperindexDiagram: diagram argument is not a superindex diagram or a list thereof!"];
-Abort[];
+PlotDiagrams[setup_,expr_FEq]:=Module[{},
+Plus@@(PlotDiagrams[setup,#]&/@expr)
 ];
 
 

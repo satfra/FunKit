@@ -22,8 +22,11 @@
 (* ::Input::Initialization:: *)
 SetLoopMomentumName::usage=""
 
-RouteIndices::usage=""
-RouteIndices[expr_FEq]/;Head[$GlobalSetup]=!=Symbol:=RouteIndices[$GlobalSetup,expr];
+Route::usage=""
+Route[expr_FEq]/;Head[$GlobalSetup]=!=Symbol:=Route[$GlobalSetup,expr];
+
+FSimplify::usage=""
+FSimplify[expr_FEq]/;Head[$GlobalSetup]=!=Symbol:=FSimplify[$GlobalSetup,expr];
 
 
 (* ::Input::Initialization:: *)
@@ -77,10 +80,10 @@ Head[#]===field&
 
 
 (* ::Input::Initialization:: *)
-RouteIndices::undeterminedFields="Cannot route indices in expressions with undetermined fields.";
-RouteIndices::momentaFailed="Cannot route momenta in the given expression.";
+Route::undeterminedFields="Cannot route indices in expressions with undetermined fields.";
+Route::momentaFailed="Cannot route momenta in the given expression.";
 
-RouteIndices[setup_,expr_FTerm]:=Module[
+Route[setup_,expr_FTerm]:=Module[
 {openIndices,closedIndices,objects,
 ret=ReduceFTerm[setup,ReduceIndices[setup,expr]],doFields,idx,a,
 indPos,assocField,subObj,subMom,subExtMom,
@@ -89,13 +92,13 @@ f,momRepl,A1111111,AA111111,i,mom,loopMomenta
 },
 
 (*We first get all closed, open indices and all indexed objects.*)
-doFields=Thread[(#[a__]&/@GetAllFields[setup])->(Field[{#},{a}]&/@GetAllFields[setup])];
+doFields=replFields[setup];
 openIndices=Sort@GetOpenSuperIndices[setup,ret];
 closedIndices=GetClosedSuperIndices[setup,ret];
 objects=ExtractObjectsWithIndex[setup,ret]//.doFields;
 
 (*If there are any undetermined fields, we cannot route indices.*)
-If[MemberQ[objects[[All,1]],AnyField,{1,4}],Message[RouteIndices::undeterminedFields];Abort[]];
+If[MemberQ[objects[[All,1]],AnyField,{1,4}],Message[Route::undeterminedFields];Abort[]];
 
 (*As a first step, we insert the correct index structures into all superindices and define momentum variables at every single vertex.
 We loop over all closed indices.*)
@@ -214,7 +217,7 @@ Abort[];
 (*Sanity check to see that we did not make an error*)
 Do[
 subObj=objects[[idx]];
-If[Total[subObj[[2,All,1]]]=!=0,Message[RouteIndices::momentaFailed];Abort[]];
+If[Total[subObj[[2,All,1]]]=!=0,Message[Route::momentaFailed];Abort[]];
 ,{idx,1,Length[objects]}];
 
 (*replace the loopMomenta[...] by l1, l2, ...*)
@@ -229,8 +232,8 @@ Return[<|
 |>];
 ];
 
-RouteIndices[setup_,expr_FEq]:=Module[{results,ret,idx,subidx},
-results=RouteIndices[setup,#]&/@(List@@expr);
+Route[setup_,expr_FEq]:=Module[{results,ret,idx,subidx},
+results=Route[setup,#]&/@(List@@expr);
 
 (*All terms have the same loop momenta and external legs*)
 If[Equal@@Map[#["loopMomenta"]&,results]&&
@@ -262,6 +265,264 @@ Return[SortBy[ret,Length[#["loopMomenta"]]&]]
 
 (*All terms are different*)
 Return[results];
+];
+
+
+(* ::Input::Initialization:: *)
+(*Get viable starting points for a comparison of two diagrams*)
+StartPoints[setup_,t1_FTerm,t2_FTerm]:=Module[
+{obj1,obj2,count,
+desired,sList,
+match1,match2,
+doFields},
+doFields=replFields[setup];
+
+(*Get all sub-objects inside the terms*)
+obj1=Reverse@Sort@ExtractObjectsWithIndex[setup,t1]/.doFields;
+obj2=Reverse@Sort@ExtractObjectsWithIndex[setup,t2]/.doFields;
+
+(*If the objects (with field content) do not match, they are not identical.*)
+If[
+Sort@Map[Head[#][Sort@#[[1]]]&,obj1]=!=Sort@Map[Head[#][Sort@#[[1]]]&,obj2],
+Return[{False,Null,Null}]
+];
+
+(*Otherwise, we check which object is the "rarest"*)
+sList=Map[Head[#][#[[1]]]&,obj1];
+count=Counts[sList];
+desired=Keys[count][[PositionSmallest[Values[count]][[1]]]];
+match1=Select[obj1,(Head[#][#[[1]]]===desired)&];
+match2=Select[obj2,(Head[#][#[[1]]]===desired)&];
+
+(*return all possible starting points *)
+Return[{True,match1,match2}]
+];
+
+
+(* ::Input::Initialization:: *)
+(*Find all objects following the closed indices attached to the object curPos*)
+IterateDiagram[setup_Association,allObj_,closedIndices__,curPos_,entryIdx_]:=Module[
+{otherIndices,followObjects,i},
+(*All indices except the one we entered with*)
+otherIndices=DeleteCases[makePosIdx/@curPos[[2]],entryIdx];
+otherIndices=Intersection[otherIndices,closedIndices];
+(*all objects containing the otherIndices*)
+followObjects=Table[
+Select[DeleteCases[allObj,curPos],MemberQ[#[[2]],otherIndices[[i]],Infinity]&][[1]],
+{i,1,Length[otherIndices]}];
+Return[{otherIndices,followObjects}]
+];
+
+
+(* ::Input::Initialization:: *)
+(*maximum accepted loop length.*)
+$MaxIterLoop=100;
+TermsEqualAndSum::exceededLoopLimit="Exceeded the maximum allowed length of a loop! ("<>ToString[$MaxIterLoop]<>")";
+
+TermsEqualAndSum[setup_,
+MallObjt1_,cidxt1_,oidxt1_,Mmemory1_,entry1_,
+MallObjt2_,cidxt2_,oidxt2_,Mmemory2_,entry2_,Msign2_
+]:=Module[
+{allObjt1=MallObjt1,curIdx1,curPos1,nextInd1,nextPos1,memory1=Mmemory1,assocFields1,
+allObjt2=MallObjt2,curIdx2,curPos2,nextInd2,nextPos2,memory2=Mmemory2,assocFields2,sign2=Msign2,
+iter=1,idx,jdx,viableBranches,branchResult,branchSign,branchItRepl,branchObj},
+
+curIdx1=makePosIdx@entry1;
+curIdx2=makePosIdx@entry2;
+curPos1=memory1[[-1]];
+curPos2=memory2[[-1]];
+
+While[iter<$MaxIterLoop,
+
+(*Take a single step forward in the terms*)
+{nextInd1,nextPos1}=IterateDiagram[setup,allObjt1,cidxt1,oidxt1,curPos1,curIdx1];
+{nextInd2,nextPos2}=IterateDiagram[setup,allObjt2,cidxt2,oidxt2,curPos2,curIdx2];
+
+(*If the (set of) next object(s) is different for 1 and 2, we can immediately abort.*)
+If[Sort@Map[Head[#][Sort[#[[1]]]]&,nextPos1]=!=Sort@Map[Head[#][Sort[#[[1]]]]&,nextPos2],
+Return[{False,allObjt2}]
+];
+
+(*Case 1: There is only a single object following*)
+If[Length[nextInd1]===1,
+(*Check if the open indices aggree*)
+If[Sort@Intersection[oidxt1,makePosIdx/@nextPos1[[1,2]]]=!=Sort@Intersection[oidxt2,makePosIdx/@nextPos2[[1,2]]],Return[{False,allObjt2}]];
+
+(*Check if we closed a loop*)
+If[FirstPosition[memory1,nextPos1[[1]]]===FirstPosition[memory2,nextPos2[[1]]]&&NumericQ[FirstPosition[memory1,nextPos1[[1]]][[1]]],
+Return[{sign2,allObjt2}]];
+(*Closed one loop, but not the other*)
+If[FirstPosition[memory1,nextPos1[[1]]]=!=FirstPosition[memory2,nextPos2[[1]]],
+Return[{False,allObjt2}]];
+
+(*step forward*)
+curIdx1=nextInd1[[1]];curPos1=nextPos1[[1]];
+curIdx2=nextInd2[[1]];curPos2=nextPos2[[1]];
+
+(*update the memory*)
+AppendTo[memory1,curPos1];
+AppendTo[memory2,curPos2];
+
+iter++;
+Continue[];
+];
+
+(*Case 2: End of the line.*)
+If[Length[nextInd1]===0,Return[{sign2,allObjt2}]];
+
+(*Case 3: Branching point.*)
+If[Length[nextInd1]>1,
+
+(*We need to build all possible combinations between the "next" indices and follow these separately, until one of them fits.*)
+assocFields1=curPos1[[1,FirstPosition[curPos1[[2]],#][[1]]]]&/@nextInd1;
+assocFields2=curPos2[[1,FirstPosition[curPos2[[2]],#][[1]]]]&/@nextInd2;
+viableBranches=Map[Transpose[{Transpose@{nextInd1,assocFields1,nextPos1},#}]&,Permutations[Transpose@{nextInd2,assocFields2,nextPos2}]];
+viableBranches=Select[viableBranches,AllTrue[#,(#[[1,2]]===#[[2,2]])&]&];
+
+For[idx=1,idx<=Length[viableBranches],idx++,
+branchSign=sign2;
+branchObj=allObjt2;
+Table[
+{branchSign,branchItRepl}=RearrangeFields[setup,curPos1,curPos2,viableBranches[[idx,jdx,All,1]]];
+branchObj=branchObj/.curPos2->branchItRepl;
+{branchSign,branchObj}=TermsEqualAndSum[setup,
+allObjt1,cidxt1,oidxt1,Append[memory1,viableBranches[[idx,jdx,1,3]]],viableBranches[[idx,jdx,1,1]],
+allObjt2,cidxt2,oidxt2,Append[memory2,viableBranches[[idx,jdx,2,3]]],viableBranches[[idx,jdx,2,1]],branchSign
+]
+,{jdx,1,Length[viableBranches[[idx]]]}
+];
+If[AnyTrue[branchResult,#===False&],Continue[]];
+Return[{branchSign,branchObj}];
+];
+
+Return[{False,allObjt2}];
+];
+
+(*Nothing should lead here*)
+Abort[];
+];
+
+(*Nothing should lead here*)
+Message[TermsEqualAndSum::exceededLoopLimit];Abort[];
+];
+
+
+(* ::Input::Initialization:: *)
+RearrangeFields[setup_,t1_,t2_,equiv_]:=Module[{ipos1,ipos2,idx,sign,newt2},
+ipos1=FirstPosition[makePosIdx/@t1[[2]],equiv[[1]]][[1]];
+ipos2=FirstPosition[makePosIdx/@t2[[2]],equiv[[2]]][[1]];
+
+(*nothing to do:*)
+If[ipos1===ipos2,Return[{1,t2}]];
+
+sign=Times@@If[ipos2>ipos1,
+(*commute pos2 backwards*)
+Table[
+CommuteSign[setup,t2[[1,ipos2]],t2[[1,ipos2-idx]]]
+,{idx,1,ipos2-ipos1}],
+(*commute pos2 forwards*)
+Table[
+CommuteSign[setup,t2[[1,ipos2]],t2[[1,ipos2+idx]]]
+,{idx,1,ipos1-ipos2}]
+];
+
+newt2=Head[t2][
+Insert[Delete[t2[[1]],ipos2],t2[[1,ipos2]],ipos1],
+Insert[Delete[t2[[2]],ipos2],t2[[2,ipos2]],ipos1]
+];
+
+Return[{sign,newt2}];
+];
+
+
+(* ::Input::Initialization:: *)
+TermsEqualAndSum::undeterminedFields="Error: Cannot equate terms if they are not fully truncated, i.e. contain instances of AnyField.";
+TermsEqualAndSum[setup_,it1_FTerm,it2_FTerm]:=Module[
+{t1=ReduceIndices[setup,it1],t2=ReduceIndices[setup,it2],
+startPoints,doFields,
+allObjt1,allObjt2,
+cidxt1,cidxt2,oidxt1,oidxt2,
+startt1,startt1fields,cidxstartt1,
+startt2,startt2fields,cidxstartt2,branchAllObjt2,
+idx,jdx,equal=False,startsign,a},
+
+If[MemberQ[t1,AnyField,Infinity],Message[TermsEqualAndSum::undeterminedFields];Abort[]];
+
+(*Get all the possible starting points for the search*)
+startPoints = StartPoints[setup,t1,t2];
+If[Not[startPoints[[1]]],Return[False]];
+
+doFields=replFields[setup];
+
+(*collect objects for both terms*)
+allObjt1=ExtractObjectsWithIndex[setup,t1]/.doFields;
+allObjt2=ExtractObjectsWithIndex[setup,t2]/.doFields;
+cidxt1=GetClosedSuperIndices[setup,t1];
+cidxt2=GetClosedSuperIndices[setup,t2];
+oidxt1=GetOpenSuperIndices[setup,t1];
+oidxt2=GetOpenSuperIndices[setup,t2];
+
+(*We pick the first candidate for t1 and iterate over all candidates for t2.*)
+startt1=startPoints[[2,1]];
+(*starting indices can only be closed indices! We pick these out with the following 4 commands*)
+startt1fields=startt1[[1]];
+cidxstartt1=Map[MemberQ[cidxt1,makePosIdx@#]&,startt1[[2]]];
+startt1fields=Pick[startt1fields,cidxstartt1];
+cidxstartt1=makePosIdx/@Pick[startt1[[2]],cidxstartt1];
+
+(*If the terms are equal for any starting candidates for t2, we have succeeded*)
+For[idx=1,idx<=Length[startPoints[[3]]],idx++,
+(*We need to identify all possible insertion points in t2 that fit the insertion in t1*)
+startt2=startPoints[[3,idx]];
+(*starting indices can only be 1. closed indices 2. have same field content as the starting point in t1. We pick these out with the following 2 commands*)
+cidxstartt2=Map[(MemberQ[cidxt2,#[[1]]]&&#[[2]]===startt1fields[[1]])&,Transpose[{makePosIdx/@startt2[[2]],startt2[[1]]}]];
+cidxstartt2=Pick[makePosIdx/@startt2[[2]],cidxstartt2];
+
+For[jdx=1,jdx<=Length[cidxstartt2],jdx++,
+(*re-order the starting point so that it fits the first.*)
+{startsign,branchAllObjt2}=RearrangeFields[setup,startt1,startt2,{cidxstartt1[[1]],cidxstartt2[[jdx]]}];
+branchAllObjt2=allObjt2/.startt2->branchAllObjt2;
+
+(*iterate the diagram*)
+{equal,branchAllObjt2}=TermsEqualAndSum[setup,
+allObjt1,cidxt1,oidxt1,{startt1},cidxstartt1[[1]],
+branchAllObjt2,cidxt2,oidxt2,{startt2},cidxstartt2[[jdx]],startsign
+];
+
+(*If we found an equality, break out*)
+If[equal=!=False,Break[]];
+Print[jdx];
+];
+
+If[equal=!=False,Break[]];
+];
+
+(*If equal===False, the terms are clearly not equal*)
+If[equal===False,Return[False]];
+
+(*No need to do any ordering if there are no explicit Grassmanns in the expression*)
+If[GrassmannCount[setup,t1]===0,
+Return@FTerm[(equal*(Times@@t2)+(Times@@t1))/(Times@@t1)/.Alternatives@@Map[Blank,$allObjects]->1/.Alternatives@@Map[Blank,GetAllFields[setup]]->1,t1];
+];
+
+Abort[];
+];
+
+
+(* ::Input::Initialization:: *)
+FSimplify[setup_,expr_FEq]:=Module[
+{ret=List@@expr,idx,jdx,red},
+For[idx=1,idx<=Length[ret],idx++,
+For[jdx=idx+1,jdx<=Length[ret],jdx++,
+red=TermsEqualAndSum[setup,ret[[idx]],ret[[jdx]]];
+If[red=!=False,
+ret[[idx]]=red;
+ret=Delete[ret,jdx];
+jdx--;
+];
+];
+];
+Return[FEq@@ret];
 ];
 
 

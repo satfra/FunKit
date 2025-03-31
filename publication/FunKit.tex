@@ -43,6 +43,12 @@
 \usepackage{appendix}
 \usepackage{units}
 
+% text formatting
+% Get rid of single letters at the end of lines and repeated hyphenation
+\usepackage[hyphenation]{impnattypo}
+% Get rid of widows and orphans
+\usepackage[all]{nowidow}
+\usepackage{microtype}
 
 % other
 \usepackage{xifthen}
@@ -66,22 +72,7 @@
 
 %%%%%%%%%%%%% Comments %%%%%%%%%%%%%
 \newcommand{\commentFS}[1]{\textcolor{blue}{[\textbf{FS:} #1]}}
-\newcommand{\commentNW}[1]{\textcolor{orange}{[\textbf{NW:} #1]}}
-\newcommand{\commentAG}[1]{\textcolor{purple}{[\textbf{AG:} #1]}}
 \newcommand{\cJMP}[1]{\textcolor{blue}{\textbf{Jan: #1}}}
-
-%%%%%%%%%%%%% Math commands %%%%%%%%%%%%%
-% symbols
-\newcommand{\tinytext}[1]{\text{\tiny{#1}}}
-\newcommand{\TensorBases}{\texttt{TensorBases}\xspace}
-
-%%%%%%%%%%%%% Inline code shortcuts %%%%%%%%%%%%%
-\newcommand{\mathem}{\mmaInlineCell{Code}}
-\newcommand{\mathcell}[1]{
-	\begin{mmaCell}{Input}
-		#1
-	\end{mmaCell}
-}
 
 %%%%%%%%%%%%% Mathematica code %%%%%%%%%%%%%
 \usepackage{mmacells}
@@ -94,16 +85,112 @@
 \mmaDefineMathReplacement{∞}{\infty}
 \mmaDefineMathReplacement{𝕕}{\mathbbm{d}}
 \mmaSet{
-	leftmargin=2.3em,
+	leftmargin=2.8em,
 	morefv={gobble=0},
 	linklocaluri=mma/symbol/definition:#1,
-	morecellgraphics={yoffset=1.9ex},
-	labelsep=0.1em
+	morecellgraphics={yoffset=0ex},
+	fv={formatcom*=\small\normalfont\ttfamily},
+	labelsep=.2em,
 }
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+\usepackage{listings}
+\definecolor{backcolor}{rgb}{0.99,0.98,0.98}
+\definecolor{string-color}{rgb}{0.3333, 0.5254, 0.345}
+\definecolor{darkgrey}{rgb}{0.0627, 0.07, 0.082}
+\definecolor{darkred}{rgb}{0.3, 0.05, 0.05}
+\definecolor{codeblue}{rgb}{0.2,0.35,0.75}
+\definecolor{codepurple}{rgb}{0.38,0.1,0.52}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codegreen}{rgb}{0.05,0.3,0.05}
+\definecolor{codered}{rgb}{0.6,0.2,0.1}
+\definecolor{backgroundColour}{rgb}{0.99,0.99,0.98}
+\lstdefinestyle{myStyle}{
+	language = C++,
+	basicstyle = {\ttfamily \small \color{darkgrey}},
+	backgroundcolor = {\color{backcolor}},
+	commentstyle=\color{codegreen},
+	stringstyle = {\color{string-color}},
+	keywordstyle = {\color{codeblue}},
+	keywordstyle = [2]{\color{codepurple}},
+	keywordstyle = [3]{\color{codered}},
+	keywordstyle = [4]{\color{codegray}},
+	keywordstyle = [5]{\color{codegreen}},
+	otherkeywords = {<, >, :, ::, DiFfRG, constexpr, uint, size_t, &, get, vector, array, Tensor, Scalar, FunctionND},
+	morekeywords = [2]{AbstractModel, FEFunctionDescriptor, VariableDescriptor, ExtractorDescriptor, ComponentDescriptor
+		TimeStepperSUNDIALS_IDA, UMFPack, Point, real, AD, NoJacobians, FE_AD,LLFFlux,FlowBoundaries
+	},
+	morekeywords = [3]{DiFfRG, CG, DG, dDG, LDG, def, Variables, dealii, std, autodiff},
+	morekeywords = [4]{<, >, :, ::, ;, &},
+	morekeywords = [5]{},
+	breakatwhitespace=false,
+	breaklines=true,
+	captionpos=b,
+	keepspaces=true,
+	numbers=none,
+	numbersep=5pt,
+	numberstyle=\scriptsize\color{darkred},
+	showspaces=false,
+	showstringspaces=false,
+	showtabs=false,
+	tabsize=2
+}
+\lstdefinestyle{genStyle}{
+	basicstyle = {\ttfamily \small \color{darkgrey}},
+	backgroundcolor = {\color{backcolor}},
+	commentstyle=\color{codegreen},
+	stringstyle = {\color{string-color}},
+	keywordstyle = {\color{codeblue}},
+	breakatwhitespace=false,
+	breaklines=true,
+	captionpos=b,
+	keepspaces=true,
+	numbers=none,
+	numbersep=5pt,
+	numberstyle=\scriptsize\color{darkred},
+	showspaces=false,
+	showstringspaces=false,
+	showtabs=false,
+	tabsize=2
+}
+\lstset{style=genStyle}
+\lstdefinelanguage{CMake}{%
+	morekeywords={if, else, endif, project, cmake_minimum_required, set, find_package, add_executable},%
+	sensitive=false,%
+	morecomment=[l]{\#},%
+	morecomment=[s]{/*}{*/},%
+	morestring=[b]",%
+	otherkeywords={add_flows, setup_application},%
+	keywordstyle = [2]{\color{codepurple}},
+	morekeywords = [2]{REQUIRED, HINTS, VERSION, SYSTEM},
+}
+\lstdefinelanguage{Bash}{%
+	morekeywords={if, else, fi, mkdir, cd, cmake, bash, git},%
+	sensitive=false,%
+	morecomment=[l]{\#},%
+	morecomment=[s]{/*}{*/},%
+	morestring=[b]",%
+	keywordstyle = {\color{codeblue}},
+	keywordstyle = [2]{\color{codepurple}},
+	morekeywords = [2]{$, /, ..},
+}
+
+
+%%%%%%%%%%%%% Inline code shortcuts %%%%%%%%%%%%%
+\newcommand{\cpp}{\lstinline[language=C++,style=myStyle]}
+\newcommand{\cmake}{\lstinline[language=CMake]}
+\newcommand{\mathem}{\mmaInlineCell{Code}}
+\newcommand{\bash}{\lstinline[language=Bash]}
 
 %%%%%%%%%%%%%%%%%%% MARCROS %%%%%%%%%%%%%
 \newcommand{\LEGO}{LEGO\textsuperscript{\textregistered}}
-\newcommand{\DiFfRG}{\texttt{DiFfRG}\xspace}
+\newcommand{\FunKit}{\texttt{FunKit}\xspace}
+\newcommand{\FEDeriK}{\texttt{FEDeriK}\xspace}
+\newcommand{\DiANE}{\texttt{DiANE}\xspace}
+\newcommand{\AnSEL}{\texttt{AnSEL}\xspace}
+\newcommand{\tinytext}[1]{\text{\tiny{#1}}}
+\newcommand{\TensorBases}{\texttt{TensorBases}\xspace}
 
 %%%%%%%%%%%%% Graphic paths %%%%%%%%%%%%%
 \graphicspath{{./figures/}}
@@ -118,10 +205,16 @@
 \newcommand{\getDarmstadtAffiliation}{\affiliation{Institut f\"ur Kernphysik (Theoriezentrum), Technische Universit\"at Darmstadt, 64289 Darmstadt, Germany}}
 \newcommand{\getEMMIAffiliation}{\affiliation{ExtreMe Matter Institute EMMI, GSI, Planckstr. 1, 64291 Darmstadt, Germany}}
 
+\newcommand{\orcid}[1]{\href{https://orcid.org/#1}{\includegraphics[height=1.9ex,width=1.9ex]{figures/orcid.png}}}
 
 \begin{document}
 
 \title{\gettitle}
+\author{Franz R. Sattler \orcid{0000-0003-1744-9456}\,}\thanks{\url{sattler@thphys.uni-heidelberg.de}}
+\getHeidelbergAffiliation
+%\author{Jan M. Pawlowski \orcid{0000-0003-0003-7180}\,}
+%\getHeidelbergAffiliation
+%\getEMMIAffiliation
 
 \begin{abstract}
 
@@ -130,42 +223,155 @@ We give tool to compute cross-section
 
 \maketitle
 
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Introduction}
+\label{sec:Introduction}
+
+\texttt{DoFun} \cite{Huber:2019dkb} and \texttt{QMeS} \cite{Pawlowski:2021tkk}
+
+\TensorBases \cite{Braun:2025gvq}
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{FED\MakeLowercase{eri}K}
+\label{sec:FEDeriK}
 
-abc
+\FEDeriK, the {\textbf{F}unctional \textbf{E}quation \textbf{Deri}vation \textbf{K}it} is the core module of \FunKit, providing all the logic to derive functional equations. In particular, it provides the base syntax for the description of functional equations, gives facilities to perform functional derivatives and series expansions of derivative operators and fields.
 
+In \Cref{sec:FEDeriK_notation} we briefly explain both the notation in \texttt{Mathematica} and basic usage of the module. Following this, we explain the internal set of rules used by \FEDeriK in \Cref{sec:FEDeriK_rules} and some algorithmic details in \Cref{sec:FEDeriK_algorithm}.
+
+%%%%%%%%%%%%%%%%%%%%
+\subsection{Notation \& usage}
+\label{sec:FEDeriK_notation}
+
+A single term in a functional equation is described using the \mathem{\mmaDef{FTerm}} tag, which encloses a list of factors. For example, the Wetterich equation $\frac{1}{2}G^{ab}\partial_tR_{ab}$ can be written as the term
+%
+\begin{mmaCell}{Input}
+\mmaDef{FTerm}[1/2,
+  \mmaDef{Propagator}[\{AnyField,AnyField\},\{a,b\}],
+  \mmaDef{Rdot}[\{AnyField,AnyField\},\{-a,-b\}]]
+\end{mmaCell}
+%
+Here, we have also used \FEDeriK's common notation for any indexed object. \FEDeriK knows, by default, the following indexed objects:
+%
+\begin{mmaCell}{Input}
+\mmaDef{ShowIndexedObjects}[]
+\end{mmaCell}
+\begin{mmaCell}{Output}
+ABasis
+GammaN
+Propagator
+Rdot
+S
+VBasis
+\({\gamma}\)
+\end{mmaCell}
+%
+Lowered superindices are indicated with a minus sign. As an example, the correlation function $\Gamma_{a\,b\,A^c}^{\phantom{a\,b\,A^c}\bar{c}^d}$, with the fields of $a$ and $b$ undetermined, may be expressed~as
+%
+\begin{mmaCell}{Input}
+\mmaDef{GammaN}[\{AnyField,AnyField,A,cb\},\{-a,-b,-c,d\}]
+\end{mmaCell}
+%
+The tag \mathem{AnyField} stands in for arbitrary fields, which can be expanded into explicit fields later on.
+
+Sums of functional equations are represented using the \mathem{\mmaDef{FEq}} tag. As an example, we take the generalised flow equation
+%
+\begin{equation}
+	\partial_t \Gamma = -\dot\Phi^a\Gamma_a + \frac{1}{2}G^{ac}(\gamma_c^{\phantom{c}b}\partial_t + \frac{\delta\dot{\Phi}^b}{\delta\Phi^c}){R}_{ab}
+	\,.
+\end{equation}
+%
+For conciseness, we redefine $(\gamma_b^{\phantom{b}c}\partial_t + \frac{\delta\dot{\Phi}^c}{\delta\Phi^b}){R}_{ac} \to \partial_t R_{ab}$ and shorten the equation to
+$\partial_t \Gamma = -\dot\Phi^a\Gamma_a + \frac{1}{2}G^{ab}\partial_t{R}_{ab}$.
+Hence, it can be expressed~with
+%
+\begin{mmaCell}{Input}
+\mmaDef{AddCorrelationFunction}[Phidot];
+\mmaDef{FEq}[
+  \mmaDef{FTerm}[-Phidot[\{AnyField\},\{a\}], 
+    \mmaDef{GammaN}[\{AnyField\},\{-a\}]]
+  \mmaDef{FTerm}[1/2, 
+    \mmaDef{Propagator}[\{AnyField,AnyField\},\{a,b\}],
+    \mmaDef{Rdot}[\{AnyField,AnyField\},\{-a,-b\}]]
+ ]
+\end{mmaCell}
+%
+In the above, we have also informed \FEDeriK about a user-defined correlation function, \mathem{Phidot} $\equiv \dot{\Phi}$. \FEDeriK will automatically treat this as a functional and it will take into account derivatives thereof.
+
+\mathem{\mmaDef{FEq}} and \mathem{\mmaDef{FTerm}} have some internal rules to automatically move numeric values to the first factor in any \mathem{\mmaDef{FTerm}} and expand any appearance of sums to the enclosing \mathem{\mmaDef{FEq}}. This behaviour can be seen, e.g. in
+%
+\begin{mmaCell}{Input}
+\mmaDef{FEq}[\mmaDef{FTerm}[a+b,2,4c,\mmaDef{FEq}[\mmaDef{FTerm}[d+e]]]]
+\end{mmaCell}
+\begin{mmaCell}{Output}
+\mmaDef{FEq}[\mmaDef{FTerm}[8,a,c,d], \mmaDef{FTerm}[8,a,c,e],
+  \mmaDef{FTerm}[8,b,c,d], \mmaDef{FTerm}[8,b,c,e]]
+\end{mmaCell}
+%
+\mathem{\mmaDef{FEq}} and \mathem{\mmaDef{FTerm}} can be multiplied using non-commutative multiplication, 
+%
+\begin{mmaCell}{Input}
+\mmaDef{FEq}[\mmaDef{FTerm}[a+b,2]]**\mmaDef{FEq}[\mmaDef{FTerm}[d+e]]
+\end{mmaCell}
+\begin{mmaCell}{Output}
+\mmaDef{FEq}[\mmaDef{FTerm}[2,a,d], \mmaDef{FTerm}[2,a,e],
+  \mmaDef{FTerm}[2,b,d], \mmaDef{FTerm}[2,b,e]]
+\end{mmaCell}
+%
+Normal multiplication immediately yields an error, as the factors in a given \mathem{\mmaDef{FTerm}} are not necessarily commuting.
 
 %%%%%%%%%%%%%%%%%%%%
 \subsection{Rules}
-\label{sec:rules}
+\label{sec:FEDeriK_rules}
 
-\subsection{Index \& derivative rules}
-\label{sec:rules_indicesDerivatives}
+\FunKit makes abundant use of the superfield notation introduced in \cite{Pawlowski:2005xe} to reliably keep track of signs for Grassmann fields. Therefore, we briefly introduce the most important points of this notation and give a list of the rules used internally in \FEDeriK.
 
-Metric:
+First of all, for the treatment of Grassmann-valued fields, we introduce a field metric, as also in \cite{Pawlowski:2005xe, Braun:2025gvq},
 %
-\begin{align}
-	\gamma^{ab}=\gamma_{ab} = \begin{pmatrix}
-		0&-1\\
-		1&\phantom{-}0
-	\end{pmatrix}
-	\,.
-\end{align}
+\begin{equation}\label{eq:metric}
+	\gamma_{ab} = \gamma^{ab} = \begin{cases}
+		\begin{pmatrix}
+			0 & -1 \\
+			1 & 0
+		\end{pmatrix}\,\delta_{ab}
+		& \text{if $a$ and $b$ are fermionic,} \\[3ex]
+		\delta_{ab} & \text{if $a$ and $b$ are bosonic,}   \\[2ex]
+		0               & \text{otherwise} 
+		\,.
+	\end{cases}
+\end{equation}
 %
-Metric contractions:
+This metric can be used to lower and raise indices of arbitrary tensors involving fields. We use the Northwest-Southeast convention to raise and lower indices, i.e.
+%
+\begin{equation}
+	\Phi_a = \Phi^b\gamma_{ba} \,,
+	\quad \quad
+	\Phi^a = \gamma^{ab}\Phi_b \,.
+\end{equation}
+%
+From the definition of the metric \labelcref{eq:metric}, we can directly infer the commonly found contractions
 %
 \begin{align}
 	\gamma^{a}_{\phantom{a}c} &= \gamma^{ab}\gamma_{bc} = (-1)^{ac}\delta^a_c
 	\,,\notag\\[1ex]
 	\gamma_{a}^{\phantom{a}c} &= \gamma^{bc}\gamma_{ba} = \delta^a_c
-	\,.
+	\,,
 \end{align}
 %
-As a consequence, $\gamma^{a}_{\phantom{a}c}\gamma^{c}_{\phantom{c}d} = \delta^{ad}$.
+where we have also introduced
+%
+\begin{equation}
+	(-1)^{ab} = \begin{cases}
+		-1 & \text{if both $a$ and $b$ are fermionic,} \\[1ex]
+		1 & \text{otherwise} 
+		\,.
+	\end{cases}
+\end{equation}
+%
+We briefly note that, as a consequence, $\gamma^{a}_{\phantom{a}c}\gamma^{c}_{\phantom{c}d} = \delta^{ad}$.
 
-Field derivatives:
+Any field derivative in \FEDeriK is directly expressed using the metric, with the full set of rules being
 %
 \begin{align}
 	\frac{\delta \Phi^b}{\delta \Phi^a} &= \gamma_a^{\phantom{a}b}
@@ -178,18 +384,20 @@ Field derivatives:
 	\,.
 \end{align}
 %
-N-point functions:
+Similarly, for any correlation function $F$, e.g. the 1PI effective action $F=\Gamma$, 
 %
 \begin{align}
-	\frac{\delta }{\delta \Phi^a} \Gamma_{bc\ldots} = \Gamma_{abc\ldots}
+	\frac{\delta }{\delta \Phi^a} F_{bc\ldots} = F_{abc\ldots}
 	\,,\notag\\[1ex]
-	\frac{\delta }{\delta \Phi_a} \Gamma_{bc\ldots} = \Gamma^{a}_{\phantom{a}bc\ldots}
+	\frac{\delta }{\delta \Phi_a} F_{bc\ldots} = F^{a}_{\phantom{a}bc\ldots}
 	\,.
 \end{align}
 %
-Propagator inverse:
+Specifically for approaches building on the 1PI effective action, we additionally provide the rules for the relation between the propagator $G^{ab} = \frac{\delta^2 W}{\delta J_a \delta J_b}$ and the 1PI two-point function $\Gamma_{ab} = \frac{\delta^2 \Gamma}{\delta \Phi^a \delta \Phi^b}$. 
+
+We derive the relation between these two from the quantum equation of motion, first using left-derivatives,
 %
-\begin{align}
+\begin{align}\label{eq:propInvLeft}
 	\frac{\delta \Gamma}{\delta \Phi^a} &= \gamma^d_{\phantom{d}a}J_d
 	\,,\notag\\[1ex]\Leftrightarrow 
 	\frac{\delta \Gamma}{\delta J_b\delta \Phi^a} &= \gamma^b_{\phantom{b}a}
@@ -200,11 +408,9 @@ Propagator inverse:
 	\,.
 \end{align}
 %
-and, using right-derivatives
+and, using right-derivatives,
 %
-\begin{align}
-	\frac{\delta \Gamma}{\delta \Phi^a} &= \gamma^d_{\phantom{d}a}J_d
-	\,,\notag\\[1ex]\Leftrightarrow 
+\begin{align}\label{eq:propInvRight}
 	\frac{\delta \Gamma}{\delta \Phi^a\delta J_b} &= \gamma_a^{\phantom{a}b}
 	\,,\notag\\[1ex]\Leftrightarrow 
 	\frac{\delta \Gamma}{\delta \Phi^a\delta \Phi^c}\gamma^c_{\phantom{c}d}\left(\Phi^d\frac{\overset{\leftarrow}{\delta}}{\delta J_b}\right) &= \gamma_a^{\phantom{a}b}
@@ -213,24 +419,180 @@ and, using right-derivatives
 	\,.
 \end{align}
 %
+We can take a derivative $\frac{\delta}{\delta\Phi^f}$ of \labelcref{eq:propInvLeft} and use \labelcref{eq:propInvRight} to obtain the rule
 %
 \begin{align}
-	\left(\frac{\delta}{\delta \Phi^f}G^{ba}\right)= (-1)\gamma^a_{\phantom{a}e}\, G^{bc}\Gamma_{fcd}G^{ed}
+	\left(\frac{\delta}{\delta \Phi^f}G^{ba}\right) 
+	&= (-1)(-1)^{bf}(-1)^{dd}\, G^{bc}\Gamma_{cfd}G^{da}\,.
+\end{align}
+%
+
+
+%%%%%%%%%%%%%%%%%%%%
+\subsection{Algorithmic details}
+\label{sec:FEDeriK_algorithm}
+
+
+%%%%%%%%%%%%%%%%%%%%
+\subsection{Teaching FEDeriK}
+\label{sec:FEDeriK_teaching}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{A\MakeLowercase{n}SEL}
+\label{sec:AnSEL}
+
+\AnSEL, \textbf{An}alysis and \textbf{S}implification of \textbf{E}quations with \textbf{L}oops
+
+\clearpage
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{D\MakeLowercase{i}ANE}
+\label{sec:DiANE}
+
+The module \DiANE, \textbf{Di}agram \textbf{A}rts and \textbf{N}otation of \textbf{E}quations, provides visualisation functions for \FunKit. 
+
+\DiANE can both generate publication-ready \LaTeX\xspace code and display equations directly in Mathematica. For example, consider the DSE for the gluon one-point function, given by
+%
+\begin{equation}
+	\Gamma_{A} = \left\langle \frac{\delta S}{\delta A} \right\rangle_{\phi^a = \Phi^a + G^{ab}\frac{\delta}{\delta\Phi^b}}
 	\,.
-\end{align}
+\end{equation}
 %
-Getting the rule for the propagator:
+In Mathematica, we can directly derive it and show the rendered \LaTeX\xspace output using
 %
-\begin{align}
-	\left(\frac{\delta}{\delta \Phi^f}G^{bc}\right)\Gamma_{cd} 
-	&= (-1)(-1)^{bf}\,G^{bc}\Gamma_{cfd}
-	\,,\notag\\[1ex]
-	\Leftrightarrow\left(\frac{\delta}{\delta \Phi^f}G^{bc}\right)(\Gamma_{cd}\gamma^{d}_{\phantom{d}e}G^{eg}) 
-	&= (-1)(-1)^{bf}\,G^{bc}\Gamma_{cfd}\gamma^{d}_{\phantom{d}e}G^{eg}
-	\,,\notag\\[1ex]
-	\Leftrightarrow\left(\frac{\delta}{\delta \Phi^f}G^{ba}\right) 
-	&= (-1)(-1)^{bf}(-1)^{dd}\, G^{bc}\Gamma_{cfd}G^{da}
-\end{align}
+\begin{widetext}
+\begin{mmaCell}{Input}
+\mmaDef{MakeDSE}[A[x]]//.\{c[_]:>0, cb[_]:>0\}//\mmaDef{Truncate}//\mmaDef{FSimplify}//\mmaDef{Route}//\mmaDef{FPrint}
+\end{mmaCell}
+%
+\vspace{-3.0ex}
+\begin{equation*}
+	\put(-214,0){\footnotesize
+		$
+\begin{aligned}&
+	\begin{aligned}&
+		2\,S_{A^\text{a}A^\text{b}}(0,0)\,A^\text{b}(0)
+		\\ &\,+\,
+		3\,S_{A^\text{a}A^\text{b}A^\text{c}}(0,0,0)\,A^\text{b}(0)\,A^\text{c}(0)
+		\\ &\,+\,
+		4\,S_{A^\text{a}A^\text{b}A^\text{c}A^\text{d}}(0,0,0,0)\,A^\text{b}(0)\,A^\text{c}(0)\,A^\text{d}(0)
+	\end{aligned}
+	\\&
+	\begin{aligned}&
+		\,+\,    \int_{l_1}3\,S_{A^\text{e}A^\text{a}A^\text{b}}(0,l_1,-l_1)\,G_{A^\text{b}A^\text{a}}(l_1,-l_1)
+		\\ &\,+\,
+		\int_{l_1}12\,S_{A^\text{e}A^\text{a}A^\text{f}A^\text{b}}(0,l_1,0,-l_1)\,A^\text{f}(0)\,G_{A^\text{b}A^\text{a}}(l_1,-l_1)
+		\\ &\,+\,
+		\int_{l_1}(-S_{c^\text{a}\bar{c}^\text{b}A^\text{e}}(l_1,-l_1,0)\,G_{\bar{c}^\text{b}c^\text{a}}(l_1,-l_1))
+	\end{aligned}
+	\\&
+	\,+\,\int_{l_1}\int_{l_2}(-4\,S_{A^\text{m}A^\text{g}A^\text{a}A^\text{e}}(0,l_2,l_1,-l_1-l_2)\,G_{A^\text{a}A^\text{b}}(-l_1,l_1)\,G_{A^\text{e}A^\text{f}}(l_1+l_2,
+	-l_1-l_2)\,\Gamma_{A^\text{f}A^\text{b}A^\text{h}}(l_1+l_2,-l_1,-l_2)\,G_{A^\text{h}A^\text{g}}(l_2,-l_2))
+\end{aligned}
+		$
+	}
+\end{equation*}
+\end{widetext}
+
+The typesetting code for the above equation can be also read out using the \mathem{\mmaDef{FTex}} command, and copied over to a document. Internally, we use \texttt{MaTeX} \cite{szabolcs_horvat_2024_10828124} to render the \LaTeX code. This requires the \bash{pdflatex} command to be available on the system.
+
+%%%%%%%%%%%%%%%%%%%%
+\begin{acknowledgments}
+We thank... for discussions. This work is done within the fQCD collaboration \cite{fQCD} and we thank its members for discussions and collaborations on related projects.
+FRS acknowledges funding by the GSI Helmholtzzentrum f\"ur Schwerionenforschung and by HGS-HIRe for FAIR.
+
+This work is funded by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) under Germany’s Excellence Strategy EXC 2181/1 - 390900948 (the Heidelberg STRUCTURES Excellence Cluster) and the Collaborative Research Centre SFB 1225 (ISOQUANT). It is also supported by EMMI. 
+	
+	
+\end{acknowledgments}
+
+%%%%%%%%%%%%%%%%%%%%
+\appendix
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{Notation}
+\label{app:notation}
+
+In the following, we briefly detail our notation for describing tensor bases of general QFTs.
+To keep the notation concise and general, we collect all fields of the theory at hand into a single superfield~$\Phi$. 
+We do this for all general arguments but make fields and indices explicit for specific examples.
+Furthermore, we absorb all indices of the superfield, including momenta and group indices, into a single general multi-index.
+
+An index~$a$ for a field~$\Phi^a$ contains momentum and possibly Lorentz, colour, flavour or further indices of the corresponding field.
+Wherever indices are explicitly given, we use Greek letters~$\mu$,~$\nu$,~$\rho$,~$\sigma$,~$\dotsc$ for Lorentz indices and Latin letters~$a$,~$b$,~$c$,~$\dotsc$ for indices associated with any other type of group. 
+
+While for bosons no additional structure needs to be imposed on the superfield, it is necessary to take into account that fermion and anti-fermion fields always come in pairs.
+To that end, we use the field-space metric given by
+%
+\begin{equation}
+	\gamma_{ab} = \gamma^{ab} = \begin{cases}
+		\begin{pmatrix}
+			0 & -1 \\
+			1 & 0
+		\end{pmatrix}\,\delta_{ab}
+		& \text{if $a$ and $b$ are fermionic,} \\[3ex]
+		\delta_{ab} & \text{if $a$ and $b$ are bosonic,}   \\[2ex]
+		0               & \text{otherwise} 
+		\,.
+	\end{cases}
+\end{equation}
+%
+One can now raise and lower indices of a super-field using the metric
+%
+\begin{equation}
+	\Phi_a = \Phi^b\gamma_{ba} \,,
+	\quad \quad
+	\Phi^a = \gamma^{ab}\Phi_b \,.
+\end{equation}
+%
+Raising and lowering indices, as introduced at the example of the superfield (vector), also applies to general higher rank tensors, e.g.
+%
+\begin{equation}
+	M^{ab}_{\phantom{ab}c} = \gamma^{aa'} \gamma^{bb'} M_{a'b'}^{\phantom{a'b'}c'} \gamma_{c'c}
+	\,.
+\end{equation}
+%
+With this, derivatives of an arbitrary functional~$F[\Phi]$ are written as
+%
+\begin{equation}
+	F_{a_1 a_2 \ldots a_n}[\Phi] =
+	\frac{\delta}{\delta \Phi^{a_1}} \frac{\delta}{\delta \Phi^{a_2}} \ldots \frac{\delta}{\delta \Phi^{a_n}} F[\Phi]
+	\,.
+	\label{eq:Falpha}
+\end{equation}
+%
+For convenience, we always consider all momenta to be incoming, which also fixes our Fourier convention:
+%
+\begin{equation}
+	\Phi^a(x) = \int \frac{d^d p}{(2\pi)^d} e^{ipx}\Phi^a(p)
+	\,.
+\end{equation}
+%	
+Finally, we write the general decomposition of an~$n$-th derivative of~$F[\Phi]$ as
+%
+\begin{equation}\label{eq:general_decomposition}
+	F_{\alpha}[\Phi] = (2\pi)^d\ \delta^{(d)}\left( \sum_{i=1}^n p_i \right)\,
+	\sum_{i=1}^{N_\alpha} \tau_{i,\alpha} \, \lambda_{i,\alpha}
+	\,,
+\end{equation}
+%
+where we have employed an even more compact notation by introducing the multi-index~$\alpha = (a_1, a_2, \ldots, a_n)$. 
+This index includes all field indices.
+Here, the~$\{\tau_{i,\alpha}\}$ are some basis of dimension~$N_\alpha$ of the tensor space of the Green's function, while the~$\{\lambda_{i,\alpha}\}$ are the coefficients of the expansion of~$F^\alpha$ within this basis.
+
+Note that no summation over $\alpha$ is implied in \labelcref{eq:general_decomposition}: the basis elements may fully depend on the elements of the multi-index $\alpha$, whereas the coefficients depend at least on the momenta of the particles  contained in $\alpha$.
+If additional ``continuous indices" are present, these can also be included as dependences of the dressings. 
+
+For example, in \labelcref{eq:general_decomposition} the coefficients~$\lambda_i$ can be chosen such that they have an additional field dependence, e.g. coming from some composite operator $\phi[\Phi]$, which is useful if the associated symmetry is spontaneously broken. 
+An example would be the composite field $\phi[\Phi] = \bar q q$ in QCD, which obtains a finite expectation value in the vacuum.
+Any such rewriting either changes~$N_\alpha$ from uncountable infinity to a finite number, or, as in the above example, changes the expansion point of the interaction (i.e. the field background).
+
+Furthermore, note that if~$F[\Phi] = \Gamma[\Phi]$, we call~$\Gamma_\alpha[\Phi]$ a \textit{vertex} of the theory and~$\{\lambda_i\}$ are the corresponding \textit{dressings}.
+
+\newpage
+%%%%%%%%%%%%%%%%%%%%
+\bibliography{bibliography}
 %%%%%%%%%%%%%%%%%%%%
 
 \end{document}
