@@ -20,6 +20,14 @@
 
 
 (* ::Input::Initialization:: *)
+Print["\!\(\*
+StyleBox[\"Loading\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"external\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"dependencies\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"...\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+
 TensorBasesInstalled[]:=Module[{TensorBasesDirectory},
 TensorBasesDirectory=SelectFirst[
 Join[
@@ -49,6 +57,51 @@ StyleBox[\"TensorBases\",\nFontWeight->\"Bold\"]\) to run."];Abort[];
 ];
 ];
 
+Block[{Print},Get["TensorBases`"]]
+Print["\!\(\*
+StyleBox[\"TensorBases\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+
+
+(* ::Input::Initialization:: *)
+If[Length@PacletFind["MaTeX"]===0,
+ResourceFunction["MaTeXInstall"][]
+]
+Get["MaTeX`"]
+Print["\!\(\*
+StyleBox[\"MaTeX\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+
+
+(* ::Input::Initialization:: *)
+Get[SelectFirst[
+Join[
+{
+FileNameJoin[{$UserBaseDirectory,"Applications","FunKit"}],
+FileNameJoin[{$BaseDirectory,"Applications","FunKit"}],
+FileNameJoin[{$InstallationDirectory,"AddOns","Applications","FunKit"}],
+FileNameJoin[{$InstallationDirectory,"AddOns","Packages","FunKit"}],
+FileNameJoin[{$InstallationDirectory,"AddOns","ExtraPackages","FunKit"}]
+},
+Select[$Path,StringContainsQ[#,"FunKit"]&]
+],
+DirectoryQ[#]&
+]<>"/"<>"/utils/MathematicaTeXUtilities.m"]
+
+
+(* ::Input::Initialization:: *)
+BeginPackage["FunKit`"];
+Unprotect["FunKit`*"];
+Unprotect["FunKit`Private`*"];
+ClearAll["FunKit`*"];
+ClearAll["FunKit`Private`*"];
+
+
+(* ::Input::Initialization:: *)
+ModuleLoaded[FunKit]=True;
+
 
 (* ::Input::Initialization:: *)
 $FunKitDirectory=SelectFirst[
@@ -67,7 +120,37 @@ DirectoryQ[#]&
 
 
 (* ::Input::Initialization:: *)
-ModuleLoaded[FunKit]=True;
+If[Head[$DistributedContexts]=!=List,$DistributedContexts={}];
+$DistributedContexts=$DistributedContexts\[Union]{$Context,"FunKit`Private`","TensorBases`","FormTracer`","FormTracer`Private`","TensorBases`","TensorBases`Private`"}
+
+
+(* ::Input::Initialization:: *)
+Begin["`Private`"]
+If[Head[$DistributedContexts]=!=List,$DistributedContexts={}];
+$DistributedContexts=$DistributedContexts\[Union]{$Context,"FunKit`Private`","TensorBases`","FormTracer`","FormTracer`Private`","TensorBases`","TensorBases`Private`"}
+End[]
+
+
+(* ::Input::Initialization:: *)
+$FunKitDebugLevel=0;
+FunKitDebugLevel[newLevel_Integer]:=Module[{},
+Unprotect@$FunKitDebugLevel;
+Set[$FunKitDebugLevel,newLevel];
+Protect@$FunKitDebugLevel;
+
+Unprotect@FunKitDebug;
+If[$FunKitDebugLevel<=0,ClearAll[FunKitDebug];SetAttributes[FunKitDebug,HoldAll];];
+If[$FunKitDebugLevel>0,ClearAll[FunKitDebug];
+FunKitDebug[level_Integer,$a___]:=If[level<=$FunKitDebugLevel,Print["[FunKit "<>ToString[level]<>"]  ",$a]];
+];
+Protect@FunKitDebug;
+];
+(*
+   0: no info
+ 1: basic information what is happening
+ 2: in-depth what steps are being processed
+3: the guts of the program
+*)
 
 
 (* ::Input::Initialization:: *)
@@ -76,12 +159,6 @@ StyleBox[\"Loading\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Itali
 StyleBox[\" \",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"modules\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
-Block[{Print},Get["TensorBases`"]]
-Print["\!\(\*
-StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
-StyleBox[\"TensorBases\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
-StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
-StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
 Get[$FunKitDirectory<>"modules/FEDeriK.m"];
 Print["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
@@ -98,6 +175,24 @@ Get[$FunKitDirectory<>"modules/DiANE.m"];
 Print["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"DiANE\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+Get[$FunKitDirectory<>"modules/DiRK.m"];
+Print["\!\(\*
+StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"DiRK\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+Get[$FunKitDirectory<>"modules/TRACY.m"];
+Print["\!\(\*
+StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"TRACY\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+Get[$FunKitDirectory<>"modules/COEN.m"];
+Print["\!\(\*
+StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"COEN\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
 
@@ -120,4 +215,101 @@ StyleBox[\"Version\",\nFontWeight->\"Bold\"]\): 1.0
 \!\(\*
 StyleBox[\"Year\",\nFontWeight->\"Bold\"]\): 2025
 For more information, call \!\(\*
-StyleBox[\"FunKitInfo\",\nFontColor->RGBColor[1, 0.5, 0]]\)[]."]
+StyleBox[\"FInfo\",\nFontColor->RGBColor[1, 0.5, 0]]\)[]."];
+
+
+(* ::Input::Initialization:: *)
+FInfo[]:=Module[{},
+Print["To see an overview and some examples for the syntax of \!\(\*
+StyleBox[\"FEDeriK\",\nFontWeight->\"Bold\"]\), call \!\(\*
+StyleBox[\"FInfo\",\nFontColor->RGBColor[1, 0.5, 0]]\)[\"FEDeriK\"]"]
+];
+
+
+(* ::Input::Initialization:: *)
+FInfo["FEDeriK"]:=Module[{},
+Print["\!\(\*
+StyleBox[\"General\",\nFontSize->18,\nFontWeight->\"Bold\"]\)\!\(\*
+StyleBox[\" \",\nFontSize->18,\nFontWeight->\"Bold\"]\)\!\(\*
+StyleBox[\"syntax\",\nFontSize->18,\nFontWeight->\"Bold\"]\)
+
+The overall syntax used throughout \!\(\*
+StyleBox[\"FunKit\",\nFontWeight->\"Bold\"]\)\!\(\*
+StyleBox[\" \",\nFontWeight->\"Bold\"]\)is given by its core module\!\(\*
+StyleBox[\" \",\nFontWeight->\"Bold\"]\)\!\(\*
+StyleBox[\"FEDeriK\",\nFontWeight->\"Bold\"]\).
+Any equation is comprised of terms that contain (possibly non-commuting) factors.
+These terms are written out using the \!\(\*
+StyleBox[\"FTerm\",\nFontColor->RGBColor[1, 0.5, 0]]\)\!\(\*
+StyleBox[\" \",\nFontColor->RGBColor[1, 0.5, 0]]\)tag, e.g. the Wetterich equation ",MaTeX`MaTeX["\\partial_t \\Gamma = \\frac{1}{2}\\,G_{ab}\\partial_t R^{ab}"]," is given by
+    \!\(\*
+StyleBox[\"FTerm\",\nFontColor->RGBColor[1, 0.5, 0]]\)[\!\(\*FractionBox[\(1\), \(2\)]\), \!\(\*
+StyleBox[\"Propagator\",\nFontWeight->\"Bold\"]\)[{\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\),\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\)},{a,b}], \!\(\*
+StyleBox[\"Rdot\",\nFontWeight->\"Bold\"]\)[{\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\),\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\)},{-a,-b}]]
+Similar to the \!\(\*
+StyleBox[\"xAct\",\nFontWeight->\"Bold\"]\)\!\(\*
+StyleBox[\" \",\nFontWeight->\"Bold\"]\)Mathematica package, we use negative indices (-a, -b) to indicate lower indices and positive indices (a, b) to indicate upper ones.
+Furthermore, we have utilised syntax for \!\(\*
+StyleBox[\"indexed\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\"objects\",\nFontSlant->\"Italic\"]\)\!\(\*
+StyleBox[\" \",\nFontSlant->\"Italic\"]\)in the above. Both \!\(\*
+StyleBox[\"Propagator\",\nFontWeight->\"Bold\"]\)\!\(\*
+StyleBox[\" \",\nFontWeight->\"Bold\"]\)and \!\(\*
+StyleBox[\"Rdot\",\nFontWeight->\"Bold\"]\)\!\(\*
+StyleBox[\" \",\nFontWeight->\"Bold\"]\)are such indexed objects. 
+Any indexed object must be comprised of two lists: the first one gives the field content, and the second list the corresponding super-indices or explicit indices.
+To see a list of all indexed objects known to \!\(\*
+StyleBox[\"FEDeriK\",\nFontWeight->\"Bold\"]\), one can call \!\(\*
+StyleBox[\"ShowIndexedObjects\",\nFontColor->RGBColor[1, 0.5, 0]]\)[], which outputs "];
+ShowIndexedObjects[];
+Print["in the current case. One can register custom indexed objects with \!\(\*
+StyleBox[\"FEDeriK\",\nFontWeight->\"Bold\"]\) by using \!\(\*
+StyleBox[\"AddIndexedObject\",\nFontColor->RGBColor[1, 0.5, 0]]\)[_Symbol]. 
+A subset of the indexed objects are correlation functions, and \!\(\*
+StyleBox[\"ShowCorrelationFunctions\",\nFontColor->RGBColor[1, 0.5, 0]]\)[] outputs "];
+ShowCorrelationFunctions[];
+Print["These are special indexed objects, which are always hit by functional derivatives. 
+As an example, take the generalised flow equation ",MaTeX`MaTeX["\\partial_t \\Gamma = -\\dot\\Phi^a\\Gamma_a + \\frac{1}{2}G^{ac}\\Bigg(\\gamma_c^{\\phantom{c}b}\\partial_t  + 2 \\frac{\\delta\\dot{\\Phi}^b}{\\delta\\Phi^c}\\Bigg){R}_{ab}"],
+"First, we add a new correlation function using \!\(\*
+StyleBox[\"AddCorrelationFunction\",\nFontColor->RGBColor[1, 0.5, 0]]\)[Phidot] and mark its last index to be never re-ordered using \!\(\*
+StyleBox[\"SetUnorderedIndices\",\nFontColor->RGBColor[1, 0.5, 0]]\)[Phidot,1]"];
+AddCorrelationFunction[Phidot];
+SetUnorderedIndices[Phidot,1];
+Print["Then, the flow equation can be written out as 
+
+    \!\(\*
+StyleBox[\"FEq\",\nFontColor->RGBColor[1, 0.5, 0]]\)[\!\(\*
+StyleBox[\"FTerm\",\nFontColor->RGBColor[1, 0.5, 0]]\)[-1, \!\(\*
+StyleBox[\"Phidot\",\nFontWeight->\"Bold\"]\)[{\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\)},{a}], \!\(\*
+StyleBox[\"GammaN\",\nFontWeight->\"Bold\"]\)[{\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\)},{-a}]],\[IndentingNewLine]    \!\(\*
+StyleBox[\"FTerm\",\nFontColor->RGBColor[1, 0.5, 0]]\)[\!\(\*FractionBox[\(1\), \(2\)]\), \!\(\*
+StyleBox[\"Propagator\",\nFontWeight->\"Bold\"]\)[{\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\),\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\)},{a,b}], \!\(\*
+StyleBox[\"Rdot\",\nFontWeight->\"Bold\"]\)[{\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\),\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\)},{-a,-b}]],\[IndentingNewLine]    \!\(\*
+StyleBox[\"FTerm\",\nFontColor->RGBColor[1, 0.5, 0]]\)[ \!\(\*
+StyleBox[\"Propagator\",\nFontWeight->\"Bold\"]\)[{\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\),\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\)},{a,c}], \!\(\*
+StyleBox[\"Phidot\",\nFontWeight->\"Bold\"]\)[{\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\),\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\)},{-c,b}], \!\(\*
+StyleBox[\"R\",\nFontWeight->\"Bold\"]\)[{\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\),\!\(\*
+StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\)},{-a,-b}]]]
+"];
+];
+
+
+(* ::Input::Initialization:: *)
+Protect["FunKit`*"];
+EndPackage[];

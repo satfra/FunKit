@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       154,          7]
-NotebookDataLength[     15472,        373]
-NotebookOptionsPosition[     14066,        337]
-NotebookOutlinePosition[     14519,        355]
-CellTagsIndexPosition[     14476,        352]
+NotebookDataLength[     37973,        867]
+NotebookOptionsPosition[     35069,        804]
+NotebookOutlinePosition[     35522,        822]
+CellTagsIndexPosition[     35479,        819]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -47,6 +47,18 @@ Cell["Installation of dependencies", "Chapter",
 6958673dcd5e"],
 
 Cell[BoxData[{
+ RowBox[{
+  RowBox[{
+   RowBox[{
+   "Print", "[", 
+    "\"\<\!\(\*StyleBox[\"Loading\",FontSize->10,FontWeight->\"Plain\",\
+FontSlant->\"Italic\"]\)\!\(\*StyleBox[\" \",FontSize->10,FontWeight->\"Plain\
+\",FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"external\",FontSize->10,\
+FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\!\(\*StyleBox[\" \
+\",FontSize->10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\!\(\*StyleBox[\
+\"dependencies\",FontSize->10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\!\
+\(\*StyleBox[\"...\",FontSize->10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\
+\)\>\"", "]"}], ";"}], "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
    RowBox[{
@@ -117,50 +129,187 @@ Cell[BoxData[{
        RowBox[{"Return", "[", "True", "]"}], ";"}]}], "\[IndentingNewLine]", 
      "]"}]}], ";"}], "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
  RowBox[{
-  RowBox[{"If", "[", 
-   RowBox[{
-    RowBox[{"Not", "@", 
-     RowBox[{"TensorBasesInstalled", "[", "]"}]}], ",", "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{"If", "[", 
     RowBox[{
-     RowBox[{"If", "[", 
-      RowBox[{
-       RowBox[{"ChoiceDialog", "[", 
-        RowBox[{
-        "\"\<\!\(\*StyleBox[\"TensorBases\",FontWeight->\"Bold\"]\) does not \
-seem to be installed. Do you want to install it?\>\"", ",", 
+     RowBox[{"Not", "@", 
+      RowBox[{"TensorBasesInstalled", "[", "]"}]}], ",", 
+     "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"If", "[", 
+       RowBox[{
+        RowBox[{"ChoiceDialog", "[", 
          RowBox[{
-         "WindowTitle", "->", 
-          "\"\<Install \!\(\*StyleBox[\"TensorBases\",FontWeight->\"Bold\"]\)\
-\>\""}], ",", 
-         RowBox[{"WindowSize", "->", 
-          RowBox[{"{", 
-           RowBox[{"Medium", ",", "All"}], "}"}]}]}], "]"}], ",", 
-       "\[IndentingNewLine]", 
-       RowBox[{
-       "Import", "[", 
-        "\"\<https://raw.githubusercontent.com/satfra/TensorBases/main/\
-TensorBasesInstaller.m\>\"", "]"}], ",", "\[IndentingNewLine]", 
-       RowBox[{
+         "\"\<\!\(\*StyleBox[\"TensorBases\",FontWeight->\"Bold\"]\) does not \
+seem to be installed. Do you want to install it?\>\"", ",", 
+          RowBox[{
+          "WindowTitle", "->", 
+           "\"\<Install \
+\!\(\*StyleBox[\"TensorBases\",FontWeight->\"Bold\"]\)\>\""}], ",", 
+          RowBox[{"WindowSize", "->", 
+           RowBox[{"{", 
+            RowBox[{"Medium", ",", "All"}], "}"}]}]}], "]"}], ",", 
+        "\[IndentingNewLine]", 
         RowBox[{
-        "Print", "[", 
-         "\"\<\!\(\*StyleBox[\"FunKit\",FontWeight->\"Bold\"]\) requires \!\(\
-\*StyleBox[\"TensorBases\",FontWeight->\"Bold\"]\) to run.\>\"", "]"}], ";", 
-        RowBox[{"Abort", "[", "]"}], ";"}]}], "\[IndentingNewLine]", "]"}], 
-     ";"}]}], "\[IndentingNewLine]", "]"}], ";"}]}], "Input",
+        "Import", "[", 
+         "\"\<https://raw.githubusercontent.com/satfra/TensorBases/main/\
+TensorBasesInstaller.m\>\"", "]"}], ",", "\[IndentingNewLine]", 
+        RowBox[{
+         RowBox[{
+         "Print", "[", 
+          "\"\<\!\(\*StyleBox[\"FunKit\",FontWeight->\"Bold\"]\) requires \
+\!\(\*StyleBox[\"TensorBases\",FontWeight->\"Bold\"]\) to run.\>\"", "]"}], 
+         ";", 
+         RowBox[{"Abort", "[", "]"}], ";"}]}], "\[IndentingNewLine]", "]"}], 
+      ";"}]}], "\[IndentingNewLine]", "]"}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+ RowBox[{"Block", "[", 
+  RowBox[{
+   RowBox[{"{", "Print", "}"}], ",", 
+   RowBox[{"Get", "[", "\"\<TensorBases`\>\"", "]"}]}], 
+  "]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+  "Print", "[", 
+   "\"\<\!\(\*StyleBox[\"TensorBases\",FontSize->10,FontWeight->\"Bold\",\
+FontSlant->\"Italic\"]\)\!\(\*StyleBox[\" \",FontSize->10,FontSlant->\"Italic\
+\"]\)\!\(\*StyleBox[\"loaded\",FontSize->10,FontWeight->\"Plain\",FontSlant->\
+\"Italic\"]\)\>\"", "]"}], ";"}]}], "Input",
  InitializationCell->True,
  CellChangeTimes->{{3.93548528018814*^9, 3.9354853778676157`*^9}, {
   3.9354855248021913`*^9, 3.935485575963646*^9}, {3.9510530279815073`*^9, 
-  3.9510530404300413`*^9}},ExpressionUUID->"4600f702-b623-4c77-bc43-\
-2b8669b8e0af"]
+  3.9510530404300413`*^9}, {3.953389855459963*^9, 3.953389859983921*^9}, {
+  3.95339529119348*^9, 
+  3.9533952959050503`*^9}},ExpressionUUID->"4600f702-b623-4c77-bc43-\
+2b8669b8e0af"],
+
+Cell[BoxData[{
+ RowBox[{"If", "[", 
+  RowBox[{
+   RowBox[{
+    RowBox[{"Length", "@", 
+     RowBox[{"PacletFind", "[", "\"\<MaTeX\>\"", "]"}]}], "===", "0"}], ",", 
+   "\[IndentingNewLine]", 
+   RowBox[{
+    RowBox[{"ResourceFunction", "[", "\"\<MaTeXInstall\>\"", "]"}], "[", 
+    "]"}]}], "\[IndentingNewLine]", "]"}], "\[IndentingNewLine]", 
+ RowBox[{"Get", "[", "\"\<MaTeX`\>\"", "]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+  "Print", "[", 
+   "\"\<\!\(\*StyleBox[\"MaTeX\",FontSize->10,FontWeight->\"Bold\",FontSlant->\
+\"Italic\"]\)\!\(\*StyleBox[\" \
+\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"loaded\",FontSize->\
+10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\>\"", "]"}], 
+  ";"}]}], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{{3.951220603320554*^9, 3.9512206398339787`*^9}, {
+   3.951222619623927*^9, 3.951222619860894*^9}, {3.951226869940086*^9, 
+   3.9512268782989798`*^9}, {3.951226922919786*^9, 3.951226955627511*^9}, {
+   3.951227017444984*^9, 3.951227033537813*^9}, {3.9512270906128063`*^9, 
+   3.951227103820059*^9}, {3.95339345020863*^9, 3.953393450412092*^9}, {
+   3.9533936635001993`*^9, 3.953393670656269*^9}, 
+   3.953393902556615*^9},ExpressionUUID->"b6352d19-2461-4c4a-a46c-\
+48016be58972"],
+
+Cell[BoxData[
+ RowBox[{"Get", "[", 
+  RowBox[{
+   RowBox[{"SelectFirst", "[", "\[IndentingNewLine]", 
+    RowBox[{
+     RowBox[{"Join", "[", "\[IndentingNewLine]", 
+      RowBox[{
+       RowBox[{"{", "\[IndentingNewLine]", 
+        RowBox[{
+         RowBox[{"FileNameJoin", "[", 
+          RowBox[{"{", 
+           RowBox[{
+           "$UserBaseDirectory", ",", "\"\<Applications\>\"", ",", 
+            "\"\<FunKit\>\""}], "}"}], "]"}], ",", "\[IndentingNewLine]", 
+         RowBox[{"FileNameJoin", "[", 
+          RowBox[{"{", 
+           RowBox[{
+           "$BaseDirectory", ",", "\"\<Applications\>\"", ",", 
+            "\"\<FunKit\>\""}], "}"}], "]"}], ",", "\[IndentingNewLine]", 
+         RowBox[{"FileNameJoin", "[", 
+          RowBox[{"{", 
+           RowBox[{
+           "$InstallationDirectory", ",", "\"\<AddOns\>\"", ",", 
+            "\"\<Applications\>\"", ",", "\"\<FunKit\>\""}], "}"}], "]"}], 
+         ",", "\[IndentingNewLine]", 
+         RowBox[{"FileNameJoin", "[", 
+          RowBox[{"{", 
+           RowBox[{
+           "$InstallationDirectory", ",", "\"\<AddOns\>\"", ",", 
+            "\"\<Packages\>\"", ",", "\"\<FunKit\>\""}], "}"}], "]"}], ",", 
+         "\[IndentingNewLine]", 
+         RowBox[{"FileNameJoin", "[", 
+          RowBox[{"{", 
+           RowBox[{
+           "$InstallationDirectory", ",", "\"\<AddOns\>\"", ",", 
+            "\"\<ExtraPackages\>\"", ",", "\"\<FunKit\>\""}], "}"}], "]"}]}], 
+        "\[IndentingNewLine]", "}"}], ",", "\[IndentingNewLine]", 
+       RowBox[{"Select", "[", 
+        RowBox[{"$Path", ",", 
+         RowBox[{
+          RowBox[{"StringContainsQ", "[", 
+           RowBox[{"#", ",", "\"\<FunKit\>\""}], "]"}], "&"}]}], "]"}]}], 
+      "\[IndentingNewLine]", "]"}], ",", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"DirectoryQ", "[", "#", "]"}], "&"}]}], "\[IndentingNewLine]", 
+    "]"}], "<>", "\"\</\>\"", "<>", 
+   "\"\</utils/MathematicaTeXUtilities.m\>\""}], "]"}]], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{{3.925554963689718*^9, 3.925555018648334*^9}, {
+   3.925555067350979*^9, 3.925555091557687*^9}, {3.933823818986477*^9, 
+   3.933823866097943*^9}, {3.933823926618765*^9, 3.9338239610825243`*^9}, 
+   3.933824033346868*^9, {3.93382410279498*^9, 3.933824126602005*^9}, 
+   3.933843822671564*^9, {3.951052965253414*^9, 3.9510530055257807`*^9}, {
+   3.953393736440352*^9, 3.9533937441481457`*^9}, {3.9533937780361967`*^9, 
+   3.953393781728763*^9}, {3.953393904828868*^9, 3.953393911964867*^9}, {
+   3.953394387373045*^9, 3.953394389260852*^9}, {3.953394506405184*^9, 
+   3.953394514312958*^9}, {3.953394556781233*^9, 
+   3.9533945779228163`*^9}},ExpressionUUID->"b9cad7be-9f89-40bd-a9a3-\
+3fe1a41c3deb"]
 }, Open  ]],
 
 Cell[CellGroupData[{
 
-Cell["Validate and confirm own installation", "Chapter",
- CellChangeTimes->{{3.93548548465976*^9, 3.935485499970652*^9}, {
-  3.9510501856003942`*^9, 3.951050189920801*^9}, {3.951280175908622*^9, 
-  3.951280209142391*^9}},ExpressionUUID->"707785f5-b61b-4c6b-a8bc-\
-9995ab27ddc4"],
+Cell["Start package", "Chapter",
+ CellChangeTimes->{{3.953389724871703*^9, 
+  3.953389726227541*^9}},ExpressionUUID->"bcd04fe3-ac6a-4f3c-882e-\
+a55a76a5a942"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"BeginPackage", "[", "\"\<FunKit`\>\"", "]"}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"Unprotect", "[", "\"\<FunKit`*\>\"", "]"}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"Unprotect", "[", "\"\<FunKit`Private`*\>\"", "]"}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"ClearAll", "[", "\"\<FunKit`*\>\"", "]"}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"ClearAll", "[", "\"\<FunKit`Private`*\>\"", "]"}], ";"}]}], "Input",\
+
+ InitializationCell->True,
+ CellChangeTimes->{{3.953389575236374*^9, 3.9533895804196043`*^9}, {
+  3.953389624029901*^9, 3.953389685835988*^9}, {3.953389900443974*^9, 
+  3.953389935955709*^9}, {3.953390795656473*^9, 
+  3.953390796384056*^9}},ExpressionUUID->"046565fa-0b6e-470f-b2dd-\
+8f76fa7999b9"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"ModuleLoaded", "[", "FunKit", "]"}], "=", "True"}], 
+  ";"}]], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{{3.951279357886877*^9, 3.951279421240814*^9}, {
+  3.9512794606622543`*^9, 3.951279475842711*^9}, {3.951279581390761*^9, 
+  3.951279718714636*^9}, {3.951279760502161*^9, 
+  3.951279762930052*^9}},ExpressionUUID->"782d2e05-61cb-4a1e-995b-\
+58129b80f7bd"],
 
 Cell[BoxData[
  RowBox[{
@@ -214,21 +363,136 @@ Cell[BoxData[
    3.925555067350979*^9, 3.925555091557687*^9}, {3.933823818986477*^9, 
    3.933823866097943*^9}, {3.933823926618765*^9, 3.9338239610825243`*^9}, 
    3.933824033346868*^9, {3.93382410279498*^9, 3.933824126602005*^9}, 
-   3.933843822671564*^9, {3.951052965253414*^9, 
-   3.9510530055257807`*^9}},ExpressionUUID->"8bc199ff-ae99-4c54-bfe1-\
-60a0f32bb5fb"],
+   3.933843822671564*^9, {3.951052965253414*^9, 3.9510530055257807`*^9}, {
+   3.953393736440352*^9, 3.9533937441481457`*^9}, {3.9533937780361967`*^9, 
+   3.953393781728763*^9}, {3.953393904828868*^9, 3.953393911964867*^9}, 
+   3.953394049237327*^9},ExpressionUUID->"cd579848-5f92-46bc-aef2-\
+9537d08ac00a"]
+}, Open  ]],
 
-Cell[BoxData[
+Cell[CellGroupData[{
+
+Cell["Necessary operations", "Chapter",
+ CellChangeTimes->{{3.951280157526368*^9, 3.951280164146823*^9}, {
+  3.9533897545250883`*^9, 
+  3.9533897576917057`*^9}},ExpressionUUID->"06ff7fc1-962e-43b4-a94f-\
+9559f0b4dca3"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"If", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"Head", "[", "$DistributedContexts", "]"}], "=!=", "List"}], ",", 
+    RowBox[{"$DistributedContexts", "=", 
+     RowBox[{"{", "}"}]}]}], "]"}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{"$DistributedContexts", "=", 
+  RowBox[{"$DistributedContexts", "\[Union]", 
+   RowBox[{"{", 
+    RowBox[{
+    "$Context", ",", "\"\<FunKit`Private`\>\"", ",", "\"\<TensorBases`\>\"", 
+     ",", "\"\<FormTracer`\>\"", ",", "\"\<FormTracer`Private`\>\"", ",", 
+     "\"\<TensorBases`\>\"", ",", "\"\<TensorBases`Private`\>\""}], 
+    "}"}]}]}]}], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{
+  3.953389742539731*^9, {3.953545072753508*^9, 3.95354507982922*^9}, {
+   3.953545685478011*^9, 
+   3.953545693150399*^9}},ExpressionUUID->"79ec99ed-c6a5-40d1-ba31-\
+4de7b82081b9"],
+
+Cell[BoxData[{
+ RowBox[{"Begin", "[", "\"\<`Private`\>\"", "]"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"If", "[", 
+   RowBox[{
+    RowBox[{
+     RowBox[{"Head", "[", "$DistributedContexts", "]"}], "=!=", "List"}], ",", 
+    RowBox[{"$DistributedContexts", "=", 
+     RowBox[{"{", "}"}]}]}], "]"}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{"$DistributedContexts", "=", 
+  RowBox[{"$DistributedContexts", "\[Union]", 
+   RowBox[{"{", 
+    RowBox[{
+    "$Context", ",", "\"\<FunKit`Private`\>\"", ",", "\"\<TensorBases`\>\"", 
+     ",", "\"\<FormTracer`\>\"", ",", "\"\<FormTracer`Private`\>\"", ",", 
+     "\"\<TensorBases`\>\"", ",", "\"\<TensorBases`Private`\>\""}], 
+    "}"}]}]}], "\[IndentingNewLine]", 
+ RowBox[{"End", "[", "]"}]}], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{{3.953435833015234*^9, 3.953435845269949*^9}, {
+  3.9535448980640173`*^9, 3.953544905217916*^9}, {3.953545067177813*^9, 
+  3.953545069224051*^9}, {3.953545689982424*^9, 
+  3.953545695537869*^9}},ExpressionUUID->"9f2ac5dd-2eaa-4d6f-b8cb-\
+362c8c467d62"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"$FunKitDebugLevel", "=", "0"}], ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
-   RowBox[{"ModuleLoaded", "[", "FunKit", "]"}], "=", "True"}], 
-  ";"}]], "Input",
+   RowBox[{"FunKitDebugLevel", "[", "newLevel_Integer", "]"}], ":=", 
+   RowBox[{"Module", "[", 
+    RowBox[{
+     RowBox[{"{", "}"}], ",", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"Unprotect", "@", "$FunKitDebugLevel"}], ";", 
+      "\[IndentingNewLine]", 
+      RowBox[{"Set", "[", 
+       RowBox[{"$FunKitDebugLevel", ",", "newLevel"}], "]"}], ";", 
+      "\[IndentingNewLine]", 
+      RowBox[{"Protect", "@", "$FunKitDebugLevel"}], ";", 
+      "\[IndentingNewLine]", "\[IndentingNewLine]", 
+      RowBox[{"Unprotect", "@", "FunKitDebug"}], ";", "\[IndentingNewLine]", 
+      RowBox[{"If", "[", 
+       RowBox[{
+        RowBox[{"$FunKitDebugLevel", "<=", "0"}], ",", 
+        RowBox[{
+         RowBox[{"ClearAll", "[", "FunKitDebug", "]"}], ";", 
+         RowBox[{"SetAttributes", "[", 
+          RowBox[{"FunKitDebug", ",", "HoldAll"}], "]"}], ";"}]}], "]"}], ";",
+       "\[IndentingNewLine]", 
+      RowBox[{"If", "[", 
+       RowBox[{
+        RowBox[{"$FunKitDebugLevel", ">", "0"}], ",", 
+        RowBox[{
+         RowBox[{"ClearAll", "[", "FunKitDebug", "]"}], ";", 
+         "\[IndentingNewLine]", 
+         RowBox[{
+          RowBox[{"FunKitDebug", "[", 
+           RowBox[{"level_Integer", ",", "$a___"}], "]"}], ":=", 
+          RowBox[{"If", "[", 
+           RowBox[{
+            RowBox[{"level", "<=", "$FunKitDebugLevel"}], ",", 
+            RowBox[{"Print", "[", 
+             RowBox[{
+              RowBox[{"\"\<[FunKit \>\"", "<>", 
+               RowBox[{"ToString", "[", "level", "]"}], "<>", "\"\<]  \>\""}],
+               ",", "$a"}], "]"}]}], "]"}]}], ";"}]}], "\[IndentingNewLine]", 
+       "]"}], ";", "\[IndentingNewLine]", 
+      RowBox[{"Protect", "@", "FunKitDebug"}], ";"}]}], "\[IndentingNewLine]",
+     "]"}]}], ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"(*", "\[IndentingNewLine]", "   ", 
+   RowBox[{"0", ":", " ", 
+    RowBox[{"no", " ", "info", "\[IndentingNewLine]", " ", "1"}], ":", " ", 
+    RowBox[{
+    "basic", " ", "information", " ", "what", " ", "is", " ", "happening", 
+     "\[IndentingNewLine]", " ", "2"}], ":", " ", 
+    RowBox[{"in", "-", 
+     RowBox[{
+     "depth", " ", "what", " ", "steps", " ", "are", " ", "being", " ", 
+      "processed", "\[IndentingNewLine]", "3"}]}], ":", " ", 
+    RowBox[{"the", " ", "guts", " ", "of", " ", "the", " ", "program"}]}], 
+   "\[IndentingNewLine]", "*)"}]}]}], "Input",
  InitializationCell->True,
- CellChangeTimes->{{3.951279357886877*^9, 3.951279421240814*^9}, {
-  3.9512794606622543`*^9, 3.951279475842711*^9}, {3.951279581390761*^9, 
-  3.951279718714636*^9}, {3.951279760502161*^9, 
-  3.951279762930052*^9}},ExpressionUUID->"782d2e05-61cb-4a1e-995b-\
-58129b80f7bd"]
+ CellChangeTimes->{{3.953435833015234*^9, 3.953435845269949*^9}, {
+  3.953527102460891*^9, 3.9535273540448847`*^9}, {3.953527394349368*^9, 
+  3.953527467797558*^9}, {3.9535275371972437`*^9, 3.953527537957382*^9}, {
+  3.9535275953775387`*^9, 3.953527658576997*^9}, {3.9535318021809893`*^9, 
+  3.953531804079299*^9}, {3.95353243784004*^9, 
+  3.953532440219247*^9}},ExpressionUUID->"93970ecf-4458-45a6-af7f-\
+b722479ab7d0"]
 }, Open  ]],
 
 Cell[CellGroupData[{
@@ -247,20 +511,6 @@ FontSlant->\"Italic\"]\)\!\(\*StyleBox[\" \",FontSize->10,FontWeight->\"Plain\
 \",FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"modules\",FontSize->10,FontWeight-\
 >\"Plain\",FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"...\",FontSize->10,\
 FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\>\"", "]"}], 
-  ";"}], "\[IndentingNewLine]", 
- RowBox[{"Block", "[", 
-  RowBox[{
-   RowBox[{"{", "Print", "}"}], ",", 
-   RowBox[{"Get", "[", "\"\<TensorBases`\>\"", "]"}]}], 
-  "]"}], "\[IndentingNewLine]", 
- RowBox[{
-  RowBox[{
-  "Print", "[", 
-   "\"\<\!\(\*StyleBox[\"...\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*\
-StyleBox[\"TensorBases\",FontSize->10,FontWeight->\"Bold\",FontSlant->\"\
-Italic\"]\)\!\(\*StyleBox[\" \
-\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"loaded\",FontSize->\
-10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\>\"", "]"}], 
   ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{"Get", "[", 
@@ -294,29 +544,70 @@ StyleBox[\"AnSEL\",FontSize->10,FontWeight->\"Bold\",FontSlant->\"Italic\"]\)\
   ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
-   RowBox[{
-   "Print", "[", 
-    "\"\<\!\(\*StyleBox[\"...\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*\
+  "Print", "[", 
+   "\"\<\!\(\*StyleBox[\"...\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*\
 StyleBox[\"DiANE\",FontSize->10,FontWeight->\"Bold\",FontSlant->\"Italic\"]\)\
 \!\(\*StyleBox[\" \
 \",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"loaded\",FontSize->\
+10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\>\"", "]"}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"Get", "[", 
+   RowBox[{"$FunKitDirectory", "<>", "\"\<modules/DiRK.m\>\""}], "]"}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+  "Print", "[", 
+   "\"\<\!\(\*StyleBox[\"...\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*\
+StyleBox[\"DiRK\",FontSize->10,FontWeight->\"Bold\",FontSlant->\"Italic\"]\)\!\
+\(\*StyleBox[\" \
+\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"loaded\",FontSize->\
+10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\>\"", "]"}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"Get", "[", 
+   RowBox[{"$FunKitDirectory", "<>", "\"\<modules/TRACY.m\>\""}], "]"}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+  "Print", "[", 
+   "\"\<\!\(\*StyleBox[\"...\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*\
+StyleBox[\"TRACY\",FontSize->10,FontWeight->\"Bold\",FontSlant->\"Italic\"]\)\
+\!\(\*StyleBox[\" \
+\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"loaded\",FontSize->\
+10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\>\"", "]"}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{"Get", "[", 
+   RowBox[{"$FunKitDirectory", "<>", "\"\<modules/COEN.m\>\""}], "]"}], 
+  ";"}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{
+   "Print", "[", 
+    "\"\<\!\(\*StyleBox[\"...\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*\
+StyleBox[\"COEN\",FontSize->10,FontWeight->\"Bold\",FontSlant->\"Italic\"]\)\!\
+\(\*StyleBox[\" \
+\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"loaded\",FontSize->\
 10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\>\"", "]"}], ";"}], 
   "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
- RowBox[{"Print", "[", 
-  "\"\<Welcome to  \!\(\*StyleBox[\"\:2588\:2580\",FontColor->GrayLevel[0]]\)\
-\!\(\*StyleBox[\" \",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\"\:2590\:2584\
-\:2588\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\" \
-\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\"\:2588\:259a\:258c\",FontColor->\
+ RowBox[{
+  RowBox[{
+  "Print", "[", 
+   "\"\<Welcome to  \
+\!\(\*StyleBox[\"\:2588\:2580\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\" \
+\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\"\:2590\:2584\:2588\",FontColor->\
 GrayLevel[0]]\)\!\(\*StyleBox[\" \",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\
-\"\:2590\[FilledLeftTriangle]\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\" \
-\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\"\:2588\",FontColor->GrayLevel[0]\
-]\)\!\(\*StyleBox[\" \",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\"\:2580\
-\:2588\:2580\",FontColor->GrayLevel[0]]\)\n\
-\!\(\*StyleBox[\"Author\",FontWeight->\"Bold\"]\): Franz Richard Sattler\n\
-\!\(\*StyleBox[\"Version\",FontWeight->\"Bold\"]\): 1.0\n\
+\"\:2588\:259a\:258c\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\" \
+\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\"\:2590\[FilledLeftTriangle]\",\
+FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\" \",FontColor->GrayLevel[0]]\)\!\(\
+\*StyleBox[\"\:2588\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\" \
+\",FontColor->GrayLevel[0]]\)\!\(\*StyleBox[\"\:2580\:2588\:2580\",FontColor->\
+GrayLevel[0]]\)\n\!\(\*StyleBox[\"Author\",FontWeight->\"Bold\"]\): Franz \
+Richard Sattler\n\!\(\*StyleBox[\"Version\",FontWeight->\"Bold\"]\): 1.0\n\
 \!\(\*StyleBox[\"Year\",FontWeight->\"Bold\"]\): 2025\nFor more information, \
-call \!\(\*StyleBox[\"FunKitInfo\",FontColor->RGBColor[1, 0.5, 0]]\)[].\>\"", 
-  "]"}]}], "Input",
+call \!\(\*StyleBox[\"FInfo\",FontColor->RGBColor[1, 0.5, 0]]\)[].\>\"", 
+   "]"}], ";"}]}], "Input",
  InitializationCell->True,
  CellChangeTimes->{
   3.935485596659787*^9, {3.941266610456051*^9, 3.941266613472143*^9}, {
@@ -330,15 +621,191 @@ call \!\(\*StyleBox[\"FunKitInfo\",FontColor->RGBColor[1, 0.5, 0]]\)[].\>\"",
    3.951237974933687*^9, 3.9512379760207233`*^9}, {3.951279166310658*^9, 
    3.951279184659225*^9}, 3.951279721725441*^9, {3.9512797721552677`*^9, 
    3.951279773746684*^9}, 3.95128004114781*^9, {3.9516326803972607`*^9, 
-   3.951632688228386*^9}},ExpressionUUID->"e55cdd8a-6045-4e30-8a2b-\
+   3.951632688228386*^9}, {3.9526714088029213`*^9, 3.952671409618701*^9}, {
+   3.95276573298285*^9, 3.952765737749515*^9}, {3.952765781070895*^9, 
+   3.952765790585628*^9}, {3.952766080429998*^9, 3.952766083029847*^9}, {
+   3.952766344068763*^9, 3.952766358819405*^9}, 3.953389852800673*^9, 
+   3.9533937864695053`*^9, 3.9533952838974123`*^9, {3.953532066250812*^9, 
+   3.953532070970787*^9}, {3.9535322622397547`*^9, 
+   3.953532265787032*^9}},ExpressionUUID->"e55cdd8a-6045-4e30-8a2b-\
 0448ee7472c1"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["FInfo", "Chapter",
+ CellChangeTimes->{{3.951280157526368*^9, 3.951280164146823*^9}, {
+  3.9533897607874928`*^9, 
+  3.953389768931527*^9}},ExpressionUUID->"e3e05c8f-39f0-4050-ac9f-\
+88b0d5ad1c65"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"FInfo", "[", "]"}], ":=", 
+   RowBox[{"Module", "[", 
+    RowBox[{
+     RowBox[{"{", "}"}], ",", "\[IndentingNewLine]", 
+     RowBox[{
+     "Print", "[", 
+      "\"\<To see an overview and some examples for the syntax of \
+\!\(\*StyleBox[\"FEDeriK\",FontWeight->\"Bold\"]\), call \
+\!\(\*StyleBox[\"FInfo\",FontColor->RGBColor[1, 0.5, 0]]\)[\\\"FEDeriK\\\"]\>\
+\"", "]"}]}], "\[IndentingNewLine]", "]"}]}], ";"}]], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{{3.952671412899819*^9, 3.952671597183782*^9}, {
+  3.9526786712952127`*^9, 3.952678699102769*^9}, {3.952678740674859*^9, 
+  3.952678792714961*^9}, {3.9526788403910103`*^9, 3.952679022567069*^9}, {
+  3.952679057219322*^9, 3.95267959372716*^9}, {3.9526800422437696`*^9, 
+  3.952680102475408*^9}, {3.95268049303316*^9, 3.952680612875676*^9}, {
+  3.952680643732318*^9, 3.952680700227783*^9}, {3.952680817523862*^9, 
+  3.952680994140131*^9}, {3.952705016797764*^9, 3.952705076833888*^9}, {
+  3.952705114996028*^9, 3.9527051590154057`*^9}, {3.952705200016268*^9, 
+  3.952705326257753*^9}, {3.9527053562827463`*^9, 3.952705356801649*^9}, {
+  3.9527055172326117`*^9, 3.9527055641045113`*^9}, {3.952765740755336*^9, 
+  3.95276576214596*^9}},ExpressionUUID->"9bb42373-e385-489c-a935-\
+e93c92a48e3a"],
+
+Cell[BoxData[
+ RowBox[{
+  RowBox[{
+   RowBox[{"FInfo", "[", "\"\<FEDeriK\>\"", "]"}], ":=", 
+   RowBox[{"Module", "[", 
+    RowBox[{
+     RowBox[{"{", "}"}], ",", "\[IndentingNewLine]", 
+     RowBox[{
+      RowBox[{"Print", "[", 
+       RowBox[{
+       "\"\<\!\(\*StyleBox[\"General\",FontSize->18,FontWeight->\"Bold\"]\)\!\
+\(\*StyleBox[\" \
+\",FontSize->18,FontWeight->\"Bold\"]\)\!\(\*StyleBox[\"syntax\",FontSize->18,\
+FontWeight->\"Bold\"]\)\n\nThe overall syntax used throughout \!\(\*StyleBox[\
+\"FunKit\",FontWeight->\"Bold\"]\)\!\(\*StyleBox[\" \
+\",FontWeight->\"Bold\"]\)is given by its core module\!\(\*StyleBox[\" \
+\",FontWeight->\"Bold\"]\)\!\(\*StyleBox[\"FEDeriK\",FontWeight->\"Bold\"]\).\
+\nAny equation is comprised of terms that contain (possibly non-commuting) \
+factors.\nThese terms are written out using the \
+\!\(\*StyleBox[\"FTerm\",FontColor->RGBColor[1, 0.5, 0]]\)\!\(\*StyleBox[\" \
+\",FontColor->RGBColor[1, 0.5, 0]]\)tag, e.g. the Wetterich equation \>\"", 
+        ",", 
+        RowBox[{
+        "MaTeX`MaTeX", "[", 
+         "\"\<\\\\partial_t \\\\Gamma = \
+\\\\frac{1}{2}\\\\,G_{ab}\\\\partial_t R^{ab}\>\"", "]"}], ",", 
+        "\"\< is given by\n    \
+\!\(\*StyleBox[\"FTerm\",FontColor->RGBColor[1, 0.5, 0]]\)[\!\(\*FractionBox[\
+\(1\), \(2\)]\), \
+\!\(\*StyleBox[\"Propagator\",FontWeight->\"Bold\"]\)[{\!\(\*StyleBox[\"\
+AnyField\",FontWeight->\"Bold\"]\),\!\(\*StyleBox[\"AnyField\",FontWeight->\"\
+Bold\"]\)},{a,b}], \
+\!\(\*StyleBox[\"Rdot\",FontWeight->\"Bold\"]\)[{\!\(\*StyleBox[\"AnyField\",\
+FontWeight->\"Bold\"]\),\!\(\*StyleBox[\"AnyField\",FontWeight->\"Bold\"]\)},{\
+-a,-b}]]\nSimilar to the \
+\!\(\*StyleBox[\"xAct\",FontWeight->\"Bold\"]\)\!\(\*StyleBox[\" \
+\",FontWeight->\"Bold\"]\)Mathematica package, we use negative indices (-a, \
+-b) to indicate lower indices and positive indices (a, b) to indicate upper \
+ones.\nFurthermore, we have utilised syntax for \
+\!\(\*StyleBox[\"indexed\",FontSlant->\"Italic\"]\)\!\(\*StyleBox[\" \
+\",FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"objects\",FontSlant->\"Italic\"]\)\
+\!\(\*StyleBox[\" \",FontSlant->\"Italic\"]\)in the above. Both \
+\!\(\*StyleBox[\"Propagator\",FontWeight->\"Bold\"]\)\!\(\*StyleBox[\" \
+\",FontWeight->\"Bold\"]\)and \!\(\*StyleBox[\"Rdot\",FontWeight->\"Bold\"]\)\
+\!\(\*StyleBox[\" \",FontWeight->\"Bold\"]\)are such indexed objects. \nAny \
+indexed object must be comprised of two lists: the first one gives the field \
+content, and the second list the corresponding super-indices or explicit \
+indices.\nTo see a list of all indexed objects known to \
+\!\(\*StyleBox[\"FEDeriK\",FontWeight->\"Bold\"]\), one can call \
+\!\(\*StyleBox[\"ShowIndexedObjects\",FontColor->RGBColor[1, 0.5, 0]]\)[], \
+which outputs \>\""}], "]"}], ";", "\[IndentingNewLine]", 
+      RowBox[{"ShowIndexedObjects", "[", "]"}], ";", "\[IndentingNewLine]", 
+      RowBox[{
+      "Print", "[", 
+       "\"\<in the current case. One can register custom indexed objects with \
+\!\(\*StyleBox[\"FEDeriK\",FontWeight->\"Bold\"]\) by using \
+\!\(\*StyleBox[\"AddIndexedObject\",FontColor->RGBColor[1, 0.5, \
+0]]\)[_Symbol]. \nA subset of the indexed objects are correlation functions, \
+and \!\(\*StyleBox[\"ShowCorrelationFunctions\",FontColor->RGBColor[1, 0.5, \
+0]]\)[] outputs \>\"", "]"}], ";", "\[IndentingNewLine]", 
+      RowBox[{"ShowCorrelationFunctions", "[", "]"}], ";", 
+      "\[IndentingNewLine]", 
+      RowBox[{"Print", "[", 
+       RowBox[{
+       "\"\<These are special indexed objects, which are always hit by \
+functional derivatives. \nAs an example, take the generalised flow equation \
+\>\"", ",", 
+        RowBox[{
+        "MaTeX`MaTeX", "[", 
+         "\"\<\\\\partial_t \\\\Gamma = -\\\\dot\\\\Phi^a\\\\Gamma_a + \
+\\\\frac{1}{2}G^{ac}\\\\Bigg(\\\\gamma_c^{\\\\phantom{c}b}\\\\partial_t  + 2 \
+\\\\frac{\\\\delta\\\\dot{\\\\Phi}^b}{\\\\delta\\\\Phi^c}\\\\Bigg){R}_{ab}\>\"\
+", "]"}], ",", "\[IndentingNewLine]", 
+        "\"\<First, we add a new correlation function using \
+\!\(\*StyleBox[\"AddCorrelationFunction\",FontColor->RGBColor[1, 0.5, \
+0]]\)[Phidot] and mark its last index to be never re-ordered using \
+\!\(\*StyleBox[\"SetUnorderedIndices\",FontColor->RGBColor[1, 0.5, \
+0]]\)[Phidot,1]\>\""}], "]"}], ";", "\[IndentingNewLine]", 
+      RowBox[{"AddCorrelationFunction", "[", "Phidot", "]"}], ";", 
+      "\[IndentingNewLine]", 
+      RowBox[{"SetUnorderedIndices", "[", 
+       RowBox[{"Phidot", ",", "1"}], "]"}], ";", "\[IndentingNewLine]", 
+      RowBox[{
+      "Print", "[", 
+       "\"\<Then, the flow equation can be written out as \n\n    \
+\!\(\*StyleBox[\"FEq\",FontColor->RGBColor[1, 0.5, \
+0]]\)[\!\(\*StyleBox[\"FTerm\",FontColor->RGBColor[1, 0.5, 0]]\)[-1, \
+\!\(\*StyleBox[\"Phidot\",FontWeight->\"Bold\"]\)[{\!\(\*StyleBox[\"AnyField\"\
+,FontWeight->\"Bold\"]\)},{a}], \
+\!\(\*StyleBox[\"GammaN\",FontWeight->\"Bold\"]\)[{\!\(\*StyleBox[\"AnyField\"\
+,FontWeight->\"Bold\"]\)},{-a}]],\[IndentingNewLine]    \
+\!\(\*StyleBox[\"FTerm\",FontColor->RGBColor[1, 0.5, 0]]\)[\!\(\*FractionBox[\
+\(1\), \(2\)]\), \
+\!\(\*StyleBox[\"Propagator\",FontWeight->\"Bold\"]\)[{\!\(\*StyleBox[\"\
+AnyField\",FontWeight->\"Bold\"]\),\!\(\*StyleBox[\"AnyField\",FontWeight->\"\
+Bold\"]\)},{a,b}], \
+\!\(\*StyleBox[\"Rdot\",FontWeight->\"Bold\"]\)[{\!\(\*StyleBox[\"AnyField\",\
+FontWeight->\"Bold\"]\),\!\(\*StyleBox[\"AnyField\",FontWeight->\"Bold\"]\)},{\
+-a,-b}]],\[IndentingNewLine]    \
+\!\(\*StyleBox[\"FTerm\",FontColor->RGBColor[1, 0.5, 0]]\)[ \
+\!\(\*StyleBox[\"Propagator\",FontWeight->\"Bold\"]\)[{\!\(\*StyleBox[\"\
+AnyField\",FontWeight->\"Bold\"]\),\!\(\*StyleBox[\"AnyField\",FontWeight->\"\
+Bold\"]\)},{a,c}], \
+\!\(\*StyleBox[\"Phidot\",FontWeight->\"Bold\"]\)[{\!\(\*StyleBox[\"AnyField\"\
+,FontWeight->\"Bold\"]\),\!\(\*StyleBox[\"AnyField\",FontWeight->\"Bold\"]\)},\
+{-c,b}], \!\(\*StyleBox[\"R\",FontWeight->\"Bold\"]\)[{\!\(\*StyleBox[\"\
+AnyField\",FontWeight->\"Bold\"]\),\!\(\*StyleBox[\"AnyField\",FontWeight->\"\
+Bold\"]\)},{-a,-b}]]]\n\>\"", "]"}], ";"}]}], "\[IndentingNewLine]", "]"}]}], 
+  ";"}]], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{
+  3.952765765326414*^9, {3.953394287097144*^9, 3.953394288892743*^9}, {
+   3.953394324597752*^9, 
+   3.953394324793425*^9}},ExpressionUUID->"4b4f4ad4-7210-4478-a569-\
+41f20a07bb6c"]
+}, Open  ]],
+
+Cell[CellGroupData[{
+
+Cell["Finish", "Chapter",
+ CellChangeTimes->{{3.953389709801054*^9, 
+  3.953389710303761*^9}},ExpressionUUID->"49d12299-ea1b-44fc-bd22-\
+2da512cfecd4"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{"Protect", "[", "\"\<FunKit`*\>\"", "]"}], ";"}], "\n", 
+ RowBox[{
+  RowBox[{"EndPackage", "[", "]"}], ";"}]}], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{{3.9533897848315077`*^9, 
+  3.953389789863916*^9}},ExpressionUUID->"d25beb62-45c5-4226-ae79-\
+0968129dba54"]
 }, Open  ]]
 }, Open  ]]
 },
 AutoGeneratedPackage->"FunKit.m",
 WindowSize->{1200, 750},
 WindowMargins->{{0, Automatic}, {Automatic, 0}},
-Magnification:>0.9 Inherited,
+Magnification:>0.7 Inherited,
 FrontEndVersion->"14.1 for Linux x86 (64-bit) (July 16, 2024)",
 StyleDefinitions->"Default.nb",
 ExpressionUUID->"dfc92765-bf29-47cf-bd50-cf1f31dcd525"
@@ -354,24 +821,51 @@ CellTagsIndex->{}
 *)
 (*NotebookFileOutline
 Notebook[{
-Cell[554, 20, 581, 11, 28, "Input",ExpressionUUID->"33cd48af-4550-42b3-9c95-127f2f1ee635"],
+Cell[554, 20, 581, 11, 21, "Input",ExpressionUUID->"33cd48af-4550-42b3-9c95-127f2f1ee635"],
 Cell[CellGroupData[{
-Cell[1160, 35, 151, 3, 86, "Title",ExpressionUUID->"3edd37f6-e6ee-46fd-bdbb-e9eec3794061"],
+Cell[1160, 35, 151, 3, 67, "Title",ExpressionUUID->"3edd37f6-e6ee-46fd-bdbb-e9eec3794061"],
 Cell[CellGroupData[{
-Cell[1336, 42, 271, 4, 61, "Chapter",ExpressionUUID->"291f640c-487b-4f30-9942-6958673dcd5e"],
-Cell[1610, 48, 4515, 105, 542, "Input",ExpressionUUID->"4600f702-b623-4c77-bc43-2b8669b8e0af",
- InitializationCell->True]
-}, Open  ]],
-Cell[CellGroupData[{
-Cell[6162, 158, 278, 4, 61, "Chapter",ExpressionUUID->"707785f5-b61b-4c6b-a8bc-9995ab27ddc4"],
-Cell[6443, 164, 2426, 54, 292, "Input",ExpressionUUID->"8bc199ff-ae99-4c54-bfe1-60a0f32bb5fb",
+Cell[1336, 42, 271, 4, 47, "Chapter",ExpressionUUID->"291f640c-487b-4f30-9942-6958673dcd5e"],
+Cell[1610, 48, 5837, 135, 467, "Input",ExpressionUUID->"4600f702-b623-4c77-bc43-2b8669b8e0af",
  InitializationCell->True],
-Cell[8872, 220, 417, 10, 42, "Input",ExpressionUUID->"782d2e05-61cb-4a1e-995b-58129b80f7bd",
+Cell[7450, 185, 1252, 27, 95, "Input",ExpressionUUID->"b6352d19-2461-4c4a-a46c-48016be58972",
+ InitializationCell->True],
+Cell[8705, 214, 2708, 58, 220, "Input",ExpressionUUID->"b9cad7be-9f89-40bd-a9a3-3fe1a41c3deb",
  InitializationCell->True]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[9326, 235, 164, 3, 61, "Chapter",ExpressionUUID->"e0bcd719-68cb-44c9-baed-80f31c0888a8"],
-Cell[9493, 240, 4545, 93, 336, "Input",ExpressionUUID->"e55cdd8a-6045-4e30-8a2b-0448ee7472c1",
+Cell[11450, 277, 158, 3, 47, "Chapter",ExpressionUUID->"bcd04fe3-ac6a-4f3c-882e-a55a76a5a942"],
+Cell[11611, 282, 730, 17, 95, "Input",ExpressionUUID->"046565fa-0b6e-470f-b2dd-8f76fa7999b9",
+ InitializationCell->True],
+Cell[12344, 301, 417, 10, 32, "Input",ExpressionUUID->"782d2e05-61cb-4a1e-995b-58129b80f7bd",
+ InitializationCell->True],
+Cell[12764, 313, 2598, 56, 220, "Input",ExpressionUUID->"cd579848-5f92-46bc-aef2-9537d08ac00a",
+ InitializationCell->True]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[15399, 374, 218, 4, 47, "Chapter",ExpressionUUID->"06ff7fc1-962e-43b4-a94f-9559f0b4dca3"],
+Cell[15620, 380, 852, 21, 48, "Input",ExpressionUUID->"79ec99ed-c6a5-40d1-ba31-4de7b82081b9",
+ InitializationCell->True],
+Cell[16475, 403, 1050, 23, 78, "Input",ExpressionUUID->"9f2ac5dd-2eaa-4d6f-b8cb-362c8c467d62",
+ InitializationCell->True],
+Cell[17528, 428, 2952, 66, 297, "Input",ExpressionUUID->"93970ecf-4458-45a6-af7f-b722479ab7d0",
+ InitializationCell->True]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[20517, 499, 164, 3, 47, "Chapter",ExpressionUUID->"e0bcd719-68cb-44c9-baed-80f31c0888a8"],
+Cell[20684, 504, 6005, 126, 316, "Input",ExpressionUUID->"e55cdd8a-6045-4e30-8a2b-0448ee7472c1",
+ InitializationCell->True]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[26726, 635, 201, 4, 47, "Chapter",ExpressionUUID->"e3e05c8f-39f0-4050-ac9f-88b0d5ad1c65"],
+Cell[26930, 641, 1305, 25, 64, "Input",ExpressionUUID->"9bb42373-e385-489c-a935-e93c92a48e3a",
+ InitializationCell->True],
+Cell[28238, 668, 6302, 114, 514, "Input",ExpressionUUID->"4b4f4ad4-7210-4478-a569-41f20a07bb6c",
+ InitializationCell->True]
+}, Open  ]],
+Cell[CellGroupData[{
+Cell[34577, 787, 151, 3, 47, "Chapter",ExpressionUUID->"49d12299-ea1b-44fc-bd22-2da512cfecd4"],
+Cell[34731, 792, 310, 8, 47, "Input",ExpressionUUID->"d25beb62-45c5-4226-ae79-0968129dba54",
  InitializationCell->True]
 }, Open  ]]
 }, Open  ]]

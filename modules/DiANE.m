@@ -21,13 +21,25 @@
 
 (* ::Input::Initialization:: *)
 FPrint::usage="";
-FPrint[expr_]/;Head[$GlobalSetup]=!=Symbol:=FPrint[$GlobalSetup,expr];
 
 FTex::usage="";
+
+FPlot::usage="";
+
+AddTexStyles::usage="";
+
+SetTexStyles::usage="";
+
+
+Begin["`Private`"]
+
+
+(* ::Input::Initialization:: *)
+FPrint[expr_]/;Head[$GlobalSetup]=!=Symbol:=FPrint[$GlobalSetup,expr];
+
 FTex[expr_]/;Head[$GlobalSetup]=!=Symbol:=FTex[$GlobalSetup,expr];
 
-PlotDiagrams::usage="";
-PlotDiagrams[expr_]/;Head[$GlobalSetup]=!=Symbol:=PlotDiagrams[$GlobalSetup,expr];
+FPlot[expr_]/;Head[$GlobalSetup]=!=Symbol:=FPlot[$GlobalSetup,expr];
 
 
 (* ::Input::Initialization:: *)
@@ -43,19 +55,12 @@ Message[ModuleLoaded::dependency,"DiANE","FEDeriK"];
 Abort[];
 ];
 
+If[ModuleLoaded[AnSEL]=!=True,
+Message[ModuleLoaded::dependency,"DiANE","AnSEL"];
+Abort[];
+];
+
 ModuleLoaded[DiANE]=True;
-
-
-(* ::Input::Initialization:: *)
-$FunKitDirectory=SelectFirst[Join[{FileNameJoin[{$UserBaseDirectory,"Applications","FunKit"}],FileNameJoin[{$BaseDirectory,"Applications","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","Applications","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","Packages","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","ExtraPackages","FunKit"}]},Select[$Path,StringContainsQ[#,"FunKit"]&]],DirectoryQ[#]&]<>"/";
-
-
-(* ::Input::Initialization:: *)
-If[Length@PacletFind["MaTeX"]===0,
-ResourceFunction["MaTeXInstall"][]
-]
-Get["MaTeX`"]
-Import[$FunKitDirectory<>"/utils/MathematicaTeXUtilities.m"]
 
 
 (* ::Input::Initialization:: *)
@@ -155,6 +160,7 @@ Return[{StringJoin@@lowerList,StringJoin@@upperList}]
 
 
 (* ::Input::Initialization:: *)
+ClearAll[prettySuperIndices,prettyExplicitIndices];
 prettySuperIndices[setup_,expr_FEq]:=Map[prettySuperIndices[setup,#]&,expr];
 prettySuperIndices[setup_,expr_FTerm]:=Module[{closedIndices,openIndices,repl,indices},
 closedIndices=GetClosedSuperIndices[setup,expr];
@@ -167,7 +173,9 @@ indices=Select[indices,#=!=ToString[openIndices[[i]]]&],
 repl=Thread[closedIndices->indices[[1;;Length[closedIndices]]]];
 Return[expr//.repl]
 ];
-prettySuperIndices[setup_,expr_]:=expr/.FEq[a___]:>prettySuperIndices[setup,FEq[a]]
+prettySuperIndices[setup_,expr_Association]:=Association[Normal[expr]/.FEq[a___]:>prettySuperIndices[setup,FEq[a]]]
+prettySuperIndices[setup_,expr_List]:=Map[prettySuperIndices[setup,#]&,expr];
+prettySuperIndices[setup_,expr_routedContainer]:=Map[prettySuperIndices[setup,#]&,expr];
 
 
 (* ::Input::Initialization:: *)
@@ -181,7 +189,9 @@ indices=Alphabet[];
 repl=Thread[closedIndices->indices[[1;;Length[closedIndices]]]]\[Union]Thread[openIndices->indices[[Length[closedIndices]+1;;Length[closedIndices]+Length[openIndices]]]];
 Return[expr//.repl]
 ];
-prettyExplicitIndices[setup_,expr_]:=expr/.FEq[a___]:>prettyExplicitIndices[setup,FEq[a]]
+prettyExplicitIndices[setup_,expr_Association]:=Association[Normal[expr]/.FEq[a___]:>prettyExplicitIndices[setup,FEq[a]]]
+prettyExplicitIndices[setup_,expr_List]:=Map[prettyExplicitIndices[setup,#]&,expr];
+prettyExplicitIndices[setup_,expr_routedContainer]:=Map[prettyExplicitIndices[setup,#]&,expr];
 
 
 (* ::Input::Initialization:: *)
@@ -232,17 +242,17 @@ Map[
 Format[Keys[#][any_],TeXForm]:=Module[{head,arg},
 head=Keys[#]//.$TexStyles//.$Fields;
 arg=Format[any,TeXForm]//ToString;
-TeXVerbatim[head<>arg]
+TeXUtilities`TeXVerbatim[head<>arg]
 ];
 Format[Superscript[Keys[#],any_],TeXForm]:=Module[{head,arg},
 head=Keys[#]//.$TexStyles//.$Fields;
 arg=Format[any,TeXForm]//ToString;
-TeXVerbatim[head<>"^"<>arg]
+TeXUtilities`TeXVerbatim[head<>"^{"<>arg<>"}"]
 ];
 Format[Subscript[Keys[#],any_],TeXForm]:=Module[{head,arg},
 head=Keys[#]//.$TexStyles//.$Fields;
 arg=Format[any,TeXForm]//ToString;
-TeXVerbatim[head<>"_"<>arg]
+TeXUtilities`TeXVerbatim[head<>"_{"<>arg<>"}"]
 ];
 )&,
 $TexStyles\[Union]Select[$Fields,FreeQ[Keys[$TexStyles],Keys[#]]&]];
@@ -253,28 +263,28 @@ Map[
 Format[Keys[#][{p_,indices_}],TeXForm]:=Module[{head,arg},
 head=Keys[#]//.$TexStyles//.$Fields;
 arg=Format[indices,TeXForm]//ToString;
-TeXVerbatim[head<>arg<>"("<>ToString[TeXForm[p]]<>")"]
+TeXUtilities`TeXVerbatim[head<>arg<>"("<>ToString[TeXForm[p]]<>")"]
 ];
 Format[Superscript[Keys[#],{p_,indices_}],TeXForm]:=Module[{head,arg},
 head=Keys[#]//.$TexStyles//.$Fields;
 arg=Format[indices,TeXForm]//ToString;
-TeXVerbatim[head<>"^"<>arg<>"("<>ToString[TeXForm[p]]<>")"]
+TeXUtilities`TeXVerbatim[head<>"^{"<>arg<>"}("<>ToString[TeXForm[p]]<>")"]
 ];
 Format[Subscript[Keys[#],{p_,indices_}],TeXForm]:=Module[{head,arg},
 head=Keys[#]//.$TexStyles//.$Fields;
 arg=Format[indices,TeXForm]//ToString;
-TeXVerbatim[head<>"_"<>arg<>"("<>ToString[TeXForm[p]]<>")"]
+TeXUtilities`TeXVerbatim[head<>"_{"<>arg<>"}("<>ToString[TeXForm[p]]<>")"]
 ];
 )&,
 $TexStyles\[Union]Select[$Fields,FreeQ[Keys[$TexStyles],Keys[#]]&]];
 
 (*Other formatting*)
 Format[FDOp[f_],TeXForm]:=Module[{},
-TeXDelimited["\\frac{\\delta}{\\delta",f,"}"]
+TeXUtilities`TeXDelimited["\\frac{\\delta}{\\delta",f,"}"]
 ];
 
 Map[
-(Format[#[{f__},{i__}],TeXForm]/;Head[{i}[[1]]]=!=List:=Module[{sub,sup,ret},
+(Format[#[{f__},{i__}],TeXForm]:=Module[{sub,sup,ret},
 {sub,sup}=MakeTexIndexList[{f},{i}];
 ret=Switch[#,
 Propagator,"G",
@@ -284,14 +294,15 @@ GammaN,"\\Gamma",
 S,"S",
 _,TeXForm[#]//ToString
 ];
+If[(#//.$TexStyles)=!=#,ret=(#//.$TexStyles)];
 If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
 If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
-TeXVerbatim[ret]
+TeXUtilities`TeXVerbatim[ret]
 ])&,
-$indexedObjects];
+$allObjects];
 
 Map[
-(Format[#[{f__},{i__}],TeXForm]/;Head[{i}[[1]]]===List:=Module[{sub,sup,ret},
+(Format[#[{f__},{i__}],TeXForm]/;AllTrue[{i},(Head[#]===List)&]:=Module[{sub,sup,ret},
 {sub,sup}=MakeTexIndexList[{f},-{i}[[All,2]]];
 ret=Switch[#,
 Propagator,"G",
@@ -301,11 +312,12 @@ GammaN,"\\Gamma",
 S,"S",
 _,TeXForm[#]//ToString
 ];
+If[(#//.$TexStyles)=!=#,ret=(#//.$TexStyles)];
 If[StringLength[sub]=!=0,ret=ret<>"_{"<>sub<>"}"];
 If[StringLength[sup]=!=0,ret=ret<>"^{"<>sup<>"}"];
-TeXVerbatim[ret<>"("<>StringRiffle[Map[ToString@TeXForm[#]&,{i}[[All,1]]],","]<>")"]
+TeXUtilities`TeXVerbatim[ret<>"("<>StringRiffle[Map[ToString@TeXForm[#]&,{i}[[All,1]]],","]<>")"]
 ])&,
-$indexedObjects];
+$allObjects];
 
 Format[FTerm[a___],TeXForm]:=Module[{obj,integrals,replNames,idx,prefix,postfix,body={a}},
 integrals=Pick[$availableLoopMomenta,Map[MemberQ[{a},#,Infinity]&,$availableLoopMomenta]];
@@ -329,18 +341,18 @@ body=body//.Map[#->Subscript[Symbol[StringTake[SymbolName[#],{1}]],ToExpression@
 Select[GetAllSymbols[body],StringMatchQ[SymbolName[#],LetterCharacter~~DigitCharacter..]&]
 ];
 
-TeXDelimited[prefix,##,postfix,
+TeXUtilities`TeXDelimited[prefix,##,postfix,
 "DelimSeparator"->"","BodySeparator"->"\\,",
 (*It is not clear why the call to RenewFormatDefinitions[] is necessary here. However, removing it leads to TeXForm ignoring all custom TeXStyles.*)
 "BodyConverter"->(ToString[RenewFormatDefinitions[];Format[#,TeXForm]]&)
 ]&@@body
 ];
 
-Format[FEq[a___],TeXForm]:=If[Length[Flatten[(List@@#&)/@{a}]]<=8,
-TeXDelimited["",a,"",
+Format[FEq[a___],TeXForm]:=If[Length[Flatten[(List@@#&)/@{a}]]<=9,
+TeXUtilities`TeXDelimited["",a,"",
 "DelimSeparator"->"\n","BodySeparator"->"\n\\,+\\,\n",
 "BodyConverter"->(ToString[Format[#,TeXForm]]&)],
-TeXDelimited["\\begin{aligned}&",a,"\\end{aligned}",
+TeXUtilities`TeXDelimited["\\begin{aligned}&",a,"\\end{aligned}",
 "DelimSeparator"->"\n","BodySeparator"->"\n\\\\ &\\,+\\,\n",
 "BodyConverter"->(ToString[Format[#,TeXForm]]&)]
 ];
@@ -358,7 +370,7 @@ StringJoin[{"\\,+\\,",#}]]&,
 parts[[2;;]]]
 ];
 
-TeXVerbatim["\\begin{aligned}&\n"<>
+TeXUtilities`TeXVerbatim["\\begin{aligned}&\n"<>
 StringRiffle[parts,"\n \\\&\n"]<>
 "\n\\end{aligned}"]
 ];
@@ -368,13 +380,10 @@ Protect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus,S,routedC
 Protect@@$allObjects;
 ];
 
-TakeDerivatives[MakeDSE[c[x]],{A[z],cb[y]}]//.{A[_]:>0,c[_]:>0,cb[_]:>0}//Truncate;
-RouteIndices[Setup,%];
-%//FPrint
-
 
 (* ::Input::Initialization:: *)
 (*Turn a given expression into LaTeX code*)
+ClearAll[FTex]
 FTex[setup_,expr_]:=Module[
 {prExp=expr,fields},
 AssertFSetup[setup];
@@ -399,16 +408,17 @@ Return[prExp//TeXForm];
 
 (*For the output of a full routing*)
 FTex[setup_,expr_List]/;(And@@(isRoutedAssociation/@expr)):=FTex[setup,routedContainer@@expr];
+FTex[setup_,expr_Association]/;(isRoutedAssociation@expr):=FTex[setup,routedContainer[expr]];
 
 (*For direct printing*)
-FPrint[setup_,expr_]:=Print[FTex[setup,expr]//MaTeX];
+FPrint[setup_,expr_]:=(Print[FTex[setup,expr]//MaTeX`MaTeX];Return[expr]);
 
 
 (* ::Input::Initialization:: *)
 MakeEdgeRule[setup_,obj_]:=Module[{},
-If[IsAntiFermion[setup,obj[[1,1]]]&&IsFermion[setup,obj[[1,2]]],Return [obj[[2,1]]->obj[[2,2]]]];
-If[IsFermion[setup,obj[[1,1]]]&&IsAntiFermion[setup,obj[[1,2]]],Return [obj[[2,2]]->obj[[2,1]]]];
-Return [obj[[2,1]]<->obj[[2,2]]];
+If[IsAntiFermion[setup,obj[[1,1]]]&&IsFermion[setup,obj[[1,2]]],Return [makePosIdx@obj[[2,1]]->makePosIdx@obj[[2,2]]]];
+If[IsFermion[setup,obj[[1,1]]]&&IsAntiFermion[setup,obj[[1,2]]],Return [makePosIdx@obj[[2,2]]->makePosIdx@obj[[2,1]]]];
+Return [makePosIdx@obj[[2,1]]<->makePosIdx@obj[[2,2]]];
 ];
 
 
@@ -434,11 +444,13 @@ Field->0.1
 
 
 (* ::Input::Initialization:: *)
-PlotDiagrams[setup_,diag_FTerm]:=Module[
-{PossibleVertices,PossibleEdges,Styles,
+GetDiagram[setup_,expr_FTerm]:=Module[
+{PossibleVertices,PossibleEdges,Styles,diag,
 allObj,fieldObj,vertices,edges,vertexReplacements,graph,phantomVertices,edgeFields,
 fieldVertices,fieldEdges,fieldEdgeFields,
 externalVertices,externalEdges,externalFields,idx,prefactor,doFields,eWeights},
+diag=FUnroute[setup,expr];
+
 doFields=replFields[setup];
 
 PossibleVertices=Join[{GammaN,S,Rdot,Field},
@@ -513,9 +525,25 @@ EdgeStyle->Arrowheads[{{.07,.6}}]
 ]
 ];
 
-PlotDiagrams[setup_,expr_FEq]:=Module[{},
-Plus@@(PlotDiagrams[setup,#]&/@expr)
+FPlot[setup_,expr_FTerm]:=Module[{},
+Print[GetDiagram[setup,expr]];
+Return@expr
+];
+
+FPlot[setup_,expr_FEq]:=Module[{},
+Print[Plus@@(GetDiagram[setup,#]&/@expr)];
+Return@expr
+];
+
+FPlot[setup_,expr_Association]/;isRoutedAssociation[expr]:=Module[{},
+FPlot[setup,expr["result"]];
+Return@expr
+];
+
+FPlot[setup_,expr_List]/;(And@@(isRoutedAssociation/@expr)):=Module[{},
+FPlot[setup,FEq@@expr[[All,Key["result"]]]];
+Return@expr
 ];
 
 
-
+End[];

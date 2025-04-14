@@ -20,53 +20,58 @@
 
 
 (* ::Input::Initialization:: *)
-SetLoopMomentumName::usage=""
+SetLoopMomentumName::usage="";
 
-Route::usage=""
-Route[expr_FEq]/;Head[$GlobalSetup]=!=Symbol:=Route[$GlobalSetup,expr];
+FRoute::usage="";
 
-FSimplify::usage=""
+FUnroute::usage="";
+
+FSimplify::usage="";
+
+loopMomentum::usage;
+
+
+Begin["`Private`"];
+
+
+(* ::Input::Initialization:: *)
+FRoute[expr_FEq]/;Head[$GlobalSetup]=!=Symbol:=FRoute[$GlobalSetup,expr];
+
+FUnroute[expr_]/;Head[$GlobalSetup]=!=Symbol:=FUnroute[$GlobalSetup,expr];
+
 FSimplify[expr_FEq]/;Head[$GlobalSetup]=!=Symbol:=FSimplify[$GlobalSetup,expr];
+FSimplify[expr_FEq,symmetries_List,indices_List]/;Head[$GlobalSetup]=!=Symbol:=FSimplify[$GlobalSetup,expr,symmetries,indices];
 
 
 (* ::Input::Initialization:: *)
 ModuleLoaded::dependency="The module `1` requires `2`, which has not been loaded.";
 
 If[ModuleLoaded[FunKit]=!=True,
-Message[ModuleLoaded::dependency,"FEDeriK","FunKit"];
+Message[ModuleLoaded::dependency,"AnSEL","FunKit"];
 Abort[];
 ];
 
 If[ModuleLoaded[FEDeriK]=!=True,
-Message[ModuleLoaded::dependency,"FEDeriK","FunKit"];
+Message[ModuleLoaded::dependency,"AnSEL","FEDeriK"];
 Abort[];
 ];
 
 ModuleLoaded[AnSEL]=True;
 
-$loopMomentumName="l";
-Unprotect@@Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
-ClearAll@@Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
-Protect@@Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
-Unprotect[$availableLoopMomenta];
-$availableLoopMomenta=Table[Symbol[$loopMomentumName<>ToString[idx]],{idx,1,50}];
-Protect[$availableLoopMomenta];
-
 
 (* ::Input::Initialization:: *)
 SetLoopMomentumName[name_String]:=Module[{},
-Unprotect@@Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
+If[StringQ[$loopMomentumName],
+Unprotect@@Table[$loopMomentumName<>ToString[idx],{idx,1,50}]
+];
 $loopMomentumName=name;
 ClearAll@@Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
 Protect@@Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
 Unprotect[$availableLoopMomenta];
-$availableLoopMomenta=Table[$loopMomentumName<>ToString[idx],{idx,1,50}];
+$availableLoopMomenta:=Table[Symbol[$loopMomentumName<>ToString[idx]],{idx,1,50}];
 Protect[$availableLoopMomenta];
 ];
-
-
-(* ::Input::Initialization:: *)
-$FunKitDirectory=SelectFirst[Join[{FileNameJoin[{$UserBaseDirectory,"Applications","FunKit"}],FileNameJoin[{$BaseDirectory,"Applications","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","Applications","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","Packages","FunKit"}],FileNameJoin[{$InstallationDirectory,"AddOns","ExtraPackages","FunKit"}]},Select[$Path,StringContainsQ[#,"FunKit"]&]],DirectoryQ[#]&]<>"/";
+SetLoopMomentumName["l"];
 
 
 (* ::Input::Initialization:: *)
@@ -80,16 +85,18 @@ Head[#]===field&
 
 
 (* ::Input::Initialization:: *)
-Route::undeterminedFields="Cannot route indices in expressions with undetermined fields.";
-Route::momentaFailed="Cannot route momenta in the given expression.";
+FRoute::undeterminedFields="Cannot route indices in expressions with undetermined fields.";
+FRoute::momentaFailed="Cannot route momenta in the given expression. Final momentum conservation read `1`";
+FRoute::conservationFail="Momentum conservation could not be fulfilled. Error in `1`";
 
-Route[setup_,expr_FTerm]:=Module[
+FRoute[setup_,expr_FTerm]:=Module[
 {openIndices,closedIndices,objects,
 ret=ReduceFTerm[setup,ReduceIndices[setup,expr]],doFields,idx,a,
 indPos,assocField,subObj,subMom,subExtMom,
 indStruct,externalIndices,externalMomenta,
-f,momRepl,A1111111,AA111111,i,mom,loopMomenta
+f,momRepl,A1111111,AA111111,i,mom,loopMomenta,sidx,discard
 },
+FunKitDebug[1,"FRoute: routing the sub-term ",expr];
 
 (*We first get all closed, open indices and all indexed objects.*)
 doFields=replFields[setup];
@@ -98,7 +105,7 @@ closedIndices=GetClosedSuperIndices[setup,ret];
 objects=ExtractObjectsWithIndex[setup,ret]//.doFields;
 
 (*If there are any undetermined fields, we cannot route indices.*)
-If[MemberQ[objects[[All,1]],AnyField,{1,4}],Message[Route::undeterminedFields];Abort[]];
+If[MemberQ[objects[[All,1]],AnyField,{1,4}],Message[FRoute::undeterminedFields];Abort[]];
 
 (*As a first step, we insert the correct index structures into all superindices and define momentum variables at every single vertex.
 We loop over all closed indices.*)
@@ -116,11 +123,14 @@ indStruct[[1]]=loopMomentum[indStruct[[1]]];
 (*replace all occurences of the superindex with the fitting index structure. 
 We want to keep the index sign in the momenta, but remove it from the group indices*)
 ret=ret/.closedIndices[[idx]]->indStruct;
-ret=ret/.(-indStruct[[2]])->indStruct[[2]];
 objects=objects/.closedIndices[[idx]]->indStruct;
+If[Length[indStruct]>1,
+ret=ret/.(-indStruct[[2]])->indStruct[[2]];
 objects=objects/.(-indStruct[[2]])->indStruct[[2]];
+];
 
 ,{idx,1,Length[closedIndices]}];
+
 
 (*Next, we treat the external superindices. We assign to each an open group structure and a new momentum p1,p2,... 
 Momentum conservation is already enforced here, i.e. \!\(
@@ -142,10 +152,10 @@ indStruct=Map[If[MatchQ[#,_Symbol],Symbol[SymbolName[#]<>ToString[idx]],#]&,Fiel
 \*SubscriptBox[\(p\), \(i\)]\)*)
 If[idx===Length[openIndices],indStruct[[1]]=-Total[Values[externalIndices][[;;idx-1,1]]]];
 
-ret=ret/.openIndices[[idx]]->indStruct;
-ret=ret/.(-indStruct)->indStruct;
+ret=ret/.(-openIndices[[idx]])->indStruct;
+ret=ret/.(openIndices[[idx]])->indStruct;
+objects=objects/.(-openIndices[[idx]])->indStruct;
 objects=objects/.openIndices[[idx]]->indStruct;
-objects=objects/.(-indStruct)->indStruct;
 
 (*This is information for the user, which we will return.*)
 externalIndices[[idx]]=openIndices[[idx]]->indStruct;
@@ -155,6 +165,8 @@ externalIndices[[idx]]=openIndices[[idx]]->indStruct;
 (*extract a list of all new external momenta*)
 externalMomenta=Values[externalIndices][[All,1]];
 
+FunKitDebug[2,"FRoute: Determined external momenta as ",externalMomenta];
+
 (*Now, we do the momentum routing.*)
 Do[
 subObj=objects[[idx]];
@@ -162,62 +174,100 @@ subMom=subObj[[2,All,1]];
 (*See if the object has any external (sub-)momenta*)
 subExtMom=Select[subMom,(ContainsAny[externalMomenta,makePosIdx/@Flatten[{#/.Plus[a_,b__]:>List[a,b]}]])&];
 
+FunKitDebug[3,"FRoute: routing the object ",subObj];
+
 (*if momentum conservation is already fulfilled, do nothing*)
 If[Total@subMom===0,Continue[]];
 
 (*Case 1: we have no external momentum anywhere in the legs of the current object*)
 If[Length[subExtMom]===0,
+(*If we have nothing to enforce, skip this object*)
+If[Length[subObj[[2,All,1]]]<2,Continue[]];
 (*for safety, we try to route our momenta through fermions. At 1-loop this is irrelevant, at n-loop it is not.*)
 f=FirstPosition[IsFermion[setup,#]&/@subObj[[1]],True][[1]];
 If[f==="NotFound",f=1];
 
-mom=Select[Flatten[{subObj[[2,f,1]]/.Plus[a_,b__]:>List[a,b]}],(MatchQ[#,loopMomentum[_]]||MatchQ[-#,loopMomentum[_]])&][[1]];
-momRepl=If[isNeg[mom],
--mom->-mom+Total[subObj[[2,All,1]]],
-mom->mom-Total[subObj[[2,All,1]]]
-];
+mom=makePosIdx@Select[Flatten[{subObj[[2,f,1]]//.{Plus[a_,b__]:>List[a,b],Times[a_loopMomentum,b__]:>List[a,b]}}],(MatchQ[#,loopMomentum[_]]||MatchQ[-#,loopMomentum[_]])&][[1]];
+
+momRepl=Solve[Total[subObj[[2,All,1]]]==0,mom][[1,1]];
 
 objects=objects/.momRepl;
 ret=ret/.momRepl;
 
+FunKitDebug[3,"FRoute: routing a momentum as ",momRepl];
+
 Continue[];
 ];
 
-(*Case 2: we have at least one momentum without an external one*)
-If[Length[subExtMom]<Length[subMom],
+(*Case 2*)
+If[Length[subExtMom]<=Length[subMom],
+
+(*discard helps us to iterate thorugh momentum arguments. sidx iterates through the loopMomenta contained in each momenum argument*)
+discard[_]=False;
+sidx=0;
+While[sidx<1000,
+sidx++;
 (*for safety, we try to route our momenta through fermions.*)
 f=FirstPosition[
 Table[
-(IsFermion[setup,subObj[[1,i]]]&&ContainsNone[externalMomenta,makePosIdx/@Flatten[{subObj[[2,i,1]]/.Plus[a_,b__]:>List[a,b]}]])
+(IsFermion[setup,subObj[[1,i]]]&&MemberQ[makePosIdx/@Flatten[{subObj[[2,i,1]]/.Plus[a_,b__]:>List[a,b]}],loopMomentum[__]]&&Not@discard[i])
 ,{i,1,Length[subObj[[1]]]}]
 ,True][[1]];
+
 (*If no fermions are present, simply grab the index which does not contain external momenta.*)
 If[f==="NotFound",
 f=FirstPosition[
-Table[(ContainsNone[externalMomenta,makePosIdx/@Flatten[{subObj[[2,i,1]]/.Plus[a_,b__]:>List[a,b]}]])
+Table[MemberQ[makePosIdx/@Flatten[{subObj[[2,i,1]]/.Plus[a_,b__]:>List[a,b]}],loopMomentum[__]]&&Not@discard[i]
 ,{i,1,Length[subObj[[1]]]}]
-,True][[1]];
+,True][[1]]; 
+
+(*The only other possibility is that all momenta are external. In that case, we do nothing but check consistency.*)
+If[f==="NotFound",Break[];];
 ];
 
-mom=Select[Flatten[{subObj[[2,f,1]]/.Plus[a_,b__]:>List[a,b]}],(MatchQ[#,loopMomentum[_]]||MatchQ[-#,loopMomentum[_]])&][[1]];
-momRepl=If[isNeg[mom],
--mom->-mom+Total[subObj[[2,All,1]]],
-mom->mom-Total[subObj[[2,All,1]]]
+(*Extract all loop momenta*)
+mom=makePosIdx/@Select[Flatten[{subObj[[2,f,1]]/.Plus[a_,b__]:>List[a,b]}],(MatchQ[#,loopMomentum[_]]||MatchQ[-#,loopMomentum[_]])&];
+If[sidx>Length[mom],
+discard[f]=True;
+sidx=0;
+Continue[];
 ];
+
+mom=mom[[sidx]];
+(*If the momentum is already routed through, ignore it (e.g. p in Propagator[{...},{-p+..., p+...}])*)
+If[Not@MemberQ[{Total[subObj[[2,All,1]]]},mom,Infinity],
+Continue[];
+];
+
+(*if we were not stopped, we got it*)
+Break[];
+];
+
+(*The only other possibility is that all momenta are external. In that case, we do nothing but check consistency.*)
+If[f==="NotFound",
+If[Total@subObj[[2,All,1]]=!=0,Message[FRoute::conservationFail,subObj];Abort[];];
+Continue[]
+];
+
+momRepl=Solve[Total[subObj[[2,All,1]]]==0,mom][[1,1]];
 
 objects=objects/.momRepl;
 ret=ret/.momRepl;
 
+FunKitDebug[3,"FRoute: routing a momentum as ",momRepl];
+
 Continue[];
 ];
 
-Abort[];
 ,{idx,1,Length[objects]}];
 
 (*Sanity check to see that we did not make an error*)
 Do[
 subObj=objects[[idx]];
-If[Total[subObj[[2,All,1]]]=!=0,Message[Route::momentaFailed];Abort[]];
+(*Skip again Fields and such*)
+If[Length[subObj[[2,All,1]]]<2,Continue[]];
+(*Check the conservation of momentum at all vertices*)
+If[Total[subObj[[2,All,1]]]=!=0,Message[FRoute::momentaFailed,Total[subObj[[2,All,1]]]];Abort[]];
 ,{idx,1,Length[objects]}];
 
 (*replace the loopMomenta[...] by l1, l2, ...*)
@@ -232,17 +282,17 @@ Return[<|
 |>];
 ];
 
-Route[setup_,expr_FEq]:=Module[{results,ret,idx,subidx},
-results=Route[setup,#]&/@(List@@expr);
+FRoute[setup_,expr_FEq]:=Module[{results,ret,idx,subidx},
+results=FRoute[setup,#]&/@(List@@expr);
 
 (*All terms have the same loop momenta and external legs*)
 If[Equal@@Map[#["loopMomenta"]&,results]&&
 Equal@@Map[#["externalIndices"]&,results],
-Return[<|
+Return[{<|
 "result"->FEq@@Map[#["result"]&,results],
 "externalIndices"->results[[1]]["externalIndices"],
 "loopMomenta"->results[[1]]["loopMomenta"]
-|>]
+|>}]
 ];
 
 (*All terms have the same external legs, but different loop orders*)
@@ -269,11 +319,35 @@ Return[results];
 
 
 (* ::Input::Initialization:: *)
+isRoutedAssociation[expr_]:=Module[{},
+If[Head[expr]=!=Association,Return[False]];
+If[FreeQ[Keys[expr],"result"],Return[False]];
+If[FreeQ[Keys[expr],"externalIndices"],Return[False]];
+If[FreeQ[Keys[expr],"loopMomenta"],Return[False]];
+Return[True];
+]
+
+
+(* ::Input::Initialization:: *)
+FUnroute[setup_,assoc_Association]/;isRoutedAssociation[assoc]:=Module[{},
+Return@FUnroute[assoc["result"]/.Map[#[[2]]->#[[1]]&,assoc["externalIndices"]]];
+];
+
+FUnroute[setup_,list_List]/;(And@@(isRoutedAssociation/@list)):=Total[FUnroute[setup,#]&/@list];
+FUnroute[setup_,term_FEq]:=FUnroute[setup,#]&/@term;
+FUnroute[setup_,term_FTerm]:=Module[{fw,bw},
+{fw,bw}=GetSuperIndexTermTransformations[setup,term];
+Return[term//fw];
+];
+
+
+(* ::Input::Initialization:: *)
 (*Get viable starting points for a comparison of two diagrams*)
 StartPoints[setup_,t1_FTerm,t2_FTerm]:=Module[
 {obj1,obj2,count,
 desired,sList,
 match1,match2,
+cidx1,cidx2,
 doFields},
 doFields=replFields[setup];
 
@@ -286,6 +360,16 @@ If[
 Sort@Map[Head[#][Sort@#[[1]]]&,obj1]=!=Sort@Map[Head[#][Sort@#[[1]]]&,obj2],
 Return[{False,Null,Null}]
 ];
+
+cidx1=GetClosedSuperIndices[setup,t1];
+cidx2=GetClosedSuperIndices[setup,t2];
+
+If[Length[cidx1]=!=Length[cidx2],Return[{False,Null,Null}]];
+(*
+If[Length[cidx1]>0,
+obj1=Select[obj1,ContainsAny[#[[2]],cidx1]&];
+obj1=Select[obj1,ContainsAny[#[[2]],cidx1]&];
+];*)
 
 (*Otherwise, we check which object is the "rarest"*)
 sList=Map[Head[#][#[[1]]]&,obj1];
@@ -301,11 +385,13 @@ Return[{True,match1,match2}]
 
 (* ::Input::Initialization:: *)
 (*Find all objects following the closed indices attached to the object curPos*)
-IterateDiagram[setup_Association,allObj_,closedIndices__,curPos_,entryIdx_]:=Module[
+IterateDiagram[setup_Association,allObj_,closedIndices_,openIndices_,curPos_,entryIdx_]:=Module[
 {otherIndices,followObjects,i},
+FunKitDebug[3,"Inspecting: ",curPos];
 (*All indices except the one we entered with*)
 otherIndices=DeleteCases[makePosIdx/@curPos[[2]],entryIdx];
 otherIndices=Intersection[otherIndices,closedIndices];
+FunKitDebug[3,"Found outgoing indices: ",otherIndices];
 (*all objects containing the otherIndices*)
 followObjects=Table[
 Select[DeleteCases[allObj,curPos],MemberQ[#[[2]],otherIndices[[i]],Infinity]&][[1]],
@@ -318,14 +404,17 @@ Return[{otherIndices,followObjects}]
 (*maximum accepted loop length.*)
 $MaxIterLoop=100;
 TermsEqualAndSum::exceededLoopLimit="Exceeded the maximum allowed length of a loop! ("<>ToString[$MaxIterLoop]<>")";
+TermsEqualAndSum::branchFailure="Arrived at unhandled branch point";
 
-TermsEqualAndSum[setup_,
+TermsEqualAndSum[setup_,t1_,t2_,
 MallObjt1_,cidxt1_,oidxt1_,Mmemory1_,entry1_,
 MallObjt2_,cidxt2_,oidxt2_,Mmemory2_,entry2_,Msign2_
 ]:=Module[
 {allObjt1=MallObjt1,curIdx1,curPos1,nextInd1,nextPos1,memory1=Mmemory1,assocFields1,
 allObjt2=MallObjt2,curIdx2,curPos2,nextInd2,nextPos2,memory2=Mmemory2,assocFields2,sign2=Msign2,
 iter=1,idx,jdx,viableBranches,branchResult,branchSign,branchItRepl,branchObj},
+
+FunKitDebug[3,"Following along a chain of indices."];
 
 curIdx1=makePosIdx@entry1;
 curIdx2=makePosIdx@entry2;
@@ -342,9 +431,14 @@ While[iter<$MaxIterLoop,
 If[Sort@Map[Head[#][Sort[#[[1]]]]&,nextPos1]=!=Sort@Map[Head[#][Sort[#[[1]]]]&,nextPos2],
 Return[{False,allObjt2}]
 ];
+(*Check if the external indices in the current object match*)
+If[Intersection[oidxt1,makePosIdx/@(curPos1[[2]])]=!=Intersection[oidxt2,makePosIdx/@(curPos2[[2]])],Return[{False,allObjt2}]];
+
+FunKitDebug[3,"Next objects along the chain: ",nextPos1,", ",nextPos2];
 
 (*Case 1: There is only a single object following*)
 If[Length[nextInd1]===1,
+FunKitDebug[3,"Following the index chain."];
 (*Check if the open indices aggree*)
 If[Sort@Intersection[oidxt1,makePosIdx/@nextPos1[[1,2]]]=!=Sort@Intersection[oidxt2,makePosIdx/@nextPos2[[1,2]]],Return[{False,allObjt2}]];
 
@@ -352,8 +446,7 @@ If[Sort@Intersection[oidxt1,makePosIdx/@nextPos1[[1,2]]]=!=Sort@Intersection[oid
 If[FirstPosition[memory1,nextPos1[[1]]]===FirstPosition[memory2,nextPos2[[1]]]&&NumericQ[FirstPosition[memory1,nextPos1[[1]]][[1]]],
 Return[{sign2,allObjt2}]];
 (*Closed one loop, but not the other*)
-If[FirstPosition[memory1,nextPos1[[1]]]=!=FirstPosition[memory2,nextPos2[[1]]],
-Return[{False,allObjt2}]];
+If[FirstPosition[memory1,nextPos1[[1]]]=!=FirstPosition[memory2,nextPos2[[1]]],Return[{False,allObjt2}]];
 
 (*step forward*)
 curIdx1=nextInd1[[1]];curPos1=nextPos1[[1]];
@@ -368,11 +461,20 @@ Continue[];
 ];
 
 (*Case 2: End of the line.*)
-If[Length[nextInd1]===0,Return[{sign2,allObjt2}]];
+If[Length[nextInd1]===0,
+(*We need to check if both expressions are with FDOps*)
+If[Head@curPos1===Field,
+If[Cases[t1,FDOp[curPos1[[1,1]][curPos1[[2,1]]]],Infinity]=!=Cases[t2,FDOp[curPos2[[1,1]][curPos2[[2,1]]]],Infinity],
+Return[{False,allObjt2}]
+];
+];
+
+FunKitDebug[3,"Index chain ended with equality."];
+Return[{sign2,allObjt2}]];
 
 (*Case 3: Branching point.*)
 If[Length[nextInd1]>1,
-
+FunKitDebug[3,"Index chain is branching."];
 (*We need to build all possible combinations between the "next" indices and follow these separately, until one of them fits.*)
 assocFields1=curPos1[[1,FirstPosition[curPos1[[2]],#][[1]]]]&/@nextInd1;
 assocFields2=curPos2[[1,FirstPosition[curPos2[[2]],#][[1]]]]&/@nextInd2;
@@ -385,7 +487,7 @@ branchObj=allObjt2;
 Table[
 {branchSign,branchItRepl}=RearrangeFields[setup,curPos1,curPos2,viableBranches[[idx,jdx,All,1]]];
 branchObj=branchObj/.curPos2->branchItRepl;
-{branchSign,branchObj}=TermsEqualAndSum[setup,
+{branchSign,branchObj}=TermsEqualAndSum[setup,t1,t2,
 allObjt1,cidxt1,oidxt1,Append[memory1,viableBranches[[idx,jdx,1,3]]],viableBranches[[idx,jdx,1,1]],
 allObjt2,cidxt2,oidxt2,Append[memory2,viableBranches[[idx,jdx,2,3]]],viableBranches[[idx,jdx,2,1]],branchSign
 ]
@@ -398,7 +500,9 @@ Return[{branchSign,branchObj}];
 Return[{False,allObjt2}];
 ];
 
+
 (*Nothing should lead here*)
+Message[TermsEqualAndSum::branchFailure];
 Abort[];
 ];
 
@@ -408,6 +512,7 @@ Message[TermsEqualAndSum::exceededLoopLimit];Abort[];
 
 
 (* ::Input::Initialization:: *)
+(*re-order the fields in an indexed object t2 so that it fits the order in t1. Returns both the sign and the reordered t2*)
 RearrangeFields[setup_,t1_,t2_,equiv_]:=Module[{ipos1,ipos2,idx,sign,newt2},
 ipos1=FirstPosition[makePosIdx/@t1[[2]],equiv[[1]]][[1]];
 ipos2=FirstPosition[makePosIdx/@t2[[2]],equiv[[2]]][[1]];
@@ -437,30 +542,39 @@ Return[{sign,newt2}];
 
 (* ::Input::Initialization:: *)
 TermsEqualAndSum::undeterminedFields="Error: Cannot equate terms if they are not fully truncated, i.e. contain instances of AnyField.";
+
 TermsEqualAndSum[setup_,it1_FTerm,it2_FTerm]:=Module[
 {t1=ReduceIndices[setup,it1],t2=ReduceIndices[setup,it2],
 startPoints,doFields,
 allObjt1,allObjt2,
 cidxt1,cidxt2,oidxt1,oidxt2,
 startt1,startt1fields,cidxstartt1,
-startt2,startt2fields,cidxstartt2,branchAllObjt2,
-idx,jdx,equal=False,startsign,a},
+startt2,nstartt2,startt2fields,cidxstartt2,branchAllObjt2,
+idx,jdx,equal=False,startsign,a,factor,removeOther},
 
-If[MemberQ[t1,AnyField,Infinity],Message[TermsEqualAndSum::undeterminedFields];Abort[]];
+(*If[MemberQ[t1,AnyField,Infinity],Message[TermsEqualAndSum::undeterminedFields];Abort[]];*)
+
+(*Briefly check the trivial case*)
+If[it1===it2,Return@FTerm[2,t1]];
 
 (*Get all the possible starting points for the search*)
 startPoints = StartPoints[setup,t1,t2];
 If[Not[startPoints[[1]]],Return[False]];
 
+FunKitDebug[2,"Checking for non-trivial equivalence of two terms"];
+
 doFields=replFields[setup];
 
 (*collect objects for both terms*)
-allObjt1=ExtractObjectsWithIndex[setup,t1]/.doFields;
-allObjt2=ExtractObjectsWithIndex[setup,t2]/.doFields;
+allObjt1=Select[ExtractObjectsWithIndex[setup,t1]/.doFields,FreeQ[FMinus[__]]];
+
+allObjt2=Select[ExtractObjectsWithIndex[setup,t2]/.doFields,FreeQ[FMinus[__]]];
+
 cidxt1=GetClosedSuperIndices[setup,t1];
 cidxt2=GetClosedSuperIndices[setup,t2];
 oidxt1=GetOpenSuperIndices[setup,t1];
 oidxt2=GetOpenSuperIndices[setup,t2];
+
 
 (*We pick the first candidate for t1 and iterate over all candidates for t2.*)
 startt1=startPoints[[2,1]];
@@ -469,6 +583,8 @@ startt1fields=startt1[[1]];
 cidxstartt1=Map[MemberQ[cidxt1,makePosIdx@#]&,startt1[[2]]];
 startt1fields=Pick[startt1fields,cidxstartt1];
 cidxstartt1=makePosIdx/@Pick[startt1[[2]],cidxstartt1];
+
+FunKitDebug[3,"Comparing the terms \n  ",t1,"\n  ",t2];
 
 (*If the terms are equal for any starting candidates for t2, we have succeeded*)
 For[idx=1,idx<=Length[startPoints[[3]]],idx++,
@@ -480,18 +596,17 @@ cidxstartt2=Pick[makePosIdx/@startt2[[2]],cidxstartt2];
 
 For[jdx=1,jdx<=Length[cidxstartt2],jdx++,
 (*re-order the starting point so that it fits the first.*)
-{startsign,branchAllObjt2}=RearrangeFields[setup,startt1,startt2,{cidxstartt1[[1]],cidxstartt2[[jdx]]}];
-branchAllObjt2=allObjt2/.startt2->branchAllObjt2;
-
+{startsign,nstartt2}=RearrangeFields[setup,startt1,startt2,{cidxstartt1[[1]],cidxstartt2[[jdx]]}];
+branchAllObjt2=allObjt2/.startt2->nstartt2;
 (*iterate the diagram*)
-{equal,branchAllObjt2}=TermsEqualAndSum[setup,
+FunKitDebug[3,"StartPoints: \n  ",startt1,"\n  ",nstartt2];
+{equal,branchAllObjt2}=TermsEqualAndSum[setup,t1,t2,
 allObjt1,cidxt1,oidxt1,{startt1},cidxstartt1[[1]],
-branchAllObjt2,cidxt2,oidxt2,{startt2},cidxstartt2[[jdx]],startsign
+branchAllObjt2,cidxt2,oidxt2,{nstartt2},cidxstartt2[[jdx]],startsign
 ];
 
 (*If we found an equality, break out*)
 If[equal=!=False,Break[]];
-Print[jdx];
 ];
 
 If[equal=!=False,Break[]];
@@ -500,18 +615,50 @@ If[equal=!=False,Break[]];
 (*If equal===False, the terms are clearly not equal*)
 If[equal===False,Return[False]];
 
+FunKitDebug[2,"Found two equal terms"];
+
+removeOther=Dispatch[{Alternatives@@Map[Blank,$allObjects\[Union]{FDOp}]->1,Alternatives@@Map[Blank,GetAllFields[setup]\[Union]{AnyField}]->1}];
+
 (*No need to do any ordering if there are no explicit Grassmanns in the expression*)
 If[GrassmannCount[setup,t1]===0,
-Return@FTerm[(equal*(Times@@t2)+(Times@@t1))/(Times@@t1)/.Alternatives@@Map[Blank,$allObjects]->1/.Alternatives@@Map[Blank,GetAllFields[setup]]->1,t1];
+factor=(equal*(t2/.removeOther)+(t1/.removeOther))/(t1/.removeOther) 1;
+FunKitDebug[3,"Prefactor: ",factor];
+Return@FTerm[factor,t1];
 ];
-
-Abort[];
+Print["Could not resolve Grassmann factors"];Abort[];
+Return@FTerm[standardOrderGrassmanns[t1][[1]]*standardOrderGrassmanns[t2][[1]]*
+(equal*(Times@@t2)+(Times@@t1))/(Times@@t1)/.Alternatives@@Map[Blank,$allObjects\[Union]{FDOp}]->1/.Alternatives@@Map[Blank,GetAllFields[setup]]->1,t1];
 ];
 
 
 (* ::Input::Initialization:: *)
-FSimplify[setup_,expr_FEq]:=Module[
+FTermContent[setup_,term_FTerm]:=Module[{},
+Hash[
+Map[Head[#][#[[1]]]&,
+FunKit`Private`ExtractObjectsWithIndex[setup,term]/.FunKit`Private`replFields[setup]
+]
+,"SHA"]
+];
+
+
+(* ::Input::Initialization:: *)
+SeparateTermGroups[setup_,expr_FEq]:=Module[{ret=List@@expr,identifierRep,removeFirsts,groupedDiagrams},
+
+(*We group all diagrams into groups that could be potentially identical.
+We simply make sure that in each group all diagrams have the same objects.*)
+identifierRep=Map[FTermContent[setup,#]&,ret];
+identifierRep=Thread[{identifierRep,ret}];
+removeFirsts[ex_]:=Map[#[[2]]&,ex];
+groupedDiagrams=(FEq@@#)&/@Map[removeFirsts,GatherBy[identifierRep,#[[1]]&]];
+
+Return[groupedDiagrams]
+];
+
+
+(* ::Input::Initialization:: *)
+SubFSimplify[setup_,expr_FEq]:=Module[
 {ret=List@@expr,idx,jdx,red},
+
 For[idx=1,idx<=Length[ret],idx++,
 For[jdx=idx+1,jdx<=Length[ret],jdx++,
 red=TermsEqualAndSum[setup,ret[[idx]],ret[[jdx]]];
@@ -525,5 +672,76 @@ jdx--;
 Return[FEq@@ret];
 ];
 
+FSimplify[setup_,expr_FEq]:=Module[{subGroups,res},
+FunKitDebug[1,"Simplifying diagrammatic expression"];
+subGroups=SeparateTermGroups[setup,expr];
+res=FEq@@ParallelMap[SubFSimplify[setup,#]&,subGroups];
+FunKitDebug[1,"FTerms before: ",Length[expr],", after: ",Length[res]];
+Return[res];
+]
 
 
+(* ::Input::Initialization:: *)
+BuildSymmetryList[setup_,symmetries_,derivativeList_]:=Module[{procDerList,buildOneSymmetry},
+If[Head[symmetries]=!=List,Print["Symmetries must be given as a list!"];Abort[]];
+If[Length[symmetries]==0,Return[{}]];
+If[Length[derivativeList]==0,Return[{}]];
+
+procDerList=derivativeList/.unreplFields[setup];
+
+buildOneSymmetry[sym_]:=Module[{valid=True,buildCycle,pairs},
+If[AnyTrue[sym[[;;-2]],Not[Head[#]===List]&],valid=False];
+pairs=Subsets[sym[[;;-2]],{2}];
+valid=Not@AnyTrue[Map[ContainsAny[#[[1]],#[[2]]]&,pairs],Identity];
+If[Not@valid,Print[sym," is  not a valid symmetry!"];Abort[]];
+
+buildCycle[cyc_]:=Module[{cycvalid=True,numberRules,idx,nextIdx},
+If[AnyTrue[cyc,Not[IntegerQ[#]]&],cycvalid=False];
+If[AnyTrue[cyc,(#>Length[derivativeList])||(#<1)&],cycvalid=False];
+If[Not@cycvalid,Print[cyc," is  not a valid cycle!"];Abort[]];
+
+numberRules={};
+For[idx=1,idx<=Length[cyc],idx++,
+nextIdx=Mod[(idx),Length[cyc]]+1;
+numberRules=Join[numberRules,{{cyc[[idx]],cyc[[nextIdx]]}}];
+];
+
+Return[Map[procDerList[[#[[1]],1]]->procDerList[[#[[2]],1]]&,numberRules]];
+];
+
+<|
+"Rule"->Flatten[Map[buildCycle,sym[[;;-2]]],1],
+"Factor"->sym[[-1]]
+|>
+];
+
+Return@Join[{<|
+"Rule"->{},
+"Factor"->1
+|>},
+Map[buildOneSymmetry,symmetries/.Cycles->Identity]
+];
+];
+
+FSimplify[setup_,expr_FEq,symmetries_List,indices_List]:=Module[
+{ret=List@@expr,idx,jdx,kdx,red,symmetryList},
+FunKitDebug[1,"Simplifying diagrammatic expression with symmetry list"];
+
+symmetryList=BuildSymmetryList[setup,symmetries,A[#]&/@indices];
+For[idx=1,idx<=Length[ret],idx++,
+For[jdx=idx+1,jdx<=Length[ret],jdx++,
+For[kdx=1,kdx<=Length[symmetryList],kdx++,
+red=symmetryList[[kdx,Key["Factor"]]]*TermsEqualAndSum[setup,ret[[idx]],ret[[jdx]]/.symmetryList[[kdx,Key["Rule"]]]];
+If[red=!=False,
+ret[[idx]]=red;
+ret=Delete[ret,jdx];
+jdx--;kdx=Length[symmetryList]+1;
+];
+];
+];
+];
+Return[FEq@@ret];
+];
+
+
+End[];
