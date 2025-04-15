@@ -40,7 +40,7 @@ FRoute[expr_FEq]/;Head[$GlobalSetup]=!=Symbol:=FRoute[$GlobalSetup,expr];
 FUnroute[expr_]/;Head[$GlobalSetup]=!=Symbol:=FUnroute[$GlobalSetup,expr];
 
 FSimplify[expr_FEq]/;Head[$GlobalSetup]=!=Symbol:=FSimplify[$GlobalSetup,expr];
-FSimplify[expr_FEq,symmetries_List,indices_List]/;Head[$GlobalSetup]=!=Symbol:=FSimplify[$GlobalSetup,expr,symmetries,indices];
+FSimplify[expr_FEq,OptionsPattern[]]/;Head[$GlobalSetup]=!=Symbol:=FSimplify[$GlobalSetup,expr,(Sequence@@Thread[Rule@@{#,OptionValue[FSimplify,#]}]&@Keys[Options[FSimplify]])];
 
 
 (* ::Input::Initialization:: *)
@@ -94,7 +94,7 @@ FRoute[setup_,expr_FTerm]:=Module[
 ret=ReduceFTerm[setup,ReduceIndices[setup,expr]],doFields,idx,a,
 indPos,assocField,subObj,subMom,subExtMom,
 indStruct,externalIndices,externalMomenta,
-f,momRepl,A1111111,AA111111,i,mom,loopMomenta,sidx,discard
+f,momRepl,i,mom,loopMomenta,sidx,discard
 },
 FunKitDebug[1,"FRoute: routing the sub-term ",expr];
 
@@ -276,64 +276,45 @@ ret=ret/.Thread[loopMomenta->Table[Symbol[$loopMomentumName<>ToString[idx]],{idx
 loopMomenta=loopMomenta/.Thread[loopMomenta->Table[Symbol[$loopMomentumName<>ToString[idx]],{idx,1,Length[loopMomenta]}]];
 
 Return[<|
-"result"->FEq[ret],
-"externalIndices"->externalIndices,
-"loopMomenta"->loopMomenta
+"Expression"->FEq[ret],
+"ExternalIndices"->Sort@externalIndices,
+"LoopMomenta"->Sort@loopMomenta
 |>];
 ];
 
 FRoute[setup_,expr_FEq]:=Module[{results,ret,idx,subidx},
 results=FRoute[setup,#]&/@(List@@expr);
-
-(*All terms have the same loop momenta and external legs*)
-If[Equal@@Map[#["loopMomenta"]&,results]&&
-Equal@@Map[#["externalIndices"]&,results],
-Return[{<|
-"result"->FEq@@Map[#["result"]&,results],
-"externalIndices"->results[[1]]["externalIndices"],
-"loopMomenta"->results[[1]]["loopMomenta"]
-|>}]
-];
-
-(*All terms have the same external legs, but different loop orders*)
-If[Equal@@Map[#["externalIndices"]&,results],
-ret={results[[1]]};
-Do[
-For[subidx=1,subidx<=Length[ret]+1,subidx++,
-If[subidx===Length[ret]+1,
-AppendTo[ret,results[[idx]]];
-Break[];
-];
-If[ret[[subidx]]["loopMomenta"]===results[[idx]]["loopMomenta"],
-ret[[subidx,Key["result"]]]=FEq[ret[[subidx,Key["result"]]],results[[idx]]["result"]];
-Break[];
-];
-];
-,{idx,2,Length[results]}];
-Return[SortBy[ret,Length[#["loopMomenta"]]&]]
-];
-
-(*All terms are different*)
+results=GatherBy[results,Length[#["LoopMomenta"]]&];
+results=Map[<|
+"Expression"->FEq@@#[[All,Key["Expression"]]],
+"ExternalIndices"->#[[1,Key["ExternalIndices"]]],
+"LoopMomenta"->S #[[1,Key["LoopMomenta"]]]
+|>&,results];
+results=Association@@Map[ToString[Length[#["LoopMomenta"]]]~~"-Loop"->#&,results];
 Return[results];
 ];
 
 
+
 (* ::Input::Initialization:: *)
+isLoopAssociation[expr_]:=Module[{},
+If[Head[expr]=!=Association,Return[False]];
+If[FreeQ[Keys[expr],"Expression"],Return[False]];
+If[FreeQ[Keys[expr],"ExternalIndices"],Return[False]];
+If[FreeQ[Keys[expr],"LoopMomenta"],Return[False]];
+Return[True];
+];
 isRoutedAssociation[expr_]:=Module[{},
 If[Head[expr]=!=Association,Return[False]];
-If[FreeQ[Keys[expr],"result"],Return[False]];
-If[FreeQ[Keys[expr],"externalIndices"],Return[False]];
-If[FreeQ[Keys[expr],"loopMomenta"],Return[False]];
-Return[True];
-]
+Return@AllTrue[expr,isLoopAssociation]
+];
 
 
 (* ::Input::Initialization:: *)
-FUnroute[setup_,assoc_Association]/;isRoutedAssociation[assoc]:=Module[{},
-Return@FUnroute[assoc["result"]/.Map[#[[2]]->#[[1]]&,assoc["externalIndices"]]];
+FUnroute[setup_,assoc_Association]/;isLoopAssociation[assoc]:=Module[{},
+Return@FUnroute[assoc["Expression"]/.Map[#[[2]]->#[[1]]&,assoc["ExternalIndices"]]];
 ];
-
-FUnroute[setup_,list_List]/;(And@@(isRoutedAssociation/@list)):=Total[FUnroute[setup,#]&/@list];
+FUnroute[setup_,assoc_Association]/;isRoutedAssociation[assoc]:=FEq@@(FUnroute[setup,#]&/@(List@@assoc));
 FUnroute[setup_,term_FEq]:=FUnroute[setup,#]&/@term;
 FUnroute[setup_,term_FTerm]:=Module[{fw,bw},
 {fw,bw}=GetSuperIndexTermTransformations[setup,term];
@@ -412,7 +393,8 @@ MallObjt2_,cidxt2_,oidxt2_,Mmemory2_,entry2_,Msign2_
 ]:=Module[
 {allObjt1=MallObjt1,curIdx1,curPos1,nextInd1,nextPos1,memory1=Mmemory1,assocFields1,
 allObjt2=MallObjt2,curIdx2,curPos2,nextInd2,nextPos2,memory2=Mmemory2,assocFields2,sign2=Msign2,
-iter=1,idx,jdx,viableBranches,branchResult,branchSign,branchItRepl,branchObj},
+iter=1,idx,jdx,viableBranches,branchResult,branchSign,branchItRepl,branchObj,
+temp1,temp2},
 
 FunKitDebug[3,"Following along a chain of indices."];
 
@@ -462,9 +444,12 @@ Continue[];
 
 (*Case 2: End of the line.*)
 If[Length[nextInd1]===0,
+FunKitDebug[4,"Finished an index chain in (",curPos1,", ",curPos2,")"];
 (*We need to check if both expressions are with FDOps*)
 If[Head@curPos1===Field,
-If[Cases[t1,FDOp[curPos1[[1,1]][curPos1[[2,1]]]],Infinity]=!=Cases[t2,FDOp[curPos2[[1,1]][curPos2[[2,1]]]],Infinity],
+temp1=Cases[t1,FDOp[curPos1[[1,1]][curPos1[[2,1]]]],Infinity];
+temp2=Cases[t2,FDOp[curPos2[[1,1]][curPos2[[2,1]]]],Infinity];
+If[Length[temp1]=!=Length[temp2],
 Return[{False,allObjt2}]
 ];
 ];
@@ -487,6 +472,7 @@ branchObj=allObjt2;
 Table[
 {branchSign,branchItRepl}=RearrangeFields[setup,curPos1,curPos2,viableBranches[[idx,jdx,All,1]]];
 branchObj=branchObj/.curPos2->branchItRepl;
+FunKitDebug[4,"Branching at ",branchObj];
 {branchSign,branchObj}=TermsEqualAndSum[setup,t1,t2,
 allObjt1,cidxt1,oidxt1,Append[memory1,viableBranches[[idx,jdx,1,3]]],viableBranches[[idx,jdx,1,1]],
 allObjt2,cidxt2,oidxt2,Append[memory2,viableBranches[[idx,jdx,2,3]]],viableBranches[[idx,jdx,2,1]],branchSign
@@ -561,8 +547,6 @@ If[it1===it2,Return@FTerm[2,t1]];
 startPoints = StartPoints[setup,t1,t2];
 If[Not[startPoints[[1]]],Return[False]];
 
-FunKitDebug[2,"Checking for non-trivial equivalence of two terms"];
-
 doFields=replFields[setup];
 
 (*collect objects for both terms*)
@@ -575,7 +559,6 @@ cidxt2=GetClosedSuperIndices[setup,t2];
 oidxt1=GetOpenSuperIndices[setup,t1];
 oidxt2=GetOpenSuperIndices[setup,t2];
 
-
 (*We pick the first candidate for t1 and iterate over all candidates for t2.*)
 startt1=startPoints[[2,1]];
 (*starting indices can only be closed indices! We pick these out with the following 4 commands*)
@@ -583,6 +566,8 @@ startt1fields=startt1[[1]];
 cidxstartt1=Map[MemberQ[cidxt1,makePosIdx@#]&,startt1[[2]]];
 startt1fields=Pick[startt1fields,cidxstartt1];
 cidxstartt1=makePosIdx/@Pick[startt1[[2]],cidxstartt1];
+
+If[Length[cidxstartt1]===0,Return[False]];
 
 FunKitDebug[3,"Comparing the terms \n  ",t1,"\n  ",t2];
 
@@ -593,7 +578,6 @@ startt2=startPoints[[3,idx]];
 (*starting indices can only be 1. closed indices 2. have same field content as the starting point in t1. We pick these out with the following 2 commands*)
 cidxstartt2=Map[(MemberQ[cidxt2,#[[1]]]&&#[[2]]===startt1fields[[1]])&,Transpose[{makePosIdx/@startt2[[2]],startt2[[1]]}]];
 cidxstartt2=Pick[makePosIdx/@startt2[[2]],cidxstartt2];
-
 For[jdx=1,jdx<=Length[cidxstartt2],jdx++,
 (*re-order the starting point so that it fits the first.*)
 {startsign,nstartt2}=RearrangeFields[setup,startt1,startt2,{cidxstartt1[[1]],cidxstartt2[[jdx]]}];
@@ -615,16 +599,17 @@ If[equal=!=False,Break[]];
 (*If equal===False, the terms are clearly not equal*)
 If[equal===False,Return[False]];
 
-FunKitDebug[2,"Found two equal terms"];
+FunKitDebug[3,"Found two equal terms"];
 
 removeOther=Dispatch[{Alternatives@@Map[Blank,$allObjects\[Union]{FDOp}]->1,Alternatives@@Map[Blank,GetAllFields[setup]\[Union]{AnyField}]->1}];
 
 (*No need to do any ordering if there are no explicit Grassmanns in the expression*)
 If[GrassmannCount[setup,t1]===0,
-factor=(equal*(t2/.removeOther)+(t1/.removeOther))/(t1/.removeOther) 1;
-FunKitDebug[3,"Prefactor: ",factor];
+factor=(equal*Times@@(t2/.removeOther)+Times@@(t1/.removeOther))/Times@@(t1/.removeOther);
+FunKitDebug[3,"With prefactor: ",factor];
 Return@FTerm[factor,t1];
 ];
+
 Print["Could not resolve Grassmann factors"];Abort[];
 Return@FTerm[standardOrderGrassmanns[t1][[1]]*standardOrderGrassmanns[t2][[1]]*
 (equal*(Times@@t2)+(Times@@t1))/(Times@@t1)/.Alternatives@@Map[Blank,$allObjects\[Union]{FDOp}]->1/.Alternatives@@Map[Blank,GetAllFields[setup]]->1,t1];
@@ -650,7 +635,7 @@ identifierRep=Map[FTermContent[setup,#]&,ret];
 identifierRep=Thread[{identifierRep,ret}];
 removeFirsts[ex_]:=Map[#[[2]]&,ex];
 groupedDiagrams=(FEq@@#)&/@Map[removeFirsts,GatherBy[identifierRep,#[[1]]&]];
-
+FunKitDebug[2,"Separated into ",Length[groupedDiagrams]," groups."];
 Return[groupedDiagrams]
 ];
 
@@ -671,14 +656,6 @@ jdx--;
 ];
 Return[FEq@@ret];
 ];
-
-FSimplify[setup_,expr_FEq]:=Module[{subGroups,res},
-FunKitDebug[1,"Simplifying diagrammatic expression"];
-subGroups=SeparateTermGroups[setup,expr];
-res=FEq@@ParallelMap[SubFSimplify[setup,#]&,subGroups];
-FunKitDebug[1,"FTerms before: ",Length[expr],", after: ",Length[res]];
-Return[res];
-]
 
 
 (* ::Input::Initialization:: *)
@@ -723,11 +700,9 @@ Map[buildOneSymmetry,symmetries/.Cycles->Identity]
 ];
 ];
 
-FSimplify[setup_,expr_FEq,symmetries_List,indices_List]:=Module[
-{ret=List@@expr,idx,jdx,kdx,red,symmetryList},
-FunKitDebug[1,"Simplifying diagrammatic expression with symmetry list"];
+SubFSimplify[setup_,expr_FEq,symmetryList_]:=Module[
+{ret=List@@expr,idx,jdx,kdx,red},
 
-symmetryList=BuildSymmetryList[setup,symmetries,A[#]&/@indices];
 For[idx=1,idx<=Length[ret],idx++,
 For[jdx=idx+1,jdx<=Length[ret],jdx++,
 For[kdx=1,kdx<=Length[symmetryList],kdx++,
@@ -741,6 +716,27 @@ jdx--;kdx=Length[symmetryList]+1;
 ];
 ];
 Return[FEq@@ret];
+];
+
+FSimplifyNoSym[setup_,expr_FEq]:=Module[{subGroups,res},
+FunKitDebug[1,"Simplifying diagrammatic expression of length ",Length[expr]];
+subGroups=SeparateTermGroups[setup,expr];
+res=FEq@@ParallelMap[SubFSimplify[setup,#]&,subGroups];
+FunKitDebug[1,"FTerms before: ",Length[expr],", after: ",Length[res]];
+Return[res];
+];
+
+Options[FSimplify]={"Symmetries"->{}};
+
+FSimplify[setup_,expr_FEq,OptionsPattern[]]:=Module[{subGroups,res,symmetryList},
+If[OptionValue["Symmetries"]==={},Return[FSimplifyNoSym[setup,expr]]];
+
+FunKitDebug[1,"Simplifying diagrammatic expression of length ",Length[expr],"with symmetry list"];
+subGroups=SeparateTermGroups[setup,expr];
+symmetryList=BuildSymmetryList[setup,OptionValue["Symmetries"][[1]],AnyField[#]&/@OptionValue["Symmetries"][[2]]];
+res=FEq@@ParallelMap[SubFSimplify[setup,#,symmetryList]&,subGroups];
+FunKitDebug[1,"FTerms before: ",Length[expr],", after: ",Length[res]];
+Return[res];
 ];
 
 

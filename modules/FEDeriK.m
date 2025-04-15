@@ -76,7 +76,9 @@ Begin["`Private`"];
 (* ::Input::Initialization:: *)
 FTruncate[expr_]/;Head[$GlobalSetup]=!=Symbol:=FTruncate[$GlobalSetup,expr];
 
-TakeDerivatives[expr_,derivativeList_]/;Head[$GlobalSetup]=!=Symbol:=TakeDerivatives[$GlobalSetup,expr,derivativeList];
+TakeDerivatives[expr_,derivativeList_]/;Head[$GlobalSetup]=!=Symbol:=TakeDerivatives[$GlobalSetup,expr,derivativeList,"Symmetries"->{}];
+
+TakeDerivatives[expr_,derivativeList_,OptionsPattern[]]/;Head[$GlobalSetup]=!=Symbol:=TakeDerivatives[$GlobalSetup,expr,derivativeList,"Symmetries"->OptionValue["Symmetries"]];
 
 QMeSForm[expr_]/;Head[$GlobalSetup]=!=Symbol:=QMeSForm[$GlobalSetup,expr];
 
@@ -88,7 +90,9 @@ MakeClassicalAction[]/;Head[$GlobalSetup]=!=Symbol:=MakeClassicalAction[$GlobalS
 
 MakeDSE[field_]/;Head[$GlobalSetup]=!=Symbol:=MakeDSE[$GlobalSetup,field];
 
-ResolveDerivatives[expr_]/;Head[$GlobalSetup]=!=Symbol:=ResolveDerivatives[$GlobalSetup,expr];
+ResolveDerivatives[expr_]/;Head[$GlobalSetup]=!=Symbol:=ResolveDerivatives[$GlobalSetup,expr,"Symmetries"->{}];
+
+ResolveDerivatives[expr_,OptionsPattern[]]/;Head[$GlobalSetup]=!=Symbol:=ResolveDerivatives[$GlobalSetup,expr,"Symmetries"->OptionValue["Symmetries"]];
 
 ResolveFDOp[expr_]/;Head[$GlobalSetup]=!=Symbol:=ResolveFDOp[$GlobalSetup,expr];
 
@@ -1256,15 +1260,17 @@ truncationPass[setup_,expr_FEq]:=Module[{},
 truncationPass[setup,#]&/@expr
 ];
 
+truncationList[setup_]:=truncationList[setup]=Dispatch@Map[
+#[f_,i_]/;FreeQ[f,AnyField]:>If[
+FreeQ[Sort/@setup["Truncation"][#],Sort@f],
+0,#[f,i]
+]&,Intersection[Keys[setup["Truncation"]],$indexedObjects]];
+
 truncationPass[setup_,expr_FTerm]:=Module[
 {ret=expr,i},
 
 (*Get rid of any truncated ordered functions*)
-ret=ret/.Map[
-#[f_,i_]/;FreeQ[f,AnyField]:>If[
-FreeQ[Sort/@setup["Truncation"][#],Sort@f],
-0,#[f,i]
-]&,Intersection[Keys[setup["Truncation"]],$OrderedObjects]];
+ret=ret/.truncationList[setup];
 
 (*Finally, remove the metric factors*)
 ret=ReduceIndices[setup,ret];
@@ -1280,7 +1286,7 @@ ret=ret/.Map[
 #[f_,i_]/;FreeQ[f,AnyField]:>If[
 FreeQ[Sort/@setup["Truncation"][#],Sort@f],
 0,#[f,i]
-]&,Intersection[Keys[setup["Truncation"]],$OrderedObjects]];
+]&,Intersection[Keys[setup["Truncation"]],$indexedObjects]];
 
 Return[ret];
 ];
@@ -1315,7 +1321,7 @@ FunKitDebug[3,"Truncating the term (closed indices) ",expr];
 
 doFields=replFields[setup];
 undoFields=unreplFields[setup];
-ret=ret//.doFields;
+ret=ret/.doFields;
 
 (*Start off with the nested FTerms*)
 ret=ret/.FTerm[a__]:>LTrunc[setup,FTerm[a]];
@@ -1378,6 +1384,7 @@ FMinus[{a_,b_},{ia_,s2[[2,idxPos[[2]]]]}]:>FMinus[{a,#},{ia,s2[[2,idxPos[[2]]]]}
 ,allFields];
 Return[LTrunc[setup,ret/.undoFields]];
 ];
+
 If[subObj[[1,1]][[idxPos[[1]]]]=!=GetPartnerField[subObj[[2,1]][[idxPos[[2]]]]],Message[indices::inconsistentFieldContractions,{subObj[[1,1]][[idxPos[[1]]]],subObj[[2,1]][[idxPos[[2]]]]},expr];Abort[]];
 Abort[];
 ];
@@ -1397,7 +1404,7 @@ ret=ret/.doFields;
 (*Start off with the nested FTerms*)
 ret=ret/.FTerm[a__]:>OTrunc[setup,FTerm[a]];
 (*Abort if there is nothing to do*)
-If[FreeQ[ret,AnyField,Infinity],Return[FTerm@@ret/.undoFields]];
+If[FreeQ[ret,AnyField,Infinity],Return[truncationPass[setup,FTerm@@ret]/.undoFields]];
 
 (*Get all open indices*)
 openIndices=GetOpenSuperIndices[setup,FTerm@@(ret/.FTerm[__]:>ignore)];
@@ -1434,7 +1441,7 @@ ReduceIndices[setup,t]
 ]&
 ,allFields];
 ];
-Return[ret/.undoFields];
+Return[truncationPass[setup,ret]/.undoFields];
 ];
 
 FTruncate[setup_,expr_]:=Module[{ret,
@@ -1451,7 +1458,7 @@ ret=mmap[OTrunc[setup,#]&,FEq[expr]];
 
 (*Then, take care of closed indices recursively*)
 ret=mmap[LTrunc[setup,#]&,FEq[ret]];
-ret=ReduceIndices[setup,ReduceIndices[setup,ret]];
+ret=truncationPass[setup,ReduceIndices[setup,ret]];
 
 FunKitDebug[1,"Finished truncating the given expression"];
 OrderFields[setup,FixIndices[setup,#]&/@ret]
@@ -1691,11 +1698,13 @@ Return[ReduceFEq[setup,dTerms]];
 ResolveDerivatives::argument="The given argument is neither an FTerm nor a FEq.
 The argument was `1`";
 
+Options[ResolveDerivatives]={"Symmetries"->{}};
+
 (*Iteratively resolve all derivative operators in an FTerm or FEq*)
-ResolveDerivatives[setup_,term_FTerm]:=ResolveDerivatives[setup,FEq[term]]
+ResolveDerivatives[setup_,term_FTerm,OptionsPattern[]]:=ResolveDerivatives[setup,FEq[term],"Symmetries"->OptionValue["Symmetries"]]
 
 timeSpent=0;
-ResolveDerivatives[setup_,eq_FEq]:=Module[
+ResolveDerivatives[setup_,eq_FEq,OptionsPattern[]]:=Module[
 {ret=eq,mmap,fw,bw,i},
 FunKitDebug[1,"Resolving derivatives"];
 
@@ -1708,10 +1717,10 @@ ret//fw;
 mmap=If[Total[Length/@(List@@FEq[ret])]>10,ParallelMap,Map];
 i=0;
 While[MemberQ[ret,FDOp[__],Infinity]&&i<$MaxDerivativeIterations,
-FunKitDebug[2,"Doing derivative pass ",i+1];
+FunKitDebug[1,"Doing derivative pass ",i+1];
 ret=FEq@@mmap[ResolveFDOp[setup,#]&,List@@ret];
 (*If AnSEL has been loaded, use FSimplify to reduce redundant terms*)
-If[ModuleLoaded[AnSEL],ret=ret//FSimplify];
+If[ModuleLoaded[AnSEL],ret=FunKit`FSimplify[setup,ret,"Symmetries"->OptionValue["Symmetries"]]];
 i++;
 ];
 ret=ret//bw;
@@ -1726,8 +1735,10 @@ Message[ResolveDerivatives::argument,{a}];Abort[];
 
 
 (* ::Input::Initialization:: *)
+Options[TakeDerivatives]={"Symmetries"->{}};
+
 (* Perform multiple functional derivatives on a master equation.*)
-TakeDerivatives[setup_,expr_,derivativeList_]:=Module[
+TakeDerivatives[setup_,expr_,derivativeList_,OptionsPattern[]]:=Module[
 {result,
 externalIndexNames,outputReplacements,
 derivativeListSIDX
@@ -1742,7 +1753,7 @@ derivativeListSIDX=Reverse[derivativeList];
 (*First, fix the indices in the input equation, i.e. make everything have unique names*)
 result=FixIndices[setup,FEq[expr]];
 
-If[Length[derivativeListSIDX]===0,Return[ResolveDerivatives[setup,result]]];
+If[Length[derivativeListSIDX]===0,Return[ResolveDerivatives[setup,result,"Symmetries"->OptionValue["Symmetries"]]]];
 
 FunKitDebug[1,"Adding the derivative operator ",(FTerm@@(FDOp/@derivativeListSIDX))];
 (*Perform all the derivatives, one after the other*)

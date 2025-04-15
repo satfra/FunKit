@@ -160,12 +160,18 @@ Return[{StringJoin@@lowerList,StringJoin@@upperList}]
 
 
 (* ::Input::Initialization:: *)
+$availableIndices=Join[Alphabet["English"],Alphabet["English","CommonAlphabetUpper"],Alphabet["Greek"]];
+
+
+(* ::Input::Initialization:: *)
 ClearAll[prettySuperIndices,prettyExplicitIndices];
+prettySuperIndices::type="Unknown type `1`";
+
 prettySuperIndices[setup_,expr_FEq]:=Map[prettySuperIndices[setup,#]&,expr];
 prettySuperIndices[setup_,expr_FTerm]:=Module[{closedIndices,openIndices,repl,indices},
 closedIndices=GetClosedSuperIndices[setup,expr];
 openIndices=GetOpenSuperIndices[setup,expr];
-indices=Alphabet[];
+indices=$availableIndices;
 Do[
 indices=Select[indices,#=!=ToString[openIndices[[i]]]&],
 {i,1,Length[openIndices]}
@@ -173,25 +179,37 @@ indices=Select[indices,#=!=ToString[openIndices[[i]]]&],
 repl=Thread[closedIndices->indices[[1;;Length[closedIndices]]]];
 Return[expr//.repl]
 ];
-prettySuperIndices[setup_,expr_Association]:=Association[Normal[expr]/.FEq[a___]:>prettySuperIndices[setup,FEq[a]]]
-prettySuperIndices[setup_,expr_List]:=Map[prettySuperIndices[setup,#]&,expr];
-prettySuperIndices[setup_,expr_routedContainer]:=Map[prettySuperIndices[setup,#]&,expr];
+prettySuperIndices[setup_,expr_Association]/;isLoopAssociation[expr]:=Association[Normal[expr]/.FEq[a___]:>prettySuperIndices[setup,Print[1];FEq[a]]]
+prettySuperIndices[setup_,expr_List]:=Map[prettySuperIndices[setup,#]&,Print[3];expr];
+prettySuperIndices[setup_,expr_Association]/;isRoutedAssociation[expr]:=Association@Map[prettySuperIndices[setup,#]&,Print[2];Normal@expr];
+prettySuperIndices[setup_,a_]:=(Message[prettySuperIndices::type,Head@a];Abort[])
+
 
 
 (* ::Input::Initialization:: *)
+prettyExplicitIndices::type="Unknown type `1`";
+
 prettyExplicitIndices[setup_,expr_FEq]:=Map[prettyExplicitIndices[setup,#]&,expr];
-prettyExplicitIndices[setup_,expr_FTerm]:=Module[{allIndices,closedIndices,openIndices,repl,indices},
+prettyExplicitIndices[setup_,expr_FTerm]:=Module[{allIndices,closedIndices,openIndices,repl,indices,ret=expr},
 allIndices=Select[ExtractObjectsAndIndices[setup,expr][[2]],Head[#]===List&];
+allIndices=Map[
+If[Length[#]===2,
+#,
+ret=ret/.#->Join[#,{Hash[Sort@{#,-#}]}];
+Join[#,{Hash[Sort@{#,-#}]}]
+]&,allIndices];
 allIndices=allIndices[[All,2]];
 closedIndices=Pick[allIndices,Count[allIndices,#]===2&/@allIndices];
 openIndices=Pick[allIndices,Count[allIndices,#]=!=2&/@allIndices];
-indices=Alphabet[];
+indices=$availableIndices;
 repl=Thread[closedIndices->indices[[1;;Length[closedIndices]]]]\[Union]Thread[openIndices->indices[[Length[closedIndices]+1;;Length[closedIndices]+Length[openIndices]]]];
-Return[expr//.repl]
+Return[ret//.repl]
 ];
-prettyExplicitIndices[setup_,expr_Association]:=Association[Normal[expr]/.FEq[a___]:>prettyExplicitIndices[setup,FEq[a]]]
+prettyExplicitIndices[setup_,expr_Association]/;isLoopAssociation[expr]:=Association[Normal[expr]/.FEq[a___]:>prettyExplicitIndices[setup,FEq[Print[1];a]]]
 prettyExplicitIndices[setup_,expr_List]:=Map[prettyExplicitIndices[setup,#]&,expr];
-prettyExplicitIndices[setup_,expr_routedContainer]:=Map[prettyExplicitIndices[setup,#]&,expr];
+prettyExplicitIndices[setup_,expr_Association]/;isRoutedAssociation[expr]:=Association@Map[prettyExplicitIndices[setup,#]&,Print[2];Normal@expr];
+prettyExplicitIndices[setup_,a_]:=(Message[prettyExplicitIndices::type,Head@a];Abort[])
+
 
 
 (* ::Input::Initialization:: *)
@@ -220,20 +238,23 @@ $TexStyles={};
 
 
 (* ::Input::Initialization:: *)
+isLoopAssociation[expr_]:=Module[{},
+If[Head[expr]=!=Association,Return[False]];
+If[FreeQ[Keys[expr],"Expression"],Return[False]];
+If[FreeQ[Keys[expr],"ExternalIndices"],Return[False]];
+If[FreeQ[Keys[expr],"LoopMomenta"],Return[False]];
+Return[True];
+];
 isRoutedAssociation[expr_]:=Module[{},
 If[Head[expr]=!=Association,Return[False]];
-If[FreeQ[Keys[expr],"result"],Return[False]];
-If[FreeQ[Keys[expr],"externalIndices"],Return[False]];
-If[FreeQ[Keys[expr],"loopMomenta"],Return[False]];
-Return[True];
-]
-Protect[routedContainer];
+Return@AllTrue[expr,isLoopAssociation]
+];
 
 
 (* ::Input::Initialization:: *)
 RenewFormatDefinitions[]:=Module[{},
 
-Unprotect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus,S,routedContainer];
+Unprotect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus,S];
 Unprotect@@$allObjects;
 
 (*Field formatting with superindices*)
@@ -319,7 +340,7 @@ TeXUtilities`TeXVerbatim[ret<>"("<>StringRiffle[Map[ToString@TeXForm[#]&,{i}[[Al
 ])&,
 $allObjects];
 
-Format[FTerm[a___],TeXForm]:=Module[{obj,integrals,replNames,idx,prefix,postfix,body={a}},
+Format[FTerm[a__],TeXForm]:=Module[{obj,integrals,replNames,idx,prefix,postfix,body={a}},
 integrals=Pick[$availableLoopMomenta,Map[MemberQ[{a},#,Infinity]&,$availableLoopMomenta]];
 replNames=Thread[$availableLoopMomenta->Table[Subscript[Symbol[$loopMomentumName],idx],{idx,1,Length[$availableLoopMomenta]}]];
 prefix=StringJoin[Map["\\int_{"<>ToString[TeXForm[#]]<>"}"&,integrals//.replNames]];
@@ -348,6 +369,10 @@ TeXUtilities`TeXDelimited[prefix,##,postfix,
 ]&@@body
 ];
 
+Format[FTerm[],TeXForm]:=Module[{},
+TeXUtilities`TeXVerbatim["1"]
+];
+
 Format[FEq[a___],TeXForm]:=If[Length[Flatten[(List@@#&)/@{a}]]<=9,
 TeXUtilities`TeXDelimited["",a,"",
 "DelimSeparator"->"\n","BodySeparator"->"\n\\,+\\,\n",
@@ -357,8 +382,9 @@ TeXUtilities`TeXDelimited["\\begin{aligned}&",a,"\\end{aligned}",
 "BodyConverter"->(ToString[Format[#,TeXForm]]&)]
 ];
 
-Format[routedContainer[a__],TeXForm]/;(And@@(isRoutedAssociation/@{a})):=Module[{parts},
-parts={a}[[All,Key["result"]]];
+Unprotect[Association];
+Format[Association[a__],TeXForm]/;isRoutedAssociation[Association[a]]:=Module[{parts},
+parts=(List@@Association[a])[[All,Key["Expression"]]];
 parts=ToString[TeXForm[FEq[#]]]&/@parts;
 
 parts=Join[
@@ -374,20 +400,22 @@ TeXUtilities`TeXVerbatim["\\begin{aligned}&\n"<>
 StringRiffle[parts,"\n \\\&\n"]<>
 "\n\\end{aligned}"]
 ];
+Protect[Association];
 
 
-Protect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus,S,routedContainer];
+Protect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus,S];
 Protect@@$allObjects;
 ];
 
 
 (* ::Input::Initialization:: *)
 (*Turn a given expression into LaTeX code*)
-ClearAll[FTex]
 FTex[setup_,expr_]:=Module[
 {prExp=expr,fields},
 AssertFSetup[setup];
 fields=GetAllFields[setup];
+
+FunKitDebug[1,"Creating LaTeX expression"];
 
 (*update the formatting definitions for TeXForm*)
 $Fields=Thread[fields->Map[ToString[TeXForm[#]]&,fields]];
@@ -406,12 +434,15 @@ prExp=prExp//.FTerm[pre___,Times[a_,b_],post___]:>FTerm[pre,a,b,post];
 Return[prExp//TeXForm];
 ];
 
+FTex[setup_,expr_List]/;AllTrue[expr,(Head[#]===FEq||Head[#]===FTerm)&]:=FTex[setup,FEq@@expr];
+
 (*For the output of a full routing*)
-FTex[setup_,expr_List]/;(And@@(isRoutedAssociation/@expr)):=FTex[setup,routedContainer@@expr];
-FTex[setup_,expr_Association]/;(isRoutedAssociation@expr):=FTex[setup,routedContainer[expr]];
+FTex[setup_,expr_Association]/;isRoutedAssociation@expr:=FTex[setup,(List@@expr)[[All,Key["Expression"]]]];
+FTex[setup_,expr_Association]/;isLoopAssociation@expr:=FTex[setup,expr["Expression"]];
 
 (*For direct printing*)
 FPrint[setup_,expr_]:=(Print[FTex[setup,expr]//MaTeX`MaTeX];Return[expr]);
+
 
 
 (* ::Input::Initialization:: *)
@@ -444,11 +475,15 @@ Field->0.1
 
 
 (* ::Input::Initialization:: *)
+FPlot::FDOp="Cannot plot diagrams with unresolved derivative operators!";
+
 GetDiagram[setup_,expr_FTerm]:=Module[
 {PossibleVertices,PossibleEdges,Styles,diag,
 allObj,fieldObj,vertices,edges,vertexReplacements,graph,phantomVertices,edgeFields,
-fieldVertices,fieldEdges,fieldEdgeFields,
-externalVertices,externalEdges,externalFields,idx,prefactor,doFields,eWeights},
+fieldVertices,fieldEdges,fieldEdgeFields,oidx,
+externalVertices,externalEdges,externalFields,idx,prefactor,doFields,eWeights,addVertexSizes={}},
+If[MemberQ[expr,FDOp[__],Infinity],Message[FPlot::FDOp];Abort[]];
+
 diag=FUnroute[setup,expr];
 
 doFields=replFields[setup];
@@ -500,8 +535,9 @@ externalFields=Table[SelectFirst[allObj,MemberQ[makePosIdx/@#[[2]],externalVerti
 externalFields=Table[
 externalFields[[idx,1,FirstPosition[makePosIdx/@externalFields[[idx,2]],externalVertices[[idx]]][[1]]]]
 ,{idx,1,Length[externalVertices]}];
+externalVertices=Unique/@externalVertices;
 externalEdges=Table[
-MakeEdgeRule[setup,Propagator[{GetPartnerField[setup,externalFields[[idx]]],externalFields[[idx]]},{externalVertices[[idx]],externalVertices[[idx]]/.vertexReplacements}]]
+MakeEdgeRule[setup,Propagator[{GetPartnerField[setup,externalFields[[idx]]],externalFields[[idx]]},{externalVertices[[idx]],GetOpenSuperIndices[setup,diag][[idx]]/.vertexReplacements}]]
 ,{idx,1,Length[externalVertices]}];
 externalEdges=Table[Style[externalEdges[[idx]],##]&@@Flatten@{externalFields[[idx]]/.Styles},{idx,1,Length[externalEdges]}];
 
@@ -511,13 +547,23 @@ phantomVertices=Table[Symbol["phantom"<>ToString[idx]],{idx,1,Length[edges]}];
 (*get the prefactor*)
 prefactor=Times@@(diag/.doFields/.Map[Blank[#]->1&,Join[{Field},$allObjects]]);
 
+oidx=GetOpenSuperIndices[setup,diag];
+Do[
+If[MemberQ[externalEdges,oidx[[idx]],Infinity],
+AppendTo[addVertexSizes,oidx[[idx]]->0.00001]
+];
+,{idx,1,Length[GetOpenSuperIndices[setup,diag]]}];
+
 prefactor*Graph[Join[vertices[[All,1]],externalVertices,fieldVertices[[All,1]]],Join[edges,externalEdges,fieldEdges],
 VertexShape->Join[
 Thread[vertices[[All,1]]->(vertices[[All,0]]/.$standardVertexStyles)],
 Thread[externalVertices->Map[Graphics@Style[Disk[{0,0},0.0],Gray]&,externalVertices]],
 Thread[fieldVertices[[All,1]]->(fieldVertices[[All,0]]/.$standardVertexStyles)]
 ],
-VertexSize->Thread[vertices[[All,1]]->(vertices[[All,0]]/.$standardVertexSize)],
+VertexSize->Join[
+Thread[vertices[[All,1]]->(vertices[[All,0]]/.$standardVertexSize)],
+addVertexSizes
+],
 GraphLayout->{"SpringElectricalEmbedding"},
 PerformanceGoal->"Quality",
 ImageSize->Small,
@@ -535,15 +581,19 @@ Print[Plus@@(GetDiagram[setup,#]&/@expr)];
 Return@expr
 ];
 
-FPlot[setup_,expr_Association]/;isRoutedAssociation[expr]:=Module[{},
-FPlot[setup,expr["result"]];
+FPlot[setup_,expr_Association]/;isLoopAssociation[expr]:=Module[{},
+FPlot[setup,expr["Expression"]];
 Return@expr
 ];
 
-FPlot[setup_,expr_List]/;(And@@(isRoutedAssociation/@expr)):=Module[{},
-FPlot[setup,FEq@@expr[[All,Key["result"]]]];
+FPlot[setup_,expr_Association]/;isRoutedAssociation@expr:=Module[{},
+FPlot[setup,(List@@routedAssociation)[[All,Key["Expression"]]]];
 Return@expr
 ];
+
+FPlot::type="Unknown type `1`";
+FPlot[setup_,a_]:=(Message[FPlot::type,Head[a]];Abort[])
+
 
 
 End[];
