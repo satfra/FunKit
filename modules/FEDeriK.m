@@ -502,11 +502,9 @@ FunctionalD::malformed="Cannot take a derivative of `1`. Expression is either ma
 
 ClearAll[FunctionalD]
 FunctionalD[setup_,expr_,v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=Internal`InheritedBlock[
-{f,GammaN,Propagator,nonConst,FTerm,FEq},
+{f,nonConst},
 
-nonConst=Sort@{f,GammaN,Propagator,Power};
-
-Unprotect[GammaN,Propagator,FTerm,FEq,AnyField];
+nonConst=DeleteDuplicates@Sort@({f,Power}\[Union]$CorrelationFunctions);
 
 (*Rule for normal functional derivatives*)
 f/:D[f[x_],f[y_],NonConstants->nonConst]:=\[Gamma][{f,f},{-y,x}];
@@ -522,11 +520,14 @@ Map[
 (*Ignore fields without indices. These are usually tags*)
 f/:D[f,f[y_],NonConstants->nonConst]:=0;(*\[Delta][#,y]&;*)
 
-(*Derivative rule for GammaN*)
-GammaN/:D[GammaN[{a__},{b__}],f[if_],NonConstants->nonConst]:=GammaN[{f,a},{-if,b}];
+(*Derivative rules for Correlation functions*)
+Map[
+(f/:D[#[{a__},{b__}],f[if_],NonConstants->nonConst]:=#[{f,a},{-if,b}])&,
+$CorrelationFunctions
+];
 
-(*Derivative rule for Propagators*)
-Propagator/:D[Propagator[{b_,a_},{ib_,ia_}],f[if_],NonConstants->nonConst]:=Module[
+(*Special derivative rule for Propagator*)
+f/:D[Propagator[{b_,a_},{ib_,ia_}],f[if_],NonConstants->nonConst]:=Module[
 {ic,id,ie,ig},
 ic=Symbol@SymbolName@Unique["i"];
 id=Symbol@SymbolName@Unique["i"];
@@ -539,24 +540,38 @@ Propagator[{AnyField,a},{id,ia}]
 ];
 
 (*No derivatives of FTerm, FEq*)
-FTerm/:D[FTerm[a___],f[y_],NonConstants->nonConst]:=(Message[FunctionalD::malformed,FTerm[a]];Abort[]);
-FEq/:D[FEq[a___],f[y_],NonConstants->nonConst]:=(Message[FunctionalD::malformed,FEq[a]];Abort[]);
+f/:D[FTerm[a___],f[y_],NonConstants->nonConst]:=(Message[FunctionalD::malformed,FTerm[a]];Abort[]);
+f/:D[FEq[a___],f[y_],NonConstants->nonConst]:=(Message[FunctionalD::malformed,FEq[a]];Abort[]);
 
 (*Chain rules*)
 f/:D[g_[FTerm[a___]],f[y_],NonConstants->nonConst]:=(FTerm[g'[FTerm[a]]]**FTerm[FDOp[f[y]],a]);
 f/:D[Power[FTerm[a___],b_],f[y_],NonConstants->nonConst]:=(FTerm[b,Power[FTerm[a],b-1]]**FTerm[FDOp[f[y]],a]);
 f/:D[Power[a_,FTerm[b___]],f[y_],NonConstants->nonConst]:=(FTerm[Log[a],Power[a,FTerm[b]]]**FTerm[FDOp[f[y]],b]);
 
-Protect[GammaN,Propagator,FTerm,FEq,AnyField];
+D[expr,v,NonConstants->nonConst]
+];
+
+FunctionalD[setup_,expr_,v:(f_[_List,_List]|{f_[_List,_List],_Integer})..,OptionsPattern[]]:=Internal`InheritedBlock[
+{f,nonConst},
+
+nonConst=DeleteDuplicates@Sort@({f,Power}\[Union]$CorrelationFunctions);
+
+(*Rule for normal functional derivatives*)
+f/:D[f[{f1_,f2_},{i_,j_}],f[{f3_,f4_},{k_,l_}],NonConstants->nonConst]:=\[Gamma][{f1,f3},{-k,i}]\[Gamma][{f2,f4},{-l,j}];
+(*Rule for normal functional derivatives, but AnyField*)
+
+(*No derivatives of FTerm, FEq*)
+f/:D[FTerm[a___],f[y_],NonConstants->nonConst]:=(Message[FunctionalD::malformed,FTerm[a]];Abort[]);
+f/:D[FEq[a___],f[y_],NonConstants->nonConst]:=(Message[FunctionalD::malformed,FEq[a]];Abort[]);
 
 D[expr,v,NonConstants->nonConst]
 ];
 
 FunctionalD::badArgumentFTerm="Cannot take derivative of an FTerm. Use TakeDerivatives instead.";
-FunctionalD[setup_,FTerm[expr_],v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=(Message[FunctionalD::badArgumentFTerm];Abort[]);
+FunctionalD[setup_,FTerm[expr_],v:(f_[__]|{f_[__],_Integer})..,OptionsPattern[]]:=(Message[FunctionalD::badArgumentFTerm];Abort[]);
 
 FunctionalD::badArgumentFEq="Cannot take derivative of an FEq. Use TakeDerivatives instead.";
-FunctionalD[setup_,FEq[___],v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=(Message[FunctionalD::badArgumentFEq];Abort[]);
+FunctionalD[setup_,FEq[___],v:(f_[__]|{f_[__],_Integer})..,OptionsPattern[]]:=(Message[FunctionalD::badArgumentFEq];Abort[]);
 
 
 
@@ -1217,7 +1232,7 @@ ReduceIndices::FTermFEq="The given expression is neither an FTerm nor an FEq:
 ReduceIndices[setup_,term_]:=(Message[ReduceIndices::FTermFEq,term];Abort[]);
 
 ReduceIndices[setup_,term_FTerm]:=Module[
-{closedSIndices,cases,closed,
+{closedSIndices,cases,casesOpen,closed,
 i,both,result=term,casesFMinus},
 
 closedSIndices=GetClosedSuperIndices[setup,term];
@@ -1228,6 +1243,7 @@ casesFMinus=Select[cases,Head[#]===FMinus&];
 cases=Select[cases,Head[#]===\[Gamma]&];
 closed=Map[MemberQ[closedSIndices,makePosIdx[#]]&,cases[[All,2]],{2}];
 
+casesOpen=Pick[cases,Map[Not[#[[1]]||#[[2]]]&,closed]];
 cases=Pick[cases,Map[#[[1]]||#[[2]]&,closed]];
 closed=Pick[closed,Map[#[[1]]||#[[2]]&,closed]];
 
@@ -1235,7 +1251,7 @@ closed=Pick[closed,Map[#[[1]]||#[[2]]&,closed]];
 result=result/.Map[#:>metric[setup,
 (-2*Boole[isNeg[#[[2,1]]]]+1)#[[1,1]],
 (-2*Boole[isNeg[#[[2,2]]]]+1)#[[1,2]]
-]&,cases];
+]&,cases\[Union]casesOpen];
 
 (*replace the remaining indices. If both are up or both or down, the remaining indices change signs.*)
 result=result/.Table[
