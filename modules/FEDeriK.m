@@ -51,6 +51,7 @@ ShowIndexedObjects::usage="";
 AddCorrelationFunction::usage="";
 ShowCorrelationFunctions::usage="";
 SetGlobalSetup::usage="";
+SetUnorderedIndices::usage="";
 
 FEq::usage="";
 FTerm::usage="";
@@ -68,6 +69,7 @@ FDOp::usage="";
 Field::usage="";
 FMinus::usage="";
 AnyField::usage="";
+ResolveFDOp::usage="";
 
 
 Begin["`Private`"];

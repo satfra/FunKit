@@ -375,10 +375,10 @@ TeXUtilities`TeXVerbatim["1"]
 
 Format[FEq[a___],TeXForm]:=If[Length[Flatten[(List@@#&)/@{a}]]<=9,
 TeXUtilities`TeXDelimited["",a,"",
-"DelimSeparator"->"\n","BodySeparator"->"\n\\,+\\,\n",
+"DelimSeparator"->"","BodySeparator"->"\n\\,+\\,",
 "BodyConverter"->(ToString[Format[#,TeXForm]]&)],
-TeXUtilities`TeXDelimited["\\begin{aligned}&",a,"\\end{aligned}",
-"DelimSeparator"->"\n","BodySeparator"->"\n\\\\ &\\,+\\,\n",
+TeXUtilities`TeXDelimited["\\begin{aligned}\\  &",a,"\n\\end{aligned}",
+"DelimSeparator"->"","BodySeparator"->"\n\\\\ &\\,+\\,",
 "BodyConverter"->(ToString[Format[#,TeXForm]]&)]
 ];
 
@@ -431,7 +431,7 @@ prExp=prExp//.Map[#[Times[-1,a_]]:>Subscript[#,a]&,fields]//.Map[#[a_]:>Superscr
 (*For correct rendering, fully expand any FTerms*)
 prExp=prExp//.FTerm[pre___,Times[a_,b_],post___]:>FTerm[pre,a,b,post];
 
-Return[prExp//TeXForm];
+Return[prExp//TeXForm//ToString];
 ];
 
 FTex[setup_,expr_List]/;AllTrue[expr,(Head[#]===FEq||Head[#]===FTerm)&]:=FTex[setup,FEq@@expr];
@@ -499,6 +499,7 @@ setup["DiagramStyling"]["Styles"],
 Thread[(#->ColorData[97,"ColorList"][[1;;Length[#]]])&@DeleteDuplicates[GetAllFields[setup]/.Map[#[[1]]->#[[2]]&,GetFieldPairs[setup]]]]
 ];
 Styles=Join[Styles,Map[GetPartnerField[setup,#[[1]]]->#[[2]]&,Select[Styles,HasPartnerField[setup,#[[1]]]&]]];
+If[FreeQ[Keys[Styles],AnyField],Styles=Join[Styles,{AnyField->{Blue,Dotted}}]];
 
 allObj=ExtractObjectsWithIndex[setup,diag]//.doFields;
 fieldObj=Flatten[Select[allObj,Head[#]===Field&]/.Field[{f_},{i_}]:>Module[{oi},{Propagator[{f,GetPartnerField[setup,f]},{oi,i}],Field[{f},{oi}]}]];
