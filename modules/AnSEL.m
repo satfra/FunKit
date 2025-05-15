@@ -368,11 +368,11 @@ Return[{True,match1,match2}]
 (*Find all objects following the closed indices attached to the object curPos*)
 IterateDiagram[setup_Association,allObj_,closedIndices_,openIndices_,curPos_,entryIdx_]:=Module[
 {otherIndices,followObjects,i},
-FunKitDebug[3,"Inspecting: ",curPos];
+FunKitDebug[4,"Inspecting: ",curPos];
 (*All indices except the one we entered with*)
 otherIndices=DeleteCases[makePosIdx/@curPos[[2]],entryIdx];
 otherIndices=Intersection[otherIndices,closedIndices];
-FunKitDebug[3,"Found outgoing indices: ",otherIndices];
+FunKitDebug[4,"Found outgoing indices: ",otherIndices];
 (*all objects containing the otherIndices*)
 followObjects=Table[
 Select[DeleteCases[allObj,curPos],MemberQ[#[[2]],otherIndices[[i]],Infinity]&][[1]],
@@ -393,7 +393,7 @@ MallObjt2_,cidxt2_,oidxt2_,Mmemory2_,entry2_,Msign2_
 ]:=Module[
 {allObjt1=MallObjt1,curIdx1,curPos1,nextInd1,nextPos1,memory1=Mmemory1,assocFields1,
 allObjt2=MallObjt2,curIdx2,curPos2,nextInd2,nextPos2,memory2=Mmemory2,assocFields2,sign2=Msign2,
-iter=1,idx,jdx,viableBranches,branchResult,branchSign,branchItRepl,branchObj,
+iter=1,idx,jdx,viableBranches,branchSign,branchItRepl,branchObj,
 temp1,temp2},
 
 FunKitDebug[3,"Following along a chain of indices."];
@@ -411,10 +411,13 @@ While[iter<$MaxIterLoop,
 
 (*If the (set of) next object(s) is different for 1 and 2, we can immediately abort.*)
 If[Sort@Map[Head[#][Sort[#[[1]]]]&,nextPos1]=!=Sort@Map[Head[#][Sort[#[[1]]]]&,nextPos2],
+FunKitDebug[3,"FAILURE ------------ Heads do not match: ",nextPos1,", ",nextPos2];
 Return[{False,allObjt2}]
 ];
 (*Check if the external indices in the current object match*)
-If[Intersection[oidxt1,makePosIdx/@(curPos1[[2]])]=!=Intersection[oidxt2,makePosIdx/@(curPos2[[2]])],Return[{False,allObjt2}]];
+If[Intersection[oidxt1,makePosIdx/@(curPos1[[2]])]=!=Intersection[oidxt2,makePosIdx/@(curPos2[[2]])],
+FunKitDebug[3,"FAILURE ------------ Current open indices disagree: ",Intersection[oidxt1,makePosIdx/@(curPos1[[2]])],", ",Intersection[oidxt2,makePosIdx/@(curPos2[[2]])]];
+Return[{False,allObjt2}]];
 
 FunKitDebug[3,"Next objects along the chain: ",nextPos1,", ",nextPos2];
 
@@ -422,13 +425,18 @@ FunKitDebug[3,"Next objects along the chain: ",nextPos1,", ",nextPos2];
 If[Length[nextInd1]===1,
 FunKitDebug[3,"Following the index chain."];
 (*Check if the open indices aggree*)
-If[Sort@Intersection[oidxt1,makePosIdx/@nextPos1[[1,2]]]=!=Sort@Intersection[oidxt2,makePosIdx/@nextPos2[[1,2]]],Return[{False,allObjt2}]];
+If[Sort@Intersection[oidxt1,makePosIdx/@nextPos1[[1,2]]]=!=Sort@Intersection[oidxt2,makePosIdx/@nextPos2[[1,2]]],
+FunKitDebug[3,"FAILURE ------------ Next open indices disagree.",Sort@Intersection[oidxt1,makePosIdx/@nextPos1[[1,2]]],", ",Sort@Intersection[oidxt2,makePosIdx/@nextPos2[[1,2]]]];
+Return[{False,allObjt2}]];
 
 (*Check if we closed a loop*)
 If[FirstPosition[memory1,nextPos1[[1]]]===FirstPosition[memory2,nextPos2[[1]]]&&NumericQ[FirstPosition[memory1,nextPos1[[1]]][[1]]],
+FunKitDebug[3,"SUCCESS ------------ Closed a loop."];
 Return[{sign2,allObjt2}]];
 (*Closed one loop, but not the other*)
-If[FirstPosition[memory1,nextPos1[[1]]]=!=FirstPosition[memory2,nextPos2[[1]]],Return[{False,allObjt2}]];
+If[FirstPosition[memory1,nextPos1[[1]]]=!=FirstPosition[memory2,nextPos2[[1]]],
+FunKitDebug[3,"FAILURE ------------ Closed only one loop."];
+Return[{False,allObjt2}]];
 
 (*step forward*)
 curIdx1=nextInd1[[1]];curPos1=nextPos1[[1]];
@@ -450,11 +458,12 @@ If[Head@curPos1===Field,
 temp1=Cases[t1,FDOp[curPos1[[1,1]][curPos1[[2,1]]]],Infinity];
 temp2=Cases[t2,FDOp[curPos2[[1,1]][curPos2[[2,1]]]],Infinity];
 If[Length[temp1]=!=Length[temp2],
+FunKitDebug[3,"FAILURE ------------ Number of FDOps is different."];
 Return[{False,allObjt2}]
 ];
 ];
 
-FunKitDebug[3,"Index chain ended with equality."];
+FunKitDebug[3,"SUCCESS ------------ Index chain ended with equality."];
 Return[{sign2,allObjt2}]];
 
 (*Case 3: Branching point.*)
@@ -469,23 +478,25 @@ viableBranches=Select[viableBranches,AllTrue[#,(#[[1,2]]===#[[2,2]])&]&];
 For[idx=1,idx<=Length[viableBranches],idx++,
 branchSign=sign2;
 branchObj=allObjt2;
-Table[
+Do[
 {branchSign,branchItRepl}=RearrangeFields[setup,curPos1,curPos2,viableBranches[[idx,jdx,All,1]]];
 branchObj=branchObj/.curPos2->branchItRepl;
 FunKitDebug[4,"Branching at ",branchObj];
 {branchSign,branchObj}=TermsEqualAndSum[setup,t1,t2,
 allObjt1,cidxt1,oidxt1,Append[memory1,viableBranches[[idx,jdx,1,3]]],viableBranches[[idx,jdx,1,1]],
 allObjt2,cidxt2,oidxt2,Append[memory2,viableBranches[[idx,jdx,2,3]]],viableBranches[[idx,jdx,2,1]],branchSign
-]
+];
+If[branchSign===False,Break[]];
 ,{jdx,1,Length[viableBranches[[idx]]]}
 ];
-If[AnyTrue[branchResult,#===False&],Continue[]];
+If[branchSign===False,Continue[]];
+FunKitDebug[3,"SUCCESS ------------ Branch ",idx," succeeded, branchSign is ",branchSign];
 Return[{branchSign,branchObj}];
 ];
 
+FunKitDebug[3,"FAILURE ------------ Branch failed."];
 Return[{False,allObjt2}];
 ];
-
 
 (*Nothing should lead here*)
 Message[TermsEqualAndSum::branchFailure];
@@ -551,9 +562,7 @@ doFields=replFields[setup];
 
 (*collect objects for both terms*)
 allObjt1=Select[ExtractObjectsWithIndex[setup,t1]/.doFields,FreeQ[FMinus[__]]];
-
 allObjt2=Select[ExtractObjectsWithIndex[setup,t2]/.doFields,FreeQ[FMinus[__]]];
-
 cidxt1=GetClosedSuperIndices[setup,t1];
 cidxt2=GetClosedSuperIndices[setup,t2];
 oidxt1=GetOpenSuperIndices[setup,t1];
@@ -567,6 +576,7 @@ cidxstartt1=Map[MemberQ[cidxt1,makePosIdx@#]&,startt1[[2]]];
 startt1fields=Pick[startt1fields,cidxstartt1];
 cidxstartt1=makePosIdx/@Pick[startt1[[2]],cidxstartt1];
 
+(*Sanity check*)
 If[Length[cidxstartt1]===0,Return[False]];
 
 FunKitDebug[3,"Comparing the terms \n  ",t1,"\n  ",t2];
@@ -578,16 +588,21 @@ startt2=startPoints[[3,idx]];
 (*starting indices can only be 1. closed indices 2. have same field content as the starting point in t1. We pick these out with the following 2 commands*)
 cidxstartt2=Map[(MemberQ[cidxt2,#[[1]]]&&#[[2]]===startt1fields[[1]])&,Transpose[{makePosIdx/@startt2[[2]],startt2[[1]]}]];
 cidxstartt2=Pick[makePosIdx/@startt2[[2]],cidxstartt2];
+
+(*Loop over all possible starting indices*)
 For[jdx=1,jdx<=Length[cidxstartt2],jdx++,
 (*re-order the starting point so that it fits the first.*)
 {startsign,nstartt2}=RearrangeFields[setup,startt1,startt2,{cidxstartt1[[1]],cidxstartt2[[jdx]]}];
+FunKitDebug[3,"Starting sign: ",startsign];
 branchAllObjt2=allObjt2/.startt2->nstartt2;
 (*iterate the diagram*)
 FunKitDebug[3,"StartPoints: \n  ",startt1,"\n  ",nstartt2];
+FunKitDebug[3,"StartIndices: \n  ",cidxstartt1[[1]],"\n  ",cidxstartt2[[jdx]]];
 {equal,branchAllObjt2}=TermsEqualAndSum[setup,t1,t2,
 allObjt1,cidxt1,oidxt1,{startt1},cidxstartt1[[1]],
 branchAllObjt2,cidxt2,oidxt2,{nstartt2},cidxstartt2[[jdx]],startsign
 ];
+FunKitDebug[3,"Finished pass ",jdx " with equal=",equal];
 
 (*If we found an equality, break out*)
 If[equal=!=False,Break[]];
@@ -619,7 +634,7 @@ Return@FTerm[standardOrderGrassmanns[t1][[1]]*standardOrderGrassmanns[t2][[1]]*
 (* ::Input::Initialization:: *)
 FTermContent[setup_,term_FTerm]:=Module[{},
 Hash[
-Map[Head[#][#[[1]]]&,
+Sort@Map[Head[#][#[[1]]]&,
 FunKit`Private`ExtractObjectsWithIndex[setup,term]/.FunKit`Private`replFields[setup]
 ]
 ,"SHA"]

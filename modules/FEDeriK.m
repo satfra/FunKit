@@ -52,6 +52,7 @@ AddCorrelationFunction::usage="";
 ShowCorrelationFunctions::usage="";
 SetGlobalSetup::usage="";
 SetUnorderedIndices::usage="";
+SetSymmetricObject::usage="";
 
 FEq::usage="";
 FTerm::usage="";
@@ -113,9 +114,10 @@ ModuleLoaded[FEDeriK]=True;
 (* ::Input::Initialization:: *)
 $userCorrelationFunctions={};
 $userIndexedObjects={};
+$userOrderedObjects={};
 
 $CorrelationFunctions:={Propagator,GammaN}\[Union]$userCorrelationFunctions;
-$OrderedObjects:=$CorrelationFunctions\[Union]{R,Rdot,S};
+$OrderedObjects:=$CorrelationFunctions\[Union]{R,Rdot,S}\[Union]$userOrderedObjects;
 $indexedObjects:=$OrderedObjects\[Union]{ABasis,VBasis,\[Gamma],Field}\[Union]$userIndexedObjects;
 $allObjects:={FMinus}\[Union]$indexedObjects
 
@@ -134,6 +136,13 @@ $userIndexedObjects=DeleteDuplicates[$userIndexedObjects];
 Protect@@$allObjects;
 ];
 ShowIndexedObjects[]:=Print[TableForm[Sort@$indexedObjects]]
+
+AddOrderedObject[name_Symbol]:=Module[{},
+AppendTo[$userOrderedObjects,name];
+$userOrderedObjects=DeleteDuplicates[$userOrderedObjects];
+Protect@@$allObjects;
+];
+ShowOrderedObjects[]:=Print[TableForm[Sort@$userOrderedObjects]]
 
 AddCorrelationFunction[name_Symbol]:=Module[{},
 AppendTo[$userCorrelationFunctions,name];
@@ -504,6 +513,8 @@ ClearAll[FunctionalD]
 FunctionalD[setup_,expr_,v:(f_[_]|{f_[_],_Integer})..,OptionsPattern[]]:=Internal`InheritedBlock[
 {f,nonConst},
 
+Unprotect[f];
+
 nonConst=DeleteDuplicates@Sort@({f,Power}\[Union]$CorrelationFunctions);
 
 (*Rule for normal functional derivatives*)
@@ -548,6 +559,8 @@ f/:D[g_[FTerm[a___]],f[y_],NonConstants->nonConst]:=(FTerm[g'[FTerm[a]]]**FTerm[
 f/:D[Power[FTerm[a___],b_],f[y_],NonConstants->nonConst]:=(FTerm[b,Power[FTerm[a],b-1]]**FTerm[FDOp[f[y]],a]);
 f/:D[Power[a_,FTerm[b___]],f[y_],NonConstants->nonConst]:=(FTerm[Log[a],Power[a,FTerm[b]]]**FTerm[FDOp[f[y]],b]);
 
+Protect[f];
+
 D[expr,v,NonConstants->nonConst]
 ];
 
@@ -573,6 +586,22 @@ FunctionalD[setup_,FTerm[expr_],v:(f_[__]|{f_[__],_Integer})..,OptionsPattern[]]
 FunctionalD::badArgumentFEq="Cannot take derivative of an FEq. Use TakeDerivatives instead.";
 FunctionalD[setup_,FEq[___],v:(f_[__]|{f_[__],_Integer})..,OptionsPattern[]]:=(Message[FunctionalD::badArgumentFEq];Abort[]);
 
+
+
+(* ::Input::Initialization:: *)
+SetSymmetricObject[obj_,{f__}]:=Module[{},
+Unprotect[obj];
+obj[{f},{any__}]/;Not@OrderedQ[{any}]:=obj[{f},Sort@{any}];
+Protect[obj];
+];
+SetSymmetricObject[obj_,{f__},{i__Integer}]:=Module[{},
+Unprotect[obj];
+obj[{f},{any__}]/;Not@OrderedQ[{any}[[{i}]]]:=Module[{new={any}},
+new[[{i}]]=Sort@new[[{i}]];
+obj[{f},new]
+];
+Protect[obj];
+];
 
 
 (* ::Input::Initialization:: *)
@@ -1287,8 +1316,12 @@ FreeQ[Sort/@setup["Truncation"][#],Sort@f],
 truncationPass[setup_,expr_FTerm]:=Module[
 {ret=expr,i},
 
+FunKitDebug[3,"Truncating term ",ret];
+
 (*Get rid of any truncated ordered functions*)
 ret=ret/.truncationList[setup];
+
+FunKitDebug[3,"Truncation result reads ",ret];
 
 (*Finally, remove the metric factors*)
 ret=ReduceIndices[setup,ret];
@@ -1737,8 +1770,8 @@ i=0;
 While[MemberQ[ret,FDOp[__],Infinity]&&i<$MaxDerivativeIterations,
 FunKitDebug[1,"Doing derivative pass ",i+1];
 ret=FEq@@mmap[ResolveFDOp[setup,#]&,List@@ret];
-(*If AnSEL has been loaded, use FSimplify to reduce redundant terms*)
-If[ModuleLoaded[AnSEL],ret=FunKit`FSimplify[setup,ret,"Symmetries"->OptionValue["Symmetries"]]];
+(*If AnSEL has been loaded, use FSimplify to reduce redundant terms*)(*
+If[ModuleLoaded[AnSEL],ret=FunKit`FSimplify[setup,ret,"Symmetries"->OptionValue["Symmetries"]]];*)
 i++;
 ];
 ret=ret//bw;

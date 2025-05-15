@@ -1,0 +1,132 @@
+(* Content-type: application/vnd.wolfram.mathematica *)
+
+(*** Wolfram Notebook File ***)
+(* http://www.wolfram.com/nb *)
+
+(* CreatedBy='Wolfram 14.1' *)
+
+(*CacheID: 234*)
+(* Internal cache information:
+NotebookFileLineBreakTest
+NotebookFileLineBreakTest
+NotebookDataPosition[       154,          7]
+NotebookDataLength[      4297,        122]
+NotebookOptionsPosition[      3946,        108]
+NotebookOutlinePosition[      4340,        124]
+CellTagsIndexPosition[      4297,        121]
+WindowFrame->Normal*)
+
+(* Beginning of Notebook Content *)
+Notebook[{
+Cell[BoxData[
+ RowBox[{"TBConstructBasis", "[", "\[IndentingNewLine]", 
+  RowBox[{
+   RowBox[{"\"\<Name\>\"", "->", "\"\<qbqqbq\>\""}], ",", 
+   "\[IndentingNewLine]", 
+   RowBox[{"\"\<RequiredGroups\>\"", "->", 
+    RowBox[{"{", 
+     RowBox[{"{", 
+      RowBox[{"color", ",", "SUNfund", ",", "Nc"}], "}"}], "}"}]}], ",", 
+   "\[IndentingNewLine]", 
+   RowBox[{"\"\<Vertex\>\"", "->", 
+    RowBox[{"{", 
+     RowBox[{"qb", ",", "q", ",", "qb", ",", "q"}], "}"}]}], ",", 
+   "\[IndentingNewLine]", 
+   RowBox[{"\"\<VertexStructure\>\"", "->", 
+    RowBox[{"2", 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"Tensor", "[", 
+        RowBox[{"1", ",", "2", ",", "3", ",", "4"}], "]"}], "-", 
+       RowBox[{"Tensor", "[", 
+        RowBox[{"3", ",", "2", ",", "4", ",", "1"}], "]"}]}], ")"}]}]}], ",", 
+   "\[IndentingNewLine]", 
+   RowBox[{"\"\<InnerProduct\>\"", "->", 
+    RowBox[{"2", 
+     RowBox[{"Tensor1", "[", 
+      RowBox[{"1", ",", "2", ",", "3", ",", "4"}], "]"}], 
+     RowBox[{"(", 
+      RowBox[{
+       RowBox[{"Tensor2", "[", 
+        RowBox[{"2", ",", "1", ",", "4", ",", "3"}], "]"}], "-", 
+       RowBox[{"Tensor2", "[", 
+        RowBox[{"4", ",", "1", ",", "2", ",", "3"}], "]"}]}], ")"}]}]}], ",", 
+   "\[IndentingNewLine]", 
+   RowBox[{"\"\<Indices\>\"", "->", 
+    RowBox[{"{", 
+     RowBox[{
+      RowBox[{"{", 
+       RowBox[{"p1", ",", "d1"}], "}"}], ",", 
+      RowBox[{"{", 
+       RowBox[{"p2", ",", "d2"}], "}"}], ",", 
+      RowBox[{"{", 
+       RowBox[{"p3", ",", "d3"}], "}"}], ",", 
+      RowBox[{"{", 
+       RowBox[{"p4", ",", "d4"}], "}"}]}], "}"}]}], ",", 
+   "\[IndentingNewLine]", 
+   RowBox[{"\"\<Tensors\>\"", "->", 
+    RowBox[{"{", 
+     RowBox[{"{", 
+      RowBox[{
+       RowBox[{
+        RowBox[{"deltaDirac", "[", 
+         RowBox[{"d1", ",", "d2"}], "]"}], 
+        RowBox[{"deltaDirac", "[", 
+         RowBox[{"d3", ",", "d4"}], "]"}]}], ",", "\[IndentingNewLine]", 
+       RowBox[{
+        RowBox[{"gamma", "[", 
+         RowBox[{"mu", ",", "d1", ",", "d2"}], "]"}], 
+        RowBox[{"gamma", "[", 
+         RowBox[{"mu", ",", "d3", ",", "d4"}], "]"}]}], ",", 
+       "\[IndentingNewLine]", 
+       RowBox[{
+        RowBox[{"gamma5", "[", 
+         RowBox[{"d1", ",", "d2"}], "]"}], 
+        RowBox[{"gamma5", "[", 
+         RowBox[{"d3", ",", "d4"}], "]"}]}], ",", "\[IndentingNewLine]", 
+       RowBox[{"\[ImaginaryI]", " ", 
+        RowBox[{"gamma", "[", 
+         RowBox[{"mu", ",", "d1", ",", "d1int"}], "]"}], 
+        RowBox[{"gamma5", "[", 
+         RowBox[{"d1int", ",", "d2"}], "]"}], "\[ImaginaryI]", " ", 
+        RowBox[{"gamma", "[", 
+         RowBox[{"mu", ",", "d3", ",", "d3int"}], "]"}], 
+        RowBox[{"gamma5", "[", 
+         RowBox[{"d3int", ",", "d4"}], "]"}]}], ",", "\[IndentingNewLine]", 
+       RowBox[{
+        RowBox[{"sigma", "[", 
+         RowBox[{"mu", ",", "nu", ",", "d1", ",", "d2"}], "]"}], 
+        RowBox[{"sigma", "[", 
+         RowBox[{"nu", ",", "mu", ",", "d3", ",", "d4"}], "]"}]}]}], 
+      "\[IndentingNewLine]", "}"}], "}"}]}]}], "\[IndentingNewLine]", 
+  "]"}]], "Input",
+ CellChangeTimes->{{3.953888242783839*^9, 3.953888293037676*^9}, {
+   3.953888323978915*^9, 3.953888336715714*^9}, {3.953888576302011*^9, 
+   3.953888625742086*^9}, 3.953888757729985*^9, {3.953888878758687*^9, 
+   3.953888899154701*^9}},
+ CellLabel->"In[3]:=",ExpressionUUID->"49c32c16-a79f-45a0-b682-35ac9808eb2b"]
+},
+WindowSize->{588.75, 351.75},
+WindowMargins->{{0, Automatic}, {Automatic, 0}},
+FrontEndVersion->"14.1 for Linux x86 (64-bit) (July 16, 2024)",
+StyleDefinitions->"Default.nb",
+ExpressionUUID->"7f045d88-be78-41e3-b368-36b5885f87f3"
+]
+(* End of Notebook Content *)
+
+(* Internal cache information *)
+(*CellTagsOutline
+CellTagsIndex->{}
+*)
+(*CellTagsIndex
+CellTagsIndex->{}
+*)
+(*NotebookFileOutline
+Notebook[{
+Cell[554, 20, 3388, 86, 363, "Input",ExpressionUUID->"49c32c16-a79f-45a0-b682-35ac9808eb2b"]
+}
+]
+*)
+
+(* End of internal cache information *)
+

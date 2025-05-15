@@ -233,10 +233,13 @@ We give tool to compute cross-section
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{FED\MakeLowercase{eri}K}
+\section{Deriving functional equations}
 \label{sec:FEDeriK}
 
 \FEDeriK, the {\textbf{F}unctional \textbf{E}quation \textbf{Deri}vation \textbf{K}it} is the core module of \FunKit, providing all the logic to derive functional equations. In particular, it provides the base syntax for the description of functional equations, gives facilities to perform functional derivatives and series expansions of derivative operators and fields.
+
+
+\AnSEL, \textbf{An}alysis and \textbf{S}implification of \textbf{E}quations with \textbf{L}oops
 
 In \Cref{sec:FEDeriK_notation} we briefly explain both the notation in \texttt{Mathematica} and basic usage of the module. Following this, we explain the internal set of rules used by \FEDeriK in \Cref{sec:FEDeriK_rules} and some algorithmic details in \Cref{sec:FEDeriK_algorithm}.
 
@@ -484,7 +487,7 @@ We can now easily truncate the above expression like
 %\hspace{15pt}
 \begin{minipage}{0.8\linewidth}
 \begin{mmaCell}{Input}
-\mmaDef{TakeDerivatives}[\mmaDef{setup}, \mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FPrint}//\mmaDef{FPlot};
+\mmaDef{TakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FPrint}//\mmaDef{FPlot};
 \end{mmaCell}
 \vspace{-3.5ex}
 \begin{equation*}
@@ -572,12 +575,12 @@ gluonDSE = \mmaDef{TakeDerivatives}[\mmaDef{MakeDSE}[A[i1]], \{A[i2]\}]//\mmaDef
 \end{aligned}
 		$
 	}
-\put(-215,-90){\includegraphics[width=1.02\linewidth]{Mathematica_Gluon2P_4.png}}
+\put(-209,-90){\includegraphics[width=0.5\linewidth]{Mathematica_Gluon2P_4.png}}
 \end{equation*}
 \end{minipage}
 \end{widetext}
 %
-In the above example, we see also that the command \mathem{\mmaDef{FPrint}} can be inserted during a chain of operations, as it only prints the \LaTeX\xspace output and then returns its argument unchanged.
+In the above example, we see also that the command \mathem{\mmaDef{FPrint}} can be inserted during a chain of operations, as it only prints the \LaTeX\xspace output and then returns its argument unchanged. There are no ghost-loops in the output, as we have not specified the vertex \mathem{{A,A,cb,c}} in the setup -- if we would have added it, two-loop terms with ghost loops would also appear.
 
 
 
@@ -585,7 +588,7 @@ In the above example, we see also that the command \mathem{\mmaDef{FPrint}} can 
 \subsection{Rules}
 \label{sec:FEDeriK_rules}
 
-\FunKit makes abundant use of the superfield notation introduced in \cite{Pawlowski:2005xe} to reliably keep track of signs for Grassmann fields. Therefore, we briefly introduce the most important points of this notation and give a list of the rules used internally in \FEDeriK.
+Internally, to enable a reliable and concise handling of the above features, \FunKit makes abundant use of the superfield notation introduced in \cite{Pawlowski:2005xe}. Especially keeping track of signs for Grassmann fields is ensured by making use of such a notation. Therefore, we briefly introduce the most important points thereof and give a list of the rules used internally in \FEDeriK.
 
 First of all, for the treatment of Grassmann-valued fields, we introduce a field metric, as also in \cite{Pawlowski:2005xe, Braun:2025gvq},
 %
@@ -630,6 +633,8 @@ where we have also introduced
 \end{equation}
 %
 We briefly note that, as a consequence, $\gamma^{a}_{\phantom{a}c}\gamma^{c}_{\phantom{c}d} = \delta^{ad}$.
+In \FunKit, $\gamma_{ab}$ is represented\linebreak as \mmaInlineCell{Input}{\mmaDef{\(\pmb{\gamma}\)}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{-a,-b\}]}, whereas $(-1)^{ab}$ can be written as \mmaInlineCell{Input}{\mmaDef{FMinus}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{a,b\}]}.
+
 
 Any field derivative in \FEDeriK is directly expressed using the metric, with the full set of rules being
 %
@@ -689,20 +694,21 @@ We can take a derivative $\frac{\delta}{\delta\Phi^f}$ of \labelcref{eq:propInvL
 
 
 %%%%%%%%%%%%%%%%%%%%
+\subsection{Teaching FEDeriK}
+\label{sec:FEDeriK_teaching}
+
+%%%%%%%%%%%%%%%%%%%%
 \subsection{Algorithmic details}
 \label{sec:FEDeriK_algorithm}
 
 
-%%%%%%%%%%%%%%%%%%%%
-\subsection{Teaching FEDeriK}
-\label{sec:FEDeriK_teaching}
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{A\MakeLowercase{n}SEL}
+\section{Diagrammatic rules and tracing of expressions}
 \label{sec:AnSEL}
 
-\AnSEL, \textbf{An}alysis and \textbf{S}implification of \textbf{E}quations with \textbf{L}oops
+After having derived the functional equation, it is necessary to use a set of diagrammatic rules to obtain an explicit expression for a given diagram. \FunKit provides functions to automatically create such rules from a chosen set of tensor bases.
+
 
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
