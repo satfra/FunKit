@@ -496,7 +496,7 @@ viableBranches[[idx,jdx,2,3]]=temp2;
 FunKitDebug[4,"Branching at ",branchObj];
 {branchSign,branchObj}=TermsEqualAndSum[setup,t1,t2,
 allObjt1,cidxt1,oidxt1,Append[memory1,viableBranches[[idx,jdx,1,3]]],viableBranches[[idx,jdx,1,1]],
-branchObj,cidxt2,oidxt2,Append[memory2,viableBranches[[idx,jdx,2,3]]],viableBranches[[idx,jdx,2,1]],branchSign
+branchObj,cidxt2,oidxt2,Append[memory2/.curPos2->branchItRepl,viableBranches[[idx,jdx,2,3]]],viableBranches[[idx,jdx,2,1]],branchSign
 ];
 If[branchSign===False,Break[]];
 ,{jdx,1,Length[viableBranches[[idx]]]}
@@ -568,10 +568,15 @@ idx,jdx,equal=False,startsign,a,factor,removeOther},
 
 (*Briefly check the trivial case*)
 If[it1===it2,Return@FTerm[2,t1]];
+If[t1[[2;;]]===t2[[2;;]],Return@FTerm[t1[[1]]+t2[[1]],t1[[2;;]]]];
+If[t1[[2;;]]===t2[[1;;]],Return@FTerm[t1[[1]]+1,t1[[2;;]]]];
+If[t1[[1;;]]===t2[[2;;]],Return@FTerm[1+t2[[1]],t2[[2;;]]]];
 
 (*Get all the possible starting points for the search*)
 startPoints = StartPoints[setup,t1,t2];
 If[Not[startPoints[[1]]],Return[False]];
+
+FunKitDebug[4,"Collected StartPoints"];
 
 doFields=replFields[setup];
 
