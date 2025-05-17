@@ -271,7 +271,7 @@ results=GatherBy[results,Length[#["LoopMomenta"]]&];
 results=Map[<|
 "Expression"->FEq@@#[[All,Key["Expression"]]],
 "ExternalIndices"->#[[1,Key["ExternalIndices"]]],
-"LoopMomenta"->S #[[1,Key["LoopMomenta"]]]
+"LoopMomenta"->#[[1,Key["LoopMomenta"]]]
 |>&,results];
 results=Association@@Map[ToString[Length[#["LoopMomenta"]]]~~"-Loop"->#&,results];
 Return[results];
