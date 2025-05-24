@@ -6,3 +6,4 @@ publication/*.out
 publication/*.log
 publication/FunKitNotes.bib
 
+.DS_Store
