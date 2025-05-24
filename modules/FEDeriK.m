@@ -420,7 +420,7 @@ AssertFieldSpaceDef[setup["FieldSpace"]];
 
 (* ::Input::Initialization:: *)
 (* Check if a given field definition is valid. Can be either its own anti-field or a pair {af,f} *)
-FieldQ[setup_,expr_]:=Module[{},
+FieldQ[setup_,expr_]:=FieldQ[setup,expr]=Module[{},
 If[Not@MatchQ[expr,_Symbol[_Symbol]]&&Not@MatchQ[expr,_Symbol[-_Symbol]]&&Not@MatchQ[expr,_Symbol[_List]],
 Print["A field f must have a single super-index f[i]. \"",expr,"\" does not fit."];
 Return[False]];
@@ -588,33 +588,35 @@ Protect[obj];
 
 
 (* ::Input::Initialization:: *)
-GetcFields[setup_]:=Map[
+GetcFields[setup_]:=GetcFields[setup]=Map[
 If[Head[#]===List,Head[#[[2]]],Head[#]]&,
 setup["FieldSpace"]["cField"]
 ];
-GetAnticFields[setup_]:=Select[Map[
+GetAnticFields[setup_]:=GetAnticFields[setup]=Select[Map[
 If[Head[#]===List,Head[#[[1]]],{}]&,
 setup["FieldSpace"]["cField"]
 ],#=!={}&];
 
-GetFermions[setup_]:=Map[
+GetFermions[setup_]:=GetFermions[setup]=Map[
 If[Head[#]===List,Head[#[[2]]],Head[#]]&,
 setup["FieldSpace"]["Grassmann"]
 ];
-GetAntiFermions[setup_]:=Select[Map[
+GetAntiFermions[setup_]:=GetAntiFermions[setup]=Select[Map[
 If[Head[#]===List,Head[#[[1]]],{}]&,
 setup["FieldSpace"]["Grassmann"]
 ],#=!={}&];
 
-GetCommuting[setup_]:=Flatten@Select[Map[
+GetCommuting[setup_]:=GetCommuting[setup]=Flatten@Select[Map[
 If[Head[#]===List,{Head[#[[1]]],Head[#[[2]]]},Head[#]]&,
 setup["FieldSpace"]["cField"]
 ],#=!={}&];
 
-GetAntiCommuting[setup_]:=Flatten@Select[Map[
+GetAntiCommuting[setup_]:=GetAntiCommuting[setup]=Flatten@Select[Map[
 If[Head[#]===List,{Head[#[[1]]],Head[#[[2]]]},Head[#]]&,
 setup["FieldSpace"]["Grassmann"]
 ],#=!={}&];
+
+FieldNameQ[setup_,name_Symbol]:=FieldNameQ[setup,name]=MemberQ[Join[GetCommuting[setup],GetAntiCommuting[setup]],name];
 
 
 (* ::Input::Initialization:: *)
@@ -983,7 +985,7 @@ Print["Canonical ordering set to ",$CanonicalOrdering];
 
 (* ::Input::Initialization:: *)
 (*Returns true if f1 < f2, and false if f1 > f2*)
-FieldOrderLess[setup_,f1_Symbol,f2_Symbol]:=Module[
+FieldOrderLess[setup_,f1_Symbol,f2_Symbol]:=FieldOrderLess[setup,f1,f2]=Module[
 {kind1,kind2,
 idxOrder,
 n1,n2},
@@ -1016,7 +1018,7 @@ Return[n1<n2]
 
 (* ::Input::Initialization:: *)
 (*Returns the sign that results from exchanging the two fields f1 and f2*)
-CommuteSign[setup_,f1_,f2_]:=Module[{},
+CommuteSign[setup_,f1_,f2_]:=CommuteSign[setup,f1,f2]=Module[{},
 Return[
 -2*Boole[MemberQ[GetAntiCommuting[setup],f1]&&MemberQ[GetAntiCommuting[setup],f2]]+1
 ];
@@ -1208,7 +1210,7 @@ makePosIdx[-i_]:=i;
 makePosIdx[i_]:=i;
 
 (*AntiGrassmann-Grassmann gives 1, otherwise -1*)
-GrassOrder[setup_,f1_,f2_,sign_]:=Module[{},
+GrassOrder[setup_,f1_,f2_,sign_]:=GrassOrder[setup,f1,f2,sign]=Module[{},
 (2*Boole[IsFermion[setup,f1]]-1)^Boole[!(sign===1)]
 ];
 
