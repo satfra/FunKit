@@ -60,8 +60,8 @@
 	linkcolor={red!75!black},
 	citecolor={blue!75!black},
 	urlcolor={blue!75!black},
-	pdftitle={Juggling with Tensor Bases in Functional Approaches},
-	pdfauthor={Braun, Geissel, Pawlowski, Sattler, Wink},
+	pdftitle={FunKit: A toolkit for functional approaches},
+	pdfauthor={Sattler},
 }
 \usepackage{enumerate}
 
@@ -90,7 +90,7 @@
 	linklocaluri=mma/symbol/definition:#1,
 	morecellgraphics={yoffset=0ex},
 	fv={formatcom*=\small\normalfont\ttfamily},
-	labelsep=0.0em,
+	labelsep=0.em,
 }
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -202,6 +202,7 @@
 \newcommand{\gettitle}{FunKit: A toolkit for functional approaches}
 
 \newcommand{\getHeidelbergAffiliation}{\affiliation{Institut f{\"u}r Theoretische Physik, Universit{\"a}t Heidelberg, Philosophenweg 16, 69120 Heidelberg, Germany}}
+\newcommand{\getBielefeldAffiliation}{\affiliation{Fakult{\"a}t f{\"u}r Physik, Universit{\"a}t Bielefeld, D-33615 Bielefeld, Germany}}
 \newcommand{\getDarmstadtAffiliation}{\affiliation{Institut f\"ur Kernphysik (Theoriezentrum), Technische Universit\"at Darmstadt, 64289 Darmstadt, Germany}}
 \newcommand{\getEMMIAffiliation}{\affiliation{ExtreMe Matter Institute EMMI, GSI, Planckstr. 1, 64291 Darmstadt, Germany}}
 
@@ -211,7 +212,7 @@
 
 \title{\gettitle}
 \author{Franz R. Sattler \orcid{0000-0003-1744-9456}\,}\thanks{\url{sattler@thphys.uni-heidelberg.de}}
-\getHeidelbergAffiliation
+\getHeidelbergAffiliation\getBielefeldAffiliation
 %\author{Jan M. Pawlowski \orcid{0000-0003-0003-7180}\,}
 %\getHeidelbergAffiliation
 %\getEMMIAffiliation
@@ -253,79 +254,79 @@ A single term in a functional equation is described using the \mathem{\mmaDef{FT
 %
 
 \begin{mmaCell}{Input}
-wEq = \mmaDef{FTerm}[1/2,
-  \mmaDef{Propagator}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{a,b\}],
-  \mmaDef{Rdot}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{-a,-b\}]]
+ wEq = \mmaDef{FTerm}[1/2,
+   \mmaDef{Propagator}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{a,b\}],
+   \mmaDef{Rdot}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{-a,-b\}]]
 \end{mmaCell}
 %
 Here, we have also used \FEDeriK's common notation for any indexed object. \FEDeriK knows, by default, the following indexed objects:
 %
 \begin{mmaCell}{Input}
-\mmaDef{ShowIndexedObjects}[]
+ \mmaDef{ShowIndexedObjects}[]
 \end{mmaCell}
 \begin{mmaCell}{Output}
-ABasis
-GammaN
-Propagator
-Rdot
-S
-VBasis
-\({\gamma}\)
+ ABasis
+ GammaN
+ Propagator
+ Rdot
+ S
+ VBasis
+ \({\gamma}\)
 \end{mmaCell}
 %
-Lowered superindices are indicated with a minus sign. As an example, the correlation function $\Gamma_{a\,b\,A^c}^{\phantom{a\,b\,A^c}\bar{c}^d}$, with the fields of $a$ and $b$ undetermined, may be expressed~as
+Lowered superindices are indicated by a minus sign. As an example, the correlation function $\Gamma_{a\,b\,A^c}^{\phantom{a\,b\,A^c}\bar{c}^d}$, with the fields of $a$ and $b$ undetermined, may be expressed~as
 %
 \begin{mmaCell}{Input}
-\mmaDef{GammaN}[\{\mmaDef{AnyField},\mmaDef{AnyField},A,cb\},
-  \{-a,-b,-c,d\}]
+ \mmaDef{GammaN}[\{\mmaDef{AnyField},\mmaDef{AnyField},A,cb\},
+   \{-a,-b,-c,d\}]
 \end{mmaCell}
 %
 The tag \mathem{\mmaDef{AnyField}} stands in for arbitrary fields, which can be expanded into explicit fields later on.
 
-Sums of functional equations are represented using the \mathem{\mmaDef{FEq}} tag. As an example, we take the generalised flow equation
+Sums of functional equations are represented using the \mathem{\mmaDef{FEx}} tag. As an example, we take the generalised flow equation
 %
 \begin{equation}
 	\partial_t \Gamma = -\dot\Phi^a\Gamma_a + \frac{1}{2}G^{ac}(\gamma_c^{\phantom{c}b}\partial_t + \frac{\delta\dot{\Phi}^b}{\delta\Phi^c}){R}_{ab}
 	\,.
 \end{equation}
 %
-For conciseness, we redefine $(\gamma_b^{\phantom{b}c}\partial_t + \frac{\delta\dot{\Phi}^c}{\delta\Phi^b}){R}_{ac} \to \partial_t R_{ab}$ and shorten the equation to
+For conciseness, we redefine $(\gamma_b^{\phantom{b}c}\partial_t + \frac{\delta\dot{\Phi}^c}{\delta\Phi^b}){R}_{ac} \to \partial_t R_{ab}$ and shorten the equation to 
 $\partial_t \Gamma = -\dot\Phi^a\Gamma_a + \frac{1}{2}G^{ab}\partial_t{R}_{ab}$.
 Hence, it can be expressed~with
 %
 \begin{mmaCell}{Input}
-\mmaDef{AddCorrelationFunction}[Phidot,1];
-\mmaDef{SetUnorderedIndices}[Phidot];
-\mmaDef{FEq}[
-  \mmaDef{FTerm}[-Phidot[\{\mmaDef{AnyField}\},\{a\}], 
-    \mmaDef{GammaN}[\{\mmaDef{AnyField}\},\{-a\}]]
-  \mmaDef{FTerm}[1/2, 
-    \mmaDef{Propagator}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{a,b\}],
-    \mmaDef{Rdot}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{-a,-b\}]]
- ];
+ \mmaDef{AddCorrelationFunction}[Phidot,1];
+ \mmaDef{SetUnorderedIndices}[Phidot];
+ \mmaDef{FEx}[
+   \mmaDef{FTerm}[-Phidot[\{\mmaDef{AnyField}\},\{a\}], 
+     \mmaDef{GammaN}[\{\mmaDef{AnyField}\},\{-a\}]]
+   \mmaDef{FTerm}[1/2, 
+     \mmaDef{Propagator}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{a,b\}],
+     \mmaDef{Rdot}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{-a,-b\}]]
+  ];
 \end{mmaCell}
 %
 In the above, we have also informed \FEDeriK about a user-defined correlation function, \mathem{Phidot} $\equiv \dot{\Phi}$, and told it to never change the position of the last index (i.e. the superindex specifying $\Phi$ itself).
 \FEDeriK will automatically treat \mathem{Phidot} as a field-dependent function and take into account derivatives thereof.
 
-\mathem{\mmaDef{FEq}} and \mathem{\mmaDef{FTerm}} have some internal rules to automatically move numeric values to the first factor in any \mathem{\mmaDef{FTerm}} and expand any appearance of sums to the enclosing \mathem{\mmaDef{FEq}}. This behaviour can be seen, e.g. in
+\mathem{\mmaDef{FEx}} and \mathem{\mmaDef{FTerm}} have some internal rules to automatically move numeric values to the first factor in any \mathem{\mmaDef{FTerm}} and expand any appearance of sums to the enclosing \mathem{\mmaDef{FEx}}. This behaviour can be seen, e.g. in
 %
 \begin{mmaCell}{Input}
-\mmaDef{FEq}[\mmaDef{FTerm}[a+b,2,4c,\mmaDef{FEq}[\mmaDef{FTerm}[d+e]]]]
+ \mmaDef{FEx}[\mmaDef{FTerm}[a+b,2,4c,\mmaDef{FEx}[\mmaDef{FTerm}[d+e]]]]
 \end{mmaCell}
 \begin{mmaCell}{Output}
-\mmaDef{FEq}[\mmaDef{FTerm}[8,a,c,d], \mmaDef{FTerm}[8,a,c,e],
-  \mmaDef{FTerm}[8,b,c,d], \mmaDef{FTerm}[8,b,c,e]]
+ \mmaDef{FEx}[\mmaDef{FTerm}[8,a,c,d], \mmaDef{FTerm}[8,a,c,e],
+   \mmaDef{FTerm}[8,b,c,d], \mmaDef{FTerm}[8,b,c,e]]
 \end{mmaCell}
 %
-\mathem{\mmaDef{FEq}} and \mathem{\mmaDef{FTerm}} can be multiplied using non-commutative multiplication, 
+\mathem{\mmaDef{FEx}} and \mathem{\mmaDef{FTerm}} can be multiplied using non-commutative multiplication, 
 %
 \begin{mmaCell}{Input}
-\mmaDef{FEq}[\mmaDef{FTerm}[a+b,2]]**\mmaDef{FEq}[\mmaDef{FTerm}[d+e]]
+ \mmaDef{FEx}[\mmaDef{FTerm}[a+b,2]]**\mmaDef{FEx}[\mmaDef{FTerm}[d+e]]
 \end{mmaCell}
 \begin{mmaCell}{Output}
-\mmaDef{FEq}[\mmaDef{FTerm}[2,a,d], \mmaDef{FTerm}[2,a,e],
-  \mmaDef{FTerm}[2,b,d], \mmaDef{FTerm}[2,b,e]]
+ \mmaDef{FEx}[\mmaDef{FTerm}[2,a,d], \mmaDef{FTerm}[2,a,e],
+   \mmaDef{FTerm}[2,b,d], \mmaDef{FTerm}[2,b,e]]
 \end{mmaCell}
 %
 Normal multiplication immediately yields an error, as the factors in a given \mathem{\mmaDef{FTerm}} are not necessarily commuting.
@@ -337,20 +338,20 @@ Most functions defined by \FunKit require the specification of a \textit{setup}.
 The field content of the theory is specified using another \mathem{\mmaDef{Assocation}} with two entries, \mathem{"cField"}, and \mathem{"Grassmann"}. The value of these entries is a list of all fields occurring in the theory. For example, the fields of a gauge-fixed Yang-Mills theory can be given as
 %
 \begin{mmaCell}{Input}
-fields =  <|
-  "cField" -> \{A[p,\{v,c\}]\},
-  "Grassmann" -> \{\{cb[p,\{c\}], c[p,\{c\}]\}\}
- |>;
+ fields = <|
+   "cField" -> \{A[p,\{v,c\}]\},
+   "Grassmann" -> \{\{cb[p,\{c\}], c[p,\{c\}]\}\}
+  |>;
 \end{mmaCell}
 %
-The gauge particle \mathem{A} is a commuting field and has no partner field. In contrast, there are ghosts and anti-ghosts \mathem{cb}, \mathem{c}, hence they are specified as a pair in a nested list.
+The gauge field \mathem{A} is a commuting field and has no partner field. In contrast, there are ghosts and anti-ghosts \mathem{cb}, \mathem{c}, hence they are specified as a pair in a nested list.
 Fields are always specified together with their full index structure. A momentum variable is obligatory, i.e. a purely scalar field space could be specified as
 %
 \begin{mmaCell}{Input}
-fieldsPhi =  <|
-  "cField" -> \{\(\pmb{\phi}\)[p]\},
-  "Grassmann" -> \{\}
- |>;
+ fieldsPhi = <|
+   "cField" -> \{\(\pmb{\phi}\)[p]\},
+   "Grassmann" -> \{\}
+  |>;
 \end{mmaCell}
 %
 In the above case of Yang-Mills theory, all fields have additional group structure. These indices must be fully specified with a second, optional list in the argument of the field.
@@ -358,9 +359,9 @@ In the above case of Yang-Mills theory, all fields have additional group structu
 The resulting setup is then given as
 %
 \begin{mmaCell}{Input}
-setup =  <|
-  "FieldSpace" -> \mmaDef{fields}
- |>;
+ setup = <|
+   "FieldSpace" -> \mmaDef{fields}
+  |>;
 \end{mmaCell}
 %
 
@@ -370,7 +371,7 @@ With the \mathem{\mmaDef{setup}} defined, one can immediately start deriving dia
 Above, we have defined the Wetterich equation as \mathem{\mmaDef{wEq}}. We can obtain the RG-flow of the gluon two-point function using
 %
 \begin{mmaCell}{Input}
-\mmaDef{TakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}];
+ \mmaDef{TakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}];
 \end{mmaCell}
 %
 This will yield a rather large expression, which we can visualise using the \mathem{\mmaDef{FPrint}} and \mathem{\mmaDef{FPlot}} commands, which will be explained in more detail within \Cref{sec:DiANE}.
@@ -380,11 +381,11 @@ This will yield a rather large expression, which we can visualise using the \mat
 %\hspace{40pt}
 \begin{minipage}{0.7\linewidth}
 \begin{mmaCell}{Input}
-\mmaDef{TakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FPrint}//\mmaDef{FPlot};
+ \mmaDef{TakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FPrint}//\mmaDef{FPlot};
 \end{mmaCell}
 \vspace{-2.5ex}
 \begin{equation*}
-	\put(-140,0){\footnotesize
+	\put(-132,0){\footnotesize
 		$
 		\begin{aligned}&
 			(-1)^{A^{i_1}\text{a}}\,(-1)^{A^{i_2}\text{a}}\,(-1)^{\text{c}\text{c}}\,(-1)^{\text{e}\text{e}}\,G^{\text{a}\text{b}}\,\Gamma_{\text{b}A^{i_2}\text{c}}\,G^{\text{c}\text{d}}\,\Gamma_{\text{d}A^{i_1}\text{e}}\,G^{\text{e}\text{f}}\,\partial_t R_{\text{a}\text{f}}
@@ -393,27 +394,27 @@ This will yield a rather large expression, which we can visualise using the \mat
 		\end{aligned}
 		$
 	}
-	\put(-140,-83){\includegraphics[width=0.48\linewidth]{Mathematica_Gluon2P_1.png}}
+	\put(-132,-83){\includegraphics[width=0.48\linewidth]{Mathematica_Gluon2P_1.png}}
 \end{equation*}
 \end{minipage}
 \end{widetext}
 %
-\FunKit has automatically simplified the diagrams resulting from the derivation. We can also do the above in a more manual manner by explicitly specifying derivative operators and resolving them. Any functional derivative is specified as an operator acting on everything after it with \mathem{\mmaDef{FDOp}}, and can be resolved using \mathem{\mmaDef{ResolveFDOp}}. Explicitly, we can write the above also as
+\FunKit has automatically simplified the diagrams resulting from the derivation. We can also do the above in a more manual manner by explicitly specifying derivative operators and resolving them. Any functional derivative is specified as an operator \mathem{\mmaDef{FDOp}} acting on everything after it. To resolve derivatives, \FunKit provides the functions \mathem{\mmaDef{ResolveFDOp}} to resolve the right-most \mathem{\mmaDef{FDOp}} in an expression, and \mathem{\mmaDef{ResolveDerivatives}} to fully resolve all derivatives. Explicitly, we can write the above also as
 %
 \begin{widetext}
 %\vspace{-2pt}
 %\hspace{40pt}
 \begin{minipage}{0.5\linewidth}
 \begin{mmaCell}{Input}
-\mmaDef{ResolveFDOp}[
-  \mmaDef{ResolveFDOp}[
-    \mmaDef{F}[\mmaDef{FDOp}@A[i1], \mmaDef{FDOp}@A[i2], \mmaDef{wEq}]
-   ]
- ]//\mmaDef{FPrint}//\mmaDef{FPlot};
+ \mmaDef{ResolveFDOp}[
+   \mmaDef{ResolveFDOp}[
+     \mmaDef{F}[\mmaDef{FDOp}@A[i1], \mmaDef{FDOp}@A[i2], \mmaDef{wEq}]
+    ]
+  ]//\mmaDef{FPrint}//\mmaDef{FPlot};
 \end{mmaCell}
 \vspace{-2.5ex}
 \begin{equation*}
-		\put(-90,0){\footnotesize
+		\put(-82,0){\footnotesize
 			$
 		\begin{aligned}&
 			\frac{1}{2}\,(-1)^{A^{i_1}\text{a}}\,(-1)^
@@ -435,38 +436,40 @@ This will yield a rather large expression, which we can visualise using the \mat
 		\end{aligned}
 			$
 		}
-		\put(-90,-88){\includegraphics[width=1.1\linewidth]{Mathematica_Gluon2P_2.png}}
+		\put(-82,-88){\includegraphics[width=1.1\linewidth]{Mathematica_Gluon2P_2.png}}
 \end{equation*}
 \end{minipage}
 \end{widetext}
 %
-In the above, we have used the shorthand \mathem{\mmaDef{F}[...]}, which is replaced by \mathem{\mmaDef{FEq}[\mmaDef{FTerm}[...]]}. The result of resolving the derivative operators has not been automatically simplified. This can be done using \mathem{\mmaDef{FSimplify}}, i.e.
+In the above, we have used the shorthand \mathem{\mmaDef{F}[...]}, which is replaced by \mathem{\mmaDef{FEx}[\mmaDef{FTerm}[...]]}. The result of resolving the derivative operators has not been automatically simplified. This can be done using \mathem{\mmaDef{FSimplify}}, i.e.
 %
 \begin{mmaCell}{Input}
-\mmaDef{ResolveFDOp}[
-  \mmaDef{ResolveFDOp}[
-    \mmaDef{F}[\mmaDef{FDOp}@A[i1], \mmaDef{FDOp}@A[i2], \mmaDef{wEq}]
-   ]
- ]//\mmaDef{FSimplify}//\mmaDef{FPrint}//\mmaDef{FPlot};
+ \mmaDef{ResolveFDOp}[
+   \mmaDef{ResolveFDOp}[
+     \mmaDef{F}[\mmaDef{FDOp}@A[i1], \mmaDef{FDOp}@A[i2], \mmaDef{wEq}]
+    ]
+  ]//\mmaDef{FSimplify}//\mmaDef{FPrint}//\mmaDef{FPlot};
 \end{mmaCell}
 %
-which yields precisely the same output as when using \mathem{\mmaDef{TakeDerivatives}}.
+which yields precisely the same output as when using \mathem{\mmaDef{TakeDerivatives}} or \mathem{\mmaDef{ResolveDerivatives}}, both of which invoke the simplification step automatically.
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Truncating the output}
 
 The above equation still contains undetermined fields, which are expressed by superindices without fields in the equations and by dotted blue lines in the diagrams.
 To insert explicit fields, we first have to supply a truncation. this is done by creating a list for every correlation function or indexed object which contains all field combinations to be taken into account:
 %
 \begin{mmaCell}{Input}
-truncation = <|
-  \mmaDef{GammaN} -> \{\{A,A\},\{A,A,A\},\{A,A,A,A\},
-             \{A,cb,c\},\{cb, c\}\},
-  \mmaDef{Propagator} -> \{\{A,A\},\{cb, c\}\},
-  \mmaDef{Rdot} -> \{\{A,A\},\{cb, c\}\},
-  \mmaDef{S} -> \{\{A,A\},\{A,A,A\},\{A,A,A,A\},
-        \{cb,c\},\{cb,c,A\}\},
-  \mmaDef{Field} -> \{\{\}\}
-|>;
+ truncation = <|
+   \mmaDef{GammaN} -> \{\{A,A\},\{A,A,A\},\{A,A,A,A\},
+              \{A,cb,c\},\{cb, c\}\},
+   \mmaDef{Propagator} -> \{\{A,A\},\{cb, c\}\},
+   \mmaDef{Rdot} -> \{\{A,A\},\{cb, c\}\},
+   \mmaDef{S} -> \{\{A,A\},\{A,A,A\},\{A,A,A,A\},
+         \{cb,c\},\{cb,c,A\}\},
+   \mmaDef{Field} -> \{\{\}\}
+ |>;
 \end{mmaCell}
 %
 The truncation for \mathem{\mmaDef{Field}} is left empty and \FEDeriK will set all field values to zero when truncating. If a finite expectation value of $A$ were expected, as in finite-temperature Yang-Mills theory, one would change this to \mathem{\mmaDef{Field} -> {{A}}}. In that case, only explicit ghost and anti-ghost fields are set to zero.
@@ -474,24 +477,22 @@ The truncation for \mathem{\mmaDef{Field}} is left empty and \FEDeriK will set a
 Next, we modify the setup as
 %
 \begin{mmaCell}{Input}
-setup = <|
-  "FieldSpace" -> \mmaDef{fields},
-  "Truncation" -> \mmaDef{truncation}
- |>;
+ setup = <|
+   "FieldSpace" -> \mmaDef{fields},
+   "Truncation" -> \mmaDef{truncation}
+  |>;
 \end{mmaCell}
 %
 We can now easily truncate the above expression like
 %
 \begin{widetext}
-%\vspace{-2pt}
-%\hspace{15pt}
 \begin{minipage}{0.8\linewidth}
 \begin{mmaCell}{Input}
-\mmaDef{TakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FPrint}//\mmaDef{FPlot};
+ \mmaDef{TakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FPrint}//\mmaDef{FPlot};
 \end{mmaCell}
 \vspace{-3.5ex}
 \begin{equation*}
-	\put(-170,0){\footnotesize
+	\put(-158,0){\footnotesize
 	$
 \begin{aligned}  
 	&(-G^{\bar{c}^{\text{a}}c^{\text{b}}}\,\Gamma_{c^{\text{b}}\bar{c}^{\text{c}}A^{i_2}}\,G^{\bar{c}^{\text{c}}c^{\text{d}}}\,\Gamma_{c^{\text{d}}\bar{c}^{\text{e}}A^{i_1}}\,G^{\bar{c}^{\text{e}}c^{\text{f}}}\,\partial_t R_{c^{\text{f}}\bar{c}^{\text{a}}})
@@ -501,7 +502,7 @@ We can now easily truncate the above expression like
 \end{aligned}
 	$
 	}
-	\put(-170,-105){\includegraphics[width=1.05\linewidth]{Mathematica_Gluon2P_3.png}}
+	\put(-158,-105){\includegraphics[width=1.05\linewidth]{Mathematica_Gluon2P_3.png}}
 \end{equation*}
 \end{minipage}
 \end{widetext}
@@ -517,11 +518,11 @@ Finally, the superfield indices have to be turned into explicit group indices, a
 \hspace{-25pt}
 \begin{minipage}{0.8\linewidth}
 \begin{mmaCell}{Input}
-\mmaDef{TakeDerivatives}[\mmaDef{setup}, \mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute}//\mmaDef{FPrint};
+ \mmaDef{TakeDerivatives}[\mmaDef{setup}, \mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute}//\mmaDef{FPrint};
 \end{mmaCell}
 \vspace{-3.0ex}
 \begin{equation*}
-\put(-165,0){\footnotesize\medmuskip=0mu
+\put(-159,0){\footnotesize\medmuskip=0mu
 	$
 	\begin{aligned} &\int_{l_1}(-G_{\bar{c}^{\text{a}}c^{\text{b}}}(l_1,-l_1)\,\Gamma_{c^{\text{b}}\bar{c}^{\text{d}}A^{\text{m}}}(l_1,p_1-l_1,-p_1)\,G_{\bar{c}^{\text{d}}c^{\text{f}}}(l_1-p_1,p_1-l_1)\,\Gamma_{c^{\text{f}}\bar{c}^{\text{h}}A^{\text{n}}}(l_1-p_1,-l_1,p_1)\,G_{\bar{c}^{\text{h}}c^{\text{j}}}(l_1,-l_1)\,\partial_t R_{c^{\text{j}}\bar{c}^{\text{a}}}(l_1,-l_1))
 		\\ &\,+\,\int_{l_1}(-G_{\bar{c}^{\text{a}}c^{\text{b}}}(l_1,-l_1)\,\Gamma_{c^{\text{c}}\bar{c}^{\text{a}}A^{\text{m}}}(l_1+p_1,-l_1,-p_1)\,G_{\bar{c}^{\text{e}}c^{\text{c}}}(l_1+p_1,-l_1-p_1)\,\Gamma_{c^{\text{g}}\bar{c}^{\text{e}}A^{\text{n}}}(l_1,-l_1-p_1,p_1)\,G_{\bar{c}^{\text{i}}c^{\text{g}}}(l_1,-l_1)\,\partial_t R_{c^{\text{b}}\bar{c}^{\text{i}}}(l_1,-l_1))
@@ -541,15 +542,15 @@ The \mathem{\mmaDef{FRoute}} command groups together terms with the same loop or
 \hspace{-30pt}
 \begin{minipage}{1.0\linewidth}
 \begin{mmaCell}{Input}
-gluonDSE = \mmaDef{TakeDerivatives}[\mmaDef{MakeDSE}[A[i1]], \{A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute};
-\mmaDef{gluonDSE}["0-Loop"]//\mmaDef{FPrint}
-\mmaDef{gluonDSE}["1-Loop"]["LoopMomenta"]
-\mmaDef{gluonDSE}["1-Loop"]//\mmaDef{FPrint};
-\mmaDef{gluonDSE}["2-Loop"]//\mmaDef{FPlot};
+ gluonDSE = \mmaDef{TakeDerivatives}[\mmaDef{MakeDSE}[A[i1]], \{A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute};
+ {gluonDSE}["0-Loop"]//\mmaDef{FPrint}
+ {gluonDSE}["1-Loop"]["LoopMomenta"]
+ {gluonDSE}["1-Loop"]//\mmaDef{FPrint};
+ {gluonDSE}["2-Loop"]//\mmaDef{FPlot};
 \end{mmaCell}
 \vspace{-3.0ex}
 \begin{equation*}
-\put(-210,0){\footnotesize
+\put(-206,0){\footnotesize
 	$
 	2\,S_{A^{\text{a}}A^{\text{b}}}(-p_1,p_1)
 	$
@@ -557,15 +558,15 @@ gluonDSE = \mmaDef{TakeDerivatives}[\mmaDef{MakeDSE}[A[i1]], \{A[i2]\}]//\mmaDef
 \end{equation*}
 \vspace{-5.2ex}
 \begin{mmaCell}{Output}
-<|"Expression"->FEq[FTerm[2,S[\{A,A\},\{\{-p1,\{v2,c2\}\},\{p1,\{v1,c1\}\}\}]]],
-  "ExternalIndices"->\{i1->\{p1,\{v1,c1\}\},i2->\{-p1,\{v2,c2\}\}\},"LoopMomenta"->\{\}|>
+ <|"Expression"->FEx[FTerm[2,S[\{A,A\},\{\{-p1,\{v2,c2\}\},\{p1,\{v1,c1\}\}\}]]],
+   "ExternalIndices"->\{i1->\{p1,\{v1,c1\}\},i2->\{-p1,\{v2,c2\}\}\},"LoopMomenta"->\{\}|>
 \end{mmaCell}
 \begin{mmaCell}{Output}
-\{l1\}
+ \{l1\}
 \end{mmaCell}
 \vspace{-2.0ex}
 \begin{equation*}\medmuskip=0mu
-	\put(-210,0){\footnotesize
+	\put(-206,0){\footnotesize
 		$
 \begin{aligned}
 	&\int_{l_1}(-G_{\bar{c}^{\text{a}}c^{\text{b}}}(l_1,-l_1)\,\Gamma_{c^{\text{b}}\bar{c}^{\text{d}}A^{\text{m}}}(l_1,p_1-l_1,-p_1)\,G_{\bar{c}^{\text{d}}c^{\text{f}}}(l_1-p_1,p_1-l_1)\,\Gamma_{c^{\text{f}}\bar{c}^{\text{h}}A^{\text{n}}}(l_1-p_1,-l_1,p_1)\,G_{\bar{c}^{\text{h}}c^{\text{j}}}(l_1,-l_1)\,\partial_t R_{c^{\text{j}}\bar{c}^{\text{a}}}(l_1,-l_1))
@@ -575,12 +576,12 @@ gluonDSE = \mmaDef{TakeDerivatives}[\mmaDef{MakeDSE}[A[i1]], \{A[i2]\}]//\mmaDef
 \end{aligned}
 		$
 	}
-\put(-209,-90){\includegraphics[width=0.5\linewidth]{Mathematica_Gluon2P_4.png}}
+\put(-201,-90){\includegraphics[width=0.5\linewidth]{Mathematica_Gluon2P_4.png}}
 \end{equation*}
 \end{minipage}
 \end{widetext}
 %
-In the above example, we see also that the command \mathem{\mmaDef{FPrint}} can be inserted during a chain of operations, as it only prints the \LaTeX\xspace output and then returns its argument unchanged. There are no ghost-loops in the output, as we have not specified the vertex \mathem{{A,A,cb,c}} in the setup -- if we would have added it, two-loop terms with ghost loops would also appear.
+In the above example, we see also that the command \mathem{\mmaDef{FPrint}} can be inserted during a chain of operations, as it only prints the \LaTeX\xspace output and then returns its argument unchanged.
 
 
 
@@ -697,11 +698,6 @@ We can take a derivative $\frac{\delta}{\delta\Phi^f}$ of \labelcref{eq:propInvL
 \subsection{Teaching FEDeriK}
 \label{sec:FEDeriK_teaching}
 
-%%%%%%%%%%%%%%%%%%%%
-\subsection{Algorithmic details}
-\label{sec:FEDeriK_algorithm}
-
-
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Diagrammatic rules and tracing of expressions}
@@ -709,6 +705,83 @@ We can take a derivative $\frac{\delta}{\delta\Phi^f}$ of \labelcref{eq:propInvL
 
 After having derived the functional equation, it is necessary to use a set of diagrammatic rules to obtain an explicit expression for a given diagram. \FunKit provides functions to automatically create such rules from a chosen set of tensor bases.
 
+To obtain the diagrammatic rules, \FunKit interfaces with the \TensorBases \cite{Braun:2025gvq} package, which provides the tensor expressions for interaction vertices. In \FunKit, a set of vertex bases is specified inside the \mathem{setup}.
+%
+\begin{mmaCell}{Input}
+ bases = <|
+   \mmaDef{GammaN}->\{
+     \{A,A\}->\{"AA",1\},
+     \{A,A,A\}->"AAAClass",
+     \{A,A,A,A\}->"AAAAClass",
+     \{A,cb,c\}->\{"Acbc",1\},
+     \{cb,c\}->"cbc"\},
+   \mmaDef{S}->\{
+     \{A,A\}->\{"AA",\{1\}\},
+     \{A,A,A\}->"AAAClass", 
+     \{A,A,A,A\}->"AAAAClass",
+     \{A,cb,c\}->\{"Acbc",1\},
+     \{cb,c\}->"cbc"\},
+   \mmaDef{Propagator}->\{\{A,A\}->"AA",\{cb,c\}->"cbc"\},
+   \mmaDef{Rdot}->\{\{A,A\}->\{"AA",1\},\{cb,c\}->"cbc"\}
+ |>;
+ 
+ setup = <|
+   "FieldSpace" -> \mmaDef{fields},
+   "Truncation" -> \mmaDef{truncation},
+   "FeynmanRules" -> bases
+  |>
+\end{mmaCell}
+%
+In particular, there are three ways to specify vertex bases:
+%
+\begin{enumerate}[(i)]
+	\item Giving only a name, e.g. \mathem{{A,A,A}->"AAAClass"}, which uses the full basis specified as \mathem{"AAAClass"}.
+	\item Picking a single element from a larger basis, as in \mathem{{A,cb,c}->{"Acbc",1}}, which uses only the first vertex basis element of \mathem{"Acbc"}.
+	\item Picking a subset of a larger basis, e.g. in QCD one could use \mathem{{A,qb,q}->{"AqbqDirect",{1,4,7}}} to pick out the most relevant basis elements 1, 4 and 7 from a standard quark-gluon tensor basis \mathem{"AqbqDirect"}, see \cite{Cyrol:2017ewj, Braun:2025gvq}.
+\end{enumerate}
+%
+with the above definition of \mathem{\mmaDef{setup}}, the diagrammatic rules can be automatically derived using
+%
+\begin{mmaCell}{Input}
+ diagRules = \mmaDef{MakeDiagrammaticRules}[];
+\end{mmaCell}
+%
+With this, one can directly obtain the explicit expressions for diagrams. For example, the 0-loop term of the gluon propagator DSE can be calculated as
+%
+\begin{mmaCell}{Input}
+ DSEAA = \mmaDef{TakeDerivatives}[
+   \mmaDef{MakeDSE}[Setup, A[i1]], \{A[i2]\}
+  ]//\mmaDef{FTruncate}//\mmaDef{FSimplify}//\mmaDef{FRoute};
+ DSEAA["0-Loop"]["Expression"]
+ DSEAA["0-Loop"]["Expression"]/.\mmaDef{diagRules}
+\end{mmaCell}
+%
+\begin{mmaCell}{Output}
+ FEx[FTerm[2,
+   S[\{A,A\},\{\{-p1,\{v2,c2\}\},\{p1,\{v1,c1\}\}\}]]]
+\end{mmaCell}
+%
+\begin{mmaCell}{Output}
+ FEx[FTerm[2,deltaAdjCol[c2,c1]
+   dressing[S,\{A,A\},1,\{-p1,p1\}]
+   transProj[p1,v2,v1]]]
+\end{mmaCell}
+%
+To obtain fully traced expressions, we usually need to use a projector to obtain the coefficient of a single element of the larger tensor basis. For the gluon propagator DSE, we can use the projector included in \TensorBases to 
+%
+\begin{mmaCell}{Input}
+ \mmaDef{FormTrace}[
+   \mmaDef{F}[
+     \mmaDef{TBGetProjector}["AA",1,\{i1,i2\}/.
+       \mmaDef{DSEAA}["1-Loop"]["ExternalIndices"]], \mmaDef{DSEAA}["1-Loop"]["Expression"]/.
+       \mmaDef{diagRules}
+   ]
+ ];
+\end{mmaCell}
+%
+This outputs the 1-loop contributions to the gluon propagator DSE. Similarly, the above calculation can be performed for all diagrams appearing in the DSEs of the Yang-Mills system.
+
+An example, deriving a full set of DSEs and flow equations for Yang-Mills theory with the above specified truncation, can be found in \texttt{examples/Yang-Mills.nb} in the \FunKit repository.
 
 \clearpage
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -716,7 +789,6 @@ After having derived the functional equation, it is necessary to use a set of di
 \label{sec:DiANE}
 
 The module \DiANE, \textbf{Di}agram \textbf{A}rts and \textbf{N}otation of \textbf{E}quations, provides visualisation functions for \FunKit. 
-
 \DiANE can both generate publication-ready \LaTeX\xspace code and display equations directly in Mathematica. For example, consider the DSE for the gluon one-point function, given by
 %
 \begin{equation}
@@ -728,12 +800,12 @@ In Mathematica, we can directly derive it and show the rendered \LaTeX\xspace ou
 %
 \begin{widetext}
 \begin{mmaCell}{Input}
-\mmaDef{MakeDSE}[A[x]]//.\{c[_]:>0, cb[_]:>0\}//\mmaDef{Truncate}//\mmaDef{FSimplify}//\mmaDef{Route}//\mmaDef{FPrint}
+ \mmaDef{MakeDSE}[A[x]]//.\{c[_]:>0, cb[_]:>0\}//\mmaDef{FTruncate}//\mmaDef{FSimplify}//\mmaDef{FRoute}//\mmaDef{FPrint}
 \end{mmaCell}
 %
 \vspace{-3.0ex}
 \begin{equation*}
-	\put(-214,0){\footnotesize
+	\put(-206,0){\footnotesize
 		$
 \begin{aligned}&
 	\begin{aligned}&
@@ -760,7 +832,9 @@ In Mathematica, we can directly derive it and show the rendered \LaTeX\xspace ou
 \end{equation*}
 \end{widetext}
 
-The typesetting code for the above equation can be also read out using the \mathem{\mmaDef{FTex}} command, and copied over to a document. Internally, we use \texttt{MaTeX} \cite{szabolcs_horvat_2024_10828124} to render the \LaTeX code. This requires the \bash{pdflatex} command to be available on the system.
+The typesetting code for the above equation can be also read out using the \mathem{\mmaDef{FTex}} command, and copied over to a document. Internally, we use \texttt{MaTeX} \cite{szabolcs_horvat_2024_10828124} to render the \LaTeX\xspace code inside Mathematica. This requires the \bash{pdflatex} command to be available on the system.
+
+Nota that we have already used the \mathem{\mmaDef{FPrint}} and \mathem{\mmaDef{FPlot}} commands in the previous sections to showcase the results of our computations.
 
 %%%%%%%%%%%%%%%%%%%%
 \begin{acknowledgments}

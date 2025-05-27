@@ -167,7 +167,7 @@ $availableIndices=Join[Alphabet["English"],Alphabet["English","CommonAlphabetUpp
 ClearAll[prettySuperIndices,prettyExplicitIndices];
 prettySuperIndices::type="Unknown type `1`";
 
-prettySuperIndices[setup_,expr_FEq]:=Map[prettySuperIndices[setup,#]&,expr];
+prettySuperIndices[setup_,expr_FEx]:=Map[prettySuperIndices[setup,#]&,expr];
 prettySuperIndices[setup_,expr_FTerm]:=Module[{closedIndices,openIndices,repl,indices},
 closedIndices=GetClosedSuperIndices[setup,expr];
 openIndices=GetOpenSuperIndices[setup,expr];
@@ -179,7 +179,7 @@ indices=Select[indices,#=!=ToString[openIndices[[i]]]&],
 repl=Thread[closedIndices->indices[[1;;Length[closedIndices]]]];
 Return[expr//.repl]
 ];
-prettySuperIndices[setup_,expr_Association]/;isLoopAssociation[expr]:=Association[Normal[expr]/.FEq[a___]:>prettySuperIndices[setup,Print[1];FEq[a]]]
+prettySuperIndices[setup_,expr_Association]/;isLoopAssociation[expr]:=Association[Normal[expr]/.FEx[a___]:>prettySuperIndices[setup,Print[1];FEx[a]]]
 prettySuperIndices[setup_,expr_List]:=Map[prettySuperIndices[setup,#]&,Print[3];expr];
 prettySuperIndices[setup_,expr_Association]/;isRoutedAssociation[expr]:=Association@Map[prettySuperIndices[setup,#]&,Print[2];Normal@expr];
 prettySuperIndices[setup_,a_]:=(Message[prettySuperIndices::type,Head@a];Abort[])
@@ -189,7 +189,7 @@ prettySuperIndices[setup_,a_]:=(Message[prettySuperIndices::type,Head@a];Abort[]
 (* ::Input::Initialization:: *)
 prettyExplicitIndices::type="Unknown type `1`";
 
-prettyExplicitIndices[setup_,expr_FEq]:=Map[prettyExplicitIndices[setup,#]&,expr];
+prettyExplicitIndices[setup_,expr_FEx]:=Map[prettyExplicitIndices[setup,#]&,expr];
 prettyExplicitIndices[setup_,expr_FTerm]:=Module[{allIndices,closedIndices,openIndices,repl,indices,ret=expr},
 allIndices=Select[ExtractObjectsAndIndices[setup,expr][[2]],Head[#]===List&];
 allIndices=Map[
@@ -205,7 +205,7 @@ indices=$availableIndices;
 repl=Thread[closedIndices->indices[[1;;Length[closedIndices]]]]\[Union]Thread[openIndices->indices[[Length[closedIndices]+1;;Length[closedIndices]+Length[openIndices]]]];
 Return[ret//.repl]
 ];
-prettyExplicitIndices[setup_,expr_Association]/;isLoopAssociation[expr]:=Association[Normal[expr]/.FEq[a___]:>prettyExplicitIndices[setup,FEq[Print[1];a]]]
+prettyExplicitIndices[setup_,expr_Association]/;isLoopAssociation[expr]:=Association[Normal[expr]/.FEx[a___]:>prettyExplicitIndices[setup,FEx[Print[1];a]]]
 prettyExplicitIndices[setup_,expr_List]:=Map[prettyExplicitIndices[setup,#]&,expr];
 prettyExplicitIndices[setup_,expr_Association]/;isRoutedAssociation[expr]:=Association@Map[prettyExplicitIndices[setup,#]&,Print[2];Normal@expr];
 prettyExplicitIndices[setup_,a_]:=(Message[prettyExplicitIndices::type,Head@a];Abort[])
@@ -254,7 +254,7 @@ Return@AllTrue[expr,isLoopAssociation]
 (* ::Input::Initialization:: *)
 RenewFormatDefinitions[]:=Module[{},
 
-Unprotect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus,S];
+Unprotect[FDOp,GammaN,Propagator,Rdot,FTerm,FEx,\[Gamma],\[Delta],FMinus,S];
 Unprotect@@$allObjects;
 
 (*Field formatting with superindices*)
@@ -373,7 +373,7 @@ Format[FTerm[],TeXForm]:=Module[{},
 TeXUtilities`TeXVerbatim["1"]
 ];
 
-Format[FEq[a___],TeXForm]:=If[Length[Flatten[(List@@#&)/@{a}]]<=9,
+Format[FEx[a___],TeXForm]:=If[Length[Flatten[(List@@#&)/@{a}]]<=9,
 TeXUtilities`TeXDelimited["",a,"",
 "DelimSeparator"->"","BodySeparator"->"\n\\,+\\,",
 "BodyConverter"->(ToString[Format[#,TeXForm]]&)],
@@ -385,7 +385,7 @@ TeXUtilities`TeXDelimited["\\begin{aligned}\\  &",a,"\n\\end{aligned}",
 Unprotect[Association];
 Format[Association[a__],TeXForm]/;isRoutedAssociation[Association[a]]:=Module[{parts},
 parts=(List@@Association[a])[[All,Key["Expression"]]];
-parts=ToString[TeXForm[FEq[#]]]&/@parts;
+parts=ToString[TeXForm[FEx[#]]]&/@parts;
 
 parts=Join[
 {parts[[1]]},
@@ -403,7 +403,7 @@ StringRiffle[parts,"\n \\\&\n"]<>
 Protect[Association];
 
 
-Protect[FDOp,GammaN,Propagator,Rdot,FTerm,FEq,\[Gamma],\[Delta],FMinus,S];
+Protect[FDOp,GammaN,Propagator,Rdot,FTerm,FEx,\[Gamma],\[Delta],FMinus,S];
 Protect@@$allObjects;
 ];
 
@@ -434,7 +434,7 @@ prExp=prExp//.FTerm[pre___,Times[a_,b_],post___]:>FTerm[pre,a,b,post];
 Return[prExp//TeXForm//ToString];
 ];
 
-FTex[setup_,expr_List]/;AllTrue[expr,(Head[#]===FEq||Head[#]===FTerm)&]:=FTex[setup,FEq@@expr];
+FTex[setup_,expr_List]/;AllTrue[expr,(Head[#]===FEx||Head[#]===FTerm)&]:=FTex[setup,FEx@@expr];
 
 (*For the output of a full routing*)
 FTex[setup_,expr_Association]/;isRoutedAssociation@expr:=FTex[setup,(List@@expr)[[All,Key["Expression"]]]];
@@ -577,7 +577,7 @@ Print[GetDiagram[setup,expr]];
 Return@expr
 ];
 
-FPlot[setup_,expr_FEq]:=Module[{},
+FPlot[setup_,expr_FEx]:=Module[{},
 Print[Plus@@(GetDiagram[setup,#]&/@expr)];
 Return@expr
 ];
