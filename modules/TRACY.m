@@ -390,7 +390,7 @@ If[(Count[cases[[;;idx]],"("]<Count[cases[[;;idx]],")"]),Return[False]];
 ];
 Return[True];
 ];
-hasFortranOperator[a_]:=StringContainsQ[a,"*"]||StringContainsQ[a,"/"]||StringContainsQ[a,"+"]||StringContainsQ[a,"-"]||StringContainsQ[a,"**"]||StringContainsQ[a,"^"]||StringContainsQ[a,"="]||StringContainsQ[a,"("]||StringContainsQ[a,")"];
+hasFortranOperator[a_]:=StringContainsQ[a,"*"]||StringContainsQ[a,"/"]||StringContainsQ[a,"+"]||StringContainsQ[a,"-"]||StringContainsQ[a,"**"]||StringContainsQ[a,"^"]||StringContainsQ[a,"="]||StringContainsQ[a,"("]||StringContainsQ[a,")"]||StringContainsQ[a," "];
 
 fortranToMathematica[expr_String]:=Module[
 {start,res,pres},
@@ -594,6 +594,7 @@ tmpfileName="/tmp/FS_"<>makeTemporaryFileName[];
 
 FormTracer`FormTrace[Rationalize[expr/.repl[[1]]],Join[momRule,preReplRules],Join[$standardFORMmomentumRules,postReplRules],{tmpfileName,"O4","fortran90"}];
 import=Import[tmpfileName,"Text"];
+
 RunProcess[$SystemShell, All, "rm "<>tmpfileName];
 import=import//fortranToMathematica;
 
