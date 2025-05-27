@@ -486,6 +486,7 @@ definitions=If[Length[replacementObj]>0,
 StringJoin[Table[ToString[replacementNames[[i]]]<>" = "<>JuliaForm[FullSimplify@replacementObj[[i]]]<>"\n",{i,1,Length[replacementObj]}]]<>"\n"
 ,""];
 returnStatement="return "<>JuliaForm[equation//.replacements];
+returnStatement=StringReplace[returnStatement,Map["\""<>#<>"\""->#&,replacementNames]];
 definitions<>returnStatement
 ];
 

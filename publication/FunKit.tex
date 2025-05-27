@@ -836,6 +836,38 @@ The typesetting code for the above equation can be also read out using the \math
 
 Nota that we have already used the \mathem{\mmaDef{FPrint}} and \mathem{\mmaDef{FPlot}} commands in the previous sections to showcase the results of our computations.
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Automatic Code Generation}
+\label{sec:COEN}
+
+\FunKit provides a set of tools to conveniently translate the Mathematica expressions resulting after performing all traces into code that can be directly incorporated into a numerical program.
+To that end, \FunKit provides direct output to Fortran and Julia functions, and a set of functions to generate C++ classes and methods with arbitrary types by means of templates.
+%
+\begin{widetext}
+%
+\begin{mmaCell}{Input}
+ MakeJuliaFunction[
+   DSEAAResult["1-Loop"] /. cos[p, l1] -> cospl1,
+   "Parameters" -> {"l1", "cos", "p", "gS", "ZA", "Zc", "ZA3", "ZAcbc", 
+     "ZA4"},
+   "Name" -> "DSE_kernel_AA_1Loop",
+   "Body" -> "cospl1 = cos"
+  ]
+\end{mmaCell}
+%
+\begin{mmaCell}{Output}
+ function DSE_kernel_AA_1Loop(l1, cos, p, gS, ZA, Zc, ZA3, ZAcbc, ZA4)
+   cospl1 = cos
+   _repl1 = Zc(l1)
+   _repl2 = Zc(sqrt(l1^2 + 2*cospl1*l1*p + p^2))
+   return gS*(24*gS*(2 + cospl1^2*(1 - 1/(_repl1*l1^2)) + 7/(_repl1*l1^2)) - (3*(4*cospl1^4*l1^2*(-1 + _repl1*l1^2)*p^2 + _repl1*(2*l1^6 + 3*l1^4*p^2 + _repl2*l1^2*p^4*(l1^2 + p^2)) + 2*(6*l1^4 + 16*l1^2*p^2 + 6*p^4 + _repl2*(l1^2 - p^2)^2*(l1^2 + p^2)) + 2*cospl1*l1*p*(2*_repl2*(l1^2 - p^2)^2 + 12*(l1^2 + p^2) + _repl1*l1^2*(7*l1^2 + 6*p^2 + _repl2*p^4)) + cospl1^2*(_repl2*(l1^2 - p^2)^2*(l1^2 + p^2) - 4*(3*l1^4 + 7*l1^2*p^2 + 3*p^4) + _repl1*l1^2*(l1^4 + 32*l1^2*p^2 + 12*p^4 - _repl2*p^4*(l1^2 + p^2))) + 2*cospl1^3*l1*p*(_repl2*(l1^2 - p^2)^2 - 12*(l1^2 + p^2) + _repl1*l1^2*(-(_repl2*p^4) + 2*(l1^2 + 6*p^2))))*ZA3(sqrt(0.6666666666666666)*sqrt(l1^2 + cospl1*l1*p + p^2)))/(_repl1*_repl2*l1^2*(l1^2 + 2*cospl1*l1*p + p^2)^2) + ((-1 + cospl1^2)*ZccbA(sqrt(0.6666666666666666)*sqrt(l1^2 + cospl1*l1*p + p^2)))/((l1^2 + 2*cospl1*l1*p + p^2)*ZA(l1)*ZA(sqrt(l1^2 + 2*cospl1*l1*p + p^2))))
+ end
+\end{mmaCell}
+%
+\end{widetext}
+
+
 %%%%%%%%%%%%%%%%%%%%
 \begin{acknowledgments}
 We thank... for discussions. This work is done within the fQCD collaboration \cite{fQCD} and we thank its members for discussions and collaborations on related projects.
