@@ -20,14 +20,27 @@
 
 
 (* ::Input::Initialization:: *)
-FORMSimplify::usage=""
+FORMSimplify::usage="FORMSimplify[expr] tries to simplify the given expression using FORM's output optimization (O4) algorithms.
+FORMSimplify[expr,preReplRules,postReplRules] one can specify additionally FORM preRepl and postRepl rules, see also the documentation of the FormTrace command.";
 
-IterativelySum::usage=""
-FormMomentumExpansion::usage=""
-FiniteTFormMomentumExpansion::usage=""
-MakeP0FormRule::usage=""
-MakeSPFormRule::usage=""
-MakeSPFiniteTFormRule::usage=""
+IterativelySum::usage="IterativelySum[list] tries to efficiently break up the list into subsets, and repeatedly sum and simplify these until only a single expression remains.
+IterativelySum[list,finalSize] returns a list of size finalSize and tries to choose the terms such that all of these are equally sized.";
+
+FormMomentumExpansion::usage="FormMomentumExpansion[] creates a FORM rule to expand out any scalar products. This can be passed as a postRepl or preRepl rule to FormTrace or FORMSimplify.";
+
+FiniteTFormMomentumExpansion::usage="FiniteTFormMomentumExpansion[] creates a FORM rule to expand out any scalar products into spatial and temporal parts. This can be passed as a postRepl or preRepl rule to FormTrace or FORMSimplify.";
+
+MakeP0FormRule::usage="MakeP0FormRule[{l1,...},{p1,...},{proj1,...}] creates a FORM rule to project the temporal components of an expression, i.e. set vec[p1,0], to the value of proj1, etc.";
+
+MakeSPFormRule::usage="MakeSPFormRule[{l1,...},p,{p1,...}] creates a FORM rule to project the loop momenta l1... and legs p1... to the symmetric point configuration with average momentum p.";
+
+MakeSPFiniteTFormRule::usage="MakeSPFiniteTFormRule[{l1,...},p,{p1,...}] creates a FORM rule to project the loop momenta l1... and legs p1... to the d-1 dimensional (spatial) symmetric point configuration with average momentum p.";
+
+ClearTraceCache::usage="ClearTraceCache[] removes all files in the Trace Cache (usually /tmp/TraceCache).";
+
+SetCacheDirectory::usage="SetCacheDirectory[folder] changes the directory where traced expressions are cached. Per default, the cache directory is set to /tmp/TraceCache/).
+SetCacheDirectory[] resets the cache directory to /tmp/TraceCache/.";
+
 DiagramSimplify::usage=""
 
 
@@ -69,10 +82,12 @@ Set[$TraceCacheDir,mstr],
 Message[SetCacheDirectory::invalid,mstr];Abort[]
 ];
 ];
-SetCacheDirectory["/tmp/TraceCache/"];
+SetCacheDirectory[]:=SetCacheDirectory["/tmp/TraceCache/"];
+
+SetCacheDirectory[];
+
 ClearTraceCache[]:=(DeleteDirectory[$TraceCacheDir,DeleteContents->True];CreateDirectory[$TraceCacheDir])
 ClearTraceCache[str_String]:=(DeleteDirectory[$TraceCacheDir<>str,DeleteContents->True])
-
 
 
 (* ::Input::Initialization:: *)

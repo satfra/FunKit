@@ -69,45 +69,45 @@ while executing---line 3515 of file apsrev4-2.bst
 while executing---line 3515 of file apsrev4-2.bst
 Warning--missing journal in Braun:2025gvq
 Warning--empty journal in fQCD
-You've used 9 entries,
+You've used 10 entries,
             6079 wiz_defined-function locations,
-            1693 strings with 16581 characters,
-and the built_in function-call counts, 9865 in all, are:
-= -- 559
-> -- 309
-< -- 84
-+ -- 96
-- -- 94
-* -- 1627
-:= -- 869
-add.period$ -- 7
-call.type$ -- 9
-change.case$ -- 35
+            1703 strings with 16809 characters,
+and the built_in function-call counts, 11053 in all, are:
+= -- 652
+> -- 336
+< -- 89
++ -- 105
+- -- 100
+* -- 1823
+:= -- 977
+add.period$ -- 8
+call.type$ -- 10
+change.case$ -- 41
 chr.to.int$ -- 19
-cite$ -- 11
-duplicate$ -- 943
-empty$ -- 647
-format.name$ -- 165
-if$ -- 1927
-int.to.chr$ -- 1
-int.to.str$ -- 16
-missing$ -- 143
-newline$ -- 73
-num.names$ -- 21
-pop$ -- 367
+cite$ -- 12
+duplicate$ -- 1054
+empty$ -- 731
+format.name$ -- 180
+if$ -- 2168
+int.to.chr$ -- 2
+int.to.str$ -- 17
+missing$ -- 160
+newline$ -- 76
+num.names$ -- 24
+pop$ -- 406
 preamble$ -- 1
-purify$ -- 35
+purify$ -- 40
 quote$ -- 0
-skip$ -- 385
+skip$ -- 433
 stack$ -- 0
-substring$ -- 173
-swap$ -- 930
-text.length$ -- 37
+substring$ -- 198
+swap$ -- 1041
+text.length$ -- 40
 text.prefix$ -- 0
 top$ -- 10
-type$ -- 126
+type$ -- 140
 warning$ -- 3
-while$ -- 29
+while$ -- 32
 width$ -- 0
-write$ -- 114
+write$ -- 125
 (There were 13 error messages)

@@ -1820,15 +1820,18 @@ Return[result];
 MakeClassicalAction::noTruncation="The given setup does not have a truncation for S!";
 
 MakeClassicalAction[setup_]:=Module[
-{indices,i},
+{indices,i,
+prefac},
 AssertFSetup[setup];
 
 If[FreeQ[Keys[setup["Truncation"]],S],Message[MakeClassicalAction::noTruncation];Abort[]];
 
 FEx@@Map[
 (
+prefac=Split[#];
+prefac=Times@@( 1/((Length[#]&/@prefac)!));
 indices=Map[Unique["i"]&,#];
-FTerm[S[#,-indices]]**(FTerm@@Table[Construct[#[[i]],indices[[i]]],{i,1,Length[#]}])
+FTerm[prefac,S[#,-indices]]**(FTerm@@Table[Construct[#[[i]],indices[[i]]],{i,1,Length[#]}])
 )&,
 OrderFieldList[setup,#]&/@setup["Truncation"][S]
 ]

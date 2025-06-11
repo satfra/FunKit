@@ -219,7 +219,6 @@
 
 \begin{abstract}
 
-We give tool to compute cross-section
 \end{abstract}
 
 \maketitle
@@ -228,9 +227,16 @@ We give tool to compute cross-section
 \section{Introduction}
 \label{sec:Introduction}
 
-\texttt{DoFun} \cite{Huber:2019dkb} and \texttt{QMeS} \cite{Pawlowski:2021tkk}
+In functional computations, such as the functional Renormalisation Group (fRG) and Dyson-Schwinger equations (DSE), the diagrammatic expressions for complex setups quickly grow very large and computer-algebraic treatments thereof become a necessity. For example, for QCD or even Yang-Mills theory - with only the lowest-order classical and non-classical vertices -  one obtains flow equations or DSEs which cannot be reliably calculated by hand.
 
-\TensorBases \cite{Braun:2025gvq}
+There is already a number of libraries available for the computer-algebraic processing of functional equations. Among these are \texttt{DoFun} \cite{Huber:2019dkb} and \texttt{QMeS} \cite{Pawlowski:2021tkk}, which concern themselves with the derivation of functional equations from master equations. \texttt{FormTracer} \cite{Cyrol:2016zqb} and the \TensorBases package \cite{Braun:2025gvq}, which builds on \texttt{FormTracer}, provide tools to trace the tensorial structure of the resulting diagrams.
+
+With \FunKit, we aim to build on these packages and provide a convenient all-in-one solution for the derivation of general functional equations. Therefore, we include, starting with the specification of the theory, the taking of functional derivatives, diagram simplification, tracing of tensor structures, interaction basis specification, and the export to C++, Julia or Fortran code for further processing.
+\FunKit builds in this regard heavily on \texttt{FormTracer} and \texttt{TensorBases}, and re-implements a large part of the \texttt{QMeS} package while trying to make the syntax more accessible for other, arbitrary master equations.
+
+We introduce the basic syntax for describing functional expressions in \Cref{sec:FEDeriK} and explain how to specify a theory, truncation and how to momentum- and index-route diagrams.
+In \Cref{sec:DiRK}, the specification of tensor bases and diagrammatic expressions is explained. Therein, we also show how to trace the resulting diagrams.
+Finally, \Cref{sec:COEN} briefly shows how to generate computer code in different languages from these equations.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -242,9 +248,10 @@ We give tool to compute cross-section
 
 \AnSEL, \textbf{An}alysis and \textbf{S}implification of \textbf{E}quations with \textbf{L}oops
 
-In \Cref{sec:FEDeriK_notation} we briefly explain both the notation in \texttt{Mathematica} and basic usage of the module. Following this, we explain the internal set of rules used by \FEDeriK in \Cref{sec:FEDeriK_rules} and some algorithmic details in \Cref{sec:FEDeriK_algorithm}.
+In \Cref{sec:FEDeriK_notation} we briefly explain both the notation in \texttt{Mathematica} and basic usage of the module. Following this, we explain the internal set of rules used by \FEDeriK in \Cref{sec:FEDeriK_rules}.
 
-%%%%%%%%%%%%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Notation \& usage}
 \label{sec:FEDeriK_notation}
 
@@ -362,9 +369,13 @@ The resulting setup is then given as
  setup = <|
    "FieldSpace" -> \mmaDef{fields}
   |>;
+ \mmaDef{SetGlobalSetup}[setup];
 \end{mmaCell}
 %
+All functions of \FunKit support two ways to call them. Either a specified setup is always passed as the first argument of the function and the function uses only the local information of the given setup. Or, a \textit{global setup} is specified using \mathem{\mmaDef{SetGlobalSetup}}. Then, all functions of \FunKit can be called without explicitly passing a setup, and they simply use the setup that has been globally specified by the user. To shorten the presentation here, we are going to use this second mode of operating exclusively in this work.
 
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Deriving diagrams}
 
 With the \mathem{\mmaDef{setup}} defined, one can immediately start deriving diagrams.
@@ -477,10 +488,11 @@ The truncation for \mathem{\mmaDef{Field}} is left empty and \FEDeriK will set a
 Next, we modify the setup as
 %
 \begin{mmaCell}{Input}
- setup = <|
+ \mmaDef{setup} = <|
    "FieldSpace" -> \mmaDef{fields},
    "Truncation" -> \mmaDef{truncation}
   |>;
+ \mmaDef{SetGlobalSetup}[\mmaDef{setup}];
 \end{mmaCell}
 %
 We can now easily truncate the above expression like
@@ -518,7 +530,7 @@ Finally, the superfield indices have to be turned into explicit group indices, a
 \hspace{-25pt}
 \begin{minipage}{0.8\linewidth}
 \begin{mmaCell}{Input}
- \mmaDef{TakeDerivatives}[\mmaDef{setup}, \mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute}//\mmaDef{FPrint};
+ \mmaDef{TakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute}//\mmaDef{FPrint};
 \end{mmaCell}
 \vspace{-3.0ex}
 \begin{equation*}
@@ -701,7 +713,7 @@ We can take a derivative $\frac{\delta}{\delta\Phi^f}$ of \labelcref{eq:propInvL
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Diagrammatic rules and tracing of expressions}
-\label{sec:AnSEL}
+\label{sec:DiRK}
 
 After having derived the functional equation, it is necessary to use a set of diagrammatic rules to obtain an explicit expression for a given diagram. \FunKit provides functions to automatically create such rules from a chosen set of tensor bases.
 
@@ -725,11 +737,12 @@ To obtain the diagrammatic rules, \FunKit interfaces with the \TensorBases \cite
    \mmaDef{Rdot}->\{\{A,A\}->\{"AA",1\},\{cb,c\}->"cbc"\}
  |>;
  
- setup = <|
+ \mmaDef{setup} = <|
    "FieldSpace" -> \mmaDef{fields},
    "Truncation" -> \mmaDef{truncation},
    "FeynmanRules" -> bases
   |>
+ \mmaDef{SetGlobalSetup}[\mmaDef{setup}];
 \end{mmaCell}
 %
 In particular, there are three ways to specify vertex bases:
@@ -750,7 +763,7 @@ With this, one can directly obtain the explicit expressions for diagrams. For ex
 %
 \begin{mmaCell}{Input}
  DSEAA = \mmaDef{TakeDerivatives}[
-   \mmaDef{MakeDSE}[Setup, A[i1]], \{A[i2]\}
+   \mmaDef{MakeDSE}[A[i1]], \{A[i2]\}
   ]//\mmaDef{FTruncate}//\mmaDef{FSimplify}//\mmaDef{FRoute};
  DSEAA["0-Loop"]["Expression"]
  DSEAA["0-Loop"]["Expression"]/.\mmaDef{diagRules}
@@ -783,9 +796,9 @@ This outputs the 1-loop contributions to the gluon propagator DSE. Similarly, th
 
 An example, deriving a full set of DSEs and flow equations for Yang-Mills theory with the above specified truncation, can be found in \texttt{examples/Yang-Mills.nb} in the \FunKit repository.
 
-\clearpage
-%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\section{D\MakeLowercase{i}ANE}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Equation and Diagram output}
 \label{sec:DiANE}
 
 The module \DiANE, \textbf{Di}agram \textbf{A}rts and \textbf{N}otation of \textbf{E}quations, provides visualisation functions for \FunKit. 
@@ -796,14 +809,21 @@ The module \DiANE, \textbf{Di}agram \textbf{A}rts and \textbf{N}otation of \text
 	\,.
 \end{equation}
 %
-In Mathematica, we can directly derive it and show the rendered \LaTeX\xspace output using
+We further assume that the field $A$ may have a finite expectation value, and thus modify the truncation of the system as follows:
+%
+\begin{mmaCell}{Input}
+ \mmaDef{setup}["Truncation"][Field] = {{A}}
+ \mmaDef{SetGlobalSetup}[\mmaDef{setup}];
+\end{mmaCell}
+%
+We can now directly derive the gluon one-point DSE and show the rendered \LaTeX\xspace output using
 %
 \begin{widetext}
 \begin{mmaCell}{Input}
- \mmaDef{MakeDSE}[A[x]]//.\{c[_]:>0, cb[_]:>0\}//\mmaDef{FTruncate}//\mmaDef{FSimplify}//\mmaDef{FRoute}//\mmaDef{FPrint}
+ \mmaDef{MakeDSE}[A[x]]//\mmaDef{FTruncate}//\mmaDef{FSimplify}//\mmaDef{FRoute}//\mmaDef{FPrint};
 \end{mmaCell}
 %
-\vspace{-3.0ex}
+\vspace{-3.8ex}
 \begin{equation*}
 	\put(-206,0){\footnotesize
 		$
@@ -831,10 +851,44 @@ In Mathematica, we can directly derive it and show the rendered \LaTeX\xspace ou
 	}
 \end{equation*}
 \end{widetext}
-
+%
+Note that the \mathem{\mmaDef{FTex}} command accepts output at any stage of the derivation. For example, one can show the output directly after truncation as
+%
+\begin{mmaCell}{Input}
+ \mmaDef{MakeDSE}[A[x]]//\mmaDef{FTruncate}//\mmaDef{FSimplify}//\mmaDef{FPrint};
+\end{mmaCell}
+\vspace{-3.ex}
+\begin{equation*}
+\put(-85,0){\footnotesize
+$
+\begin{aligned}\  &2\,S_{A^{x}A^{\text{a}}}\,A^{\text{a}}
+	\\ &\,+\,3\,S_{A^{x}A^{\text{b}}A^{\text{a}}}\,A^{\text{a}}\,A^{\text{b}}
+	\\ &\,+\,3\,S_{A^{x}A^{\text{a}}A^{\text{b}}}\,G^{A^{\text{b}}A^{\text{a}}}
+	\\ &\,+\,4\,S_{A^{x}A^{\text{c}}A^{\text{b}}A^{\text{a}}}\,A^{\text{a}}\,A^{\text{b}}\,A^{\text{c}}
+	\\ &\,+\,12\,S_{A^{x}A^{\text{b}}A^{\text{c}}A^{\text{a}}}\,A^{\text{a}}\,G^{A^{\text{c}}A^{\text{b}}}
+	\\ &\,+\,(-4\,S_{A^{x}A^{\text{a}}A^{\text{b}}A^{\text{c}}}\,G^{A^{\text{d}}A^{\text{b}}}\,G^{A^{\text{e}}A^{\text{c}}}\,\Gamma_{A^{\text{f}}A^{\text{e}}A^{\text{d}}}\,G^{A^{\text{a}}A^{\text{f}}})
+	\\ &\,+\,(-S_{c^{\text{a}}\bar{c}^{\text{b}}A^{x}}\,G^{\bar{c}^{\text{b}}c^{\text{a}}})
+\end{aligned}
+$
+}
+\end{equation*}
+%
 The typesetting code for the above equation can be also read out using the \mathem{\mmaDef{FTex}} command, and copied over to a document. Internally, we use \texttt{MaTeX} \cite{szabolcs_horvat_2024_10828124} to render the \LaTeX\xspace code inside Mathematica. This requires the \bash{pdflatex} command to be available on the system.
 
-Nota that we have already used the \mathem{\mmaDef{FPrint}} and \mathem{\mmaDef{FPlot}} commands in the previous sections to showcase the results of our computations.
+For convenience, we also give the possibility to plot diagrams directly inside Mathematica. This can be done using the \mathem{\mmaDef{FPlot}} command, e.g. in the above example, as
+%
+\clearpage
+\begin{widetext}
+\begin{mmaCell}{Input}
+ \mmaDef{MakeDSE}[A[x]]//\mmaDef{FTruncate}//\mmaDef{FSimplify}//\mmaDef{FPlot};
+\end{mmaCell}
+\vspace{-3.0ex}
+\begin{equation*}
+\put(-208,-120){\includegraphics[width=0.89\linewidth]{Mathematica_Gluon1P.png}}
+\end{equation*}
+\end{widetext}
+%
+Note that we have already used the \mathem{\mmaDef{FPrint}} and \mathem{\mmaDef{FPlot}} commands in the previous sections to showcase the results of our computations. Furthermore, all these functions always return the actual expression on which they have been called, so that they can be inserted during any sequence of computations. This feature has also been always utilised in the previous sections.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -847,10 +901,9 @@ To that end, \FunKit provides direct output to Fortran and Julia functions, and 
 \begin{widetext}
 %
 \begin{mmaCell}{Input}
- MakeJuliaFunction[
-   DSEAAResult["1-Loop"] /. cos[p, l1] -> cospl1,
-   "Parameters" -> {"l1", "cos", "p", "gS", "ZA", "Zc", "ZA3", "ZAcbc", 
-     "ZA4"},
+ \mmaDef{MakeJuliaFunction}[
+   \mmaDef{DSEAAResult}["1-Loop"] /. cos[p,l1] -> cospl1,
+   "Parameters" -> \{"l1", "cos", "p", "gS", "ZA", "Zc", "ZA3", "ZAcbc", "ZA4"\},
    "Name" -> "DSE_kernel_AA_1Loop",
    "Body" -> "cospl1 = cos"
   ]
@@ -861,11 +914,102 @@ To that end, \FunKit provides direct output to Fortran and Julia functions, and 
    cospl1 = cos
    _repl1 = Zc(l1)
    _repl2 = Zc(sqrt(l1^2 + 2*cospl1*l1*p + p^2))
-   return gS*(24*gS*(2 + cospl1^2*(1 - 1/(_repl1*l1^2)) + 7/(_repl1*l1^2)) - (3*(4*cospl1^4*l1^2*(-1 + _repl1*l1^2)*p^2 + _repl1*(2*l1^6 + 3*l1^4*p^2 + _repl2*l1^2*p^4*(l1^2 + p^2)) + 2*(6*l1^4 + 16*l1^2*p^2 + 6*p^4 + _repl2*(l1^2 - p^2)^2*(l1^2 + p^2)) + 2*cospl1*l1*p*(2*_repl2*(l1^2 - p^2)^2 + 12*(l1^2 + p^2) + _repl1*l1^2*(7*l1^2 + 6*p^2 + _repl2*p^4)) + cospl1^2*(_repl2*(l1^2 - p^2)^2*(l1^2 + p^2) - 4*(3*l1^4 + 7*l1^2*p^2 + 3*p^4) + _repl1*l1^2*(l1^4 + 32*l1^2*p^2 + 12*p^4 - _repl2*p^4*(l1^2 + p^2))) + 2*cospl1^3*l1*p*(_repl2*(l1^2 - p^2)^2 - 12*(l1^2 + p^2) + _repl1*l1^2*(-(_repl2*p^4) + 2*(l1^2 + 6*p^2))))*ZA3(sqrt(0.6666666666666666)*sqrt(l1^2 + cospl1*l1*p + p^2)))/(_repl1*_repl2*l1^2*(l1^2 + 2*cospl1*l1*p + p^2)^2) + ((-1 + cospl1^2)*ZccbA(sqrt(0.6666666666666666)*sqrt(l1^2 + cospl1*l1*p + p^2)))/((l1^2 + 2*cospl1*l1*p + p^2)*ZA(l1)*ZA(sqrt(l1^2 + 2*cospl1*l1*p + p^2))))
+   return gS*(24*gS*(2 + cospl1^2*(1 - 1/(_repl1*l1^2)) + 7/(_repl1*l1^2)) 
+     - (3*(4*cospl1^4*l1^2*(-1 + _repl1*l1^2)*p^2 + _repl1*(2*l1^6 + 3*l1^4*p^2 
+     + _repl2*l1^2*p^4*(l1^2 + p^2)) + 2*(6*l1^4 + 16*l1^2*p^2 + 6*p^4 
+     + _repl2*(l1^2 - p^2)^2*(l1^2 + p^2)) + 2*cospl1*l1*p*(2*_repl2*(l1^2 - p^2)^2 
+     + 12*(l1^2 + p^2) + _repl1*l1^2*(7*l1^2 + 6*p^2 + _repl2*p^4)) 
+     + cospl1^2*(_repl2*(l1^2 - p^2)^2*(l1^2 + p^2) - 4*(3*l1^4 + 7*l1^2*p^2 + 3*p^4) 
+     + _repl1*l1^2*(l1^4 + 32*l1^2*p^2 + 12*p^4 - _repl2*p^4*(l1^2 + p^2))) 
+     + 2*cospl1^3*l1*p*(_repl2*(l1^2 - p^2)^2 - 12*(l1^2 + p^2) + _repl1*l1^2*(-(_repl2*p^4) 
+     + 2*(l1^2 + 6*p^2))))*ZA3(sqrt(0.6666666666666666)*sqrt(l1^2 + cospl1*l1*p + p^2)))
+       /(_repl1*_repl2*l1^2*(l1^2 + 2*cospl1*l1*p + p^2)^2) 
+     + ((-1 + cospl1^2)*ZccbA(sqrt(0.6666666666666666)*sqrt(l1^2 + cospl1*l1*p + p^2)))
+       /((l1^2 + 2*cospl1*l1*p + p^2)*ZA(l1)*ZA(sqrt(l1^2 + 2*cospl1*l1*p + p^2))))
  end
 \end{mmaCell}
 %
 \end{widetext}
+%
+Generating Fortran functions works analogously as with Julia using \mathem{\mmaDef{MakeFortranFunction}}.
+
+Similarly, C++ code can be generated using the function \mathem{\mmaDef{MakeCppFunction}}. However, this function permits some more in-depth configuration of the types of parameters and the return type. Without specifying any of these, \cpp{auto} is simply used and deducing types is left to the compiler. Note that the code thus generated requires at least the C++20 standard.
+%
+\begin{widetext}
+%
+\begin{mmaCell}{Input}
+ \mmaDef{MakeCppFunction}[
+   \mmaDef{DSEAAResult}["1-Loop"] /. cos[p, l1] -> cospl1,
+     "Parameters" -> \{"l1", "cos", "p", "gS", "ZA", "Zc", "ZA3", "ZAcbc", "ZA4"\},
+     "Name" -> "DSE_kernel_AA_1Loop"
+  ]
+\end{mmaCell}
+%
+\begin{mmaCell}{Output}
+ auto DSE_kernel_AA_1Loop(const auto &l1, const auto &cos, const auto &p, const auto &gS,
+                         const auto &ZA, const auto &Zc, const auto &ZA3, const auto &ZAcbc,
+                         const auto &ZA4)
+ \{
+   const auto _repl1 = Zc(l1);
+   const auto _repl2 = Zc(sqrt(powr<2>(l1) + 2. * cospl1 * l1 * p + powr<2>(p)));
+   return (24. * gS * powr<-2>(l1) *
+               (7. + 2. * _repl1 * powr<2>(l1) +
+                (-1. + _repl1 * powr<2>(l1)) * powr<2>(cospl1)) /
+               (_repl1) +
+           -3. * powr<-2>(p) *
+               ZA3(0.816496580927726 * sqrt(powr<2>(l1) + cospl1 * l1 * p + powr<2>(p))) *
+               (-1. * (-1. + powr<2>(cospl1)) * powr<6>(p) +
+                powr<2>(p) * powr<2>(l1 + 2. * cospl1 * p) *
+                    powr<-1>(powr<2>(l1) + 2. * cospl1 * l1 * p + powr<2>(p)) *
+                    (2. * powr<2>(l1) + powr<2>(cospl1) * powr<2>(l1) + 6. * cospl1 * l1 * p +
+                     3. * powr<2>(p)) /
+                    (_repl2) +
+                powr<-2>(l1) * powr<2>(-1. * powr<2>(l1) * p + powr<3>(p)) *
+                    (2. + powr<2>(cospl1)) / (_repl1) +
+                -4. * powr<-2>(l1) * powr<2>(p) *
+                    powr<-1>(powr<2>(l1) + 2. * cospl1 * l1 * p + powr<2>(p)) *
+                    (3. * powr<4>(l1) + 8. * powr<2>(l1) * powr<2>(p) +
+                     powr<2>(cospl1) * powr<2>(l1) * powr<2>(p) + 3. * powr<4>(p) +
+                     6. * (powr<2>(l1) + powr<2>(p)) * cospl1 * l1 * p) /
+                    (_repl2) * (-1. + powr<2>(cospl1)) / (_repl1)) /
+               (powr<2>(l1) + 2. * cospl1 * l1 * p + powr<2>(p)) +
+           powr<-1>(ZA(l1)) *
+               powr<-1>(ZA(sqrt(powr<2>(l1) + 2. * cospl1 * l1 * p + powr<2>(p)))) *
+               ZccbA(0.816496580927726 * sqrt(powr<2>(l1) + cospl1 * l1 * p + powr<2>(p))) *
+               (-1. + powr<2>(cospl1)) / (powr<2>(l1) + 2. * cospl1 * l1 * p + powr<2>(p))) *
+          gS;
+ \}
+\end{mmaCell}
+%
+\end{widetext}
+%
+\FunKit replaces integer powers of expressions in C++ with the function \cpp{powr<n>(expr)}. This allows for a more efficient implementation of (low) integer powers than the standard \cpp{std::pow(expr,n)}. For convenience, a possible implementation of \cpp{powr} may read,
+%
+\begin{lstlisting}[language=c++,style=myStyle]
+template<int n, typename NumberType>
+  requires requires(NumberType x) {
+    x*x;
+    NumberType(1.)/x;
+  }
+constexpr
+NumberType powr(const NumberType x)
+{
+  if constexpr (n == 0)
+    return NumberType(1.);
+  else if constexpr (n < 0)
+    return NumberType(1.) / powr<-n>(x);
+  else if constexpr (n > 1)
+    return x * powr<n-1>(x);
+  else
+    return x;
+}
+\end{lstlisting}
+%
+You can turn off usage of \cpp{powr} by setting
+%
+\begin{mmaCell}{Input}
+ \mmaDef{UseCppPowr}[\mmaDef{False}];
+\end{mmaCell}
 
 
 %%%%%%%%%%%%%%%%%%%%
@@ -873,7 +1017,7 @@ To that end, \FunKit provides direct output to Fortran and Julia functions, and 
 We thank... for discussions. This work is done within the fQCD collaboration \cite{fQCD} and we thank its members for discussions and collaborations on related projects.
 FRS acknowledges funding by the GSI Helmholtzzentrum f\"ur Schwerionenforschung and by HGS-HIRe for FAIR.
 
-This work is funded by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) under Germany’s Excellence Strategy EXC 2181/1 - 390900948 (the Heidelberg STRUCTURES Excellence Cluster) and the Collaborative Research Centre SFB 1225 (ISOQUANT). It is also supported by EMMI. 
+This work is funded by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) under Germany’s Excellence Strategy EXC 2181/1 - 390900948 (the Heidelberg STRUCTURES Excellence Cluster) and the Collaborative Research Centre SFB 1225 (ISOQUANT). It is also supported by EMMI.
 	
 	
 \end{acknowledgments}
