@@ -7,3 +7,6 @@ publication/*.log
 publication/FunKitNotes.bib
 
 .DS_Store
+
+form.set
+examples/form.set

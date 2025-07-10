@@ -475,6 +475,11 @@ Field->0.1
 
 
 (* ::Input::Initialization:: *)
+arcFunc[g_,r_:1.5][list_,DirectedEdge[x_,x_]]:=With[{v=DynamicLocation["VertexID$"<>ToString[VertexIndex[g,x]],Automatic,Center]},Arrow[BezierCurve[Join[{v},ScalingTransform[r {1,1},list[[1]]][list[[{5,8,10,16,18,21}]]],{v}],SplineDegree->7]]]
+arcFuncUn[g_,r_:1.5][list_,UndirectedEdge[x_,x_]]:=With[{v=DynamicLocation["VertexID$"<>ToString[VertexIndex[g,x]],Automatic,Center]},Arrow[BezierCurve[Join[{v},ScalingTransform[r {1,1},list[[1]]][list[[{5,8,10,16,18,21}]]],{v}],SplineDegree->7]]]
+
+
+(* ::Input::Initialization:: *)
 FPlot::FDOp="Cannot plot diagrams with unresolved derivative operators!";
 
 GetDiagram[setup_,expr_FTerm]:=Module[
@@ -555,7 +560,7 @@ AppendTo[addVertexSizes,oidx[[idx]]->0.00001]
 ];
 ,{idx,1,Length[GetOpenSuperIndices[setup,diag]]}];
 
-prefactor*Graph[Join[vertices[[All,1]],externalVertices,fieldVertices[[All,1]]],Join[edges,externalEdges,fieldEdges],
+graph=Graph[Join[vertices[[All,1]],externalVertices,fieldVertices[[All,1]]],Join[edges,externalEdges,fieldEdges],
 VertexShape->Join[
 Thread[vertices[[All,1]]->(vertices[[All,0]]/.$standardVertexStyles)],
 Thread[externalVertices->Map[Graphics@Style[Disk[{0,0},0.0],Gray]&,externalVertices]],
@@ -569,7 +574,10 @@ GraphLayout->{"SpringElectricalEmbedding"},
 PerformanceGoal->"Quality",
 ImageSize->Small,
 EdgeStyle->Arrowheads[{{.07,.6}}]
-]
+];
+
+prefactor*Graph[graph,
+EdgeShapeFunction->{x_\[DirectedEdge]x_:>arcFunc[graph,20.0],x_\[UndirectedEdge]x_:>arcFuncUn[graph,20.0]}]
 ];
 
 FPlot[setup_,expr_FTerm]:=Module[{},

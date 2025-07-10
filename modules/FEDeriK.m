@@ -1389,6 +1389,7 @@ If[Length[closedIndices]===0,Return[FTerm@@ret/.undoFields]];
 
 (*We have to update these global quantities after each iteration*)
 allObj=ExtractObjectsWithIndex[setup,FTerm@@(ret/.FTerm[__]:>ignore)]/.doFields;
+FunKitDebug[2,"Searching for the first object that needs expansion..."];
 
 (*Next, try to find the first factor that needs to be expanded*)
 notFoundCuri=True;
@@ -1458,10 +1459,9 @@ ret=ret/.doFields;
 ret=ret/.FTerm[a__]:>OTrunc[setup,FTerm[a]];
 (*Abort if there is nothing to do*)
 If[FreeQ[ret,AnyField,Infinity],Return[truncationPass[setup,FTerm@@ret]/.undoFields]];
-
 (*Get all open indices*)
 openIndices=GetOpenSuperIndices[setup,FTerm@@(ret/.FTerm[__]:>ignore)];
-If[Length[openIndices]===0,Return[ret/.undoFields]];
+If[Length[openIndices]===0,Return[FTerm@@(ret/.undoFields)]];
 
 allObj=ExtractObjectsWithIndex[setup,FTerm@@(ret/.FTerm[__]:>ignore)];
 

@@ -421,6 +421,7 @@ Shortest[(a_/;Not@hasFortranOperator[a])~~"("~~(arg1__/;balancedBracesQ[arg1])~~
 Shortest["pow("~~(arg1__/;balancedBracesQ[arg1])~~")"]:>"Power["~~arg1~~"]",
 Shortest["sqrt("~~(arg1__/;balancedBracesQ[arg1])~~")"]:>"Sqrt["~~arg1~~"]",
 Shortest["FTxsp("~~(arg1__/;balancedBracesQ[arg1])~~")"]:>"sp["~~arg1~~"]",
+Shortest["FTxsps("~~(arg1__/;balancedBracesQ[arg1])~~")"]:>"sps["~~arg1~~"]",
 Shortest["w("~~(arg1__/;balancedBracesQ[arg1])~~")"]:>"$w$["~~arg1~~"]",
 "**"->"^",
 " "->"",
@@ -498,6 +499,7 @@ expr=Times[a]//Rationalize;pref=1
 Block[{Print},FormTracer`DisentangleLorentzStructures[True]];
 
 repl=SafeReplaceTrace[expr];
+Print[repl];
 tmpfileName="/tmp/FS_"<>makeTemporaryFileName[];
 FormTracer`AddExtraVars@@GetAllCustomSymbols[expr/.repl[[1]]];
 formReps=Map[#[[2]]->#[[1]]&,FormTracer`GetExtraVarsSynonyms[]];
@@ -505,6 +507,7 @@ formReps=Map[#[[2]]->#[[1]]&,FormTracer`GetExtraVarsSynonyms[]];
 FormTracer`FormTrace[expr/.repl[[1]],preReplRules,Join[$standardFORMmomentumRules,postReplRules],{tmpfileName,"O4","fortran90"}];
 FormTracer`DefineExtraVars[origVars];
 import=Import[tmpfileName,"Text"];
+Print[import];
 
 RunProcess[$SystemShell, All, "rm "<>tmpfileName];
 import=import//fortranToMathematica;
@@ -575,10 +578,11 @@ Not/@Map[MemberQ[{expr},Power[a_,n_]/;(MemberQ[{a},#,Infinity]&&n<0),Infinity]&,
 Return@symbols
 ];
 
-DiagramSimplify[expr_]:=Module[{collected},
+DiagramSimplify[expr_]:=Module[{collected,QuickSimplify},
+QuickSimplify=Quiet[Simplify[#,TimeConstraint->0.5]]&;
 collected=Collect[expr,Map[#[__]&,findCouplings[expr]]];
 If[Head[collected]===Plus,collected=List@@collected,collected={collected}];
-If[Length[collected]>1,collected=ParallelMap[Simplify,collected],collected=Simplify[collected]];
+If[Length[collected]>1,collected=ParallelMap[QuickSimplify,collected],collected=QuickSimplify[collected]];
 Return[Plus@@collected]
 ];
 

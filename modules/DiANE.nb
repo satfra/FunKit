@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       154,          7]
-NotebookDataLength[    139917,       3308]
-NotebookOptionsPosition[    135780,       3222]
-NotebookOutlinePosition[    136232,       3240]
-CellTagsIndexPosition[    136189,       3237]
+NotebookDataLength[    143858,       3418]
+NotebookOptionsPosition[    139592,       3330]
+NotebookOutlinePosition[    140048,       3348]
+CellTagsIndexPosition[    140005,       3345]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -2367,6 +2367,96 @@ Cell[BoxData[
 Cell[BoxData[{
  RowBox[{
   RowBox[{
+   RowBox[{"arcFunc", "[", 
+    RowBox[{"g_", ",", 
+     RowBox[{"r_", ":", "1.5"}]}], "]"}], "[", 
+   RowBox[{"list_", ",", 
+    RowBox[{"DirectedEdge", "[", 
+     RowBox[{"x_", ",", "x_"}], "]"}]}], "]"}], ":=", 
+  RowBox[{"With", "[", 
+   RowBox[{
+    RowBox[{"{", 
+     RowBox[{"v", "=", 
+      RowBox[{"DynamicLocation", "[", 
+       RowBox[{
+        RowBox[{"\"\<VertexID$\>\"", "<>", 
+         RowBox[{"ToString", "[", 
+          RowBox[{"VertexIndex", "[", 
+           RowBox[{"g", ",", "x"}], "]"}], "]"}]}], ",", "Automatic", ",", 
+        "Center"}], "]"}]}], "}"}], ",", 
+    RowBox[{"Arrow", "[", 
+     RowBox[{"BezierCurve", "[", 
+      RowBox[{
+       RowBox[{"Join", "[", 
+        RowBox[{
+         RowBox[{"{", "v", "}"}], ",", 
+         RowBox[{
+          RowBox[{"ScalingTransform", "[", 
+           RowBox[{
+            RowBox[{"r", " ", 
+             RowBox[{"{", 
+              RowBox[{"1", ",", "1"}], "}"}]}], ",", 
+            RowBox[{"list", "[", 
+             RowBox[{"[", "1", "]"}], "]"}]}], "]"}], "[", 
+          RowBox[{"list", "[", 
+           RowBox[{"[", 
+            RowBox[{"{", 
+             RowBox[{
+             "5", ",", "8", ",", "10", ",", "16", ",", "18", ",", "21"}], 
+             "}"}], "]"}], "]"}], "]"}], ",", 
+         RowBox[{"{", "v", "}"}]}], "]"}], ",", 
+       RowBox[{"SplineDegree", "->", "7"}]}], "]"}], "]"}]}], 
+   "]"}]}], "\[IndentingNewLine]", 
+ RowBox[{
+  RowBox[{
+   RowBox[{"arcFuncUn", "[", 
+    RowBox[{"g_", ",", 
+     RowBox[{"r_", ":", "1.5"}]}], "]"}], "[", 
+   RowBox[{"list_", ",", 
+    RowBox[{"UndirectedEdge", "[", 
+     RowBox[{"x_", ",", "x_"}], "]"}]}], "]"}], ":=", 
+  RowBox[{"With", "[", 
+   RowBox[{
+    RowBox[{"{", 
+     RowBox[{"v", "=", 
+      RowBox[{"DynamicLocation", "[", 
+       RowBox[{
+        RowBox[{"\"\<VertexID$\>\"", "<>", 
+         RowBox[{"ToString", "[", 
+          RowBox[{"VertexIndex", "[", 
+           RowBox[{"g", ",", "x"}], "]"}], "]"}]}], ",", "Automatic", ",", 
+        "Center"}], "]"}]}], "}"}], ",", 
+    RowBox[{"Arrow", "[", 
+     RowBox[{"BezierCurve", "[", 
+      RowBox[{
+       RowBox[{"Join", "[", 
+        RowBox[{
+         RowBox[{"{", "v", "}"}], ",", 
+         RowBox[{
+          RowBox[{"ScalingTransform", "[", 
+           RowBox[{
+            RowBox[{"r", " ", 
+             RowBox[{"{", 
+              RowBox[{"1", ",", "1"}], "}"}]}], ",", 
+            RowBox[{"list", "[", 
+             RowBox[{"[", "1", "]"}], "]"}]}], "]"}], "[", 
+          RowBox[{"list", "[", 
+           RowBox[{"[", 
+            RowBox[{"{", 
+             RowBox[{
+             "5", ",", "8", ",", "10", ",", "16", ",", "18", ",", "21"}], 
+             "}"}], "]"}], "]"}], "]"}], ",", 
+         RowBox[{"{", "v", "}"}]}], "]"}], ",", 
+       RowBox[{"SplineDegree", "->", "7"}]}], "]"}], "]"}]}], 
+   "]"}]}]}], "Input",
+ InitializationCell->True,
+ CellChangeTimes->{
+  3.960523969525749*^9},ExpressionUUID->"2b656652-2c01-4173-ab22-\
+9a36a11978a7"],
+
+Cell[BoxData[{
+ RowBox[{
+  RowBox[{
    RowBox[{
     RowBox[{"FPlot", "::", "FDOp"}], "=", 
     "\"\<Cannot plot diagrams with unresolved derivative operators!\>\""}], 
@@ -2950,7 +3040,7 @@ Cell[BoxData[{
             RowBox[{"GetOpenSuperIndices", "[", 
              RowBox[{"setup", ",", "diag"}], "]"}], "]"}]}], "}"}]}], "]"}], 
        ";", "\[IndentingNewLine]", "\[IndentingNewLine]", 
-       RowBox[{"prefactor", "*", 
+       RowBox[{"graph", "=", 
         RowBox[{"Graph", "[", 
          RowBox[{
           RowBox[{"Join", "[", 
@@ -3033,8 +3123,24 @@ Cell[BoxData[{
             RowBox[{"{", 
              RowBox[{"{", 
               RowBox[{".07", ",", ".6"}], "}"}], "}"}], "]"}]}]}], 
-         "\[IndentingNewLine]", "]"}]}]}]}], "\[IndentingNewLine]", "]"}]}], 
-   ";"}], "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+         "\[IndentingNewLine]", "]"}]}], ";", "\[IndentingNewLine]", 
+       "\[IndentingNewLine]", 
+       RowBox[{"prefactor", "*", 
+        RowBox[{"Graph", "[", 
+         RowBox[{"graph", ",", "\[IndentingNewLine]", 
+          RowBox[{"EdgeShapeFunction", "->", 
+           RowBox[{"{", 
+            RowBox[{
+             RowBox[{
+              RowBox[{"x_", "\[DirectedEdge]", "x_"}], ":>", 
+              RowBox[{"arcFunc", "[", 
+               RowBox[{"graph", ",", "20.0"}], "]"}]}], ",", 
+             RowBox[{
+              RowBox[{"x_", "\[UndirectedEdge]", "x_"}], ":>", 
+              RowBox[{"arcFuncUn", "[", 
+               RowBox[{"graph", ",", "20.0"}], "]"}]}]}], "}"}]}]}], 
+         "]"}]}]}]}], "\[IndentingNewLine]", "]"}]}], ";"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
    RowBox[{
@@ -3195,8 +3301,10 @@ Cell[BoxData[{
    3.9536299186277313`*^9}, {3.953630072152544*^9, 3.953630291803937*^9}, {
    3.953695917538652*^9, 3.953696057617152*^9}, {3.953697730659154*^9, 
    3.953697731269145*^9}, {3.9537977169509583`*^9, 3.95379776597925*^9}, {
-   3.95379780212782*^9, 3.9537978155080557`*^9}, 
-   3.957339743131215*^9},ExpressionUUID->"b418b13c-926d-4bba-aa56-\
+   3.95379780212782*^9, 3.9537978155080557`*^9}, 3.957339743131215*^9, {
+   3.960523951445382*^9, 3.960523961263728*^9}, {3.9605240457264023`*^9, 
+   3.960524059329814*^9}, {3.960526508684888*^9, 
+   3.960526528491046*^9}},ExpressionUUID->"b418b13c-926d-4bba-aa56-\
 0b557db0f3a7"]
 }, Open  ]],
 
@@ -3221,7 +3329,7 @@ Cell[BoxData[
 }, Open  ]]
 },
 AutoGeneratedPackage->"DiANE.m",
-WindowSize->{1185, 711},
+WindowSize->{292.5, 351.75},
 WindowMargins->{{0, Automatic}, {Automatic, 0}},
 Magnification:>0.7 Inherited,
 FrontEndVersion->"14.1 for Linux x86 (64-bit) (July 16, 2024)",
@@ -3302,12 +3410,14 @@ Cell[90702, 2142, 3400, 83, 95, "Input",ExpressionUUID->"16fb7091-8e31-42c5-b0bb
  InitializationCell->True],
 Cell[94105, 2227, 5172, 137, 294, "Input",ExpressionUUID->"d522fb05-5ff9-495d-a416-b1efe35e553a",
  InitializationCell->True],
-Cell[99280, 2366, 35861, 833, 1850, "Input",ExpressionUUID->"b418b13c-926d-4bba-aa56-0b557db0f3a7",
+Cell[99280, 2366, 2994, 88, 80, "Input",ExpressionUUID->"2b656652-2c01-4173-ab22-9a36a11978a7",
+ InitializationCell->True],
+Cell[102277, 2456, 36676, 851, 5350, "Input",ExpressionUUID->"b418b13c-926d-4bba-aa56-0b557db0f3a7",
  InitializationCell->True]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[135178, 3204, 351, 6, 46, "Section",ExpressionUUID->"ca2026b5-7ed6-4941-a57a-35062d7325da"],
-Cell[135532, 3212, 220, 6, 37, "Code",ExpressionUUID->"572650f1-255e-412f-86a9-43a44c871c76"]
+Cell[138990, 3312, 351, 6, 46, "Section",ExpressionUUID->"ca2026b5-7ed6-4941-a57a-35062d7325da"],
+Cell[139344, 3320, 220, 6, 37, "Code",ExpressionUUID->"572650f1-255e-412f-86a9-43a44c871c76"]
 }, Open  ]]
 }, Open  ]]
 }

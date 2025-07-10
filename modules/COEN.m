@@ -107,7 +107,7 @@ CExpression/:GenerateCode[CExpression[Times[Plus[b_,c__],Power[d_,-1]]]]:="("<>n
 CExpression/:GenerateCode[CExpression[Times[a__,Plus[b_,c__],Power[d_,-1]]]]:=nest[Times[a]]<>" * ("<>nest[Plus[b,c]]<>") / ("<>nest[d]<>")";
 
 (*functions*)
-CExpression/:GenerateCode[CExpression[a_[args_]]]:=nest[a]<>"("<>nest[args]<>")";
+CExpression/:GenerateCode[CExpression[a_[args___]]]:=nest[a]<>"("<>StringJoin@StringRiffle[nest/@{args},", "]<>")";
 
 (*number conversion*)
 CExpression/:GenerateCode[CExpression[I]]:="complex<double>(0,1)";
@@ -353,7 +353,11 @@ ret=ret<>t["Name"];
 Return[ret];
 ];
 prepParam[it_String]:=<|"Type"->"auto","Reference"->True,"Name"->it,"Const"->True|>;
-prepParam[it_Association]:=it;
+prepParam[it_Association]:=Module[{res=it},
+If[KeyFreeQ[res,"Const"],AssociateTo[res,"Const"->True]];
+If[KeyFreeQ[res,"Reference"],AssociateTo[res,"Reference"->True]];
+Return[res];
+];
 prepParam[it_]:=(Print[it," is not a valid C++ parameter!"];Abort[]);
 
 
