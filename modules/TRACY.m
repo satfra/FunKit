@@ -381,17 +381,15 @@ Map[Head[#][__]:>$dummy[RandomInteger[10^12]]&,Values[FormTracer`Private`groupTe
 Map[#[__]:>$dummy[RandomInteger[10^12]]&,FormTracer`Private`combinedTensorNames]\[Union]
 Map[#:>$dummy[RandomInteger[10^12]]&,Global`GetFormTracerGroupConstants[]];
 GetAllCustomSymbols[expr_]:=Module[{obj},
-obj={};
-expr/.removeFORMTracerRule//.{
-a_Symbol[b__]/;customExclusions[a]:>(AppendTo[obj,a];$dummy[RandomInteger[10^12],b]),
-a_Symbol/;customExclusions[a]:>(AppendTo[obj,a];$dummy[RandomInteger[10^12]])
-};
-obj//DeleteDuplicates
+t1=AbsoluteTime[];
+obj=DeleteDuplicates@Cases[expr,(a_Symbol/;customExclusions[a])|(a_Symbol[__]/;customExclusions[a]),Infinity];
+obj=DeleteDuplicates@((#/.a_[__]:>a)&/@obj);
+Return[obj];
 ];
 GetAllMomenta[expr_]:=Module[{obj},
-obj={};
-expr/.sp[a_,b_]:>(AppendTo[obj,{a,b}];$dummy[RandomInteger[10^12],b]);
-obj//GetAllCustomSymbols
+obj=DeleteDuplicates@Cases[expr,sp[__]|sps[__]|vec[__]|vecs[__],Infinity];
+obj=obj/.{sp[a_,b_]:>{a,b},sps[a_,b_]:>{a,b},vecs[a_,_]:>{a},vec[a_,_]:>{a}}//Flatten;
+obj//DeleteDuplicates
 ];
 
 
@@ -499,15 +497,13 @@ expr=Times[a]//Rationalize;pref=1
 Block[{Print},FormTracer`DisentangleLorentzStructures[True]];
 
 repl=SafeReplaceTrace[expr];
-Print[repl];
 tmpfileName="/tmp/FS_"<>makeTemporaryFileName[];
 FormTracer`AddExtraVars@@GetAllCustomSymbols[expr/.repl[[1]]];
 formReps=Map[#[[2]]->#[[1]]&,FormTracer`GetExtraVarsSynonyms[]];
 
-FormTracer`FormTrace[expr/.repl[[1]],preReplRules,Join[$standardFORMmomentumRules,postReplRules],{tmpfileName,"O4","fortran90"}];
+FormTracer`FormTrace[expr/.repl[[1]],preReplRules,Join[$standardFORMmomentumRules,postReplRules],{tmpfileName,"O4,saIter=5000,saMinT=10,saMaxT=10000","fortran90"}];
 FormTracer`DefineExtraVars[origVars];
 import=Import[tmpfileName,"Text"];
-Print[import];
 
 RunProcess[$SystemShell, All, "rm "<>tmpfileName];
 import=import//fortranToMathematica;
@@ -565,24 +561,30 @@ Return[Flatten[returnValue]]
 (* ::Input::Initialization:: *)
 findCouplings[expr_]:=Module[
 {symbols},
+FunKitDebug[2,"findCouplings: looking for custom symbols."];
 symbols=GetAllCustomSymbols[expr];
 symbols=Pick[symbols,
 Map[MemberQ[{expr},#[__],Infinity]&,symbols]
 ];
 
-symbols=Cases[expr,Alternatives@@Map[#[__]&,symbols],Infinity];
+symbols=DeleteDuplicates@Cases[expr,Alternatives@@Map[#[__]&,symbols],Infinity];
+FunKitDebug[2,"findCouplings: found: ",symbols];
 symbols=Pick[symbols,
 Not/@Map[MemberQ[{expr},Power[a_,n_]/;(MemberQ[{a},#,Infinity]&&n<0),Infinity]&,symbols]
 ];
+FunKitDebug[2,"findCouplings: picked: ",symbols];
 
 Return@symbols
 ];
 
-DiagramSimplify[expr_]:=Module[{collected,QuickSimplify},
-QuickSimplify=Quiet[Simplify[#,TimeConstraint->0.5]]&;
-collected=Collect[expr,Map[#[__]&,findCouplings[expr]]];
+DiagramSimplify[expr_]:=Module[{collected,mSimplify,couplings},
+mSimplify=Quiet@Simplify[Simplify[#,Trig->False,TimeConstraint->0.1],Trig->False,TimeConstraint->1]&;
+couplings=findCouplings[expr];
+FunKitDebug[2,"DiagramSimplify: Found the following couplings in the given expression: ",couplings];
+collected=Collect[expr,Map[#[__]&,couplings]];
 If[Head[collected]===Plus,collected=List@@collected,collected={collected}];
-If[Length[collected]>1,collected=ParallelMap[QuickSimplify,collected],collected=QuickSimplify[collected]];
+If[Length[collected]>1,collected=ParallelMap[mSimplify,collected],collected=mSimplify[collected]];
+FunKitDebug[2,"DiagramSimplify: Finished"];
 Return[Plus@@collected]
 ];
 
@@ -611,13 +613,15 @@ FormTracer`AddExtraVars@@newSymbols;
 
 tmpfileName="/tmp/FS_"<>makeTemporaryFileName[];
 
-FormTracer`FormTrace[Rationalize[expr/.repl[[1]]],Join[momRule,preReplRules],Join[$standardFORMmomentumRules,postReplRules],{tmpfileName,"O4","fortran90"}];
+FormTracer`FormTrace[Rationalize[expr/.repl[[1]]],Join[momRule,preReplRules],Join[$standardFORMmomentumRules,postReplRules],{tmpfileName,"O4,saIter=5000,saMinT=10,saMaxT=10000","fortran90"}];
 import=Import[tmpfileName,"Text"];
 
 RunProcess[$SystemShell, All, "rm "<>tmpfileName];
 import=import//fortranToMathematica;
 
 FormTracer`DefineExtraVars[origVars];
+
+FunKitDebug[2,"FORMSimplify: FORM finished, continuing to DiagramSimplify"];
 
 ret=(ToExpression[import]//Rationalize)/.repl[[2]]//DiagramSimplify;
 

@@ -10,10 +10,10 @@
 NotebookFileLineBreakTest
 NotebookFileLineBreakTest
 NotebookDataPosition[       154,          7]
-NotebookDataLength[     95200,       2258]
-NotebookOptionsPosition[     90889,       2179]
-NotebookOutlinePosition[     91316,       2196]
-CellTagsIndexPosition[     91273,       2193]
+NotebookDataLength[     95360,       2267]
+NotebookOptionsPosition[     91053,       2188]
+NotebookOutlinePosition[     91476,       2205]
+CellTagsIndexPosition[     91433,       2202]
 WindowFrame->Normal*)
 
 (* Beginning of Notebook Content *)
@@ -55,22 +55,28 @@ Cell["Exports", "Section",
 Cell[BoxData[{
  RowBox[{
   RowBox[{
-   RowBox[{"MakeSetup", "::", "usage"}], "=", "\"\<\>\""}], ";"}], "\[IndentingNewLine]", 
+   RowBox[{"MakeSetup", "::", "usage"}], "=", "\"\<\>\""}], 
+  ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
-   RowBox[{"AddCField", "::", "usage"}], "=", "\"\<\>\""}], ";"}], "\[IndentingNewLine]", 
+   RowBox[{"AddCField", "::", "usage"}], "=", "\"\<\>\""}], 
+  ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
-   RowBox[{"AddGrassmann", "::", "usage"}], "=", "\"\<\>\""}], ";"}], "\[IndentingNewLine]", 
+   RowBox[{"AddGrassmann", "::", "usage"}], "=", "\"\<\>\""}], 
+  ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
-   RowBox[{"AddVertex", "::", "usage"}], "=", "\"\<\>\""}], ";"}], "\[IndentingNewLine]", 
+   RowBox[{"AddVertex", "::", "usage"}], "=", "\"\<\>\""}], 
+  ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
-   RowBox[{"AddVertices", "::", "usage"}], "=", "\"\<\>\""}], ";"}], "\[IndentingNewLine]", 
+   RowBox[{"AddVertices", "::", "usage"}], "=", "\"\<\>\""}], 
+  ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
-   RowBox[{"AddVertexBasis", "::", "usage"}], "=", "\"\<\>\""}], ";"}], "\[IndentingNewLine]", 
+   RowBox[{"AddVertexBasis", "::", "usage"}], "=", "\"\<\>\""}], 
+  ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
    RowBox[{"AddVertexBases", "::", "usage"}], "=", "\"\<\>\""}], 
@@ -291,7 +297,7 @@ Cell[BoxData[{
        RowBox[{"fields", "=", " ", 
         RowBox[{"<|", "\[IndentingNewLine]", 
          RowBox[{
-          RowBox[{"\"\<cField\>\"", "\[Rule]", " ", 
+          RowBox[{"\"\<Commuting\>\"", "\[Rule]", " ", 
            RowBox[{"{", "}"}]}], ",", "\[IndentingNewLine]", 
           RowBox[{"\"\<Grassmann\>\"", "\[Rule]", 
            RowBox[{"{", "}"}]}]}], "\[IndentingNewLine]", "|>"}]}], ";", 
@@ -320,23 +326,22 @@ Cell[BoxData[{
      "]"}]}], ";"}], "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
-   RowBox[{"SeDecA", "::", "FieldExists"}], 
-   "=", "\"\<The field `1` has been already defined!\>\""}], ";"}]}], "Input",\
-
+   RowBox[{"SeDecA", "::", "FieldExists"}], "=", 
+   "\"\<The field `1` has been already defined!\>\""}], ";"}]}], "Input",
  InitializationCell->True,
  CellChangeTimes->{{3.9564870863871183`*^9, 3.956487099652684*^9}, {
    3.956487132036112*^9, 3.956487211565626*^9}, {3.956488983409135*^9, 
-   3.9564890260215597`*^9}, 
-   3.9570710990493937`*^9},ExpressionUUID->"b5ec687f-c5d8-460a-8c88-\
+   3.9564890260215597`*^9}, 3.9570710990493937`*^9, {3.961147593837427*^9, 
+   3.961147594949334*^9}},ExpressionUUID->"b5ec687f-c5d8-460a-8c88-\
 00c6b9f276b5"],
 
 Cell[BoxData[{
  RowBox[{
   RowBox[{
    RowBox[{
-    RowBox[{"SeDecA", "::", "IncorrectFieldSpecification"}], 
-    "=", "\"\<Invalid specification:\n            `1`\nA field must be either \
-of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
+    RowBox[{"SeDecA", "::", "IncorrectFieldSpecification"}], "=", 
+    "\"\<Invalid specification:\n            `1`\nA field must be either of \
+the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
 {\!\(\*OverscriptBox[\(\[Phi]\), \(_\)]\)[...], \[Phi][...]}\>\""}], ";"}], 
   "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
  RowBox[{
@@ -365,11 +370,11 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
           RowBox[{"Join", "[", 
            RowBox[{
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<cField\>\"", "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Commuting\>\"", "]"}], ",", 
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
           RowBox[{"name", "[", "__", "]"}], ",", "Infinity"}], "]"}], ",", 
         RowBox[{
          RowBox[{"Message", "[", 
@@ -379,10 +384,11 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
       RowBox[{"AppendTo", "[", 
        RowBox[{
         RowBox[{
-         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-         "[", "\"\<cField\>\"", "]"}], ",", 
+         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+         "\"\<Commuting\>\"", "]"}], ",", 
         RowBox[{"name", "[", "p", "]"}]}], "]"}], ";", "\[IndentingNewLine]", 
-      "setup"}]}], "\[IndentingNewLine]", "]"}]}], ";"}], "\[IndentingNewLine]", 
+      "setup"}]}], "\[IndentingNewLine]", "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
    RowBox[{"AddCField", "[", 
@@ -401,11 +407,11 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
           RowBox[{"Join", "[", 
            RowBox[{
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<cField\>\"", "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Commuting\>\"", "]"}], ",", 
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
           RowBox[{"name", "[", "__", "]"}], ",", "Infinity"}], "]"}], ",", 
         RowBox[{
          RowBox[{"Message", "[", 
@@ -415,8 +421,8 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
       RowBox[{"AppendTo", "[", 
        RowBox[{
         RowBox[{
-         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-         "[", "\"\<cField\>\"", "]"}], ",", 
+         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+         "\"\<Commuting\>\"", "]"}], ",", 
         RowBox[{"name", "[", 
          RowBox[{"p", ",", 
           RowBox[{"{", "ind", "}"}]}], "]"}]}], "]"}], ";", 
@@ -441,11 +447,11 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
           RowBox[{"Join", "[", 
            RowBox[{
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<cField\>\"", "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Commuting\>\"", "]"}], ",", 
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
           RowBox[{
            RowBox[{"name1", "[", "__", "]"}], "|", 
            RowBox[{"name2", "[", "__", "]"}]}], ",", "Infinity"}], "]"}], ",", 
@@ -459,8 +465,8 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
       RowBox[{"AppendTo", "[", 
        RowBox[{
         RowBox[{
-         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-         "[", "\"\<cField\>\"", "]"}], ",", 
+         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+         "\"\<Commuting\>\"", "]"}], ",", 
         RowBox[{"{", 
          RowBox[{
           RowBox[{"name1", "[", "p", "]"}], ",", 
@@ -490,11 +496,11 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
           RowBox[{"Join", "[", 
            RowBox[{
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<cField\>\"", "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Commuting\>\"", "]"}], ",", 
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
           RowBox[{
            RowBox[{"name1", "[", "__", "]"}], "|", 
            RowBox[{"name2", "[", "__", "]"}]}], ",", "Infinity"}], "]"}], ",", 
@@ -508,8 +514,8 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
       RowBox[{"AppendTo", "[", 
        RowBox[{
         RowBox[{
-         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-         "[", "\"\<cField\>\"", "]"}], ",", 
+         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+         "\"\<Commuting\>\"", "]"}], ",", 
         RowBox[{"{", 
          RowBox[{
           RowBox[{"name1", "[", 
@@ -522,7 +528,8 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
   ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{"SetAttributes", "[", 
-   RowBox[{"AddCField", ",", "HoldFirst"}], "]"}], "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
+   RowBox[{"AddCField", ",", "HoldFirst"}], "]"}], 
+  "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
    RowBox[{"AddGrassmann", "[", "a___", "]"}], ":=", 
@@ -549,11 +556,11 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
           RowBox[{"Join", "[", 
            RowBox[{
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<cField\>\"", "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Commuting\>\"", "]"}], ",", 
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
           RowBox[{"name", "[", "__", "]"}], ",", "Infinity"}], "]"}], ",", 
         RowBox[{
          RowBox[{"Message", "[", 
@@ -563,10 +570,11 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
       RowBox[{"AppendTo", "[", 
        RowBox[{
         RowBox[{
-         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-         "[", "\"\<Grassmann\>\"", "]"}], ",", 
+         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+         "\"\<Grassmann\>\"", "]"}], ",", 
         RowBox[{"name", "[", "p", "]"}]}], "]"}], ";", "\[IndentingNewLine]", 
-      "setup"}]}], "\[IndentingNewLine]", "]"}]}], ";"}], "\[IndentingNewLine]", 
+      "setup"}]}], "\[IndentingNewLine]", "]"}]}], 
+  ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
    RowBox[{"AddGrassmann", "[", 
@@ -585,11 +593,11 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
           RowBox[{"Join", "[", 
            RowBox[{
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<cField\>\"", "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Commuting\>\"", "]"}], ",", 
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
           RowBox[{"name", "[", "__", "]"}], ",", "Infinity"}], "]"}], ",", 
         RowBox[{
          RowBox[{"Message", "[", 
@@ -599,8 +607,8 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
       RowBox[{"AppendTo", "[", 
        RowBox[{
         RowBox[{
-         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-         "[", "\"\<Grassmann\>\"", "]"}], ",", 
+         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+         "\"\<Grassmann\>\"", "]"}], ",", 
         RowBox[{"name", "[", 
          RowBox[{"p", ",", 
           RowBox[{"{", "ind", "}"}]}], "]"}]}], "]"}], ";", 
@@ -625,11 +633,11 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
           RowBox[{"Join", "[", 
            RowBox[{
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<cField\>\"", "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Commuting\>\"", "]"}], ",", 
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
           RowBox[{
            RowBox[{"name1", "[", "__", "]"}], "|", 
            RowBox[{"name2", "[", "__", "]"}]}], ",", "Infinity"}], "]"}], ",", 
@@ -643,8 +651,8 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
       RowBox[{"AppendTo", "[", 
        RowBox[{
         RowBox[{
-         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-         "[", "\"\<Grassmann\>\"", "]"}], ",", 
+         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+         "\"\<Grassmann\>\"", "]"}], ",", 
         RowBox[{"{", 
          RowBox[{
           RowBox[{"name1", "[", "p", "]"}], ",", 
@@ -674,11 +682,11 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
           RowBox[{"Join", "[", 
            RowBox[{
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<cField\>\"", "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Commuting\>\"", "]"}], ",", 
             RowBox[{
-             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-             "[", "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
+             RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+             "\"\<Grassmann\>\"", "]"}]}], "]"}], ",", 
           RowBox[{
            RowBox[{"name1", "[", "__", "]"}], "|", 
            RowBox[{"name2", "[", "__", "]"}]}], ",", "Infinity"}], "]"}], ",", 
@@ -692,8 +700,8 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
       RowBox[{"AppendTo", "[", 
        RowBox[{
         RowBox[{
-         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], 
-         "[", "\"\<Grassmann\>\"", "]"}], ",", 
+         RowBox[{"setup", "[", "\"\<FieldSpace\>\"", "]"}], "[", 
+         "\"\<Grassmann\>\"", "]"}], ",", 
         RowBox[{"{", 
          RowBox[{
           RowBox[{"name1", "[", 
@@ -715,8 +723,9 @@ of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}], or a pair \
    3.956489288253789*^9}, {3.956489328358396*^9, 3.956489386767342*^9}, {
    3.9566537001937*^9, 3.956653815539763*^9}, {3.95665385272537*^9, 
    3.956653878650263*^9}, {3.956653914416184*^9, 3.956654011122369*^9}, 
-   3.9566540525952663`*^9, {3.956654592994218*^9, 
-   3.956654611218567*^9}},ExpressionUUID->"12ec00a1-0f66-4375-be54-\
+   3.9566540525952663`*^9, {3.956654592994218*^9, 3.956654611218567*^9}, {
+   3.9611475994607067`*^9, 
+   3.9611476322153263`*^9}},ExpressionUUID->"12ec00a1-0f66-4375-be54-\
 f79b619a1e7a"],
 
 Cell[BoxData[{
@@ -2178,9 +2187,9 @@ Cell[BoxData[
 }, Open  ]]
 },
 AutoGeneratedPackage->"SeDecA.m",
-WindowSize->{1440, 773},
+WindowSize->{1200, 750},
 WindowMargins->{{0, Automatic}, {Automatic, 0}},
-FrontEndVersion->"14.2 for Mac OS X ARM (64-bit) (March 16, 2025)",
+FrontEndVersion->"14.1 for Linux x86 (64-bit) (July 16, 2024)",
 StyleDefinitions->"Default.nb",
 ExpressionUUID->"dfc92765-bf29-47cf-bd50-cf1f31dcd525"
 ]
@@ -2195,68 +2204,68 @@ CellTagsIndex->{}
 *)
 (*NotebookFileOutline
 Notebook[{
-Cell[554, 20, 751, 13, 29, "Input",ExpressionUUID->"33cd48af-4550-42b3-9c95-127f2f1ee635"],
+Cell[554, 20, 751, 13, 30, "Input",ExpressionUUID->"33cd48af-4550-42b3-9c95-127f2f1ee635"],
 Cell[CellGroupData[{
 Cell[1330, 37, 382, 6, 96, "Title",ExpressionUUID->"45e0855c-4bc3-42ae-aaff-d5b51f4ff40a"],
 Cell[CellGroupData[{
-Cell[1737, 47, 299, 5, 66, "Section",ExpressionUUID->"e11489d7-57c3-46f3-92a7-9bd632e0d9ac"],
-Cell[2039, 54, 1571, 34, 167, "Input",ExpressionUUID->"0d5d392c-52cd-44ef-853d-02a6cf9d51ce",
+Cell[1737, 47, 299, 5, 65, "Section",ExpressionUUID->"e11489d7-57c3-46f3-92a7-9bd632e0d9ac"],
+Cell[2039, 54, 1589, 40, 165, "Input",ExpressionUUID->"0d5d392c-52cd-44ef-853d-02a6cf9d51ce",
  InitializationCell->True]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[3647, 93, 399, 6, 66, "Section",ExpressionUUID->"7a67b833-615e-4eea-95c3-c918d61a7da6"],
-Cell[4049, 101, 293, 5, 51, "Code",ExpressionUUID->"71d825cf-7aba-4edc-bf61-f586647bba8a"]
+Cell[3665, 99, 399, 6, 65, "Section",ExpressionUUID->"7a67b833-615e-4eea-95c3-c918d61a7da6"],
+Cell[4067, 107, 293, 5, 52, "Code",ExpressionUUID->"71d825cf-7aba-4edc-bf61-f586647bba8a"]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[4379, 111, 319, 5, 66, "Section",ExpressionUUID->"30f9072b-8a6a-41f2-a1a2-26087401d968"],
-Cell[4701, 118, 3381, 88, 310, "Input",ExpressionUUID->"3d4b5bba-8256-4a56-a01b-b22f4c492112",
+Cell[4397, 117, 319, 5, 65, "Section",ExpressionUUID->"30f9072b-8a6a-41f2-a1a2-26087401d968"],
+Cell[4719, 124, 3381, 88, 466, "Input",ExpressionUUID->"3d4b5bba-8256-4a56-a01b-b22f4c492112",
  InitializationCell->True]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[8119, 211, 259, 4, 66, "Section",ExpressionUUID->"d65e8f2b-6500-4348-8918-912b67b13cd9"],
-Cell[8381, 217, 2123, 49, 290, "Input",ExpressionUUID->"0a00f2e0-9e12-4855-8a8a-da6773cee6a6",
+Cell[8137, 217, 259, 4, 65, "Section",ExpressionUUID->"d65e8f2b-6500-4348-8918-912b67b13cd9"],
+Cell[8399, 223, 2123, 49, 301, "Input",ExpressionUUID->"0a00f2e0-9e12-4855-8a8a-da6773cee6a6",
  InitializationCell->True]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[10541, 271, 305, 5, 66, "Section",ExpressionUUID->"5bfdf2cf-4511-4902-8434-d1be2089dc9f"],
-Cell[10849, 278, 2215, 52, 433, "Input",ExpressionUUID->"b5ec687f-c5d8-460a-8c88-00c6b9f276b5",
+Cell[10559, 277, 305, 5, 65, "Section",ExpressionUUID->"5bfdf2cf-4511-4902-8434-d1be2089dc9f"],
+Cell[10867, 284, 2262, 51, 432, "Input",ExpressionUUID->"b5ec687f-c5d8-460a-8c88-00c6b9f276b5",
  InitializationCell->True],
-Cell[13067, 332, 14789, 387, 1107, "Input",ExpressionUUID->"12ec00a1-0f66-4375-be54-f79b619a1e7a",
+Cell[13132, 337, 14888, 391, 1271, "Input",ExpressionUUID->"12ec00a1-0f66-4375-be54-f79b619a1e7a",
  InitializationCell->True],
-Cell[27859, 721, 3641, 94, 392, "Input",ExpressionUUID->"ab47e675-cf17-4f9e-b34d-abae28261f8b",
+Cell[28023, 730, 3641, 94, 412, "Input",ExpressionUUID->"ab47e675-cf17-4f9e-b34d-abae28261f8b",
  InitializationCell->True],
-Cell[31503, 817, 7466, 187, 617, "Input",ExpressionUUID->"468cdacf-8d88-4a6c-bfb6-7559cceca39d",
+Cell[31667, 826, 7466, 187, 696, "Input",ExpressionUUID->"468cdacf-8d88-4a6c-bfb6-7559cceca39d",
  InitializationCell->True]
 }, Open  ]],
 Cell[CellGroupData[{
-Cell[39006, 1009, 448, 7, 66, "Section",ExpressionUUID->"900950c0-2967-4a78-9ad4-803aa0efe475"],
-Cell[39457, 1018, 323, 6, 51, "Code",ExpressionUUID->"c131c21c-8ec1-433b-b0cb-c65c4648060d"],
+Cell[39170, 1018, 448, 7, 66, "Section",ExpressionUUID->"900950c0-2967-4a78-9ad4-803aa0efe475"],
+Cell[39621, 1027, 323, 6, 51, "Code",ExpressionUUID->"c131c21c-8ec1-433b-b0cb-c65c4648060d"],
 Cell[CellGroupData[{
-Cell[39805, 1028, 214, 3, 29, "Input",ExpressionUUID->"db373f32-ec9b-4ba0-8324-3c3489f28efc"],
+Cell[39969, 1037, 214, 3, 29, "Input",ExpressionUUID->"db373f32-ec9b-4ba0-8324-3c3489f28efc"],
 Cell[CellGroupData[{
-Cell[40044, 1035, 1476, 22, 23, "Print",ExpressionUUID->"7e096d75-ac89-4379-8608-7cca877323f5"],
-Cell[41523, 1059, 1101, 16, 23, "Print",ExpressionUUID->"f9280de8-691e-4e6f-8c6f-188909aa61cd"],
-Cell[42627, 1077, 1093, 16, 23, "Print",ExpressionUUID->"a3e8da21-e7f1-4b2d-aa96-a456acd72807"],
-Cell[43723, 1095, 1242, 19, 23, "Print",ExpressionUUID->"dae485c2-5bb1-48a0-9f2a-5d537f2b7c32"],
-Cell[44968, 1116, 1180, 18, 23, "Print",ExpressionUUID->"113c63ba-90b5-4445-bb7b-d9ada3faa87b"],
-Cell[46151, 1136, 1176, 17, 23, "Print",ExpressionUUID->"4ff1ef50-064f-4b77-bc71-2400fa2ce780"],
-Cell[47330, 1155, 1176, 17, 23, "Print",ExpressionUUID->"56d67c92-5d82-44c5-be6b-61de8f666c97"],
-Cell[48509, 1174, 1174, 17, 23, "Print",ExpressionUUID->"c15dabe7-d820-4ed6-9e69-f671b2516918"],
-Cell[49686, 1193, 1176, 17, 23, "Print",ExpressionUUID->"b7b3d50a-7c75-4805-9c54-ebb94cd37e53"],
-Cell[50865, 1212, 1175, 17, 23, "Print",ExpressionUUID->"77fee283-9cd9-481e-a306-d55f444b7e0b"],
-Cell[52043, 1231, 1176, 17, 23, "Print",ExpressionUUID->"fa310b38-4027-40f1-911a-1ab3420a3cda"],
-Cell[53222, 1250, 1942, 30, 98, "Print",ExpressionUUID->"e0bd3d2e-b501-42f2-a7fd-1758d546a99e"]
+Cell[40208, 1044, 1476, 22, 23, "Print",ExpressionUUID->"7e096d75-ac89-4379-8608-7cca877323f5"],
+Cell[41687, 1068, 1101, 16, 23, "Print",ExpressionUUID->"f9280de8-691e-4e6f-8c6f-188909aa61cd"],
+Cell[42791, 1086, 1093, 16, 23, "Print",ExpressionUUID->"a3e8da21-e7f1-4b2d-aa96-a456acd72807"],
+Cell[43887, 1104, 1242, 19, 23, "Print",ExpressionUUID->"dae485c2-5bb1-48a0-9f2a-5d537f2b7c32"],
+Cell[45132, 1125, 1180, 18, 23, "Print",ExpressionUUID->"113c63ba-90b5-4445-bb7b-d9ada3faa87b"],
+Cell[46315, 1145, 1176, 17, 23, "Print",ExpressionUUID->"4ff1ef50-064f-4b77-bc71-2400fa2ce780"],
+Cell[47494, 1164, 1176, 17, 23, "Print",ExpressionUUID->"56d67c92-5d82-44c5-be6b-61de8f666c97"],
+Cell[48673, 1183, 1174, 17, 23, "Print",ExpressionUUID->"c15dabe7-d820-4ed6-9e69-f671b2516918"],
+Cell[49850, 1202, 1176, 17, 23, "Print",ExpressionUUID->"b7b3d50a-7c75-4805-9c54-ebb94cd37e53"],
+Cell[51029, 1221, 1175, 17, 23, "Print",ExpressionUUID->"77fee283-9cd9-481e-a306-d55f444b7e0b"],
+Cell[52207, 1240, 1176, 17, 23, "Print",ExpressionUUID->"fa310b38-4027-40f1-911a-1ab3420a3cda"],
+Cell[53386, 1259, 1942, 30, 98, "Print",ExpressionUUID->"e0bd3d2e-b501-42f2-a7fd-1758d546a99e"]
 }, Open  ]]
 }, Open  ]],
-Cell[55191, 1284, 5030, 138, 397, "Input",ExpressionUUID->"579d82c5-c4d3-4520-81f3-2df38f7e3c16"],
+Cell[55355, 1293, 5030, 138, 397, "Input",ExpressionUUID->"579d82c5-c4d3-4520-81f3-2df38f7e3c16"],
 Cell[CellGroupData[{
-Cell[60246, 1426, 224, 4, 29, "Input",ExpressionUUID->"e98bb08d-a915-4a9e-97d9-5affe189e6ae"],
-Cell[60473, 1432, 12568, 297, 447, "Output",ExpressionUUID->"92d7a99e-a893-44ba-a9f2-f7f9a940dcc7"]
+Cell[60410, 1435, 224, 4, 29, "Input",ExpressionUUID->"e98bb08d-a915-4a9e-97d9-5affe189e6ae"],
+Cell[60637, 1441, 12568, 297, 447, "Output",ExpressionUUID->"92d7a99e-a893-44ba-a9f2-f7f9a940dcc7"]
 }, Open  ]],
-Cell[73056, 1732, 4977, 135, 397, "Input",ExpressionUUID->"5c7b1e60-ec67-4791-b451-1d23239d4881"],
+Cell[73220, 1741, 4977, 135, 397, "Input",ExpressionUUID->"5c7b1e60-ec67-4791-b451-1d23239d4881"],
 Cell[CellGroupData[{
-Cell[78058, 1871, 220, 4, 29, "Input",ExpressionUUID->"136014c5-d8ec-4fc3-a479-13bb28f9db76"],
-Cell[78281, 1877, 12568, 297, 447, "Output",ExpressionUUID->"12e8994b-cd55-4fc4-87d8-b67446065cb0"]
+Cell[78222, 1880, 220, 4, 29, "Input",ExpressionUUID->"136014c5-d8ec-4fc3-a479-13bb28f9db76"],
+Cell[78445, 1886, 12568, 297, 447, "Output",ExpressionUUID->"12e8994b-cd55-4fc4-87d8-b67446065cb0"]
 }, Open  ]]
 }, Open  ]]
 }, Open  ]]

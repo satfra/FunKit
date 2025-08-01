@@ -124,7 +124,7 @@ $allObjects:={FMinus}\[Union]$indexedObjects
 $nonCommutingObjects:=$CorrelationFunctions\[Union]{FDOp,Field};
 
 $MaxDerivativeIterations=500;
-$CanonicalOrdering="f>af>b";
+$CanonicalOrdering="b>af>f";
 
 Protect@@$allObjects;
 
@@ -373,16 +373,16 @@ Abort[]];
 FieldSpaceDefQ[fieldSpace_]:=Module[{},
 If[Head[fieldSpace]=!=Association,Print["An FSetup must be an association"];Return[False]];
 
-If[Not@(Keys[fieldSpace]==={"cField","Grassmann"}),
-Print["fields must contain the two keys {\"cField\",\"Grassmann\"}!"];
+If[Not@(Keys[fieldSpace]==={"Commuting","Grassmann"}),
+Print["fields must contain the two keys {\"Commuting\",\"Grassmann\"}!"];
 Return[False]];
 
-If[Not@ListQ[fieldSpace["cField"]],
-Print["fields[\"cField\"] must be a list!"];
+If[Not@ListQ[fieldSpace["Commuting"]],
+Print["fields[\"Commuting\"] must be a list!"];
 Return[False]];
 
-If[Not@(And@@Map[FieldDefQ,fieldSpace["cField"]]),
-Print["fields[\"cField\"] must contain valid fields!"];
+If[Not@(And@@Map[FieldDefQ,fieldSpace["Commuting"]]),
+Print["fields[\"Commuting\"] must contain valid fields!"];
 Return[False]];
 
 If[Not@ListQ[fieldSpace["Grassmann"]],
@@ -607,11 +607,11 @@ Protect[obj];
 (* ::Input::Initialization:: *)
 GetcFields[setup_]:=GetcFields[setup]=Map[
 If[Head[#]===List,Head[#[[2]]],Head[#]]&,
-setup["FieldSpace"]["cField"]
+setup["FieldSpace"]["Commuting"]
 ];
 GetAnticFields[setup_]:=GetAnticFields[setup]=Select[Map[
 If[Head[#]===List,Head[#[[1]]],{}]&,
-setup["FieldSpace"]["cField"]
+setup["FieldSpace"]["Commuting"]
 ],#=!={}&];
 
 GetFermions[setup_]:=GetFermions[setup]=Map[
@@ -625,7 +625,7 @@ setup["FieldSpace"]["Grassmann"]
 
 GetCommuting[setup_]:=GetCommuting[setup]=Flatten@Select[Map[
 If[Head[#]===List,{Head[#[[1]]],Head[#[[2]]]},Head[#]]&,
-setup["FieldSpace"]["cField"]
+setup["FieldSpace"]["Commuting"]
 ],#=!={}&];
 
 GetAntiCommuting[setup_]:=GetAntiCommuting[setup]=Flatten@Select[Map[
@@ -639,13 +639,13 @@ FieldNameQ[setup_,name_Symbol]:=FieldNameQ[setup,name]=MemberQ[Join[GetCommuting
 (* ::Input::Initialization:: *)
 GetFieldPairs[setup_]:=GetFieldPairs[setup]=Map[{Head[#[[1]]],Head[#[[2]]]}&,
 Select[
-Join[setup["FieldSpace"]["Grassmann"],setup["FieldSpace"]["cField"]],
+Join[setup["FieldSpace"]["Grassmann"],setup["FieldSpace"]["Commuting"]],
 Head[#]===List&
 ]
 ];
 
 GetSingleFields[setup_]:=GetSingleFields[setup]=Map[Head[#]&,Select[
-Join[setup["FieldSpace"]["Grassmann"],setup["FieldSpace"]["cField"]],
+Join[setup["FieldSpace"]["Grassmann"],setup["FieldSpace"]["Commuting"]],
 Head[#]=!=List&
 ]
 ];
@@ -1389,7 +1389,7 @@ If[Length[closedIndices]===0,Return[FTerm@@ret/.undoFields]];
 
 (*We have to update these global quantities after each iteration*)
 allObj=ExtractObjectsWithIndex[setup,FTerm@@(ret/.FTerm[__]:>ignore)]/.doFields;
-FunKitDebug[2,"Searching for the first object that needs expansion..."];
+FunKitDebug[3,"  Searching for the first object that needs expansion..."];
 
 (*Next, try to find the first factor that needs to be expanded*)
 notFoundCuri=True;

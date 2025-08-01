@@ -93,18 +93,20 @@ processedExpr=N[expr];
 nest:=GenerateCode[CExpression[#]]&;
 
 (*associativity*)
-CExpression/:GenerateCode[CExpression[Times[a__,Plus[b_,c__],d__]]]:=nest[Times[a]]<>" * ("<>nest[Plus[b,c]]<>") * "<>nest[Times[d]];
-CExpression/:GenerateCode[CExpression[Times[Plus[b_,c__],d__]]]:="("<>nest[Plus[b,c]]<>") * "<>nest[Times[d]];
+CExpression/:GenerateCode[CExpression[Times[a__,Plus[b_,c__],d__]]]:="("<>nest[Times[a]]<>") * ("<>nest[Plus[b,c]]<>") * ("<>nest[Times[d]]<>")";
+CExpression/:GenerateCode[CExpression[Times[Plus[b_,c__],d__]]]:="("<>nest[Plus[b,c]]<>") * ("<>nest[Times[d]]<>")";
+(*CExpression/:GenerateCode[CExpression[Times[a__,Plus[b_,c__],d__]]]:=nest[Times[a]]<>" * ("<>nest[Plus[b,c]]<>") * "<>nest[Times[d]];*)
 
 (*recursion for + and * *)
 CExpression/:GenerateCode[CExpression[Plus[a_,b__]]]:=nest[a]<>" + "<>nest[Plus[b]];
-CExpression/:GenerateCode[CExpression[Times[a_,b__]]]:=nest[a]<>" * "<>nest[Times[b]];
-CExpression/:GenerateCode[CExpression[Times[-1,b_,a__]]]/;Head[b]=!=Plus:="(-"<>nest[b]<>")";
+CExpression/:GenerateCode[CExpression[Times[a_,b__]]]:="("<>nest[a]<>") * ("<>nest[Times[b]]<>")";
+CExpression/:GenerateCode[CExpression[Times[-1,b_,a__]]]/;Head[b]=!=Plus:="(-("<>nest[b]<>"))";
 
 CExpression/:GenerateCode[CExpression[Times[a__,Power[b_,-1]]]]:="("<>nest[a]<>") / ("<>nest[b]<>")";
-CExpression/:GenerateCode[CExpression[Times[a__,Plus[b_,c__],d__]]]:=nest[Times[a]]<>" * ("<>nest[Plus[b,c]]<>") * "<>nest[Times[d]];
 CExpression/:GenerateCode[CExpression[Times[Plus[b_,c__],Power[d_,-1]]]]:="("<>nest[Plus[b,c]]<>") / ("<>nest[d]<>")";
-CExpression/:GenerateCode[CExpression[Times[a__,Plus[b_,c__],Power[d_,-1]]]]:=nest[Times[a]]<>" * ("<>nest[Plus[b,c]]<>") / ("<>nest[d]<>")";
+
+(*CExpression/:GenerateCode[CExpression[Times[a__,Plus[b_,c__],Power[d_,-1]]]]:=nest[Times[a]]<>" * ("<>nest[Plus[b,c]]<>") / ("<>nest[d]<>")";*)
+
 
 (*functions*)
 CExpression/:GenerateCode[CExpression[a_[args___]]]:=nest[a]<>"("<>StringJoin@StringRiffle[nest/@{args},", "]<>")";
@@ -166,7 +168,7 @@ CExpression/:GenerateCode[CExpression[Min[a_,b_,c__]]]:="min({"<>nest[a]<>","<>n
 CExpression/:GenerateCode[CExpression[Max[a_,b_]]]:="max("<>nest[a]<>","<>nest[b]<>")";
 CExpression/:GenerateCode[CExpression[Max[a_,b_,c__]]]:="max({"<>nest[a]<>","<>nest[b]<>StringRiffle[Map[nest,{c}],","]"})";
 
-ToCCodeString[CExpression[processedExpr]]
+Return[ToCCodeString[CExpression[processedExpr]]];
 ];
 
 
@@ -328,9 +330,13 @@ $codeOptimizeFunctions={a_Symbol[__]/;Not@MatchQ[a,Times|Plus|Power|Rational|Com
 CppCode[equation_]:=Module[{optList,interpObj,replacementObj,replacementNames,replacements,definitions,returnStatement},
 optList=$codeOptimizeFunctions;
 interpObj=Flatten@Map[Cases[equation,#,Infinity]&,optList];
+FunKitDebug[2,"Found interpolation objects to optimize: ",interpObj];
 replacementObj=Keys@Select[Counts[interpObj],#>1&];
 replacementNames=Table["_repl"<>ToString[i],{i,1,Length[replacementObj]}];
 replacements=Table[replacementObj[[i]]->replacementNames[[i]],{i,1,Length[replacementObj]}];
+
+FunKitDebug[2,"Replacements: ",replacements];
+
 definitions=If[Length[replacementObj]>0,
 StringJoin[Table["const auto "<>ToString[replacementNames[[i]]]<>" = "<>CppForm[FullSimplify@replacementObj[[i]]]<>";\n",{i,1,Length[replacementObj]}]]<>"\n"
 ,""];

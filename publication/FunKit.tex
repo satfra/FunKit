@@ -1,4 +1,4 @@
-\documentclass[10pt,prd,nofootinbib,superscriptaddress,twocolumn]{revtex4-2}
+6\documentclass[10pt,prd,nofootinbib,superscriptaddress,twocolumn]{revtex4-2}
 \pdfoutput=1
 
 
@@ -342,11 +342,11 @@ Normal multiplication immediately yields an error, as the factors in a given \ma
 
 Most functions defined by \FunKit require the specification of a \textit{setup}. A setup is given by an \mathem{\mmaDef{Assocation}} with the mandatory key \mathem{"FieldSpace"} and further optional keys, which we will specify below.
 
-The field content of the theory is specified using another \mathem{\mmaDef{Assocation}} with two entries, \mathem{"cField"}, and \mathem{"Grassmann"}. The value of these entries is a list of all fields occurring in the theory. For example, the fields of a gauge-fixed Yang-Mills theory can be given as
+The field content of the theory is specified using another \mathem{\mmaDef{Assocation}} with two entries, \mathem{"Commuting"}, and \mathem{"Grassmann"}. The value of these entries is a list of all fields occurring in the theory. For example, the fields of a gauge-fixed Yang-Mills theory can be given as
 %
 \begin{mmaCell}{Input}
  fields = <|
-   "cField" -> \{A[p,\{v,c\}]\},
+   "Commuting" -> \{A[p,\{v,c\}]\},
    "Grassmann" -> \{\{cb[p,\{c\}], c[p,\{c\}]\}\}
   |>;
 \end{mmaCell}
@@ -356,7 +356,7 @@ Fields are always specified together with their full index structure. A momentum
 %
 \begin{mmaCell}{Input}
  fieldsPhi = <|
-   "cField" -> \{\(\pmb{\phi}\)[p]\},
+   "Commuting" -> \{\(\pmb{\phi}\)[p]\},
    "Grassmann" -> \{\}
   |>;
 \end{mmaCell}
