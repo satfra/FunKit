@@ -124,8 +124,7 @@ CExpression/:GenerateCode[CExpression[a_[args___]]]:=nest[a]<>"("<>StringJoin@St
 CExpression/:GenerateCode[CExpression[I]]:="complex<double>(0,1)";
 CExpression/:GenerateCode[CExpression[a_Real]]:=ToString[NumberForm[N[a,$CppPrecision],$CppPrecision,NumberFormat->(If[#3==="",#1,Row[{#1,"e",#3}]]&)]];
 CExpression/:GenerateCode[CExpression[Rational[a_,b_]]]:=nest[N[a/b,$CppPrecision]];
-CExpression/:GenerateCode[CExpression[a_Complex]]:="("<>nest[Re@a]<>" + complex<double>(0,1) * "<>nest[Im@a]<>")";
-CExpression/:GenerateCode[CExpression[a_Complex]]/;Re[a]===0:="complex<double>(0,"<>nest[Im[a]]<>")";
+CExpression/:GenerateCode[CExpression[Complex[r_,i_]]]:="complex<double>("<>nest[r]<>","<>nest[i]<>")";
 CExpression/:GenerateCode[CExpression[a_]]/;NumericQ[a]&&Not@IntegerQ[a]:=nest[N[a,$CppPrecision]];
 
 (*Powers and such*)

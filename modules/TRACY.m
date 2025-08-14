@@ -95,7 +95,7 @@ ClearTraceCache[str_String]:=(DeleteDirectory[$TraceCacheDir<>str,DeleteContents
 (*FORM*)
 
 
-(* ::Subsection::Closed:: *)
+(* ::Subsection:: *)
 (*FormTracer PostReplacement Code*)
 
 
@@ -389,14 +389,13 @@ Return[{rule,reverse}];
 
 (* ::Input::Initialization:: *)
 Protect@$dummy;
-customExclusions[a_]:=And@@{a=!=List,a=!=Complex,a=!=Plus,a=!=Power,a=!=Times,a=!=Rational,a=!=$dummy}
+customExclusions[a_]:=And@@{a=!=List,a=!=Complex,a=!=Plus,a=!=Power,a=!=Times,a=!=Rational,a=!=Pattern,a=!=$dummy}
 removeFORMTracerRule:=
 Map[Head[#][__]:>$dummy[RandomInteger[10^12]]&,Values[FormTracer`Private`lorentzTensorReplacementRulesOutput//Normal]]\[Union]
 Map[Head[#][__]:>$dummy[RandomInteger[10^12]]&,Values[FormTracer`Private`groupTensorReplacementRulesOutput//Normal]]\[Union]
 Map[#[__]:>$dummy[RandomInteger[10^12]]&,FormTracer`Private`combinedTensorNames]\[Union]
 Map[#:>$dummy[RandomInteger[10^12]]&,Global`GetFormTracerGroupConstants[]];
 GetAllCustomSymbols[expr_]:=Module[{obj},
-t1=AbsoluteTime[];
 obj=DeleteDuplicates@Cases[expr/.removeFORMTracerRule,(a_Symbol/;customExclusions[a])|(a_Symbol[__]/;customExclusions[a]),Infinity];
 obj=DeleteDuplicates@((#/.a_[__]:>a)&/@obj);
 Return[obj];
@@ -435,10 +434,18 @@ Shortest["pow("~~(arg1__/;balancedBracesQ[arg1])~~")"]:>"Power["~~arg1~~"]",
 Shortest["sqrt("~~(arg1__/;balancedBracesQ[arg1])~~")"]:>"Sqrt["~~arg1~~"]",
 Shortest["FTxsp("~~(arg1__/;balancedBracesQ[arg1])~~")"]:>"sp["~~arg1~~"]",
 Shortest["FTxsps("~~(arg1__/;balancedBracesQ[arg1])~~")"]:>"sps["~~arg1~~"]",
+Shortest["FTxvec("~~(arg1__/;balancedBracesQ[arg1])~~")"]:>"vec["~~arg1~~"]",
+Shortest["FTxvecs("~~(arg1__/;balancedBracesQ[arg1])~~")"]:>"vecs["~~arg1~~"]",
+Shortest["FTxvecs("~~(arg1__/;balancedBracesQ[arg1])~~")"]:>"vecs["~~arg1~~"]",
 Shortest["w("~~(arg1__/;balancedBracesQ[arg1])~~")"]:>"$w$["~~arg1~~"]",
 "**"->"^",
 " "->"",
 "&\n&"->" ",
+"i_"->"\!\(\*TagBox[
+StyleBox[
+RowBox[{\"Complex\", \"[\", 
+RowBox[{\"0\", \",\", \"1\"}], \"]\"}],\nShowSpecialCharacters->False,\nShowStringCharacters->True,\nNumberMarks->True],
+FullForm]\)",
 "expr="~~a__:>a
 }
 ];
@@ -589,7 +596,6 @@ Return[Flatten[returnValue]]
 (*Simplification*)
 
 
-(* ::Input::Initialization:: *)
 findCouplings[expr_]:=Module[
 {symbols},
 FunKitDebug[2,"findCouplings: looking for custom symbols."];
@@ -597,7 +603,6 @@ symbols=GetAllCustomSymbols[expr];
 symbols=Pick[symbols,
 Map[MemberQ[{expr},#[__],Infinity]&,symbols]
 ];
-
 symbols=DeleteDuplicates@Cases[expr,Alternatives@@Map[#[__]&,symbols],Infinity];
 FunKitDebug[2,"findCouplings: found: ",symbols];
 symbols=Pick[symbols,
@@ -620,7 +625,6 @@ Return[Plus@@collected]
 ];
 
 
-(* ::Input::Initialization:: *)
 $standardFORMmomentumRules=FormMomentumExpansion[];
 ClearAll[FORMSimplify]
 FORMSimplify[obj_,preReplRules_:{},postReplRules_:{}]:=Module[
