@@ -126,6 +126,8 @@ CExpression/:GenerateCode[CExpression[a_Real]]:=ToString[NumberForm[N[a,$CppPrec
 CExpression/:GenerateCode[CExpression[Rational[a_,b_]]]:=nest[N[a/b,$CppPrecision]];
 CExpression/:GenerateCode[CExpression[Complex[r_,i_]]]:="complex<double>("<>nest[r]<>","<>nest[i]<>")";
 CExpression/:GenerateCode[CExpression[a_]]/;NumericQ[a]&&Not@IntegerQ[a]:=nest[N[a,$CppPrecision]];
+CExpression/:GenerateCode[CExpression[Re[v_]]]:="real("<>nest[v]<>")";
+CExpression/:GenerateCode[CExpression[Im[v_]]]:="imag("<>nest[v]<>")";
 
 (*Powers and such*)
 CExpression/:GenerateCode[CExpression[Sqrt[arg_]]]:="sqrt("<>nest[arg]<>")";
