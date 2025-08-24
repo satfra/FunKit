@@ -8,7 +8,7 @@
 (*TRACY -  Tracing Representations And Contractions Yourself*)
 
 
-(* ::Section::Closed:: *)
+(* ::Section:: *)
 (*Exports*)
 
 
@@ -643,6 +643,8 @@ momenta=expr//GetAllMomenta;
 newSymbols=GetAllCustomSymbols[expr/.repl[[1]]];
 newSymbols=Select[newSymbols,FreeQ[momenta,#]&];
 momRule=If[Length@momenta>0,{{FormTracer`PreambleFormRule,"Vector "<>StringRiffle[momenta,","]<>";"}},{}];
+
+FunKitDebug[3,"FORMSimplify: Adding Extra Vars ",newSymbols];
 
 FormTracer`AddExtraVars@@newSymbols;
 

@@ -4,7 +4,7 @@
 (*FEDeriK - Functional Equation Derivation Kit*)
 
 
-(* ::Section::Closed:: *)
+(* ::Section:: *)
 (*Exports*)
 
 
@@ -28,6 +28,10 @@ WetterichEquation::usage="";
 MakeDSE::usage="";
 
 ResolveDerivatives::usage="";
+
+GeneralizedFlowEquation::usage="";
+
+RGInvGeneralizedFlowEquation::usage="";
 
 
 (* ::Input::Initialization:: *)
@@ -60,16 +64,17 @@ Field::usage="";
 FMinus::usage="";
 AnyField::usage="";
 ResolveFDOp::usage="";
+Phidot::usage=""
 
 
-(* ::Section::Closed:: *)
+(* ::Section:: *)
 (*Begin Private*)
 
 
 Begin["`Private`"];
 
 
-(* ::Section::Closed:: *)
+(* ::Section:: *)
 (*Global setup redefinitions*)
 
 
@@ -627,7 +632,7 @@ FunctionalD[setup_,FEx[___],v:(f_[__]|{f_[__],_Integer})..,OptionsPattern[]]:=(M
 
 
 (* ::Subsection::Initialization::Closed:: *)
-(*Symmetries*)
+(*(*Symmetries*)*)
 
 
 (* ::Input::Initialization:: *)
@@ -1382,7 +1387,7 @@ Map[ReduceIndices[setup,#]&,eq]
 ];
 
 
-(* ::Subsection::Closed:: *)
+(* ::Subsection:: *)
 (*FTruncate*)
 
 
@@ -1543,7 +1548,10 @@ ret=ret/.FTerm[a__]:>OTrunc[setup,FTerm[a]];
 If[FreeQ[ret,AnyField,Infinity],Return[truncationPass[setup,FTerm@@ret]/.undoFields]];
 (*Get all open indices*)
 openIndices=GetOpenSuperIndices[setup,FTerm@@(ret/.FTerm[__]:>ignore)];
-If[Length[openIndices]===0,Return[FTerm@@(ret/.undoFields)]];
+If[Length[openIndices]===0,
+FunKitDebug[3,"  No open indices!"];
+Return[FTerm@@(ret/.undoFields)],
+FunKitDebug[3,"  Found open indices: ",openIndices];];
 
 allObj=ExtractObjectsWithIndex[setup,FTerm@@(ret/.FTerm[__]:>ignore)];
 

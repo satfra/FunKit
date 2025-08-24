@@ -31,7 +31,7 @@ MakeCppHeader::usage=""
 
 MakeCppBlock::usage=""
 
-MakeCppFunction::usage=""
+MakeCppFunction::usage="hi"
 
 MakeJuliaFunction::usage=""
 
@@ -90,7 +90,9 @@ makeTemporaryFileName[]:=ToString[AbsoluteTime[]*10^6//Round]<>"_"<>ToString[Ran
 
 
 (* ::Input::Initialization:: *)
-Needs["SymbolicC`"]
+Unprotect@CExpression;
+ClearAll[CExpression]
+Get["SymbolicC`"]
 
 UseCppPowr[True]:=Set[$CppPowr,True];
 UseCppPowr[False]:=Set[$CppPowr,False];
@@ -101,20 +103,15 @@ CppForm[expr_]:=Internal`InheritedBlock[{processedExpr,nest,$MinPrecision=$CppPr
 processedExpr=N[expr];
 nest:=GenerateCode[CExpression[#]]&;
 
+
 (*associativity*)
 CExpression/:GenerateCode[CExpression[Times[a__,Plus[b_,c__],d__]]]:="("<>nest[Times[a]]<>") * ("<>nest[Plus[b,c]]<>") * ("<>nest[Times[d]]<>")";
 CExpression/:GenerateCode[CExpression[Times[Plus[b_,c__],d__]]]:="("<>nest[Plus[b,c]]<>") * ("<>nest[Times[d]]<>")";
-(*CExpression/:GenerateCode[CExpression[Times[a__,Plus[b_,c__],d__]]]:=nest[Times[a]]<>" * ("<>nest[Plus[b,c]]<>") * "<>nest[Times[d]];*)
 
 (*recursion for + and * *)
 CExpression/:GenerateCode[CExpression[Plus[a_,b__]]]:=nest[a]<>" + "<>nest[Plus[b]];
 CExpression/:GenerateCode[CExpression[Times[a_,b__]]]:="("<>nest[a]<>") * ("<>nest[Times[b]]<>")";
 CExpression/:GenerateCode[CExpression[Times[-1,b_,a__]]]/;Head[b]=!=Plus:="(-("<>nest[b]<>"))";
-
-CExpression/:GenerateCode[CExpression[Times[a__,Power[b_,-1]]]]:="("<>nest[a]<>") / ("<>nest[b]<>")";
-CExpression/:GenerateCode[CExpression[Times[Plus[b_,c__],Power[d_,-1]]]]:="("<>nest[Plus[b,c]]<>") / ("<>nest[d]<>")";
-
-(*CExpression/:GenerateCode[CExpression[Times[a__,Plus[b_,c__],Power[d_,-1]]]]:=nest[Times[a]]<>" * ("<>nest[Plus[b,c]]<>") / ("<>nest[d]<>")";*)
 
 
 (*functions*)
@@ -348,7 +345,6 @@ $codeOptimizeFunctions={a_Symbol[__]/;Not@MatchQ[a,Times|Plus|Power|Rational|Com
 CppCode[equation_]:=Module[{optList,interpObj,replacementObj,replacementNames,replacements,definitions,returnStatement},
 optList=$codeOptimizeFunctions;
 interpObj=Flatten@Map[Cases[equation,#,Infinity]&,optList];
-FunKitDebug[2,"Found interpolation objects to optimize: ",interpObj];
 replacementObj=Keys@Select[Counts[interpObj],#>1&];
 replacementNames=Table["_repl"<>ToString[i],{i,1,Length[replacementObj]}];
 replacements=Table[replacementObj[[i]]->replacementNames[[i]],{i,1,Length[replacementObj]}];
@@ -358,7 +354,9 @@ FunKitDebug[2,"Replacements: ",replacements];
 definitions=If[Length[replacementObj]>0,
 StringJoin[Table["const auto "<>ToString[replacementNames[[i]]]<>" = "<>CppForm[FullSimplify@replacementObj[[i]]]<>";\n",{i,1,Length[replacementObj]}]]<>"\n"
 ,""];
+FunKitDebug[2,"Definitions: ",definitions];
 returnStatement=" return "<>CppForm[equation//.replacements]<>";";
+FunKitDebug[2,"returnStatement: ",returnStatement];
 returnStatement=StringReplace[returnStatement,Map["\""<>#<>"\""->#&,replacementNames]];
 definitions<>returnStatement
 ];
@@ -414,6 +412,7 @@ MakeCppFunction[OptionsPattern[]]:=Module[
 {functionPrefix,functionSuffix,functionName,
 functionParameters,functionTemplates,idx,
 functionBody,parameters},
+FunKitDebug[1,"Preparing Cpp function..."];
 
 (*Create prefixe for the function, e.g. static or such + the return value*)
 functionPrefix=OptionValue["Prefix"];
@@ -449,7 +448,7 @@ Table[makeCppParameter[parameters[[idx]],idx],{idx,1,Length[parameters]}]
 
 (*create the body*)
 functionBody=If[OptionValue["Body"]===None,";",StringReplace["{\n"<>OptionValue["Body"]<>"\n}","\n\n"->""]];
-
+FunKitDebug[2,"  Prepared Cpp function; now parsing code."];
 Return[FormatCode[
 functionTemplates<>functionPrefix<>functionName<>functionParameters<>functionSuffix<>"\n"<>functionBody
 ]
