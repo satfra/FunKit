@@ -10,3 +10,10 @@ publication/FunKitNotes.bib
 
 form.set
 examples/form.set
+
+build/
+CMakeCache.txt
+CMakeFiles/
+cpm-package-lock.cmake
+cmake/
+

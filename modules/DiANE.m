@@ -429,7 +429,7 @@ Protect@@$allObjects;
 ];
 
 
-(* ::Subsection:: *)
+(* ::Subsection::Closed:: *)
 (*FPrint and FTex commands*)
 
 
@@ -493,13 +493,15 @@ $standardVertexStyles={
 GammaN->Graphics@Style[Disk[{0,0},0.5],Gray],
 S->Graphics@Style[Disk[{0,0}],Black],
 Rdot->crosscircle[1],
-Field->cross[1]
+Field->cross[1],
+R->Graphics@Style[Disk[{0,0},2],Blue]
 };
 $standardVertexSize={
 GammaN->0.15,
 S->0.05,
 Rdot->0.25,
-Field->0.1
+Field->0.1,
+R->0.2
 };
 
 
@@ -522,7 +524,7 @@ diag=FUnroute[setup,expr];
 
 doFields=replFields[setup];
 
-PossibleVertices=Join[{GammaN,S,Rdot,Field},
+PossibleVertices=Join[{GammaN,S,Rdot,Field,R},
 If[KeyExistsQ[setup,"DiagramStyling"]&&KeyExistsQ[setup["DiagramStyling"],"Vertices"],
 setup["DiagramStyling"]["Vertices"],{}]];
 PossibleEdges=Join[{Propagator},

@@ -449,6 +449,7 @@ FullForm]\)",
 "expr="~~a__:>a
 }
 ];
+res=StringReplace[res,Map[ToString[#[[2]]]->ToString[#[[1]]]&,FormTracer`GetExtraVarsSynonyms[]]];
 ];
 StringReplace[res,";"->"\n"]
 ];
@@ -614,7 +615,7 @@ Return@symbols
 ];
 
 DiagramSimplify[expr_]:=Module[{collected,mSimplify,couplings},
-mSimplify=Quiet@Simplify[Simplify[#,Trig->False,TimeConstraint->0.1],Trig->False,TimeConstraint->100]&;
+mSimplify=Quiet@Simplify[Simplify[#,Trig->False,TimeConstraint->0.1],Trig->False,TimeConstraint->1]&;
 couplings=findCouplings[expr];
 FunKitDebug[2,"DiagramSimplify: Found the following couplings in the given expression: ",couplings];
 collected=Collect[expr,Map[#[__]&,couplings]];

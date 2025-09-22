@@ -20,7 +20,16 @@
 
 
 (* ::Input::Initialization:: *)
-Print["\!\(\*
+If[$FrontEnd===Null,Unprotect[Style];
+Unprotect[StyleBox];
+Style[expr_,opts___]:=expr;
+StyleBox[expr_,opts___]:=expr;
+Protect[Style];
+Protect[StyleBox];];
+
+
+(* ::Input::Initialization:: *)
+PrintTemporary["\!\(\*
 StyleBox[\"Loading\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"external\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
@@ -56,7 +65,7 @@ StyleBox[\"TensorBases\",\nFontWeight->\"Bold\"]\) to run."];Abort[];
 ];
 
 Block[{Print},Get["TensorBases`"]]
-Print["\!\(\*
+PrintTemporary["\!\(\*
 StyleBox[\"TensorBases\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
@@ -67,7 +76,7 @@ If[Length@PacletFind["MaTeX"]===0,
 ResourceFunction["MaTeXInstall"][]
 ]
 Get["MaTeX`"]
-Print["\!\(\*
+PrintTemporary["\!\(\*
 StyleBox[\"MaTeX\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
@@ -116,6 +125,8 @@ Select[$Path,StringContainsQ[#,"FunKit"]&]
 DirectoryQ[#]&
 ]<>"/";
 
+$FunKitVersion=0.1;
+
 
 (* ::Input::Initialization:: *)
 If[Head[$DistributedContexts]=!=List,$DistributedContexts={}];
@@ -152,54 +163,54 @@ Protect@FunKitDebug;
 
 
 (* ::Input::Initialization:: *)
-Print["\!\(\*
+PrintTemporary["\!\(\*
 StyleBox[\"Loading\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"modules\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
 Get[$FunKitDirectory<>"modules/FEDeriK.m"];
-Print["\!\(\*
+PrintTemporary["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"FEDeriK\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
 Get[$FunKitDirectory<>"modules/AnSEL.m"];
-Print["\!\(\*
+PrintTemporary["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"AnSEL\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
 Get[$FunKitDirectory<>"modules/DiANE.m"];
-Print["\!\(\*
+PrintTemporary["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"DiANE\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
 Get[$FunKitDirectory<>"modules/DiRK.m"];
-Print["\!\(\*
+PrintTemporary["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"DiRK\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
 Get[$FunKitDirectory<>"modules/TRACY.m"];
-Print["\!\(\*
+PrintTemporary["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"TRACY\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
 Get[$FunKitDirectory<>"modules/COEN.m"];
-Print["\!\(\*
+PrintTemporary["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"COEN\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
 Get[$FunKitDirectory<>"modules/SeDecA.m"];
-Print["\!\(\*
+PrintTemporary["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"SeDecA\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
-
+If[$FrontEnd=!=Null,
 Print["Welcome to  \!\(\*
 StyleBox[\"\:2588\:2580\",\nFontColor->GrayLevel[0]]\)\!\(\*
 StyleBox[\" \",\nFontColor->GrayLevel[0]]\)\!\(\*
@@ -218,19 +229,41 @@ StyleBox[\"Author\",\nFontWeight->\"Bold\"]\): Franz Richard Sattler
 StyleBox[\"Version\",\nFontWeight->\"Bold\"]\): 1.0
 \!\(\*
 StyleBox[\"Year\",\nFontWeight->\"Bold\"]\): 2025
-For more information, call \!\(\*
+For more information and a brief introduction to the package, call \!\(\*
+StyleBox[\"FInfo\",\nFontColor->RGBColor[1, 0.5, 0]]\)[].
+To run the testing suite, you can call  \!\(\*
+StyleBox[\"FTest\",\nFontColor->RGBColor[1, 0.5, 0]]\)[].
+"],
+Print["Welcome to Funkit"];
+Print["Author: Franz Richard Sattler"];
+Print["\!\(\*
+StyleBox[\"Version\",\nFontWeight->\"Bold\"]\): 1.0"];
+Print["\!\(\*
+StyleBox[\"Year\",\nFontWeight->\"Bold\"]\): 2025"];
+Print["For more information and a brief introduction to the package, call \!\(\*
 StyleBox[\"FInfo\",\nFontColor->RGBColor[1, 0.5, 0]]\)[]."];
+Print["To run the testing suite, you can call  \!\(\*
+StyleBox[\"FTest\",\nFontColor->RGBColor[1, 0.5, 0]]\)[]."];
+];
 
 
 (* ::Input::Initialization:: *)
 FInfo[]:=Module[{},
 Print["To see an overview and some examples for the syntax of \!\(\*
-StyleBox[\"FEDeriK\",\nFontWeight->\"Bold\"]\), call \!\(\*
-StyleBox[\"FInfo\",\nFontColor->RGBColor[1, 0.5, 0]]\)[\"FEDeriK\"]"]
+StyleBox[\"FEDeriK\",\nFontWeight->\"Bold\"]\), which forms the basis for all of \!\(\*
+StyleBox[\"FunKit\",\nFontWeight->\"Bold\"]\), call \!\(\*
+StyleBox[\"FInfo\",\nFontColor->RGBColor[1, 0.5, 0]]\)[\"FEDeriK\"]."]
 ];
 
 
 (* ::Input::Initialization:: *)
+FInfo["federik"]:=FInfo["FEDeriK"];
+FInfo["Federik"]:=FInfo["FEDeriK"];
+FInfo["FederiK"]:=FInfo["FEDeriK"];
+FInfo["FeDerik"]:=FInfo["FEDeriK"];
+FInfo["FeDeriK"]:=FInfo["FEDeriK"];
+FInfo["feDeriK"]:=FInfo["FEDeriK"];
+FInfo["federiK"]:=FInfo["FEDeriK"];
 FInfo["FEDeriK"]:=Module[{},
 Print["\!\(\*
 StyleBox[\"General\",\nFontSize->18,\nFontWeight->\"Bold\"]\)\!\(\*
@@ -310,8 +343,23 @@ StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\)},{-c,b}], \!\(\*
 StyleBox[\"R\",\nFontWeight->\"Bold\"]\)[{\!\(\*
 StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\),\!\(\*
 StyleBox[\"AnyField\",\nFontWeight->\"Bold\"]\)},{-a,-b}]]]
+
+In fact, Phidot has been already defined like this in \!\(\*
+StyleBox[\"FEDeriK\",\nFontWeight->\"Bold\"]\). Some of the pre-defined equations, which you can examine in \!\(\*
+StyleBox[\"FEDeriK\",\nFontWeight->\"Bold\"]\), are the two examples given above, which you can use under the names
+
+	\!\(\*
+StyleBox[\"WetterichEquation\",\nFontColor->RGBColor[1, 0.5, 0]]\)
+	\!\(\*
+StyleBox[\"GeneralizedFlowEquation\",\nFontColor->RGBColor[1, 0.5, 0]]\)
 "];
 ];
+
+
+(* ::Input::Initialization:: *)
+FTest[]:=Module[{},
+Get[$FunKitDirectory<>"tests/TestRunner.m"]
+]
 
 
 (* ::Input::Initialization:: *)
