@@ -10,29 +10,66 @@
 
 (* ::Input::Initialization:: *)
 
-SetGlobalSetup::usage = "";
+SetGlobalSetup::usage = "SetGlobalSetup[setup]
+Sets a global setup that is used by all FEDeriK functions when no setup is explicitly provided.
+This allows calling functions like TakeDerivatives[expr, derivativeList] without passing the setup each time.
+SetGlobalSetup[] clears the global setup.";
 
-FTruncate::usage = "";
+FTruncate::usage = "FTruncate[setup, expr]
+Truncates the given expression according to the truncation tables specified in the setup.
+Replaces undetermined fields (AnyField) with explicit fields from the truncation and removes terms not included in the truncation.
+The expression must not contain unresolved derivative operators (FDOp).";
 
-TakeDerivatives::usage = "";
+TakeDerivatives::usage = "TakeDerivatives[setup, expr, derivativeList]
+Takes multiple functional derivatives of expr with respect to the fields specified in derivativeList.
+Returns the result with all derivative operators resolved.
+TakeDerivatives[setup, expr, derivativeList, \"Symmetries\" -> symmetries] allows specifying symmetries for simplification.
+The derivativeList should be a list of field expressions like {A[i1], A[i2]}.";
 
-QMeSForm::usage = "";
+QMeSForm::usage = "QMeSForm[setup, expr]
+Converts expressions containing indexed objects (like Propagator, GammaN) to QMeS-style notation.
+Transforms correlation functions to symbolic forms suitable for further processing.
+Uses the canonical ordering 'b>af>f' for field arrangement.";
 
-FExpand::usage = "";
+FExpand::usage = "FExpand[setup, expr, order]
+Expands powers of FTerm and FEx expressions up to the specified order.
+This is useful for expanding expressions like (FTerm[...])^n into explicit sums of terms.
+Automatically fixes indices to ensure uniqueness after expansion.";
 
-DExpand::usage = "";
+DExpand::usage = "DExpand[setup, expr, order]
+Expands expressions containing derivative operators up to the specified order.
+Similar to FExpand but specifically handles expansions involving functional derivatives.
+Used for perturbative expansions in functional methods.";
 
-MakeClassicalAction::usage = "";
+MakeClassicalAction::usage = "MakeClassicalAction[setup]
+Constructs the classical action from the setup's truncation table for the object S.
+Returns an FEx containing all terms in the classical action with appropriate prefactors.
+The setup must contain a truncation table with key S specifying the field combinations.";
 
-WetterichEquation::usage = "";
+WetterichEquation::usage = "WetterichEquation
+The Wetterich equation for the functional renormalization group: ∂_t Γ = (1/2) G^{ab} (∂_t R)_{ab}.
+Returns an FEx representing the right-hand side of the Wetterich equation with AnyField placeholders.
+This is a predefined master equation that can be used with TakeDerivatives to derive flow equations.";
 
-MakeDSE::usage = "";
+MakeDSE::usage = "MakeDSE[setup, field]
+Constructs the Dyson-Schwinger equation for the specified field.
+Takes the functional derivative of the classical action with respect to the field and applies the substitution φ → Φ + G^{ab} δ/δΦ^b.
+Returns the DSE with all derivative operators resolved.";
 
-ResolveDerivatives::usage = "";
+ResolveDerivatives::usage = "ResolveDerivatives[setup, expr]
+Iteratively resolves all functional derivative operators (FDOp) in the expression.
+Applies the product rule and functional derivative rules until no FDOp remain.
+ResolveDerivatives[setup, expr, \"Symmetries\" -> symmetries] allows specifying symmetries for simplification during resolution.";
 
-GeneralizedFlowEquation::usage = "";
+GeneralizedFlowEquation::usage = "GeneralizedFlowEquation
+The generalized flow equation: ∂_t Γ = -Φ̇^a Γ_a + (1/2) G^{ab} (∂_t R)_{ab} + G^{ac} Φ̇^b_c R_{ab}.
+Returns an FEx representing the generalized flow equation with AnyField placeholders.
+This extends the Wetterich equation to include contributions from time-dependent field expectation values.";
 
-RGInvGeneralizedFlowEquation::usage = "";
+RGInvGeneralizedFlowEquation::usage = "RGInvGeneralizedFlowEquation
+The RG-invariant generalized flow equation with additional terms for maintaining RG invariance.
+Similar to GeneralizedFlowEquation but includes extra contributions to ensure renormalization group invariance.
+Used in advanced functional RG calculations where RG invariance must be preserved exactly.";
 
 (* ::Input::Initialization:: *)
 
@@ -40,55 +77,120 @@ Remove["*`F"]
 
 (* ::Input::Initialization:: *)
 
-AddIndexedObject::usage = "";
+AddIndexedObject::usage = "AddIndexedObject[name]
+Adds a new indexed object to the list of user-defined indexed objects.
+Indexed objects are symbols that can carry field and index information in functional expressions.
+The new object will be automatically protected and included in derivative calculations.";
 
-ShowIndexedObjects::usage = "";
+ShowIndexedObjects::usage = "ShowIndexedObjects[]
+Displays a table of all currently defined indexed objects.
+This includes both built-in objects (like Propagator, GammaN, S, R, Rdot) and user-defined objects.
+Useful for checking which indexed objects are available for use in expressions.";
 
-AddCorrelationFunction::usage = "";
+AddCorrelationFunction::usage = "AddCorrelationFunction[name]
+Adds a new correlation function to the list of user-defined correlation functions.
+Correlation functions are special indexed objects that represent n-point functions in functional methods.
+They are treated as non-commuting objects and participate in functional derivative calculations.";
 
-ShowCorrelationFunctions::usage = "";
+ShowCorrelationFunctions::usage = "ShowCorrelationFunctions[]
+Displays a table of all currently defined correlation functions.
+This includes built-in correlation functions (Propagator, GammaN) and user-defined ones.
+Correlation functions are the primary objects that functional derivatives act upon.";
 
-SetGlobalSetup::usage = "";
+SetUnorderedIndices::usage = "SetUnorderedIndices[obj, indices]
+Specifies which indices of an indexed object should not be reordered during field ordering operations.
+This is useful for objects like Phidot where the last index (representing the field itself) should remain fixed.
+The indices parameter can be a single integer or list of integers specifying which index positions to keep unordered.";
 
-SetUnorderedIndices::usage = "";
+SetSymmetricObject::usage = "SetSymmetricObject[obj, {fields}]
+Defines an indexed object as symmetric in all its indices.
+SetSymmetricObject[obj, {fields}, {positions}] makes the object symmetric only in the specified index positions.
+This automatically sorts indices to canonical order and can significantly reduce the number of terms in calculations.";
 
-SetSymmetricObject::usage = "";
+FEx::usage = "FEx[term1, term2, ...]
+Represents a functional expression as a sum of FTerm objects.
+This is the main container for functional equations in FEDeriK.
+FEx objects support non-commutative multiplication (**) and automatically handle simplification of zero terms.";
 
-FEx::usage = "";
+FTerm::usage = "FTerm[factor1, factor2, ...]
+Represents a single term in a functional equation as a product of factors.
+Factors can be numbers, indexed objects, fields, or derivative operators.
+FTerm objects automatically handle commutation relations and Grassmann algebra for fermionic fields.";
 
-FTerm::usage = "";
+F::usage = "F[expr...]
+Shorthand notation for FEx[FTerm[expr...]].
+Provides a convenient way to create single-term functional expressions.
+Equivalent to wrapping the expression in both FEx and FTerm tags.";
 
-F::usage = "";
+Propagator::usage = "Propagator[{field1, field2}, {index1, index2}]
+Represents the two-point correlation function (propagator) G_{field1,field2} with specified indices.
+This is a built-in correlation function that appears in functional derivative calculations.
+Indices can be positive (raised) or negative (lowered, indicated by minus sign).";
 
-Propagator::usage = "";
+GammaN::usage = "GammaN[{field1, field2, ...}, {index1, index2, ...}]
+Represents the n-point vertex function Γ_{field1,field2,...} with specified indices.
+This is the main correlation function for vertex functions in functional methods.
+The number of fields and indices must match, and indices can be positive or negative.";
 
-GammaN::usage = "";
+R::usage = "R[{field1, field2}, {index1, index2}]
+Represents the regulator function R_{field1,field2} used in functional renormalization group calculations.
+This appears in flow equations and provides the infrared regularization.
+Typically appears in expressions involving the Wetterich equation.";
 
-R::usage = "";
+Rdot::usage = "Rdot[{field1, field2}, {index1, index2}]
+Represents the time derivative of the regulator function ∂_t R_{field1,field2}.
+This is the driving term in functional RG flow equations.
+Appears prominently in the Wetterich equation and its derivatives.";
 
-Rdot::usage = "";
+S::usage = "S[{field1, field2, ...}, {index1, index2, ...}]
+Represents terms in the classical action S with the specified field content and indices.
+Used in constructing classical actions and Dyson-Schwinger equations.
+The field content determines the type of interaction (2-point, 3-point, 4-point, etc.).";
 
-S::usage = "";
+ABasis::usage = "ABasis[{field1, field2, ...}, {index1, index2, ...}]
+Represents basis elements for correlations involving the gauge field A.
+Used in tensor basis decompositions for gauge theory calculations.
+Provides a systematic way to parameterize gauge field correlation functions.";
 
-ABasis::usage = "";
+VBasis::usage = "VBasis[{field1, field2, ...}, {index1, index2, ...}]
+Represents vector basis elements for tensor decompositions.
+Used in organizing correlation functions according to their vector/tensor structure.
+Helpful for systematic treatment of Lorentz indices in gauge theories.";
 
-VBasis::usage = "";
+\[Gamma]::usage = "γ[{field1, field2}, {index1, index2}]
+Represents the functional derivative δ/δφ operation in functional expressions.
+This symbol appears automatically when functional derivatives are resolved.
+It encodes the fundamental Grassmann relation between field variations.";
 
-\[Gamma]::usage = "";
+Field::usage = "Field[{field}, {index}]
+Represents a field expectation value ⟨field⟩ with the specified index.
+Used in calculations involving non-zero field expectation values.
+Important for spontaneous symmetry breaking and background field methods.";
 
-Field::usage = "";
+FDOp::usage = "FDOp[field[index]]
+Represents a functional derivative operator δ/δfield acting on everything to its right.
+This is the fundamental building block for taking functional derivatives.
+FDOp operators are resolved using ResolveDerivatives or ResolveFDOp functions.";
 
-FDOp::usage = "";
+FMinus::usage = "FMinus[{field1, field2}, {index1, index2}]
+Represents Grassmann minus signs (-1)^{field1·field2} arising from commuting fermionic fields.
+This is automatically generated when reordering expressions containing Grassmann fields.
+Essential for maintaining correct signs in fermionic calculations.";
 
-Field::usage = "";
+AnyField::usage = "AnyField
+Placeholder symbol representing an undetermined field type.
+Used in master equations like the Wetterich equation before truncation.
+Gets expanded to explicit fields during the truncation process using FTruncate.";
 
-FMinus::usage = "";
+ResolveFDOp::usage = "ResolveFDOp[setup, expr]
+Resolves the rightmost functional derivative operator (FDOp) in the expression.
+Applies the product rule and functional derivative rules for one FDOp.
+For complete resolution of all derivatives, use ResolveDerivatives instead.";
 
-AnyField::usage = "";
-
-ResolveFDOp::usage = "";
-
-Phidot::usage = ""
+Phidot::usage = "Phidot[{field}, {index}]
+Represents the time derivative of field expectation values ∂_t⟨field⟩.
+Used in generalized flow equations where field expectation values are time-dependent.
+This is a predefined correlation function with special index ordering rules.";
 
 (* ::Section:: *)
 
@@ -841,6 +943,7 @@ FunctionalD[setup_, expr_, v : (f_[_] | {f_[_], _Integer}).., OptionsPattern[
         ];
         (*Ignore fields without indices. These are usually tags*)
         f /: D[f, f[y_], NonConstants -> nonConst] := 0;(*\[Delta][#,y]&;
+            
             *)
         (*Derivative rules for Correlation functions*)
         Map[(f /: D[#[{a__}, {b__}], f[if_], NonConstants -> nonConst
@@ -1338,8 +1441,9 @@ GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
         If[Length[indexPosToChange] === 0,
             Return[{{{}, {}, {}}, {{}, {}, {}}}]
         ];
-        (*Next, we isolate the group indices and try to group according to these. If no group indices are present, we try to group by momenta.
-            *)
+(*Next, we isolate the group indices and try to group according to these. If no group indices are present, we try to group by momenta.
+    
+    *)
         indicesToChange = Flatten[Table[allObj[[idx, 1, indexPosToChange
             [[idx]]]], {idx, 1, Length[allObj]}], 1];
         indexPosToChange =
@@ -1391,8 +1495,9 @@ GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
                     ,
                     repl
                 ];
-        (*Furthermore, we isolate the group index replacements and the momentum replacements:
-            *)
+(*Furthermore, we isolate the group index replacements and the momentum replacements:
+    
+    *)
         replForward =
             {
                 repl
@@ -1631,6 +1736,7 @@ OrderObject[setup_, obj_[fields_List, indices_List] /; MemberQ[$OrderedObjects,
         prefactor = 1;
 (*Always compare the ith field with all previous fields and put it in the right place.
     
+    
 Iterate until one reaches the end of the array, then it is sorted.*)
         For[i = 1, i <= Length[nfields] - $unorderedIndices[obj], i++,
             
@@ -1665,6 +1771,7 @@ GetOrder[setup_, fields_List, reverse_:False] /; BooleanQ[reverse] :=
         prefactor = 1;
 (*Always compare the ith field with all previous fields and put it in the right place.
     
+    
 Iterate until one reaches the end of the array, then it is sorted.*)
         For[i = 1, i <= Length[nfields], i++,
             curi = i;
@@ -1692,6 +1799,7 @@ GetOrder[setup_, fields_List, fieldOrder_List] :=
         fields]]},
         prefactor = 1;
 (*Always compare the ith field with all previous fields and put it in the right place.
+    
     
 Iterate until one reaches the end of the array, then it is sorted.*)
         i = 1;
@@ -1751,6 +1859,7 @@ OrderObject[setup_, obj_[fields_List, indices_List] /; MemberQ[$OrderedObjects,
         prefactor = 1;
 (*Always compare the ith field with all previous fields and put it in the right place.
     
+    
 Iterate until one reaches the end of the array, then it is sorted.*)
         i = 1;
         While[
@@ -1788,6 +1897,7 @@ OrderFieldList[setup_, fields_List] :=
         {i, curi, nfields = fields}
         ,
 (*Always compare the ith field with all previous fields and put it in the right place.
+    
     
 Iterate until one reaches the end of the array, then it is sorted.*)
         For[i = 1, i <= Length[nfields], i++,
@@ -1908,14 +2018,14 @@ metric[setup_, a_, b_] :=
             If[f1 === f2 && lower[[1]] && Not[lower[[2]]],
                 Return[1]
             ];
-            (*Subscript[\[Gamma]^a, b] = (-1)^abSubscript[\[Delta]^a, b]
-                *)
+(*Subscript[\[Gamma]^a, b] = (-1)^abSubscript[\[Delta]^a, b]
+    *)
             sign = CommuteSign[setup, f1, f2];
             If[f1 === f2 && Not[lower[[1]]] && lower[[2]],
                 Return[sign]
             ];
-            (*Subscript[\[Gamma], ab]=\[Gamma]^ab and fields fit with partners
-                *)
+(*Subscript[\[Gamma], ab]=\[Gamma]^ab and fields fit with partners
+    *)
             If[f1 === f2p && Not[Xor @@ lower],
                 Return @ GrassOrder[setup, f1, f2, sign]
             ];
@@ -1948,13 +2058,14 @@ ReduceIndices[setup_, term_FTerm] :=
             
         cases = Pick[cases, Map[#[[1]] || #[[2]]&, closed]];
         closed = Pick[closed, Map[#[[1]] || #[[2]]&, closed]];
-        (*replace the terms in question by the evaluated metric factor
-            *)
+(*replace the terms in question by the evaluated metric factor
+    *)
         result = result /. Map[# :> metric[setup, (-2 * Boole[isNeg[#
             [[2, 1]]]] + 1) #[[1, 1]], (-2 * Boole[isNeg[#[[2, 2]]]] + 1) #[[1, 2
             ]]]&, cases \[Union] casesOpen];
-        (*replace the remaining indices. If both are up or both or down, the remaining indices change signs.
-            *)
+(*replace the remaining indices. If both are up or both or down, the remaining indices change signs.
+    
+    *)
         result =
             result /.
                 Table[
@@ -2100,14 +2211,14 @@ LTrunc[setup_, expr_FTerm] :=
         If[Length[closedIndices] === 0,
             Return[FTerm @@ ret /. undoFields]
         ];
-        (*We have to update these global quantities after each iteration
-            *)
+(*We have to update these global quantities after each iteration
+    *)
         allObj = ExtractObjectsWithIndex[setup, FTerm @@ (ret /. FTerm[
             __] :> ignore)] /. doFields;
         FunKitDebug[3, "  Searching for the first object that needs expansion..."
             ];
-        (*Next, try to find the first factor that needs to be expanded
-            *)
+(*Next, try to find the first factor that needs to be expanded
+    *)
         notFoundCuri = True;
         curi = 1;
         While[
@@ -2288,8 +2399,9 @@ FixIndices[setup_, expr_FEx] :=
     Module[
         {}
         ,
-        (*Indices should be fixed on a per-term basis to ensure we do not mess up things
-            *)
+(*Indices should be fixed on a per-term basis to ensure we do not mess up things
+    
+    *)
         Return[FixIndices[setup, #]& /@ expr];
     ];
 
@@ -2366,8 +2478,9 @@ ReduceFTerm[setup_, term_] :=
                     Message[FTerm::GrassmannOpen, FTerm[a]];
                     Abort[]
                 ];
-        (*Merge scalar terms with the closest Grassman term. We need to "vanish" nested FTerms, to make sure we do not overcount.
-            *)
+(*Merge scalar terms with the closest Grassman term. We need to "vanish" nested FTerms, to make sure we do not overcount.
+    
+    *)
         i = 1;
         While[
             i < Length[reduced]
@@ -2456,8 +2569,9 @@ DExpand[setup_, expr_FTerm, order_Integer] :=
     Module[
         {ret = expr, n, i, dummy}
         ,
-        (*We need to block the FDOp definitions to use SeriesCoefficient with FDOp
-            *)
+(*We need to block the FDOp definitions to use SeriesCoefficient with FDOp
+    
+    *)
         Block[{FDOp},
             ret = ret //. Power[a_FTerm, b_] /; MemberQ[{a}, FDOp[__],
                  Infinity] :> FEx @@ Table[FTerm[SeriesCoefficient[dummy^b, {dummy, 0,
@@ -2521,8 +2635,9 @@ ResolveFDOp[setup_, term_FTerm] :=
             ), FDOp[_]][[1]] + 1;
         termsNoFDOp = FTerm[rTerm[[1 ;; FDOpPos - 1]], rTerm[[FDOpPos
              + 1 ;; ]]];
-        (*If the derivative operator is trailing, it acts on nothing and the term is zero.
-            *)
+(*If the derivative operator is trailing, it acts on nothing and the term is zero.
+    
+    *)
         If[FDOpPos >= Length[rTerm],
             Return[FEx[0]]
         ];
@@ -2543,8 +2658,8 @@ ResolveFDOp[setup_, term_FTerm] :=
             obj = Select[obj, MemberQ[$nonCommutingObjects, Head[#]] 
                 || MatchQ[#, _Symbol[_]]&];
             obj = obj /. doFields;
-            (*Commuting the next derivative past the objects in the current part
-                *)
+(*Commuting the next derivative past the objects in the current part
+    *)
             cTerm = cTerm * Times @@ Map[FMinus[{Head[dF], #[[1]]}, {
                 dF[[1]], #[[2]]}]&, Transpose[{Flatten[obj[[All, 1]]], Flatten[obj[[All,
                  2]]]}]];
@@ -2580,8 +2695,8 @@ ResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
         ];
         {fw, bw} = GetSuperIndexTermTransformations[setup, eq];
         ret // fw;
-        (*ParallelMap will produce some overhead, but it quickly pays off
-            *)
+(*ParallelMap will produce some overhead, but it quickly pays off
+    *)
         mmap =
             If[Total[Length /@ (List @@ FEx[ret])] > 10,
                 ParallelMap
@@ -2595,9 +2710,11 @@ ResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
             ,
             FunKitDebug[1, "Doing derivative pass ", i + 1];
             ret = FEx @@ mmap[ResolveFDOp[setup, #]&, List @@ ret];
-            (*If AnSEL has been loaded, use FSimplify to reduce redundant terms
-                *)                                                           (*
+(*If AnSEL has been loaded, use FSimplify to reduce redundant terms
+    *)                                                               
+        (*
 If[ModuleLoaded[AnSEL],ret=FunKit`FSimplify[setup,ret,"Symmetries"->OptionValue["Symmetries"]]];
+    
     *)
             i++;
         ];
@@ -2629,8 +2746,9 @@ TakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
         AssertDerivativeList[setup, derivativeList];
         (*We take them in reverse order.*)
         derivativeListSIDX = derivativeList;
-        (*First, fix the indices in the input equation, i.e. make everything have unique names
-            *)
+(*First, fix the indices in the input equation, i.e. make everything have unique names
+    
+    *)
         result = FixIndices[setup, FEx[expr]];
         If[Length[derivativeListSIDX] === 0,
             Return[ResolveDerivatives[setup, result, "Symmetries" -> 
@@ -2736,12 +2854,14 @@ MakeDSE[setup_, field_] :=
                  //
             ReduceIndices[setup, #]& //
             ReduceIndices[setup, #]&;
-        (*Separate powers out into factors in the FTerm. Need this to insert FDOp in the next step
-            *)
+(*Separate powers out into factors in the FTerm. Need this to insert FDOp in the next step
+    
+    *)
         dS = dS //. Times[pre___, f1_[id1_], post___] :> NonCommutativeMultiply[
             pre, f1[id1], post];
-        (*Insert \[Phi]^a->\[CapitalPhi]^a+G^ab\[Delta]/\[Delta]\[CapitalPhi]^b 
-            *)
+(*Insert \[Phi]^a->\[CapitalPhi]^a+G^ab\[Delta]/\[Delta]\[CapitalPhi]^b 
+    
+    *)
         dS =
             dS /.
                 (
