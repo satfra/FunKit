@@ -114,8 +114,8 @@ FEx objects support non-commutative multiplication (**) and automatically handle
 
 FTerm::usage = "FTerm[factor1, factor2, ...]
 Represents a single term in a functional equation as a product of factors.
-Factors can be numbers, indexed objects, fields, or derivative operators.
-FTerm objects automatically handle commutation relations and Grassmann algebra for fermionic fields.";
+Factors can be numbers, indexed objects, fields, derivative operators, or appropriate combinations thereof.
+Certain restrictions apply: If you put two Grassmann fields into the same factor, using this FTerm will lead to errors being thrown.";
 
 F::usage = "F[expr...]
 Shorthand notation for FEx[FTerm[expr...]].
@@ -360,8 +360,6 @@ type::error = "The expression given is neither an FEx nor an FTerm.";
 
 Unprotect[FTerm, NonCommutativeMultiply];
 
-ClearAll[FTerm];
-
 FTerm::TimesError = "An FTerm cannot be multiplied using Times[__]. To multiply FTerms, use term1**term2, also with scalars, a**term. Error in expression
 `1`";
 
@@ -456,8 +454,6 @@ Protect[FTerm, NonCommutativeMultiply];
 (* ::Input::Initialization:: *)
 
 Unprotect[FEx];
-
-ClearAll[FEx];
 
 FEx::TimesError = "A FEx cannot be multiplied using Times[__]. To multiply FExs, use eq1**eq2, also with scalars, a**eq. Error in expression
 `1`";
@@ -607,8 +603,6 @@ AssertFEx[expr_] :=
 (* ::Input::Initialization:: *)
 
 Unprotect[FMinus];
-
-ClearAll[FMinus];
 
 (*Grassmann minus signs do not care about index positioning. We force them always up*)
 
@@ -852,8 +846,6 @@ AssertDerivativeList[setup_, expr_] :=
 
 Unprotect[FDOp];
 
-ClearAll[FDOp];
-
 FDOp::invalid = "`1` is not a valid FDOp.";
 
 FDOp::invalidArguments = "`1` is not a valid FDOp. FDOp takes a single field with an index as argument.";
@@ -942,7 +934,9 @@ FunctionalD[setup_, expr_, v : (f_[_] | {f_[_], _Integer}).., OptionsPattern[
                 {f, #}, {-y, x}])&, GetAllFields[setup]];
         ];
         (*Ignore fields without indices. These are usually tags*)
-        f /: D[f, f[y_], NonConstants -> nonConst] := 0;(*\[Delta][#,y]&;
+        f /: D[f, f[y_], NonConstants -> nonConst] := 0; (*\[Delta][#,y]&;
+            
+            
             
             *)
         (*Derivative rules for Correlation functions*)
@@ -1443,6 +1437,8 @@ GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
         ];
 (*Next, we isolate the group indices and try to group according to these. If no group indices are present, we try to group by momenta.
     
+    
+    
     *)
         indicesToChange = Flatten[Table[allObj[[idx, 1, indexPosToChange
             [[idx]]]], {idx, 1, Length[allObj]}], 1];
@@ -1496,6 +1492,8 @@ GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
                     repl
                 ];
 (*Furthermore, we isolate the group index replacements and the momentum replacements:
+    
+    
     
     *)
         replForward =
@@ -1737,6 +1735,8 @@ OrderObject[setup_, obj_[fields_List, indices_List] /; MemberQ[$OrderedObjects,
 (*Always compare the ith field with all previous fields and put it in the right place.
     
     
+    
+    
 Iterate until one reaches the end of the array, then it is sorted.*)
         For[i = 1, i <= Length[nfields] - $unorderedIndices[obj], i++,
             
@@ -1772,6 +1772,8 @@ GetOrder[setup_, fields_List, reverse_:False] /; BooleanQ[reverse] :=
 (*Always compare the ith field with all previous fields and put it in the right place.
     
     
+    
+    
 Iterate until one reaches the end of the array, then it is sorted.*)
         For[i = 1, i <= Length[nfields], i++,
             curi = i;
@@ -1799,6 +1801,8 @@ GetOrder[setup_, fields_List, fieldOrder_List] :=
         fields]]},
         prefactor = 1;
 (*Always compare the ith field with all previous fields and put it in the right place.
+    
+    
     
     
 Iterate until one reaches the end of the array, then it is sorted.*)
@@ -1860,6 +1864,8 @@ OrderObject[setup_, obj_[fields_List, indices_List] /; MemberQ[$OrderedObjects,
 (*Always compare the ith field with all previous fields and put it in the right place.
     
     
+    
+    
 Iterate until one reaches the end of the array, then it is sorted.*)
         i = 1;
         While[
@@ -1897,6 +1903,8 @@ OrderFieldList[setup_, fields_List] :=
         {i, curi, nfields = fields}
         ,
 (*Always compare the ith field with all previous fields and put it in the right place.
+    
+    
     
     
 Iterate until one reaches the end of the array, then it is sorted.*)
@@ -2064,6 +2072,8 @@ ReduceIndices[setup_, term_FTerm] :=
             [[2, 1]]]] + 1) #[[1, 1]], (-2 * Boole[isNeg[#[[2, 2]]]] + 1) #[[1, 2
             ]]]&, cases \[Union] casesOpen];
 (*replace the remaining indices. If both are up or both or down, the remaining indices change signs.
+    
+    
     
     *)
         result =
@@ -2401,6 +2411,8 @@ FixIndices[setup_, expr_FEx] :=
         ,
 (*Indices should be fixed on a per-term basis to ensure we do not mess up things
     
+    
+    
     *)
         Return[FixIndices[setup, #]& /@ expr];
     ];
@@ -2479,6 +2491,8 @@ ReduceFTerm[setup_, term_] :=
                     Abort[]
                 ];
 (*Merge scalar terms with the closest Grassman term. We need to "vanish" nested FTerms, to make sure we do not overcount.
+    
+    
     
     *)
         i = 1;
@@ -2571,6 +2585,8 @@ DExpand[setup_, expr_FTerm, order_Integer] :=
         ,
 (*We need to block the FDOp definitions to use SeriesCoefficient with FDOp
     
+    
+    
     *)
         Block[{FDOp},
             ret = ret //. Power[a_FTerm, b_] /; MemberQ[{a}, FDOp[__],
@@ -2636,6 +2652,8 @@ ResolveFDOp[setup_, term_FTerm] :=
         termsNoFDOp = FTerm[rTerm[[1 ;; FDOpPos - 1]], rTerm[[FDOpPos
              + 1 ;; ]]];
 (*If the derivative operator is trailing, it acts on nothing and the term is zero.
+    
+    
     
     *)
         If[FDOpPos >= Length[rTerm],
@@ -2711,9 +2729,11 @@ ResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
             FunKitDebug[1, "Doing derivative pass ", i + 1];
             ret = FEx @@ mmap[ResolveFDOp[setup, #]&, List @@ ret];
 (*If AnSEL has been loaded, use FSimplify to reduce redundant terms
-    *)                                                               
+    *)
         (*
 If[ModuleLoaded[AnSEL],ret=FunKit`FSimplify[setup,ret,"Symmetries"->OptionValue["Symmetries"]]];
+    
+    
     
     *)
             i++;
@@ -2747,6 +2767,8 @@ TakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
         (*We take them in reverse order.*)
         derivativeListSIDX = derivativeList;
 (*First, fix the indices in the input equation, i.e. make everything have unique names
+    
+    
     
     *)
         result = FixIndices[setup, FEx[expr]];
@@ -2856,10 +2878,14 @@ MakeDSE[setup_, field_] :=
             ReduceIndices[setup, #]&;
 (*Separate powers out into factors in the FTerm. Need this to insert FDOp in the next step
     
+    
+    
     *)
         dS = dS //. Times[pre___, f1_[id1_], post___] :> NonCommutativeMultiply[
             pre, f1[id1], post];
 (*Insert \[Phi]^a->\[CapitalPhi]^a+G^ab\[Delta]/\[Delta]\[CapitalPhi]^b 
+    
+    
     
     *)
         dS =

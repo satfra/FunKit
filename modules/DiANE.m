@@ -635,8 +635,13 @@ RenewFormatDefinitions[] :=
                         ,
                         "BodySeparator" -> "\\,"
                         ,
-                        (*It is not clear why the call to RenewFormatDefinitions[] is necessary here. However, removing it leads to TeXForm ignoring all custom TeXStyles.
-                            *)
+(*It is not clear why the call to RenewFormatDefinitions[] is necessary here. However, removing it leads to TeXForm ignoring all custom TeXStyles.
+    
+    
+    
+    
+    
+    *)
                         "BodyConverter" ->
                             (
                                 ToString[
@@ -820,7 +825,7 @@ GetDiagram[setup_, expr_FTerm] :=
         doFields = replFields[setup];
         PossibleVertices =
             Join[
-                {GammaN, S, Rdot, Field, R}
+                {GammaN, S, Rdot, Field, R, Phidot}
                 ,
                 If[KeyExistsQ[setup, "DiagramStyling"] && KeyExistsQ[
                     setup["DiagramStyling"], "Vertices"],
@@ -868,6 +873,7 @@ GetDiagram[setup_, expr_FTerm] :=
         (*prepare vertices*)
         vertices = Select[allObj, MemberQ[PossibleVertices, Head[#]] 
             && (FreeQ[PossibleEdges, Head[#]] || Length[#[[2]]] =!= 2)&];
+        Print[vertices];
         vertexReplacements =
             Flatten @
                 Module[{v},
@@ -922,6 +928,9 @@ GetDiagram[setup_, expr_FTerm] :=
             idx, 1, Length[edges]}];
         (*edges=Flatten@Table[{Head[edges[[idx]]][edges[[idx,1]],phantomVertices[[idx]]],Head[edges[[idx]]][phantomVertices[[idx]],edges[[idx,2]]]},{idx,1,Length[edges]}];
             *)
+        (*Take a look again at the vertices. If there are any vertices which are not connected by edges, but have common indices, we will need to merge them!
+            *)
+        Print["edges: ", edges];
         (*get the prefactor*)
         prefactor = Times @@ (diag /. doFields /. Map[Blank[#] -> 1&,
              Join[{Field}, $allObjects]]);
