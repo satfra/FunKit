@@ -21,6 +21,11 @@ If you use the package for your research, please cite the corresponding publicat
 
 After you have [installed](#installation) the package, you can open a new notebook and call
 ```Mathematica
+Needs["FunKit`"]
+```
+to load the package.
+To get started, the first command you may want to use is
+```Mathematica
 FInfo[]
 ```
 or more specifically,
