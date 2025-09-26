@@ -25,7 +25,7 @@ FInfo[]
 ```
 or more specifically,
 ```Mathematica
-FInfo["FEDeriK]
+FInfo["FEDeriK"]
 ```
 which will give you an overview of how to use the package.
 
