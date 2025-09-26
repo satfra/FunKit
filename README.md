@@ -45,3 +45,39 @@ If you use the package for your research, please cite the corresponding publicat
 }
 ```
 
+## Basic usage
+
+After you have installed the package, you can open a new notebook and call
+```Mathematica
+FInfo[]
+```
+or more specifically,
+```Mathematica
+FInfo["FEDeriK]
+```
+which will give you an overview of how to use the package.
+
+For example, you may want to have the general expression for the flow of a two-point function from the Wetterich equation:
+```Mathematica
+fields = <|"Commuting"->{Phi[p]}, "Grassmann"->{}|>;
+SetGlobalSetup[<|"FieldSpace"->fields|>];
+TakeDerivatives[WetterichEquation, {Phi[i1], Phi[i2]}]//FPrint;
+```
+Which will produce the output
+
+$$
+\begin{aligned}\  &\frac{1}{2}\,(-1)^{\text{c}\text{c}}\,(-1)^{\text{e}\text{e}}\,(-1)^{\phi^{i_1}\text{a}}\,(-1)^{\phi^{i_2}\text{a}}\,G^{\text{a}\text{b}}\,\Gamma_{\text{b}\phi^{i_1}\text{c}}\,G^{\text{c}\text{d}}\,\Gamma_{\text{d}\phi^{i_2}\text{e}}\,G^{\text{e}\text{f}}\,\partial_t R_{\text{a}\text{f}}
+    \\ &\,+\,(-\frac{1}{2}\,(-1)^{\text{c}\text{c}}\,(-1)^{\phi^{i_2}\text{a}}\,G^{\text{a}\text{b}}\,(-1)^{\phi^{i_1}\text{a}}\,(-1)^{\phi^{i_1}\text{b}}\,\Gamma_{\phi^{i_1}\text{b}\phi^{i_2}\text{c}}\,G^{\text{c}\text{d}}\,\partial_t R_{\text{a}\text{d}})
+    \\ &\,+\,\frac{1}{2}\,(-1)^{\text{c}\text{c}}\,(-1)^{\phi^{i_2}\text{a}}\,G^{\text{a}\text{b}}\,\Gamma_{\text{b}\phi^{i_2}\text{c}}\,(-1)^{\text{e}\text{e}}\,(-1)^{\phi^{i_1}\text{a}}\,G^{\text{c}\text{d}}\,\Gamma_{\text{d}\phi^{i_1}\text{e}}\,G^{\text{e}\text{f}}\,\partial_t R_{\text{a}\text{f}}
+\end{aligned}
+$$
+
+## Examples
+
+To learn how to compute more complicated systems, you may want to see some typical examples on how to use `FunKit` to deal with common QFTs of interest. 
+
+You will find some showcases inside the `examples/` folder:
+-  `examples/ScalarTheory` shows the derivation of DSEs and fRG flows in an $O(N)$ theory.
+-  `examples/Yang-Mills` derives the functional equations for an $SU(N)$ gauge theory.
+-  `examples/Yukawa` does the same for a mixed fermion-boson theory.
+
