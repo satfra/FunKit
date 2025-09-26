@@ -81,3 +81,15 @@ You will find some showcases inside the `examples/` folder:
 -  `examples/Yang-Mills` derives the functional equations for an $SU(N)$ gauge theory.
 -  `examples/Yukawa` does the same for a mixed fermion-boson theory.
 
+## Related software
+
+To the end of deriving flow equations, other useful software already exists, in particular
+
+- [QMeS](https://github.com/QMeS-toolbox/QMeS-Derivation), which can derive fRG equations, DSEs, as well as (m)STIs.
+- [DoFun](https://github.com/markusqh/DoFun) for the same tasks.
+
+`FunKit` depends on, and builds upon
+-  [FormTracer](https://github.com/FormTracer/FormTracer) to perform traces over group indices in the derived functional equations,
+-  [TensorBases](https://github.com/satfra/TensorBases) to handle tensor bases and projections.
+
+These two packages are automatically installed when you import `FunKit` for the first time in a Mathematica notebook or session.
