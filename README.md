@@ -93,6 +93,17 @@ $ cmake ..
 $ make install
 ```
 
+## Testing and validation
+
+To run the test suite, you can either run 
+```bash
+$ make test
+```
+from the build directory (if you installed via CMake), or run the tests directly from a Mathematica notebook or kernel:
+```Mathematica
+Get["FunKit`"]
+FTest[]
+```
 
 ## Related software
 

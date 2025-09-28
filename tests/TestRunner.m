@@ -4,6 +4,8 @@
   in its directory.
 *)
 
+(* Hide styling if we are in a CLI context. *)
+
 If[$FrontEnd === Null,
     Unprotect[Style];
     Unprotect[StyleBox];
@@ -24,6 +26,8 @@ Block[{Print},
 Print["Using FunKit version: " <> ToString[FunKit`$FunKitVersion], "\n"
     ];
 
+Import[$FunKitDirectory <> "/tests/util/getQMeS.m"];
+
 RunAndReportTests[tests_List, testFileName_String] :=
     Module[{result, successCount, failureCount, mGreen = RGBColor[0.0235294,
          0.235294, 0.0235294], mRed = RGBColor[0.435294, 0, 0]},
@@ -35,12 +39,20 @@ RunAndReportTests[tests_List, testFileName_String] :=
         Print[Style["  ✓ " <> ToString[successCount] <> " passed", mGreen
             ], "    ", Style["x " <> ToString[failureCount] <> " failed", mRed]];
             
+        If[successCount > 0,
+            Print["\n", Style["  Successful Tests Details:", mGreen, 
+                Bold]];
+            Scan[(Print["\n", Style["  Test:", mGreen, Bold], " ", #[
+                "TestID"]];)&, Values[KeyTake[result["TestResults"], result["TestsSucceededKeys"
+                ]]]]
+        ];
         If[failureCount > 0,
             Print["\n", Style["  Failed Tests Details:", mRed, Bold]]
                 ;
             Scan[
                 (
-                    Print["\n", "  Test:", " ", #["Input"]];
+                    Print["\n", Style["  Test:", mRed, Bold], " ", #[
+                        "TestID"]];
                     Print["    Expected: ", #["ExpectedOutput"]];
                     Print["    Actual:   ", #["ActualOutput"]];
                 )&
