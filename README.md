@@ -97,12 +97,13 @@ $ make install
 ## Related software
 
 To the end of deriving flow equations, other useful software already exists, in particular
-
-- [QMeS](https://github.com/QMeS-toolbox/QMeS-Derivation), which can derive fRG equations, DSEs, as well as (m)STIs.
-- [DoFun](https://github.com/markusqh/DoFun) for the same tasks.
+- [![QMeS](https://img.shields.io/badge/QMeS-3e4c2d?style=for-the-badge&logo=github)](https://github.com/QMeS-toolbox/QMeS-Derivation), which can derive fRG equations, DSEs, as well as (m)STIs.
+- [![DoFun](https://img.shields.io/badge/DoFun-7a5fb0?style=for-the-badge&logo=github)](https://github.com/markusqh/DoFun) for the same tasks.
 
 `FunKit` depends on, and builds upon
--  [FormTracer](https://github.com/FormTracer/FormTracer) to perform traces over group indices in the derived functional equations,
--  [TensorBases](https://github.com/satfra/TensorBases) to handle tensor bases and projections.
+-  [![FormTracer](https://img.shields.io/badge/FormTracer-4e94cb?style=for-the-badge&logo=github)](https://github.com/FormTracer/FormTracer) to perform traces over group indices in the derived functional equations,
+-  [![TensorBases](https://img.shields.io/badge/TensorBases-bb1a1a?style=for-the-badge&logo=github)](https://github.com/satfra/TensorBases) to handle tensor bases and projections.
 
 These two packages are automatically installed when you import `FunKit` for the first time in a Mathematica notebook or session.
+
+-  `FunKit` provides the algebraic infrastructure for [![DiFfRG](https://img.shields.io/badge/DiFfRG-1f1f1f?style=for-the-badge&logo=github)](https://github.com/satfra/DiFfRG), which is a C++ framework to solve the derived equations numerically.
