@@ -1,0 +1,26 @@
+name: run-tests
+on: push
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    container:
+      image: wolframresearch/wolframengine:latest
+      options: --user root --privileged --init --ulimit core=-1
+
+    steps:
+      - name: checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup build and install
+        run: |
+          mkdir -p build
+          cd build
+          cmake -DCMAKE_BUILD_TYPE=Release ../FunKit
+          make install
+          cd ..
+
+      - name: Run tests
+        run: |
+          cd build
+          make test
