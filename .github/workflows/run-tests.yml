@@ -16,13 +16,12 @@ jobs:
         run: |
           apt-get update
           apt-get install -y cmake make
-          mkdir -p build
-          cd build
-          cmake -DCMAKE_BUILD_TYPE=Release ../FunKit
+          mkdir -p $GITHUB_WORKSPACE/FunKit-build
+          cd $GITHUB_WORKSPACE/FunKit-build
+          cmake -DCMAKE_BUILD_TYPE=Release $GITHUB_WORKSPACE/FunKit
           make install
-          cd ..
 
       - name: Run tests
         run: |
-          cd build
+          cd $GITHUB_WORKSPACE/FunKit-build
           make test
