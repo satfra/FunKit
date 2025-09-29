@@ -14,18 +14,13 @@ QMeSInstalled[] :=
     ];
 
 If[Not @ QMeSInstalled[],
-    If[ChoiceDialog["QMeS does not seem to be installed. The tests require QMeS to be installed to run. Do you want to install it?",
-         WindowTitle -> "Install QMeS", WindowSize -> {Medium, All}],
-        Block[{Print},
-            Import["https://raw.githubusercontent.com/satfra/QMeS-Derivation/main/QMeSInstaller.m"
-                ]
-        ]
-        ,
-        Print["StyleBox[\"FunKit\",\nFontWeight->\"Bold\"]\)'s tests require \!\(\*
-    StyleBox[\"QMeS\",\nFontWeight->\"Bold\"]\) to run."
-            ];
-        Abort[];
-    ];
+    Print["FunKit's tests require QMeS to run. Installing the latest version now.
+    "
+        ];
+    Block[{Print},
+        Import["https://raw.githubusercontent.com/satfra/QMeS-Derivation/main/QMeSInstaller.m"
+            ]
+    ]
 ];
 
 Get["QMeSderivation`"]
