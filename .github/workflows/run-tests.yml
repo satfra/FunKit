@@ -6,13 +6,17 @@ jobs:
 
     container:
       image: wolframresearch/wolframengine:latest
-      options: --user root --privileged --init --ulimit core=-1
+      options: --user root
+    env:
+      WOLFRAM_SYSTEM_ID: Linux-x86-64
 
     steps:
       - name: checkout repo
         uses: actions/checkout@v4
 
       - name: Setup build and install
+        env:
+          WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAM_LICENSE_ENTITLEMENT_ID }}
         run: |
           apt-get update
           apt-get install -y cmake make git
@@ -22,6 +26,8 @@ jobs:
           make install
 
       - name: Run tests
+        env:
+          WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAM_LICENSE_ENTITLEMENT_ID }}
         run: |
           cd $GITHUB_WORKSPACE/build
           make test
