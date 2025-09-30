@@ -17,6 +17,7 @@ jobs:
       - name: Setup build and install
         env:
           WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAM_LICENSE_ENTITLEMENT_ID }}
+          WOLFRAM_SCRIPT: /opt/Wolfram/WolframEngine/bin/wolframscript
         run: |
           apt-get update
           apt-get install -y cmake make git
@@ -28,6 +29,7 @@ jobs:
       - name: Run tests
         env:
           WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAM_LICENSE_ENTITLEMENT_ID }}
+          WOLFRAM_SCRIPT: /opt/Wolfram/WolframEngine/bin/wolframscript
         run: |
           cd $GITHUB_WORKSPACE/build
           make test
