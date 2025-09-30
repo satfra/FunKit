@@ -30,51 +30,56 @@ if("${CPM_SOURCE_CACHE}" STREQUAL "OFF" OR NOT DEFINED CPM_SOURCE_CACHE)
   set(CPM_SOURCE_CACHE $ENV{HOME}/.cache/CPM)
 endif()
 
-# Get codeparser
-cpmaddpackage(
-  NAME
-  LibraryLinkUtilities
-  GITHUB_REPOSITORY
-  WolframResearch/LibraryLinkUtilities
-  GIT_TAG
-  v3.2.0
-  DOWNLOAD_ONLY
-  True)
-list(APPEND CMAKE_MODULE_PATH ${LibraryLinkUtilities_SOURCE_DIR}/cmake)
-
-find_package(WolframLanguage 12.0 COMPONENTS wolframscript)
-
-if(${WolframLanguage_FOUND})
-  message(STATUS "Wolfram Language found: ${WolframLanguage_VERSION}")
-  message(
-    STATUS "WolframScript executable: ${WolframLanguage_wolframscript_EXE}")
-
-  # get the application directory
-  execute_process(
-    COMMAND ${WolframLanguage_wolframscript_EXE} -script
-            ${CMAKE_CURRENT_SOURCE_DIR}/utils/get_wolfram_app_dir.m
-    OUTPUT_VARIABLE WOLFRAM_APP_DIR
-    OUTPUT_STRIP_TRAILING_WHITESPACE)
-  message(STATUS "Wolfram Language application directory: ${WOLFRAM_APP_DIR}")
-
-  # install the Mathematica package
-  install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/FunKit.m
-          DESTINATION ${WOLFRAM_APP_DIR}/FunKit)
-  install(
-    DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/modules
-              ${CMAKE_CURRENT_SOURCE_DIR}/examples
-              ${CMAKE_CURRENT_SOURCE_DIR}/utils
-              ${CMAKE_CURRENT_SOURCE_DIR}/tests
-    MESSAGE_NEVER
-    DESTINATION ${WOLFRAM_APP_DIR}/FunKit
-    FILES_MATCHING
-    PATTERN "*.m"
-    PATTERN "*.wl"
-    PATTERN "*.mx"
-    PATTERN "*.nb")
-else()
-  message(ERROR "Wolfram Language not found.")
+# See if the variable WolframLanguage_wolframscript_EXE is defined
+if(DEFINED ENV{WOLFRAM_SCRIPT})
+  set(WolframLanguage_wolframscript_EXE $ENV{WOLFRAM_SCRIPT})
 endif()
+if(NOT DEFINED WolframLanguage_wolframscript_EXE)
+  # Get codeparser
+  cpmaddpackage(
+    NAME
+    LibraryLinkUtilities
+    GITHUB_REPOSITORY
+    WolframResearch/LibraryLinkUtilities
+    GIT_TAG
+    v3.2.0
+    DOWNLOAD_ONLY
+    True)
+  list(APPEND CMAKE_MODULE_PATH ${LibraryLinkUtilities_SOURCE_DIR}/cmake)
+
+  find_package(WolframLanguage 12.0 COMPONENTS wolfram)
+
+  if(${WolframLanguage_FOUND})
+    message(STATUS "Wolfram Language found: ${WolframLanguage_VERSION}")
+    message(
+      STATUS "WolframScript executable: ${WolframLanguage_wolframscript_EXE}")
+  else()
+    message(ERROR "Wolfram Language not found.")
+  endif()
+endif()
+
+# get the application directory
+execute_process(
+  COMMAND ${WolframLanguage_wolframscript_EXE} -script
+          ${CMAKE_CURRENT_SOURCE_DIR}/utils/get_wolfram_app_dir.m
+  OUTPUT_VARIABLE WOLFRAM_APP_DIR
+  OUTPUT_STRIP_TRAILING_WHITESPACE)
+message(STATUS "Wolfram Language application directory: ${WOLFRAM_APP_DIR}")
+
+# install the Mathematica package
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/FunKit.m
+        DESTINATION ${WOLFRAM_APP_DIR}/FunKit)
+install(
+  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/modules
+            ${CMAKE_CURRENT_SOURCE_DIR}/examples
+            ${CMAKE_CURRENT_SOURCE_DIR}/utils ${CMAKE_CURRENT_SOURCE_DIR}/tests
+  MESSAGE_NEVER
+  DESTINATION ${WOLFRAM_APP_DIR}/FunKit
+  FILES_MATCHING
+  PATTERN "*.m"
+  PATTERN "*.wl"
+  PATTERN "*.mx"
+  PATTERN "*.nb")
 
 # ##############################################################################
 # Testing
