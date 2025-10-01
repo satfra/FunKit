@@ -24,5 +24,5 @@ Print["  Launching parallel kernels..."];
 
 LaunchKernels[];
 
-Print["  Parallel kernels launched: " <> ToString[$KernelCount] <> " kernels.\n"
-    ];
+Print["    Parallel kernels launched: " <> ToString[$KernelCount] <> 
+    " kernels.\n"];
