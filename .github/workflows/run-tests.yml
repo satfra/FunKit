@@ -40,3 +40,4 @@ jobs:
             echo " # !Tests failed" >> $GITHUB_STEP_SUMMARY
             exit 1
           fi
+          echo "Summary: \n$(cat test.log)"
