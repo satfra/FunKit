@@ -1,6 +1,7 @@
 #!/bin/bash
 
 wolfram_app_dir=$1
+mkdir -p ${wolfram_app_dir}
 
 # Get the path where this script is located
 script_path="$(
