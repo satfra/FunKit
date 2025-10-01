@@ -1,3 +1,5 @@
+[![GitHub Actions Workflow Status](https://img.shields.io/github/actions/workflow/status/satfra/FunKit/run-tests.yml?style=for-the-badge&label=Tests)](https://github.com/satfra/FunKit/actions)
+
 # FunKit
 
 `FunKit` is a Mathematica package for all tasks related to the derivation of functional equations in Quantum Field Theory (QFT). 
