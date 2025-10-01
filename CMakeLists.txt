@@ -18,23 +18,46 @@ endif()
 # Install the Mathematica package
 # ##############################################################################
 
-# download CPM.cmake
-file(
-  DOWNLOAD
-  https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.40.8/CPM.cmake
-  ${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake
-  EXPECTED_HASH
-    SHA256=78ba32abdf798bc616bab7c73aac32a17bbd7b06ad9e26a6add69de8f3ae4791)
-include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
-if("${CPM_SOURCE_CACHE}" STREQUAL "OFF" OR NOT DEFINED CPM_SOURCE_CACHE)
-  set(CPM_SOURCE_CACHE $ENV{HOME}/.cache/CPM)
+set(WolframLanguage_wolframscript_EXE "")
+execute_process(
+  COMMAND bash -c "which wolframscript"
+  OUTPUT_VARIABLE WolframLanguage_wolframscript_EXE
+  ERROR_QUIET)
+if(WolframLanguage_wolframscript_EXE STREQUAL "")
+  execute_process(
+    COMMAND bash -c "which wolfram"
+    OUTPUT_VARIABLE WolframLanguage_wolframscript_EXE
+    ERROR_QUIET)
+endif()
+if(WolframLanguage_wolframscript_EXE STREQUAL "")
+  execute_process(
+    COMMAND bash -c "which math"
+    OUTPUT_VARIABLE WolframLanguage_wolframscript_EXE
+    ERROR_QUIET)
 endif()
 
 # See if the variable WolframLanguage_wolframscript_EXE is defined
 if(DEFINED ENV{WOLFRAM_SCRIPT})
   set(WolframLanguage_wolframscript_EXE $ENV{WOLFRAM_SCRIPT})
+elseif(NOT (WolframLanguage_wolframscript_EXE STREQUAL ""))
+  # nothing to do, we found it with which
+else()
+  set(WolframLanguage_wolframscript_EXE "")
 endif()
-if(NOT DEFINED WolframLanguage_wolframscript_EXE)
+
+if(NOT DEFINED WolframLanguage_wolframscript_EXE
+   OR WolframLanguage_wolframscript_EXE STREQUAL "")
+  # download CPM.cmake
+  file(
+    DOWNLOAD
+    https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.40.8/CPM.cmake
+    ${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake
+    EXPECTED_HASH
+      SHA256=78ba32abdf798bc616bab7c73aac32a17bbd7b06ad9e26a6add69de8f3ae4791)
+  include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
+  if("${CPM_SOURCE_CACHE}" STREQUAL "OFF" OR NOT DEFINED CPM_SOURCE_CACHE)
+    set(CPM_SOURCE_CACHE $ENV{HOME}/.cache/CPM)
+  endif()
   # Get codeparser
   cpmaddpackage(
     NAME
@@ -47,21 +70,28 @@ if(NOT DEFINED WolframLanguage_wolframscript_EXE)
     True)
   list(APPEND CMAKE_MODULE_PATH ${LibraryLinkUtilities_SOURCE_DIR}/cmake)
 
-  find_package(WolframLanguage 12.0 COMPONENTS wolfram)
+  find_package(WolframLanguage 12.0 COMPONENTS wolframscript)
 
   if(${WolframLanguage_FOUND})
     message(STATUS "Wolfram Language found: ${WolframLanguage_VERSION}")
-    message(
-      STATUS "WolframScript executable: ${WolframLanguage_wolframscript_EXE}")
   else()
     message(ERROR "Wolfram Language not found.")
   endif()
 endif()
 
+# strip newlines from the executable path. Happens sometimes, breaks everything
+string(REPLACE "\n" "" WolframLanguage_wolframscript_EXE
+               "${WolframLanguage_wolframscript_EXE}")
+message(
+  STATUS
+    "Found a matching wolfram executable at: ${WolframLanguage_wolframscript_EXE}"
+)
+
 # get the application directory
 execute_process(
-  COMMAND ${WolframLanguage_wolframscript_EXE} -script
-          ${CMAKE_CURRENT_SOURCE_DIR}/utils/get_wolfram_app_dir.m
+  COMMAND
+    bash -c
+    "${WolframLanguage_wolframscript_EXE} -script ${CMAKE_CURRENT_SOURCE_DIR}/utils/get_wolfram_app_dir.m"
   OUTPUT_VARIABLE WOLFRAM_APP_DIR
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 message(STATUS "Wolfram Language application directory: ${WOLFRAM_APP_DIR}")
