@@ -31,4 +31,7 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/build
           make test | tee test.log
+          cat "## Test output" >> $GITHUB_STEP_SUMMARY
+          cat "```bash\n" >> $GITHUB_STEP_SUMMARY
           cat test.log >> $GITHUB_STEP_SUMMARY
+          cat "\n```" >> $GITHUB_STEP_SUMMARY
