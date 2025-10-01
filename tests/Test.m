@@ -1,5 +1,5 @@
 (* 
-  TestRunner.m
+  Test.m
   This script discovers and runs all Mathematica test files ending in "Tests.m" 
   in its directory.
 *)

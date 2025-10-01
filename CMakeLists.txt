@@ -121,6 +121,6 @@ add_custom_target(
     ${WolframLanguage_wolframscript_EXE} -script
     ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m | tee
     ${CMAKE_CURRENT_BINARY_DIR}/test.log
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tests/TestRunner.m
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m
   COMMENT "Running tests"
   VERBATIM)
