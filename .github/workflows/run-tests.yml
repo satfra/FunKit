@@ -33,3 +33,4 @@ jobs:
         run: |
           cd $GITHUB_WORKSPACE/build
           make test
+          cat

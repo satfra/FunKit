@@ -19,14 +19,20 @@ If[$FrontEnd === Null,
     Protect[Style];
 ];
 
+(* Take care of dependencies *)
+
+Import[$FunKitDirectory <> "/tests/util/getQMeS.m"];
+
+Import[$FunKitDirectory <> "/tests/util/getFORMTracer.m"];
+
+Import[$FunKitDirectory <> "/tests/util/getFORMTensorBases.m"];
+
 Block[{Print},
     Needs["FunKit`"];
 ];
 
 Print["Using FunKit version: " <> ToString[FunKit`$FunKitVersion], "\n"
     ];
-
-Import[$FunKitDirectory <> "/tests/util/getQMeS.m"];
 
 RunAndReportTests[tests_List, testFileName_String] :=
     Module[{result, successCount, failureCount, mGreen = RGBColor[0.0235294,
