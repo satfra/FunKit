@@ -19,3 +19,10 @@ Block[{Print},
 ];
 
 Print["  Using FunKit version: " <> ToString[FunKit`$FunKitVersion]];
+
+Print["  Launching parallel kernels..."];
+
+LaunchKernels[];
+
+Print["  Parallel kernels launched: " <> ToString[$KernelCount] <> " kernels.\n"
+    ];
