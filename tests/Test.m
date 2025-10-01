@@ -19,20 +19,11 @@ If[$FrontEnd === Null,
     Protect[Style];
 ];
 
-(* Take care of dependencies *)
+(* Perform user-specified initialization tasks *)
 
-Import[$FunKitDirectory <> "/tests/util/getQMeS.m"];
+Import[FileNameJoin[{DirectoryName[$InputFileName], "init.m"}]];
 
-Import[$FunKitDirectory <> "/tests/util/getFORMTracer.m"];
-
-Import[$FunKitDirectory <> "/tests/util/getFORMTensorBases.m"];
-
-Block[{Print},
-    Needs["FunKit`"];
-];
-
-Print["Using FunKit version: " <> ToString[FunKit`$FunKitVersion], "\n"
-    ];
+(* Function to run and report tests *)
 
 RunAndReportTests[tests_List, testFileName_String] :=
     Module[{result, successCount, failureCount, mGreen = RGBColor[0.0235294,
