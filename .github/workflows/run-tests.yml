@@ -30,8 +30,13 @@ jobs:
           WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAM_LICENSE_ENTITLEMENT_ID }}
         run: |
           cd $GITHUB_WORKSPACE/build
-          make test | tee test.log
+          res=$(make test | tee test.log)
           echo "## Test output" >> $GITHUB_STEP_SUMMARY
-          echo "```bash\n" >> $GITHUB_STEP_SUMMARY
+          echo "\`\`\`bash\\n" >> $GITHUB_STEP_SUMMARY
           cat test.log >> $GITHUB_STEP_SUMMARY
-          echo "\n```" >> $GITHUB_STEP_SUMMARY
+          echo "\\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+          # if tests failed, fail the step
+          if [ "$res" -ne 0 ]; then
+            echo " # !Tests failed" >> $GITHUB_STEP_SUMMARY
+            exit 1
+          fi
