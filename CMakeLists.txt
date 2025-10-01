@@ -96,6 +96,12 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 message(STATUS "Wolfram Language application directory: ${WOLFRAM_APP_DIR}")
 
+# Install dependencies
+execute_process(
+  COMMAND
+    bash -c
+    "${CMAKE_CURRENT_SOURCE_DIR}/dependencies/install.sh ${WOLFRAM_APP_DIR}")
+
 # install the Mathematica package
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/FunKit.m
         DESTINATION ${WOLFRAM_APP_DIR}/FunKit)

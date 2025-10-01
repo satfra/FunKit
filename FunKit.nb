@@ -933,7 +933,7 @@ Cell[BoxData[
    RowBox[{
     RowBox[{"{", "}"}], ",", "\[IndentingNewLine]", 
     RowBox[{"Get", "[", 
-     RowBox[{"$FunKitDirectory", "<>", "\"\<tests/TestRunner.m\>\""}], 
+     RowBox[{"$FunKitDirectory", "<>", "\"\<tests/Test.m\>\""}], 
      "]"}]}], "\[IndentingNewLine]", "]"}]}]], "Input",
  InitializationCell->True,
  CellChangeTimes->{{3.967529889287571*^9, 3.9675299340622063`*^9}, {

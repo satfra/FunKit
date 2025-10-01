@@ -21,7 +21,11 @@ If[$FrontEnd === Null,
 
 (* Perform user-specified initialization tasks *)
 
+Print["Performing initialization tasks..."];
+
 Import[FileNameJoin[{DirectoryName[$InputFileName], "init.m"}]];
+
+Print["Initialization complete.\n"];
 
 (* Function to run and report tests *)
 

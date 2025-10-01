@@ -17,10 +17,9 @@ jobs:
       - name: Setup build and install
         env:
           WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAM_LICENSE_ENTITLEMENT_ID }}
-          WOLFRAM_SCRIPT: /opt/Wolfram/WolframEngine/bin/wolframscript
         run: |
           apt-get update
-          apt-get install -y cmake make git
+          apt-get install -y cmake make git form
           mkdir -p $GITHUB_WORKSPACE/build
           cd $GITHUB_WORKSPACE/build
           cmake -DCMAKE_BUILD_TYPE=Release $GITHUB_WORKSPACE
@@ -29,7 +28,6 @@ jobs:
       - name: Run tests
         env:
           WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAM_LICENSE_ENTITLEMENT_ID }}
-          WOLFRAM_SCRIPT: /opt/Wolfram/WolframEngine/bin/wolframscript
         run: |
           cd $GITHUB_WORKSPACE/build
           make test
