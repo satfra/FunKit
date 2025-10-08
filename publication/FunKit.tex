@@ -1,5 +1,4 @@
-6\documentclass[10pt,prd,nofootinbib,superscriptaddress,twocolumn]{revtex4-2}
-\pdfoutput=1
+\documentclass[10pt,prd,nofootinbib,superscriptaddress,twocolumn]{revtex4-2}
 
 
 %%%%%%%%%%%%% Packages %%%%%%%%%%%%%
@@ -65,6 +64,14 @@
 }
 \usepackage{enumerate}
 
+% Tikz
+\usepackage{tikz}
+\usetikzlibrary{shapes,arrows,positioning}
+\tikzstyle{block} = [rectangle, draw, fill=white!20, 
+	text width=10em, text centered, rounded corners, minimum height=2em]
+\tikzstyle{dblock} = [draw=black!20!white, text width=10em, dash pattern=on 1pt off 4pt on 6pt off 4pt,
+            rectangle, rounded corners, minimum height=2em, text centered]
+
 
 \newcommand{\innerproduct}[2]{\left\langle #1, #2 \right\rangle}
 \newcommand{\imag}{\text{i}}
@@ -72,7 +79,6 @@
 
 %%%%%%%%%%%%% Comments %%%%%%%%%%%%%
 \newcommand{\commentFS}[1]{\textcolor{blue}{[\textbf{FS:} #1]}}
-\newcommand{\cJMP}[1]{\textcolor{blue}{\textbf{Jan: #1}}}
 
 %%%%%%%%%%%%% Mathematica code %%%%%%%%%%%%%
 \usepackage{mmacells}
@@ -187,10 +193,18 @@
 \newcommand{\LEGO}{LEGO\textsuperscript{\textregistered}}
 \newcommand{\FunKit}{\texttt{FunKit}\xspace}
 \newcommand{\FEDeriK}{\texttt{FEDeriK}\xspace}
+\newcommand{\DiRK}{\texttt{DiRK}\xspace}
 \newcommand{\DiANE}{\texttt{DiANE}\xspace}
+\newcommand{\TRACY}{\texttt{TRACY}\xspace}
+\newcommand{\SeDecA}{\texttt{SeDecA}\xspace}
 \newcommand{\AnSEL}{\texttt{AnSEL}\xspace}
+\newcommand{\COEN}{\texttt{COEN}\xspace}
 \newcommand{\tinytext}[1]{\text{\tiny{#1}}}
 \newcommand{\TensorBases}{\texttt{TensorBases}\xspace}
+\newcommand{\FormTracer}{\texttt{FormTracer}\xspace}
+\newcommand{\QMeS}{\texttt{QMeS}\xspace}
+\newcommand{\DoFun}{\texttt{DoFun}\xspace}
+\newcommand{\xAct}{\texttt{xAct}\xspace}
 
 %%%%%%%%%%%%% Graphic paths %%%%%%%%%%%%%
 \graphicspath{{./figures/}}
@@ -201,21 +215,15 @@
 %%%%%%%%%%%%% Title and hypersetup %%%%%%%%%%%%%
 \newcommand{\gettitle}{FunKit: A toolkit for functional approaches}
 
-\newcommand{\getHeidelbergAffiliation}{\affiliation{Institut f{\"u}r Theoretische Physik, Universit{\"a}t Heidelberg, Philosophenweg 16, 69120 Heidelberg, Germany}}
 \newcommand{\getBielefeldAffiliation}{\affiliation{Fakult{\"a}t f{\"u}r Physik, Universit{\"a}t Bielefeld, D-33615 Bielefeld, Germany}}
-\newcommand{\getDarmstadtAffiliation}{\affiliation{Institut f\"ur Kernphysik (Theoriezentrum), Technische Universit\"at Darmstadt, 64289 Darmstadt, Germany}}
-\newcommand{\getEMMIAffiliation}{\affiliation{ExtreMe Matter Institute EMMI, GSI, Planckstr. 1, 64291 Darmstadt, Germany}}
 
 \newcommand{\orcid}[1]{\href{https://orcid.org/#1}{\includegraphics[height=1.9ex,width=1.9ex]{figures/orcid.png}}}
 
 \begin{document}
 
 \title{\gettitle}
-\author{Franz R. Sattler \orcid{0000-0003-1744-9456}\,}\thanks{\url{sattler@thphys.uni-heidelberg.de}}
-\getHeidelbergAffiliation\getBielefeldAffiliation
-%\author{Jan M. Pawlowski \orcid{0000-0003-0003-7180}\,}
-%\getHeidelbergAffiliation
-%\getEMMIAffiliation
+\author{Franz R. Sattler \orcid{0000-0003-1744-9456}\,}\thanks{\url{fsattler@physik.uni-bielefeld.de}}
+\getBielefeldAffiliation
 
 \begin{abstract}
 
@@ -229,10 +237,10 @@
 
 In functional computations, such as the functional Renormalisation Group (fRG) and Dyson-Schwinger equations (DSE), the diagrammatic expressions for complex setups quickly grow very large and computer-algebraic treatments thereof become a necessity. For example, for QCD or even Yang-Mills theory - with only the lowest-order classical and non-classical vertices -  one obtains flow equations or DSEs which cannot be reliably calculated by hand.
 
-There is already a number of libraries available for the computer-algebraic processing of functional equations. Among these are \texttt{DoFun} \cite{Huber:2019dkb} and \texttt{QMeS} \cite{Pawlowski:2021tkk}, which concern themselves with the derivation of functional equations from master equations. \texttt{FormTracer} \cite{Cyrol:2016zqb} and the \TensorBases package \cite{Braun:2025gvq}, which builds on \texttt{FormTracer}, provide tools to trace the tensorial structure of the resulting diagrams.
+There is already a number of libraries available for the computer-algebraic processing of functional equations. Among these are \DoFun \cite{Huber:2019dkb} and \QMeS \cite{Pawlowski:2021tkk}, which concern themselves with the derivation of functional equations from master equations. \FormTracer \cite{Cyrol:2016zqb} and the \TensorBases package \cite{Braun:2025gvq} building on it, provide tools to trace the tensorial structure of the resulting diagrams.
 
 With \FunKit, we aim to build on these packages and provide a convenient all-in-one solution for the derivation of general functional equations. Therefore, we include, starting with the specification of the theory, the taking of functional derivatives, diagram simplification, tracing of tensor structures, interaction basis specification, and the export to C++, Julia or Fortran code for further processing.
-\FunKit builds in this regard heavily on \texttt{FormTracer} and \texttt{TensorBases}, and re-implements a large part of the \texttt{QMeS} package while trying to make the syntax more accessible for other, arbitrary master equations.
+\FunKit builds in this regard heavily on \texttt{FormTracer} and \texttt{TensorBases}, and re-implements a large part of the \QMeS package while trying to make the syntax more accessible for other, arbitrary master equations.
 
 We introduce the basic syntax for describing functional expressions in \Cref{sec:FEDeriK} and explain how to specify a theory, truncation and how to momentum- and index-route diagrams.
 In \Cref{sec:DiRK}, the specification of tensor bases and diagrammatic expressions is explained. Therein, we also show how to trace the resulting diagrams.
@@ -240,13 +248,63 @@ Finally, \Cref{sec:COEN} briefly shows how to generate computer code in differen
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\section{Structure}
+\label{sec:Structure}
+
+Both for maintainability and usability, \FunKit is structured into modules, which partially depend on each other. A dependency graph of the modules is shown in \Cref{fig:FunKit_structure}. When you import FunKit for the first time, all modules are automatically loaded in the correct order. The modules are:
+%
+\begin{itemize}
+	\item \FEDeriK, the {\textbf{F}unctional \textbf{E}quation \textbf{Deri}vation \textbf{K}it} is the core module of \FunKit, providing all the logic to derive functional equations. In particular, it provides the base syntax for the description of functional equations, gives facilities to perform functional derivatives and series expansions of derivative operators and fields.
+	\item \AnSEL: The Analysis and Simplification of Equations with Loops module, which provides tools to group identical diagrams.
+	\item \DiRK: The Diagram Routing Kit, containing tools for momentum- and index-routing in arbitrary multi-loop diagrams.
+	\item \TensorBases: An external package to define tensor bases for correlation functions, see \cite{Braun:2025gvq}. This package will be automatically installed with FunKit, either during the installation, or when you import \FunKit for the first time in Mathematica.
+	\item \TRACY gives a convenient interface to \FormTracer \cite{Cyrol:2016zqb} to trace out tensor structures in diagrams derived with \FunKit. \FormTracer is an external package which will be also automatically installed by \FunKit.
+	\item \DiANE: The Diagram Arts And Notation of Equations module, which provides tools to visualise diagrams and export \LaTeX code.
+	\item \COEN: The COde ENgine module, which provides tools to generate computer code in C++, Julia or Fortran from traced diagrams for further processing in a numerical framework.
+\end{itemize}
+%
+Furthermore, there is the optional module
+%
+\begin{itemize}
+	\item \SeDecA: The Simplification and Decomposition of Actions module, which provides tools to simplify functional equations and decompose actions into their vertex functions. This module is optional in the workflow.
+\end{itemize}
+
+% Flowchart of the structure
+
+\begin{figure}
+\begin{tikzpicture}[node distance=2.5cm, auto,>=latex']
+	% Nodes
+	\node [block] (FEDeriK) {\FEDeriK (syntax)};
+	\node [dblock, right of=FEDeriK, node distance=5cm] (SeDecA) {\SeDecA (actions)};
+
+	\node [block, below of=FEDeriK] (AnSEL) {\AnSEL (truncation)};
+	\node [block, below of=AnSEL] (DiRK) {\DiRK (routing)};
+	\node [block, right of=AnSEL, node distance=5cm, yshift=-5ex] (TensorBases) {\TensorBases};
+
+	\node [block, below of=TensorBases] (TRACY) {\TRACY (tracing)};
+
+	\node [block, below of=DiRK] (DiANE) {\DiANE (visualization)};
+
+	\node [block, below of=TRACY] (COEN) {\COEN (code output)};
+
+	% Arrows
+	\draw [->, dash pattern=on 1pt off 4pt] (SeDecA) -- (FEDeriK);
+	\draw [->] (FEDeriK) -- (TRACY);
+
+	\draw [->] (TensorBases) -- (TRACY);
+	\draw [->] (FEDeriK) -- (AnSEL);
+	\draw [->] (AnSEL) -- (DiRK);
+	\draw [->] (DiRK) -- (TRACY);
+	\draw [->] (DiRK) -- (DiANE);
+	\draw [->] (TRACY) -- (COEN);
+\end{tikzpicture}
+\caption{Dependency structure of the submodules of \FunKit. \SeDecA is an optional module in the workflow, which is indicated by its dashed visualisation.}
+\label{fig:FunKit_structure}
+\end{figure}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Deriving functional equations}
 \label{sec:FEDeriK}
-
-\FEDeriK, the {\textbf{F}unctional \textbf{E}quation \textbf{Deri}vation \textbf{K}it} is the core module of \FunKit, providing all the logic to derive functional equations. In particular, it provides the base syntax for the description of functional equations, gives facilities to perform functional derivatives and series expansions of derivative operators and fields.
-
-
-\AnSEL, \textbf{An}alysis and \textbf{S}implification of \textbf{E}quations with \textbf{L}oops
 
 In \Cref{sec:FEDeriK_notation} we briefly explain both the notation in \texttt{Mathematica} and basic usage of the module. Following this, we explain the internal set of rules used by \FEDeriK in \Cref{sec:FEDeriK_rules}.
 
@@ -273,15 +331,18 @@ Here, we have also used \FEDeriK's common notation for any indexed object. \FEDe
 \end{mmaCell}
 \begin{mmaCell}{Output}
  ABasis
+ Field
  GammaN
+ Phidot
  Propagator
+ R
  Rdot
  S
  VBasis
  \({\gamma}\)
 \end{mmaCell}
 %
-Lowered superindices are indicated by a minus sign. As an example, the correlation function $\Gamma_{a\,b\,A^c}^{\phantom{a\,b\,A^c}\bar{c}^d}$, with the fields of $a$ and $b$ undetermined, may be expressed~as
+Lowered superindices are indicated by a minus sign, upper indices are taken to be positive, which is a notation adapted from \xAct \cite{xact2025}. As an example, the correlation function $\Gamma_{a\,b\,A^c}^{\phantom{a\,b\,A^c}\bar{c}^d}$, with the fields of $a$ and $b$ undetermined, may be expressed~as
 %
 \begin{mmaCell}{Input}
  \mmaDef{GammaN}[\{\mmaDef{AnyField},\mmaDef{AnyField},A,cb\},
@@ -302,10 +363,10 @@ $\partial_t \Gamma = -\dot\Phi^a\Gamma_a + \frac{1}{2}G^{ab}\partial_t{R}_{ab}$.
 Hence, it can be expressed~with
 %
 \begin{mmaCell}{Input}
- \mmaDef{AddCorrelationFunction}[Phidot,1];
- \mmaDef{SetUnorderedIndices}[Phidot];
+ \mmaDef{AddCorrelationFunction}[PhiDot];
+ \mmaDef{SetUnorderedIndices}[PhiDot,1];
  \mmaDef{FEx}[
-   \mmaDef{FTerm}[-Phidot[\{\mmaDef{AnyField}\},\{a\}], 
+   \mmaDef{FTerm}[-PhiDot[\{\mmaDef{AnyField}\},\{a\}], 
      \mmaDef{GammaN}[\{\mmaDef{AnyField}\},\{-a\}]]
    \mmaDef{FTerm}[1/2, 
      \mmaDef{Propagator}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{a,b\}],
@@ -313,8 +374,9 @@ Hence, it can be expressed~with
   ];
 \end{mmaCell}
 %
-In the above, we have also informed \FEDeriK about a user-defined correlation function, \mathem{Phidot} $\equiv \dot{\Phi}$, and told it to never change the position of the last index (i.e. the superindex specifying $\Phi$ itself).
-\FEDeriK will automatically treat \mathem{Phidot} as a field-dependent function and take into account derivatives thereof.
+In the above, we have also informed \FEDeriK about a user-defined correlation function, \mathem{PhiDot} $\equiv \dot{\Phi}$, and told it to never change the position of the last index (i.e. the superindex specifying $\Phi$ itself).
+Note that \FEDeriK knows by default the correlation function \mathem{Phidot}, which is precisely defined this way, but for demonstration purposes we have re-defined it here.
+\FEDeriK will now automatically treat \mathem{PhiDot} as a field-dependent function and take into account derivatives thereof.
 
 \mathem{\mmaDef{FEx}} and \mathem{\mmaDef{FTerm}} have some internal rules to automatically move numeric values to the first factor in any \mathem{\mmaDef{FTerm}} and expand any appearance of sums to the enclosing \mathem{\mmaDef{FEx}}. This behaviour can be seen, e.g. in
 %
@@ -362,8 +424,7 @@ Fields are always specified together with their full index structure. A momentum
 \end{mmaCell}
 %
 In the above case of Yang-Mills theory, all fields have additional group structure. These indices must be fully specified with a second, optional list in the argument of the field.
-
-The resulting setup is then given as
+The resulting setup can be then given as
 %
 \begin{mmaCell}{Input}
  setup = <|
@@ -601,9 +662,11 @@ In the above example, we see also that the command \mathem{\mmaDef{FPrint}} can 
 \subsection{Rules}
 \label{sec:FEDeriK_rules}
 
-Internally, to enable a reliable and concise handling of the above features, \FunKit makes abundant use of the superfield notation introduced in \cite{Pawlowski:2005xe}. Especially keeping track of signs for Grassmann fields is ensured by making use of such a notation. Therefore, we briefly introduce the most important points thereof and give a list of the rules used internally in \FEDeriK.
+The following presents the internal workings of the \FunKit package. Therefore, this section can be skipped by users only interested in utilising the final output of a \FunKit derivation.
 
-First of all, for the treatment of Grassmann-valued fields, we introduce a field metric, as also in \cite{Pawlowski:2005xe, Braun:2025gvq},
+Internally, to enable a reliable and concise handling of the above features, \FunKit makes abundant use of the superfield notation introduced in \cite{Pawlowski:2005xe} and is therefore very similar to how \QMeS handles this task. In particular, keeping track of signs for Grassmann fields is ensured by making use of such a notation. Therefore, we briefly introduce the most important points thereof and give a list of the rules used internally in \FEDeriK.
+
+First of all, for the treatment of Grassmann-valued fields, we introduce a field metric, see also \cite{Pawlowski:2005xe, Braun:2025gvq},
 %
 \begin{equation}\label{eq:metric}
 	\gamma_{ab} = \gamma^{ab} = \begin{cases}
@@ -710,6 +773,8 @@ We can take a derivative $\frac{\delta}{\delta\Phi^f}$ of \labelcref{eq:propInvL
 \subsection{Teaching FEDeriK}
 \label{sec:FEDeriK_teaching}
 
+Advanced users may be interested in expanding the rule-set of \FEDeriK. This is explicitly made possible in \FunKit to allow for very general applications. The following gives a brief overview of how to do this.
+
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Diagrammatic rules and tracing of expressions}
@@ -717,7 +782,7 @@ We can take a derivative $\frac{\delta}{\delta\Phi^f}$ of \labelcref{eq:propInvL
 
 After having derived the functional equation, it is necessary to use a set of diagrammatic rules to obtain an explicit expression for a given diagram. \FunKit provides functions to automatically create such rules from a chosen set of tensor bases.
 
-To obtain the diagrammatic rules, \FunKit interfaces with the \TensorBases \cite{Braun:2025gvq} package, which provides the tensor expressions for interaction vertices. In \FunKit, a set of vertex bases is specified inside the \mathem{setup}.
+To obtain the diagrammatic rules, \FunKit interfaces with the \TensorBases \cite{Braun:2025gvq} package, which provides the tensor expressions for interaction vertices. In \FunKit, a set of vertex bases is specified inside the \mathem{\mmaDef{setup}}.
 %
 \begin{mmaCell}{Input}
  bases = <|
@@ -750,7 +815,7 @@ In particular, there are three ways to specify vertex bases:
 \begin{enumerate}[(i)]
 	\item Giving only a name, e.g. \mathem{{A,A,A}->"AAAClass"}, which uses the full basis specified as \mathem{"AAAClass"}.
 	\item Picking a single element from a larger basis, as in \mathem{{A,cb,c}->{"Acbc",1}}, which uses only the first vertex basis element of \mathem{"Acbc"}.
-	\item Picking a subset of a larger basis, e.g. in QCD one could use \mathem{{A,qb,q}->{"AqbqDirect",{1,4,7}}} to pick out the most relevant basis elements 1, 4 and 7 from a standard quark-gluon tensor basis \mathem{"AqbqDirect"}, see \cite{Cyrol:2017ewj, Braun:2025gvq}.
+	\item Picking a subset of a larger basis, e.g. in QCD one could use \mathem{{A,qb,q}->{"AqbqDirect",{1,4,7}}} to pick out the most relevant basis elements 1, 4 and 7 from a standard quark-gluon tensor basis \mathem{"AqbqDirect"} as adapted from \cite{Cyrol:2017ewj, Braun:2025gvq}.
 \end{enumerate}
 %
 with the above definition of \mathem{\mmaDef{setup}}, the diagrammatic rules can be automatically derived using
@@ -1013,12 +1078,17 @@ You can turn off usage of \cpp{powr} by setting
 
 
 %%%%%%%%%%%%%%%%%%%%
-\begin{acknowledgments}
-We thank... for discussions. This work is done within the fQCD collaboration \cite{fQCD} and we thank its members for discussions and collaborations on related projects.
-FRS acknowledges funding by the GSI Helmholtzzentrum f\"ur Schwerionenforschung and by HGS-HIRe for FAIR.
+\section{Conclusions}
 
-This work is funded by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) under Germany’s Excellence Strategy EXC 2181/1 - 390900948 (the Heidelberg STRUCTURES Excellence Cluster) and the Collaborative Research Centre SFB 1225 (ISOQUANT). It is also supported by EMMI.
-	
+In this work, we have presented \FunKit, a Mathematica package for the derivation and processing of functional equations in quantum field theory, starting with the generation of algebraic expressions until the output of code that can be directly used in numerical applications.
+
+The correctness of the \FunKit package is verified by an extensive test suite, comparing with other popular packages such as \DoFun, \QMeS and analytical expressions from the literature.
+
+In particular, we focus on a flexible and easy-to-use framework for deriving Dyson-Schwinger equations and functional Renormalisation Group equations for general quantum field theories. The package is designed to be extensible, allowing users to define their own field content, interactions, and truncations, and its modular structure allows easily for future changes and improvements.
+
+%%%%%%%%%%%%%%%%%%%%
+\begin{acknowledgments}
+We thank Andreas Gei\ss{}el, Friederike Ihssen, Keiwan Jamaly, Jan M. Pawlowski and Jonas Wessely for discussions and collaboration on related topics. This work is done within the fQCD collaboration \cite{fQCD} and we thank its members for discussions and collaborations on related projects.
 	
 \end{acknowledgments}
 

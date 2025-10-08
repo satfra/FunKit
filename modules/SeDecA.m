@@ -126,12 +126,12 @@ AddVertexBases[obj_, arg_] /; Head[$GlobalSetup] =!= Symbol :=
 ModuleLoaded::dependency = "The module `1` requires `2`, which has not been loaded.";
 
 If[ModuleLoaded[FunKit] =!= True,
-    Message[ModuleLoaded::dependency, "DiRK", "FunKit"];
+    Message[ModuleLoaded::dependency, "SeDecA", "FunKit"];
     Abort[];
 ];
 
 If[ModuleLoaded[FEDeriK] =!= True,
-    Message[ModuleLoaded::dependency, "DiRK", "FEDeriK"];
+    Message[ModuleLoaded::dependency, "SeDecA", "FEDeriK"];
     Abort[];
 ];
 

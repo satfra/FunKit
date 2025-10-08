@@ -31,6 +31,10 @@ Converts expressions containing indexed objects (like Propagator, GammaN) to QMe
 Transforms correlation functions to symbolic forms suitable for further processing.
 Uses the canonical ordering 'b>af>f' for field arrangement.";
 
+FunKitForm::usage = "FunKitForm[setup, expr]
+Transforms expressions from QMeS-style notation to FunKit-style notation.
+This involves replacing indexed objects with their FunKit equivalents and adjusting the overall structure.";
+
 FExpand::usage = "FExpand[setup, expr, order]
 Expands powers of FTerm and FEx expressions up to the specified order.
 This is useful for expanding expressions like (FTerm[...])^n into explicit sums of terms.
@@ -939,6 +943,7 @@ FunctionalD[setup_, expr_, v : (f_[_] | {f_[_], _Integer}).., OptionsPattern[
             
             
             
+            
             *)
         (*Derivative rules for Correlation functions*)
         Map[(f /: D[#[{a__}, {b__}], f[if_], NonConstants -> nonConst
@@ -1441,6 +1446,7 @@ GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
     
     
     
+    
     *)
         indicesToChange = Flatten[Table[allObj[[idx, 1, indexPosToChange
             [[idx]]]], {idx, 1, Length[allObj]}], 1];
@@ -1494,6 +1500,7 @@ GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
                     repl
                 ];
 (*Furthermore, we isolate the group index replacements and the momentum replacements:
+    
     
     
     
@@ -1741,6 +1748,7 @@ OrderObject[setup_, obj_[fields_List, indices_List] /; MemberQ[$OrderedObjects,
     
     
     
+    
 Iterate until one reaches the end of the array, then it is sorted.*)
         For[i = 1, i <= Length[nfields] - $unorderedIndices[obj], i++,
             
@@ -1779,6 +1787,7 @@ GetOrder[setup_, fields_List, reverse_:False] /; BooleanQ[reverse] :=
     
     
     
+    
 Iterate until one reaches the end of the array, then it is sorted.*)
         For[i = 1, i <= Length[nfields], i++,
             curi = i;
@@ -1806,6 +1815,7 @@ GetOrder[setup_, fields_List, fieldOrder_List] :=
         fields]]},
         prefactor = 1;
 (*Always compare the ith field with all previous fields and put it in the right place.
+    
     
     
     
@@ -1873,6 +1883,7 @@ OrderObject[setup_, obj_[fields_List, indices_List] /; MemberQ[$OrderedObjects,
     
     
     
+    
 Iterate until one reaches the end of the array, then it is sorted.*)
         i = 1;
         While[
@@ -1910,6 +1921,7 @@ OrderFieldList[setup_, fields_List] :=
         {i, curi, nfields = fields}
         ,
 (*Always compare the ith field with all previous fields and put it in the right place.
+    
     
     
     
@@ -1989,6 +2001,45 @@ QMeSForm[setup_, expr_] :=
 
 QMeSForm[setup_, expr_Association] :=
     Map[QMeSForm[setup, #]&, expr];
+
+(* Transforming QMeS to FunKit *)
+
+QMeSSuperindexDiagramQ[__] :=
+    False;
+
+QMeSSuperindexDiagramQ[l_List] :=
+    Module[{yes},
+        If[l[[1, 1]] =!= "Prefactor",
+            Return[False]
+        ];
+        If[Not @ AllTrue[l[[2 ;; ]], AssociationQ],
+            Return[False]
+        ];
+        If[Not @ AllTrue[l[[2 ;; ]], KeyMemberQ["type"]],
+            Return[False]
+        ];
+        If[Not @ AllTrue[l[[2 ;; ]], KeyMemberQ["indices"]],
+            Return[False]
+        ];
+        Return[True];
+    ];
+
+FunKitForm[expr_List] :=
+    FEx @@ Map[FunKitForm, expr];
+
+FunKitForm[diag_List] /; QMeSSuperindexDiagramQ[diag] :=
+    Module[{pref, newa},
+        pref = diag[[1, 2, 1]];
+        newa = diag[[2 ;; ]];
+        newa = newa //. {<|"type" -> "Regulatordot", "indices" -> {a__
+            }|> :> Rdot[{a}[[All, 1]], {a}[[All, 2, 1]]], <|"type" -> "Propagator",
+             "indices" -> {a__}|> :> Propagator[{a}[[All, 1]], {a}[[All, 2, 1]]],
+             <|"type" -> "nPoint", "indices" -> {a__}, __|> :> GammaN[{a}[[All, 1
+            ]], {a}[[All, 2, 1]]]};
+        Return[FTerm[pref, ##]& @@ newa]
+    ];
+
+QMeSdiag2Idx // FunKitForm
 
 (* ::Subsection::Closed:: *)
 
@@ -2083,6 +2134,7 @@ ReduceIndices[setup_, term_FTerm] :=
             [[2, 1]]]] + 1) #[[1, 1]], (-2 * Boole[isNeg[#[[2, 2]]]] + 1) #[[1, 2
             ]]]&, cases \[Union] casesOpen];
 (*replace the remaining indices. If both are up or both or down, the remaining indices change signs.
+    
     
     
     
@@ -2426,6 +2478,7 @@ FixIndices[setup_, expr_FEx] :=
     
     
     
+    
     *)
         Return[FixIndices[setup, #]& /@ expr];
     ];
@@ -2504,6 +2557,7 @@ ReduceFTerm[setup_, term_] :=
                     Abort[]
                 ];
 (*Merge scalar terms with the closest Grassman term. We need to "vanish" nested FTerms, to make sure we do not overcount.
+    
     
     
     
@@ -2602,6 +2656,7 @@ DExpand[setup_, expr_FTerm, order_Integer] :=
     
     
     
+    
     *)
         Block[{FDOp},
             ret = ret //. Power[a_FTerm, b_] /; MemberQ[{a}, FDOp[__],
@@ -2667,6 +2722,7 @@ ResolveFDOp[setup_, term_FTerm] :=
         termsNoFDOp = FTerm[rTerm[[1 ;; FDOpPos - 1]], rTerm[[FDOpPos
              + 1 ;; ]]];
 (*If the derivative operator is trailing, it acts on nothing and the term is zero.
+    
     
     
     
@@ -2752,6 +2808,7 @@ If[ModuleLoaded[AnSEL],ret=FunKit`FSimplify[setup,ret,"Symmetries"->OptionValue[
     
     
     
+    
     *)
             i++;
         ];
@@ -2784,6 +2841,7 @@ TakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
         (*We take them in reverse order.*)
         derivativeListSIDX = derivativeList;
 (*First, fix the indices in the input equation, i.e. make everything have unique names
+    
     
     
     
@@ -2899,10 +2957,12 @@ MakeDSE[setup_, field_] :=
     
     
     
+    
     *)
         dS = dS //. Times[pre___, f1_[id1_], post___] :> NonCommutativeMultiply[
             pre, f1[id1], post];
 (*Insert \[Phi]^a->\[CapitalPhi]^a+G^ab\[Delta]/\[Delta]\[CapitalPhi]^b 
+    
     
     
     

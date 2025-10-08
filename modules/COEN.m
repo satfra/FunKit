@@ -6,7 +6,7 @@
 
 (* ::Title:: *)
 
-(*COEN - Code Output of  Expressions for Numerics*)
+(*COEN - COde ENgine*)
 
 (* ::Section:: *)
 
@@ -324,7 +324,7 @@ clangFormatExists = Quiet[RunProcess[{"clang-format", "--help"}]] =!=
 
 CreateClangFormat[path_:"./"] :=
 	If[Not @ FileExistsQ[path <> ".clang-format"],
-		Export[path <> "/.clang-format", "BasedOnStyle: LLVM
+		Export[path <> "/.clang-format",       "BasedOnStyle: LLVM
 UseTab: Never
 IndentWidth: 2
 TabWidth: 2
@@ -616,7 +616,8 @@ MakeCppFunction[OptionsPattern[]] :=
 		 functionTemplates, idx, functionBody, parameters},
 		FunKitDebug[1, "Preparing Cpp function..."];
 		(*Create prefixe for the function, e.g. static or such + the return value
-			*)
+			
+    *)
 		functionPrefix = OptionValue["Prefix"];
 		functionPrefix = functionPrefix <> " " <> OptionValue["Return"] <> 
 			" ";
@@ -707,7 +708,8 @@ MakeCppClass[OptionsPattern[]] :=
 			 codeParser, classBody}
 		,
 		(*Create prefixe for the class, e.g. static or such + the return value
-			*)
+			
+    *)
 		classPrefix =
 			If[Length[OptionValue["TemplateTypes"]] > 0,
 				"template<" ~~ StringRiffle[Map["typename " ~~ #&, OptionValue["TemplateTypes"
@@ -758,7 +760,8 @@ MakeCppHeader[OptionsPattern[]] :=
 		{headerPrefix, headerIncludes, headerBody}
 		,
 		(*Create prefixe for the header, e.g. static or such + the return value
-			*)
+			
+    *)
 		headerPrefix = "#pragma once\n";
 		headerIncludes = StringRiffle[Map["#include \"" ~~ # ~~ "\""&, OptionValue[
 			"Includes"]], "\n"] <> "\n";
@@ -778,7 +781,8 @@ MakeCppBlock[OptionsPattern[]] :=
 		{sourcePrefix, sourcePostfix, sourceIncludes, sourceBody}
 		,
 		(*Create prefixe for the source, e.g. static or such + the return value
-			*)
+			
+    *)
 		sourcePrefix =
 			If[OptionValue["Namespace"] =!= "",
 				"namespace " <> OptionValue["Namespace"] <> "\n{\n"
@@ -918,7 +922,8 @@ MakeJuliaFunction[OptionsPattern[]] :=
 			}
 		,
 		(*Create prefixe for the function, e.g. static or such + the return value
-			*)
+			
+    *)
 		functionPrefix =
 			If[OptionValue["Prefix"] === "",
 				""
@@ -1009,7 +1014,8 @@ MakeFortranFunction[OptionsPattern[]] :=
 			}
 		,
 		(*Create prefixe for the function, e.g. static or such + the return value
-			*)
+			
+    *)
 		functionPrefix =
 			If[OptionValue["Prefix"] === "",
 				""
