@@ -295,13 +295,7 @@ prettySuperIndices[setup_, expr_List] :=
 
 prettySuperIndices[setup_, expr_Association] /; isRoutedAssociation[expr
     ] :=
-    Association @
-        Map[
-            prettySuperIndices[setup, #]&
-            ,
-            Print[2];
-            Normal @ expr
-        ];
+    Association @ Map[prettySuperIndices[setup, #]&, Normal @ expr];
 
 prettySuperIndices[setup_, a_] :=
     (
@@ -347,30 +341,15 @@ prettyExplicitIndices[setup_, expr_FTerm] :=
 
 prettyExplicitIndices[setup_, expr_Association] /; isLoopAssociation[
     expr] :=
-    Association[
-        Normal[expr] /.
-            FEx[a___] :>
-                prettyExplicitIndices[
-                    setup
-                    ,
-                    FEx[
-                        Print[1];
-                        a
-                    ]
-                ]
-    ]
+    Association[Normal[expr] /. FEx[a___] :> prettyExplicitIndices[setup,
+         FEx[a]]]
 
 prettyExplicitIndices[setup_, expr_List] :=
     Map[prettyExplicitIndices[setup, #]&, expr];
 
 prettyExplicitIndices[setup_, expr_Association] /; isRoutedAssociation[
     expr] :=
-    Association @
-        Map[
-            prettyExplicitIndices[setup, #]&
-            ,
-            Print[2];
-            Normal @ expr
+    Association @ Map[prettyExplicitIndices[setup, #]&, Normal @ expr
         ];
 
 prettyExplicitIndices[setup_, a_] :=
@@ -531,6 +510,9 @@ RenewFormatDefinitions[] :=
                                 Rdot,
                                     "\\partial_t R"
                                 ,
+                                Phidot,
+                                    "\\dot{\\Phi}"
+                                ,
                                 GammaN,
                                     "\\Gamma"
                                 ,
@@ -573,6 +555,9 @@ RenewFormatDefinitions[] :=
                                 Rdot,
                                     "\\partial_t R"
                                 ,
+                                Phidot,
+                                    "\\dot{\\Phi}"
+                                ,
                                 GammaN,
                                     "\\Gamma"
                                 ,
@@ -603,9 +588,11 @@ RenewFormatDefinitions[] :=
                 body = {a}},
                 integrals = Pick[$availableLoopMomenta, Map[MemberQ[{
                     a}, #, Infinity]&, $availableLoopMomenta]];
-                replNames = Thread[$availableLoopMomenta -> Table[Subscript[
-                    Symbol[$loopMomentumName], idx], {idx, 1, Length[$availableLoopMomenta
-                    ]}]];
+                replNames = Join[Thread[$availableLoopMomenta -> Table[
+                    Subscript[Symbol[$loopMomentumName], idx], {idx, 1, Length[$availableLoopMomenta
+                    ]}]], Thread[$availableLoopMomentaf -> Table[Subscript[Symbol[$loopMomentumName
+                    ], "f," <> ToString @ idx], {idx, 1, Length[$availableLoopMomentaf]}]
+                    ]];
                 prefix = StringJoin[Map["\\int_{" <> ToString[TeXForm[
                     #]] <> "}"&, integrals //. replNames]];
                 postfix = "";
@@ -636,6 +623,67 @@ RenewFormatDefinitions[] :=
                         "BodySeparator" -> "\\,"
                         ,
 (*It is not clear why the call to RenewFormatDefinitions[] is necessary here. However, removing it leads to TeXForm ignoring all custom TeXStyles.
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
     
     
     
@@ -784,9 +832,11 @@ cross[r_] :=
         2]}}], Line[{{r / Sqrt[2], -r / Sqrt[2]}, {-r / Sqrt[2], r / Sqrt[2]}
         }]}];
 
-$standardVertexStyles = {GammaN -> Graphics @ Style[Disk[{0, 0}, 0.5],
-     Gray], S -> Graphics @ Style[Disk[{0, 0}], Black], Rdot -> crosscircle[
-    1], Field -> cross[1], R -> Graphics @ Style[Disk[{0, 0}, 2], Blue]};
+$standardVertexStyles = {GammaN -> Graphics @ Style[Disk[{0, 0}, 2], 
+    Gray], S -> Graphics @ Style[Disk[{0, 0}, 1.5], Black], Rdot -> crosscircle[
+    1], Field -> cross[1], R -> Graphics @ Style[Disk[{0, 0}, 2], Blue], 
+    Phidot -> Graphics @ Style[Polygon[{{2, 0}, {0, 2 * Sqrt[3]}, {-2, 0}
+    }], Black]};
 
 $standardVertexSize = {GammaN -> 0.15, S -> 0.05, Rdot -> 0.25, Field
      -> 0.1, R -> 0.2};
@@ -815,8 +865,8 @@ GetDiagram[setup_, expr_FTerm] :=
     Module[{PossibleVertices, PossibleEdges, Styles, diag, allObj, fieldObj,
          vertices, edges, vertexReplacements, graph, phantomVertices, edgeFields,
          fieldVertices, fieldEdges, fieldEdgeFields, oidx, externalVertices, 
-        externalEdges, externalFields, idx, prefactor, doFields, eWeights, addVertexSizes
-         = {}},
+        vertexNames, doubledVertices, externalEdges, externalFields, idx, prefactor,
+         doubledEdges, doFields, eWeights, addVertexSizes = {}},
         If[MemberQ[expr, FDOp[__], Infinity],
             Message[FPlot::FDOp];
             Abort[]
@@ -873,7 +923,6 @@ GetDiagram[setup_, expr_FTerm] :=
         (*prepare vertices*)
         vertices = Select[allObj, MemberQ[PossibleVertices, Head[#]] 
             && (FreeQ[PossibleEdges, Head[#]] || Length[#[[2]]] =!= 2)&];
-        Print[vertices];
         vertexReplacements =
             Flatten @
                 Module[{v},
@@ -888,6 +937,21 @@ GetDiagram[setup_, expr_FTerm] :=
                 ];
         vertices = Map[Head[#] @@ ((makePosIdx /@ #[[2]] /. vertexReplacements
             ) // DeleteDuplicates)&, vertices];
+        (*Edge case: we have a vertex twice!*)
+        (*first, extract all vertex names*)
+        doubledVertices = Select[vertices, Length[#] > 1&];
+        (*then, filter the duplicates*)
+        doubledEdges = {};
+        Do[
+            If[Length[doubledVertices[[idx]]] === 2,
+                AppendTo[doubledEdges, doubledVertices[[idx, 1]] \[UndirectedEdge]
+                     doubledVertices[[idx, 2]]];
+            ];
+            ,
+            {idx, 1, Length[doubledVertices]}
+        ];
+        (*Make 'em bold*)
+        doubledEdges = Map[Style[#, Thick, Black]&, doubledEdges];
         (*Props and vertices for attached fields*)
         fieldVertices = Select[fieldObj, (Head[#] === Field)&];
         fieldVertices = Map[Head[#] @@ ((makePosIdx /@ #[[2]] /. vertexReplacements
@@ -924,13 +988,6 @@ GetDiagram[setup_, expr_FTerm] :=
         externalEdges = Table[Style[externalEdges[[idx]], ##]& @@ Flatten
              @ {externalFields[[idx]] /. Styles}, {idx, 1, Length[externalEdges]}
             ];
-        phantomVertices = Table[Symbol["phantom" <> ToString[idx]], {
-            idx, 1, Length[edges]}];
-        (*edges=Flatten@Table[{Head[edges[[idx]]][edges[[idx,1]],phantomVertices[[idx]]],Head[edges[[idx]]][phantomVertices[[idx]],edges[[idx,2]]]},{idx,1,Length[edges]}];
-            *)
-        (*Take a look again at the vertices. If there are any vertices which are not connected by edges, but have common indices, we will need to merge them!
-            *)
-        Print["edges: ", edges];
         (*get the prefactor*)
         prefactor = Times @@ (diag /. doFields /. Map[Blank[#] -> 1&,
              Join[{Field}, $allObjects]]);
@@ -942,15 +999,20 @@ GetDiagram[setup_, expr_FTerm] :=
             ,
             {idx, 1, Length[GetOpenSuperIndices[setup, diag]]}
         ];
-        graph = Graph[Join[vertices[[All, 1]], externalVertices, fieldVertices
-            [[All, 1]]], Join[edges, externalEdges, fieldEdges], VertexShape -> Join[
-            Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. $standardVertexStyles
-            )], Thread[externalVertices -> Map[Graphics @ Style[Disk[{0, 0}, 0.0],
-             Gray]&, externalVertices]], Thread[fieldVertices[[All, 1]] -> (fieldVertices
-            [[All, 0]] /. $standardVertexStyles)]], VertexSize -> Join[Thread[vertices
-            [[All, 1]] -> (vertices[[All, 0]] /. $standardVertexSize)], addVertexSizes
-            ], GraphLayout -> {"SpringElectricalEmbedding"}, PerformanceGoal -> "Quality",
-             ImageSize -> Small, EdgeStyle -> Arrowheads[{{.07, .6}}]];
+        vertexNames = DeleteDuplicates @ Flatten[List @@ #& /@ vertices
+            ];
+        eWeights = Join[Map[1&, edges], Map[1&, externalEdges], Map[1&,
+             fieldEdges], Map[0.5&, doubledEdges]];
+        graph = Graph[Join[vertexNames, externalVertices, fieldVertices
+            [[All, 1]]], Join[edges, externalEdges, fieldEdges, doubledEdges], EdgeWeight
+             -> eWeights, VertexShape -> Join[Thread[vertices[[All, 1]] -> (vertices
+            [[All, 0]] /. $standardVertexStyles)], Thread[externalVertices -> Map[
+            Graphics @ Style[Disk[{0, 0}, 0.0], Gray]&, externalVertices]], Thread[
+            fieldVertices[[All, 1]] -> (fieldVertices[[All, 0]] /. $standardVertexStyles
+            )]], VertexSize -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 
+            0]] /. $standardVertexSize)], addVertexSizes], GraphLayout -> {"SpringElectricalEmbedding",
+             "EdgeWeighted" -> True}, PerformanceGoal -> "Quality", ImageSize -> 
+            Small, EdgeStyle -> Arrowheads[{{.07, .6}}]];
         prefactor * Graph[graph, EdgeShapeFunction -> {x_ \[DirectedEdge]
              x_ :> arcFunc[graph, 20.0], x_ \[UndirectedEdge] x_ :> arcFuncUn[graph,
              20.0]}]
