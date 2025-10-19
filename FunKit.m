@@ -142,7 +142,7 @@ End[]
 
 (* ::Input::Initialization:: *)
 $FunKitDebugLevel=0;
-FunKitDebugLevel[newLevel_Integer]:=Module[{},
+SetFunKitDebugLevel[newLevel_Integer]:=Module[{},
 Unprotect@$FunKitDebugLevel;
 Set[$FunKitDebugLevel,newLevel];
 Protect@$FunKitDebugLevel;
