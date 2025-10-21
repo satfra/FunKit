@@ -20,9 +20,9 @@
 
 
 (* ::Input::Initialization:: *)
-FunKit::allowinternetuse="You have forbidden Mathematica to access the internet. Either allow Mathematica to access the internet or download FunKit from github manually.";
+FunKitInstaller::allowinternetuse="You have forbidden Mathematica to access the internet. Either allow Mathematica to access the internet or download FunKit from github manually.";
 If[Not["AllowInternetUse" /. SystemInformation["Network"]],
-Message[FunKit::allowinternetuse];
+Message[FunKitInstaller::allowinternetuse];
 Abort[];
 ];
 
