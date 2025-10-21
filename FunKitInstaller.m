@@ -79,7 +79,7 @@ If[DirectoryQ[FunKitInstallDir~~"/FunKit"],
 DeleteDirectory[FunKitInstallDir~~"/FunKit",DeleteContents->True];
 ];
 RenameDirectory[FunKitInstallDir~~"/FunKit-main",FunKitInstallDir~~"/FunKit"];
-Get["FunKit`"]
+Get["FunKit`"];
 ,$Failed];
 If[installationSuccess===$Failed,
 (*installation failed*)
