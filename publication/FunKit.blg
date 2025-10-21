@@ -13,8 +13,6 @@ Reallocated wiz_functions (elt_size=8) to 6000 items from 3000.
 Reallocated singl_function (elt_size=8) to 100 items from 50.
 Database file #1: FunKitNotes.bib
 Database file #2: bibliography.bib
-Warning--entry type for "szabolcs_horvat_2024_10828124" isn't style-file defined
---line 64 of file bibliography.bib
 control{REVTEX42Control}, control.key{N/A}, control.author{N/A}, control.editor{N/A}, control.title{N/A}, control.pages{N/A}, control.year{N/A}, control.eprint{N/A}, 
 control{apsrev42Control}, control.key{N/A}, control.author{08}, control.editor{1}, control.title{0}, control.pages{0}, control.year{1}, control.eprint{N/A}, 
 Warning--jnrlst (dependency: not reversed) set 1
@@ -28,86 +26,45 @@ Control: production of article title (0) allowed
 Control: page (0) single
 Control: year (1) truncated
 Control: production of eprint (0) enabled
-"J. High Energy Phys." is a string literal, `journal' is a missing field
----they aren't the same literal types for entry Braun:2025gvq
-while executing---line 3515 of file apsrev4-2.bst
-"J. High Energ. Phys." is a string literal, `journal' is a missing field
----they aren't the same literal types for entry Braun:2025gvq
-while executing---line 3515 of file apsrev4-2.bst
-"JHEP" is a string literal, `journal' is a missing field
----they aren't the same literal types for entry Braun:2025gvq
-while executing---line 3515 of file apsrev4-2.bst
-"Journal of Cosmology and Astroparticle Physics" is a string literal, `journal' is a missing field
----they aren't the same literal types for entry Braun:2025gvq
-while executing---line 3515 of file apsrev4-2.bst
-"J. Cosmol. Astropart. Phys." is a string literal, `journal' is a missing field
----they aren't the same literal types for entry Braun:2025gvq
-while executing---line 3515 of file apsrev4-2.bst
-"JCAP" is a string literal, `journal' is a missing field
----they aren't the same literal types for entry Braun:2025gvq
-while executing---line 3515 of file apsrev4-2.bst
-"Journal of Instrumentation" is a string literal, `journal' is a missing field
----they aren't the same literal types for entry Braun:2025gvq
-while executing---line 3515 of file apsrev4-2.bst
-"J. Instrum." is a string literal, `journal' is a missing field
----they aren't the same literal types for entry Braun:2025gvq
-while executing---line 3515 of file apsrev4-2.bst
-"JINST" is a string literal, `journal' is a missing field
----they aren't the same literal types for entry Braun:2025gvq
-while executing---line 3515 of file apsrev4-2.bst
-"Journal of Statistical Mechanics" is a string literal, `journal' is a missing field
----they aren't the same literal types for entry Braun:2025gvq
-while executing---line 3515 of file apsrev4-2.bst
-"J. of Stat. Mech." is a string literal, `journal' is a missing field
----they aren't the same literal types for entry Braun:2025gvq
-while executing---line 3515 of file apsrev4-2.bst
-"J. Stat. Mech.: Theory Exp." is a string literal, `journal' is a missing field
----they aren't the same literal types for entry Braun:2025gvq
-while executing---line 3515 of file apsrev4-2.bst
-"JSTAT" is a string literal, `journal' is a missing field
----they aren't the same literal types for entry Braun:2025gvq
-while executing---line 3515 of file apsrev4-2.bst
-Warning--missing journal in Braun:2025gvq
-Warning--empty journal in fQCD
-You've used 10 entries,
+You've used 11 entries,
             6079 wiz_defined-function locations,
-            1703 strings with 16809 characters,
-and the built_in function-call counts, 11053 in all, are:
-= -- 652
-> -- 336
-< -- 89
-+ -- 105
-- -- 100
-* -- 1823
-:= -- 977
-add.period$ -- 8
-call.type$ -- 10
-change.case$ -- 41
-chr.to.int$ -- 19
-cite$ -- 12
-duplicate$ -- 1054
-empty$ -- 731
-format.name$ -- 180
-if$ -- 2168
+            1708 strings with 16880 characters,
+and the built_in function-call counts, 11528 in all, are:
+= -- 696
+> -- 345
+< -- 91
++ -- 109
+- -- 102
+* -- 1900
+:= -- 1042
+add.period$ -- 9
+call.type$ -- 11
+change.case$ -- 47
+chr.to.int$ -- 20
+cite$ -- 11
+duplicate$ -- 1096
+empty$ -- 761
+format.name$ -- 185
+if$ -- 2252
 int.to.chr$ -- 2
-int.to.str$ -- 17
-missing$ -- 160
-newline$ -- 76
-num.names$ -- 24
-pop$ -- 406
+int.to.str$ -- 18
+missing$ -- 158
+newline$ -- 79
+num.names$ -- 27
+pop$ -- 409
 preamble$ -- 1
-purify$ -- 40
+purify$ -- 45
 quote$ -- 0
-skip$ -- 433
+skip$ -- 443
 stack$ -- 0
-substring$ -- 198
-swap$ -- 1041
-text.length$ -- 40
+substring$ -- 213
+swap$ -- 1085
+text.length$ -- 41
 text.prefix$ -- 0
 top$ -- 10
-type$ -- 140
-warning$ -- 3
-while$ -- 32
+type$ -- 152
+warning$ -- 1
+while$ -- 34
 width$ -- 0
-write$ -- 125
-(There were 13 error messages)
+write$ -- 133
+(There was 1 warning)
