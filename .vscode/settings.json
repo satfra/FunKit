@@ -1,0 +1,12 @@
+{
+    "wolfram.advanced.lsp.command": [
+        "/usr/local/bin/WolframKernel",
+        "-noinit",
+        "-noprompt",
+        "-nopaclet",
+        "-nostartuppaclets",
+        "-noicon",
+        "-run",
+        "Needs[\"LSPServer`\"];CodeFormatter`$DefaultLineWidth=Infinity;LSPServer`StartServer[]"
+    ]
+}
