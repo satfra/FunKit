@@ -150,7 +150,9 @@ Select[$Path,StringContainsQ[#,"FunKit"]&]
 DirectoryQ[#]&
 ]<>"/";
 
-$FunKitVersion=0.1;
+
+(* ::Input::Initialization:: *)
+$FunKitVersion=(List@@Import[FileNameJoin[{$UserBaseDirectory,"Applications","FunKit","PacletInfo.m"}]])[[1]]["Version"];
 
 
 (* ::Input::Initialization:: *)
@@ -251,7 +253,7 @@ StyleBox[\"\:2580\:2588\:2580\",\nFontColor->GrayLevel[0]]\)
 \!\(\*
 StyleBox[\"Author\",\nFontWeight->\"Bold\"]\): Franz Richard Sattler
 \!\(\*
-StyleBox[\"Version\",\nFontWeight->\"Bold\"]\): 1.0
+StyleBox[\"Version\",\nFontWeight->\"Bold\"]\): ",$FunKitVersion,"
 \!\(\*
 StyleBox[\"Year\",\nFontWeight->\"Bold\"]\): 2025
 For more information and a brief introduction to the package, call \!\(\*
@@ -262,7 +264,7 @@ StyleBox[\"FTest\",\nFontColor->RGBColor[1, 0.5, 0]]\)[].
 Print["Welcome to Funkit"];
 Print["Author: Franz Richard Sattler"];
 Print["\!\(\*
-StyleBox[\"Version\",\nFontWeight->\"Bold\"]\): 1.0"];
+StyleBox[\"Version\",\nFontWeight->\"Bold\"]\): ",$FunKitVersion];
 Print["\!\(\*
 StyleBox[\"Year\",\nFontWeight->\"Bold\"]\): 2025"];
 Print["For more information and a brief introduction to the package, call \!\(\*

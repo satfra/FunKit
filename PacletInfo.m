@@ -3,7 +3,7 @@
 PacletObject[
     <|
         "Name" -> "FunKit",
-        "Version" -> "1.0.0",
+        "Version" -> "0.1.0",
         "WolframVersion" -> "13.3+",
         "Extensions" ->
             {
