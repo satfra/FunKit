@@ -284,6 +284,16 @@ StyleBox[\"FInfo\",\nFontColor->RGBColor[1, 0.5, 0]]\)[\"FEDeriK\"]."]
 
 
 (* ::Input::Initialization:: *)
+framedPrint[fpr_]:=Internal`InheritedBlock[{Print},
+Unprotect@Print;
+Print=Echo[Framed[#]]&;
+Protect@Print;
+ReleaseHold[fpr]
+];
+SetAttributes[framedPrint,HoldAll];
+
+
+(* ::Input::Initialization:: *)
 FInfo["federik"]:=FInfo["FEDeriK"];
 FInfo["Federik"]:=FInfo["FEDeriK"];
 FInfo["FederiK"]:=FInfo["FEDeriK"];
@@ -330,13 +340,13 @@ Any indexed object must be comprised of two lists: the first one gives the field
 To see a list of all indexed objects known to \!\(\*
 StyleBox[\"FEDeriK\",\nFontWeight->\"Bold\"]\), one can call \!\(\*
 StyleBox[\"ShowIndexedObjects\",\nFontColor->RGBColor[1, 0.5, 0]]\)[], which outputs "];
-ShowIndexedObjects[];
+framedPrint@ShowIndexedObjects[];
 Print["in the current case. One can register custom indexed objects with \!\(\*
 StyleBox[\"FEDeriK\",\nFontWeight->\"Bold\"]\) by using \!\(\*
 StyleBox[\"AddIndexedObject\",\nFontColor->RGBColor[1, 0.5, 0]]\)[_Symbol]. 
 A subset of the indexed objects are correlation functions, and \!\(\*
 StyleBox[\"ShowCorrelationFunctions\",\nFontColor->RGBColor[1, 0.5, 0]]\)[] outputs "];
-ShowCorrelationFunctions[];
+framedPrint@ShowCorrelationFunctions[];
 Print["These are special indexed objects, which are always hit by functional derivatives. 
 As an example, take the generalised flow equation ",MaTeX`MaTeX["\\partial_t \\Gamma = -\\dot\\Phi^a\\Gamma_a + \\frac{1}{2}G^{ac}\\Bigg(\\gamma_c^{\\phantom{c}b}\\partial_t  + 2 \\frac{\\delta\\dot{\\Phi}^b}{\\delta\\Phi^c}\\Bigg){R}_{ab}"],
 "First, we add a new correlation function using \!\(\*
