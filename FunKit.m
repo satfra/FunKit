@@ -20,6 +20,31 @@
 
 
 (* ::Input::Initialization:: *)
+If["AllowInternetUse" /. SystemInformation["Network"],
+Module[{FCurPacletAddr,FCurPaclet,FCurVersion,
+FInstalledPaclet,FInstalledVersion},
+
+FCurPacletAddr="https://github.com/satfra/FunKit/raw/refs/heads/main/PacletInfo.m";
+FCurPaclet=(List@@Import[FCurPacletAddr])[[1]];
+FCurVersion=FCurPaclet["Version"];
+
+FInstalledPaclet=(List@@Import[FileNameJoin[{$UserBaseDirectory,"Applications","FunKit","PacletInfo.m"}]])[[1]];
+FInstalledVersion=FInstalledPaclet["Version"];
+
+If[FCurVersion=!=FInstalledVersion,
+If[ChoiceDialog[
+TemplateApply["There is a newer FunKit version on the internet. 
+The installed version is `a`, whereas `b` is available. Do you want to install it?",<|"a"->FInstalledVersion,"b"->FCurVersion|>]
+,WindowTitle->"Update FunKit",WindowSize->{Medium,All}],
+Import["https://raw.githubusercontent.com/satfra/FunKit/main/FunKitInstaller.m"];Abort[],
+Print["Consider updating the FunKit package for bugfixes and new features!"];
+];
+];
+];
+];
+
+
+(* ::Input::Initialization:: *)
 If[$FrontEnd===Null,Unprotect[Style];
 Unprotect[StyleBox];
 Style[expr_,opts___]:=expr;
