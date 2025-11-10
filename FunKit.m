@@ -20,7 +20,7 @@
 
 
 (* ::Input::Initialization:: *)
-If["AllowInternetUse" /. SystemInformation["Network"],
+If[("AllowInternetUse" /. SystemInformation["Network"])&&$FrontEnd=!=Null,
 Module[{FCurPacletAddr,FCurPaclet,FCurVersion,
 FInstalledPaclet,FInstalledVersion},
 
