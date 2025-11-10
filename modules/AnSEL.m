@@ -148,6 +148,7 @@ fermionicExtMomRouting[setup_, vertex_] :=
         (*for this, we can set all external momenta with fermions equal and all external momenta with bosons to 0*)
         momsum = momsum //. externalMomentum[p_, True] :> externalMomentum[1, True] //. externalMomentum[p_, False] :> 0;
         (*Extract the prefactor of externalMomentum[1, True] (or 0, if it does not appear)*)
+        momsum = Flatten[momsum /. Plus[a_, b__] :> List[a, b]];
         factor =
             Cases[
                 momsum
@@ -158,8 +159,6 @@ fermionicExtMomRouting[setup_, vertex_] :=
                         ,
                         1
                     ]
-                ,
-                Infinity
             ];
         factor =
             If[Length[factor] > 0,
