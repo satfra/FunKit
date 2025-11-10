@@ -267,7 +267,7 @@ clangFormatExists = Quiet[RunProcess[{"clang-format", "--help"}]] =!= $Failed;
 
 CreateClangFormat[path_:"./"] :=
 	If[Not @ FileExistsQ[path <> ".clang-format"],
-		Export[path <> "/.clang-format",                               "BasedOnStyle: LLVM
+		Export[path <> "/.clang-format",                                                                                                                                                             "BasedOnStyle: LLVM
 UseTab: Never
 IndentWidth: 2
 TabWidth: 2
@@ -415,12 +415,12 @@ SetRegisterSize[n_Integer?Positive] :=
 (* ::Input::Initialization:: *)
 
 CppCode[equation_] :=
-	Module[{optList, interpObj, replacementObj, replacementNames, replacements, definitions, returnStatement},
+	Module[{optList, interpObj, replacementObj, replacementNames, replacements, replacementsFS, definitions, returnStatement},
 		optList = $codeOptimizeFunctions;
 		interpObj = Flatten @ Map[Cases[equation, #, Infinity]&, optList];
 		replacementObj = Select[Counts[interpObj], # > 1&];
 		(*We weigh function calls (potentially fetching global memory)*)
-		(*stronger to make sure these are preferentially cached.*)
+		(*much stronger to make sure these are preferentially cached.*)
 		replacementObj =
 			AssociationMap[
 				If[MatchQ[#[[1]], $codeOptimizeInterps[[1]]],
@@ -435,16 +435,20 @@ CppCode[equation_] :=
 		replacementObj = Keys[replacementObj];
 		replacementNames = Table["_repl" <> ToString[i], {i, 1, Length[replacementObj]}];
 		replacements = Table[replacementObj[[i]] -> replacementNames[[i]], {i, 1, Length[replacementObj]}];
+		replacementsFS = Table[FullSimplify[replacementObj[[i]]] -> replacementNames[[i]], {i, 1, Length[replacementObj]}];
 		FunKitDebug[2, "Replacements: ", replacements];
+		FunKitDebug[2, "ReplacementsFS: ", replacementsFS];
 		definitions =
 			If[Length[replacementObj] > 0,
-				StringJoin[Table["const auto " <> ToString[replacementNames[[i]]] <> " = " <> CppForm[FullSimplify @ replacementObj[[i]] //. replacements[[ ;; i - 1]]] <> ";\n", {i, 1, Length[replacementObj]}]] <> "\n"
+				StringJoin[Table["const auto " <> ToString[replacementNames[[i]]] <> " = " <> CppForm[FullSimplify @ replacementObj[[i]] //. Reverse[replacements[[ ;; i - 1]]] //. Reverse[replacementsFS[[ ;; i - 1]]]] <> ";\n", {i, 1, Length[replacementObj]}]] <> "\n"
 				,
 				""
 			];
 		definitions = StringReplace[definitions, Map["\"" <> # <> "\"" -> #&, replacementNames]];
 		FunKitDebug[2, "Definitions: ", definitions];
-		returnStatement = " return " <> CppForm[equation //. replacements] <> ";";
+		replacements = Reverse[replacements];
+		replacementsFS = Reverse[replacementsFS];
+		returnStatement = " return " <> CppForm[equation //. replacements //. replacementsFS] <> ";";
 		FunKitDebug[2, "returnStatement: ", returnStatement];
 		returnStatement = StringReplace[returnStatement, Map["\"" <> # <> "\"" -> #&, replacementNames]];
 		definitions <> returnStatement

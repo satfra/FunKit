@@ -148,7 +148,19 @@ fermionicExtMomRouting[setup_, vertex_] :=
         (*for this, we can set all external momenta with fermions equal and all external momenta with bosons to 0*)
         momsum = momsum //. externalMomentum[p_, True] :> externalMomentum[1, True] //. externalMomentum[p_, False] :> 0;
         (*Extract the prefactor of externalMomentum[1, True] (or 0, if it does not appear)*)
-        factor = Cases[momsum, Times[a_, externalMomentum[1, True]] :> a, Infinity];
+        factor =
+            Cases[
+                momsum
+                ,
+                Times[c___, externalMomentum[1, True]] | externalMomentum[1, True] :>
+                    If[Length[{c}] > 0,
+                        Times[c]
+                        ,
+                        1
+                    ]
+                ,
+                Infinity
+            ];
         factor =
             If[Length[factor] > 0,
                 Total[factor]
@@ -332,21 +344,32 @@ Momentum conservation is already enforced here, i.e. \!\(
                 FunKitDebug[3, "        Are we routing a fermionic external momentum? ", flag];
                 (*If we have a fermionic external momentum, we need to route it correctly. In that case, try to find a fermionic loopMomentum*)
                 If[flag,
-                    f = Select[subObj[[2, All]], MemberQ[#, loopMomentum[_, True], Infinity]&]
+                    f = Select[subObj[[2, All]], MemberQ[#, loopMomentum[_, True], Infinity]&];
+                    FunKitDebug[5, "        1. Chose f =  ", f];
                 ];
                 (*Otherwise, or, if we can't find a fermionic loopMomentum, pick a bosonic one*)
                 If[Not @ flag || Length[f] === 0,
-                    f = Select[subObj[[2, All]], MemberQ[#, loopMomentum[_, False], Infinity]&]
+                    f = Select[subObj[[2, All]], MemberQ[#, loopMomentum[_, False], Infinity]&];
+                    (* There's one more (nested) case: we have only fermionic loop Momenta, but no external fermionic one.*)
+                    If[Length[f] === 0,
+                        f = Select[subObj[[2, All]], MemberQ[#, loopMomentum[_, True], Infinity]&];
+                    ];
+                    FunKitDebug[5, "        2. Chose f =  ", f];
                 ];
                 f = Position[subObj[[2]], f[[1]]][[1, 1]];
+                FunKitDebug[5, "        Final f =  ", f];
                 (*Make a list of momenta out of the momentum sum in the subObj at position f *)
                 tmp = makePosIdx /@ Flatten[{subObj[[2, f, 1]] //. {Plus[a_, b__] :> List[a, b], Times[a_loopMomentum, b__] :> List[a, b]}}];
+                FunKitDebug[5, "        tmp =  ", tmp];
                 (*Grab one of the momenta which is a loopMomentum *)
                 If[flag,
                     mom = Select[tmp, MatchQ[#, loopMomentum[_, True]]&];
                 ];
                 If[Not @ flag || Length[mom] === 0,
                     mom = Select[tmp, MatchQ[#, loopMomentum[_, False]]&];
+                    If[Length[mom] === 0,
+                        mom = Select[tmp, MatchQ[#, loopMomentum[_, True]]&];
+                    ];
                 ];
                 mom = mom[[1]];
                 (*now build the replacement rule*)
