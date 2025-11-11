@@ -18,6 +18,10 @@ endif()
 # Install the Mathematica package
 # ##############################################################################
 
+if(WIN32)
+  message(FATAL_ERROR "Installation on Windows is not yet supported - on it!.")
+endif()
+
 set(WolframLanguage_wolframscript_EXE "")
 execute_process(
   COMMAND bash -c "which wolframscript"
@@ -90,16 +94,20 @@ message(
 # get the application directory
 execute_process(
   COMMAND
-    bash -c
     "${WolframLanguage_wolframscript_EXE} -script ${CMAKE_CURRENT_SOURCE_DIR}/utils/get_wolfram_app_dir.m"
   OUTPUT_VARIABLE WOLFRAM_APP_DIR
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 message(STATUS "Wolfram Language application directory: ${WOLFRAM_APP_DIR}")
 
-# Install dependencies
-execute_process(
-  COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/install.sh
-          ${WOLFRAM_APP_DIR})
+# Install dependencies if we are NOT on windows
+if(WIN32)
+  execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/install.bat
+                          ${WOLFRAM_APP_DIR})
+else()
+  execute_process(
+    COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/install.sh
+            ${WOLFRAM_APP_DIR})
+endif()
 
 # install the Mathematica package
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/FunKit.m
