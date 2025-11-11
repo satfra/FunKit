@@ -497,13 +497,16 @@ StartPoints[setup_, t1_FTerm, t2_FTerm] :=
         (*Get all sub-objects inside the terms*)
         obj1 = Reverse @ Sort @ ExtractObjectsWithIndex[setup, t1] /. doFields;
         obj2 = Reverse @ Sort @ ExtractObjectsWithIndex[setup, t2] /. doFields;
+        FunKitDebug[4, "StartPoints: Comparing objects ", obj1, " and ", obj2];
         (*If the objects (with field content) do not match, they are not identical.*)
         If[Sort @ Map[Head[#][Sort @ #[[1]]]&, obj1] =!= Sort @ Map[Head[#][Sort @ #[[1]]]&, obj2],
+            FunKitDebug[4, "Failed at object head check"];
             Return[{False, Null, Null}]
         ];
         cidx1 = GetClosedSuperIndices[setup, t1];
         cidx2 = GetClosedSuperIndices[setup, t2];
         If[Length[cidx1] =!= Length[cidx2],
+            FunKitDebug[4, "Failed at closed index count check: ", Length[cidx1], " vs ", Length[cidx2]];
             Return[{False, Null, Null}]
         ];
 (*
@@ -713,6 +716,7 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
         ,
         (*If[MemberQ[t1,AnyField,Infinity],Message[TermsEqualAndSum::undeterminedFields];Abort[]];*)
         (*Briefly check the trivial case*)
+        FunKitDebug[4, "    TermsEqualAndSum: Comparing \n  ", t1, "\n   &\n  ", t2];
         If[it1 === it2,
             Return @ FTerm[2, t1]
         ];
@@ -728,6 +732,7 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
         (*Get all the possible starting points for the search*)
         startPoints = StartPoints[setup, t1, t2];
         If[Not[startPoints[[1]]],
+            FunKitDebug[3, "    No matching StartPoints could be identified"];
             Return[False]
         ];
         FunKitDebug[4, "Collected StartPoints"];
@@ -788,7 +793,7 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
             FunKitDebug[3, "With prefactor: ", factor];
             Return @ FTerm[factor, t1];
         ];
-        Print["Could not resolve Grassmann factors"];
+        Print[Style["FATAL: Could not resolve Grassmann factors", Red]];
         Abort[];
         Return @ FTerm[standardOrderGrassmanns[t1][[1]] * standardOrderGrassmanns[t2][[1]] * (equal * (Times @@ t2) + (Times @@ t1)) / (Times @@ t1) /. Alternatives @@ Map[Blank, $allObjects \[Union] {FDOp}] -> 1 /. Alternatives @@ Map[Blank, GetAllFields[setup]] -> 1, t1];
     ];
@@ -822,6 +827,7 @@ SubFSimplify[setup_, expr_FEx] :=
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
                 red = TermsEqualAndSum[setup, ret[[idx]], ret[[jdx]]];
+                FunKitDebug[3, "Comparing ", idx, " and ", jdx, ", result: ", red];
                 If[red =!= False,
                     ret[[idx]] = red;
                     ret = Delete[ret, jdx];
@@ -901,10 +907,21 @@ SubFSimplify[setup_, expr_FEx, symmetryList_] :=
     ];
 
 FSimplifyNoSym[setup_, expr_FEx] :=
-    Module[{subGroups, res},
+    Module[{
+        subGroups
+        ,
+        res
+        ,
+        map =
+            If[$FunKitDebugLevel >= 2,
+                Map
+                ,
+                ParallelMap
+            ]
+    },
         FunKitDebug[1, "Simplifying diagrammatic expression of length ", Length[expr]];
         subGroups = SeparateTermGroups[setup, expr];
-        res = FEx @@ ParallelMap[SubFSimplify[setup, #]&, subGroups];
+        res = FEx @@ map[SubFSimplify[setup, #]&, subGroups];
         FunKitDebug[1, "FTerms before: ", Length[expr], ", after: ", Length[res]];
         Return[res];
     ];
@@ -912,14 +929,27 @@ FSimplifyNoSym[setup_, expr_FEx] :=
 Options[FSimplify] = {"Symmetries" -> {}};
 
 FSimplify[setup_, expr_FEx, OptionsPattern[]] :=
-    Module[{subGroups, res, symmetryList},
+    Module[{
+        subGroups
+        ,
+        res
+        ,
+        symmetryList
+        ,
+        map =
+            If[$FunKitDebugLevel >= 2,
+                Map
+                ,
+                ParallelMap
+            ]
+    },
         If[OptionValue["Symmetries"] === {},
             Return[FSimplifyNoSym[setup, expr]]
         ];
         FunKitDebug[1, "Simplifying diagrammatic expression of length ", Length[expr], "with symmetry list"];
         subGroups = SeparateTermGroups[setup, expr];
         symmetryList = BuildSymmetryList[setup, OptionValue["Symmetries"][[1]], AnyField[#]& /@ OptionValue["Symmetries"][[2]]];
-        res = FEx @@ ParallelMap[SubFSimplify[setup, #, symmetryList]&, subGroups];
+        res = FEx @@ map[SubFSimplify[setup, #, symmetryList]&, subGroups];
         FunKitDebug[1, "FTerms before: ", Length[expr], ", after: ", Length[res]];
         Return[res];
     ];
