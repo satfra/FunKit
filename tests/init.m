@@ -1,10 +1,4 @@
-$mDir = SelectFirst[Join[{FileNameJoin[{$UserBaseDirectory, "Applications",
-     "FunKit"}], FileNameJoin[{$BaseDirectory, "Applications", "FunKit"}],
-     FileNameJoin[{$InstallationDirectory, "AddOns", "Applications", "FunKit"
-    }], FileNameJoin[{$InstallationDirectory, "AddOns", "Packages", "FunKit"
-    }], FileNameJoin[{$InstallationDirectory, "AddOns", "ExtraPackages", 
-    "FunKit"}]}, Select[$Path, StringContainsQ[#, "FunKit"]&]], DirectoryQ[
-    #]&] <> "/";
+$mDir = SelectFirst[Join[{FileNameJoin[{$UserBaseDirectory, "Applications", "FunKit"}], FileNameJoin[{$BaseDirectory, "Applications", "FunKit"}], FileNameJoin[{$InstallationDirectory, "AddOns", "Applications", "FunKit"}], FileNameJoin[{$InstallationDirectory, "AddOns", "Packages", "FunKit"}], FileNameJoin[{$InstallationDirectory, "AddOns", "ExtraPackages", "FunKit"}]}, Select[$Path, StringContainsQ[#, "FunKit"]&]], DirectoryQ[#]&] <> "/";
 
 (* Take care of dependencies *)
 
@@ -20,9 +14,8 @@ Block[{Print},
 
 Print["  Using FunKit version: " <> ToString[FunKit`$FunKitVersion]];
 
-Print["  Launching parallel kernels..."];
-
-LaunchKernels[];
-
-Print["    Parallel kernels launched: " <> ToString[$KernelCount] <> 
-    " kernels.\n"];
+If[Length[Kernels[]] <= 1,
+    Print["  Launching parallel kernels..."];
+    LaunchKernels[];
+    Print["    Parallel kernels launched: " <> ToString[Length[Kernels[]]] <> " kernels.\n"];
+];
