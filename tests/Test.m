@@ -30,7 +30,6 @@ Print["Initialization complete.\n"];
 
 RunAndReportTests[tests_List, testFileName_String] :=
     Module[{result, successCount, failureCount, mGreen = RGBColor[0.0235294, 0.235294, 0.0235294], mRed = RGBColor[0.435294, 0, 0]},
-        Print["Running tests from: " <> testFileName];
         result = TestReport[tests];
         successCount = Length[result["TestsSucceededKeys"]];
         failureCount = Length[result["TestsFailedWrongResultsKeys"]];
@@ -64,6 +63,7 @@ Module[{testFiles, totalSuccesses = 0, totalFailures = 0, mOrange = RGBColor[0.8
     Print[Style["---------------------------------", Bold, mOrange]];
     Scan[
         (
+            Print["Running tests from: " <> FileNameTake[#, -2]];
             Get[#];
             If[ValueQ[tests],
                 Module[{results},

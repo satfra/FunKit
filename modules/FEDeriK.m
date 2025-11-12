@@ -108,6 +108,10 @@ Defines an indexed object as symmetric in all its indices.
 SetSymmetricObject[obj, {fields}, {positions}] makes the object symmetric only in the specified index positions.
 This automatically sorts indices to canonical order and can significantly reduce the number of terms in calculations.";
 
+FOrderFields::usage = "FOrderFields[setup, expr]
+Orders fields within the expression according to the canonical ordering currently set for FunKit.
+Normally, FunKit takes care of field ordering automatically, but this function allows manual reordering when needed."
+
 FEx::usage = "FEx[term1, term2, ...]
 Represents a functional expression as a sum of FTerm objects.
 This is the main container for functional equations in FEDeriK.

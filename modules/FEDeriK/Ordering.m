@@ -281,3 +281,6 @@ OrderFieldList[setup_, fields_List] :=
 
 OrderFields[setup_, expr_] :=
     Map[OrderObject[setup, #]&, OrderObject[setup, expr], Infinity];
+
+FOrderFields[setup_, expr_] :=
+    OrderFields[setup, expr];

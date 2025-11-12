@@ -8,6 +8,8 @@ Import[$mDir <> "/tests/util/getFORMTracer.m"];
 
 Import[$mDir <> "/tests/util/getTensorBases.m"];
 
+Import[$mDir <> "/tests/util/getDoFun.m"];
+
 Block[{Print},
     Needs["FunKit`"];
 ];

@@ -112,6 +112,8 @@ endif()
 # install the Mathematica package
 install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/FunKit.m
         DESTINATION ${WOLFRAM_APP_DIR}/FunKit)
+install(FILES ${CMAKE_CURRENT_SOURCE_DIR}/PacletInfo.m
+        DESTINATION ${WOLFRAM_APP_DIR}/FunKit)
 install(
   DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/modules
             ${CMAKE_CURRENT_SOURCE_DIR}/examples

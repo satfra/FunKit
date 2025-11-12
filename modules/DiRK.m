@@ -86,8 +86,7 @@ ModuleLoaded[DiRK] = True;
 (* ::Input::Initialization:: *)
 
 makeTemporaryFileName[] :=
-    ToString[AbsoluteTime[] * 10^6 // Round] <> "_" <> ToString[RandomInteger[
-        {10^6, 10^7}]]
+    ToString[AbsoluteTime[] * 10^6 // Round] <> "_" <> ToString[RandomInteger[{10^6, 10^7}]]
 
 (* ::Section:: *)
 
@@ -106,20 +105,15 @@ Options[MakeDiagrammaticRules] = {"DerivePropagators" -> True};
 Protect @ InverseProp;
 
 MakeDiagrammaticRules[setup_, OptionsPattern[]] :=
-    Module[{ruleList, truncationList, idx, jdx, kdx, minusRule, object,
-         fieldContent, rule, dress, minusOrig, minusBasis, subset = All, orderOrig,
-         orderBasis, newBasisName},
+    Module[{ruleList, truncationList, idx, jdx, kdx, minusRule, object, fieldContent, rule, dress, minusOrig, minusBasis, subset = All, orderOrig, orderBasis, newBasisName},
         ruleList = {};
         truncationList = Normal[setup["FeynmanRules"]];
         For[idx = 1, idx <= Length[truncationList], idx++,
             object = truncationList[[idx, 1]];
-            FunKitDebug[1, "Creating diagrammatic rule for ", object]
-                ;
-            For[jdx = 1, jdx <= Length[truncationList[[idx, 2]]], jdx
-                ++,
+            FunKitDebug[1, "Creating diagrammatic rule for ", object];
+            For[jdx = 1, jdx <= Length[truncationList[[idx, 2]]], jdx++,
                 rule = Values[truncationList[[idx, 2, jdx]]];
-                FunKitDebug[1, "  Creating diagrammatic rule for ", rule
-                    ];
+                FunKitDebug[1, "  Creating diagrammatic rule for ", rule];
                 (*Check what the subset of the original basis is*)
                 If[Head[rule] === List,
                     subset =
@@ -130,8 +124,7 @@ MakeDiagrammaticRules[setup_, OptionsPattern[]] :=
                         ];
                     rule = rule[[1]]
                     ,
-                    subset = Range[TensorBases`TBGetBasisSize[makePosIdx[
-                        rule]]];
+                    subset = Range[TensorBases`TBGetBasisSize[makePosIdx[rule]]];
                 ];
                 minusRule =
                     If[isNeg[rule],
@@ -152,40 +145,24 @@ MakeDiagrammaticRules[setup_, OptionsPattern[]] :=
                             False
                         ]
                     ];
-                fieldContent = (Keys @ truncationList[[idx, 2, jdx]])
-                    [[orderOrig]];
-                {minusBasis, orderBasis} = GetOrder[setup, fieldContent,
-                     TensorBases`TBGetBasisFields[rule]];
+                fieldContent = (Keys @ truncationList[[idx, 2, jdx]])[[orderOrig]];
+                {minusBasis, orderBasis} = GetOrder[setup, fieldContent, TensorBases`TBGetBasisFields[rule]];
                 dress =
-                    If[OptionValue["DerivePropagators"] && object ===
-                         Propagator,
-                        FunKitDebug[2, "    Creating propagator rule"
-                            ];
-                        newBasisName = rule <> "_restrict_" <> StringReplace[
-                            ToString[subset], {" " -> "", "," -> "_", "{" -> "", "}" -> ""}];
-                        FunKitDebug[2, "      Creating restricted basis for propagator inversion ",
-                             newBasisName];
-                        If[Not @ TensorBases`TBBasisExists[newBasisName
-                            ],
-                            TensorBases`TBRestrictBasis[rule, newBasisName,
-                                 subset]
+                    If[OptionValue["DerivePropagators"] && object === Propagator,
+                        FunKitDebug[2, "    Creating propagator rule"];
+                        newBasisName = rule <> "_restrict_" <> StringReplace[ToString[subset], {" " -> "", "," -> "_", "{" -> "", "}" -> ""}];
+                        FunKitDebug[2, "      Creating restricted basis for propagator inversion ", newBasisName];
+                        If[Not @ TensorBases`TBBasisExists[newBasisName],
+                            TensorBases`TBRestrictBasis[rule, newBasisName, subset]
                         ];
                         orderBasis = Reverse @ orderBasis;
-                        ((CommuteSign[setup, ##]& @@ fieldContent) * 
-                            TensorBases`TBMakePropagator[newBasisName, Table[dressing[InverseProp,
-                             Reverse @ fieldContent, subset[[kdx]], $mom], {kdx, 1, Length[subset
-                            ]}]])
+                        ((CommuteSign[setup, ##]& @@ fieldContent) * TensorBases`TBMakePropagator[newBasisName, Table[dressing[InverseProp, Reverse @ fieldContent, subset[[kdx]], $mom], {kdx, 1, Length[subset]}]])
                         ,
                         FunKitDebug[2, "Creating nPoint rule"];
-                        (Table[dressing[object, fieldContent, subset[[
-                            kdx]], $mom], {kdx, 1, Length[subset]}])
+                        (Table[dressing[object, fieldContent, subset[[kdx]], $mom], {kdx, 1, Length[subset]}])
                     ];
-                rule = minusOrig * minusRule * minusBasis * dress . (
-                    Table[$tens[rule, subset[[kdx]], $ind], {kdx, 1, Length[subset]}]);
-                AppendTo[ruleList, OrderObject[setup, object[fieldContent,
-                     ind : (_List)]] :> (Evaluate @ rule) /. $tens -> TensorBases`TBGetVertex
-                     /. $mom :> ind$[[All, 1]] /. $ind :> Flatten /@ ind$[[$order]] /. $order
-                     -> (Evaluate @ orderBasis)]
+                rule = minusOrig * minusRule * minusBasis * dress . (Table[$tens[rule, subset[[kdx]], $ind], {kdx, 1, Length[subset]}]);
+                AppendTo[ruleList, OrderObject[setup, object[fieldContent, ind : (_List)]] :> (Evaluate @ rule) /. $tens -> TensorBases`TBGetVertex /. $mom :> ind$[[All, 1]] /. $ind :> Flatten /@ ind$[[$order]] /. $order -> (Evaluate @ orderBasis)]
             ];
         ];
         Return[ruleList];
@@ -196,16 +173,14 @@ MakeDiagrammaticRules[setup_, OptionsPattern[]] :=
 SetSymmetricDressing[obj_, {f__}] :=
     Module[{},
         Unprotect[dressing];
-        dressing[obj, {f}, n_, {any__}] /; Not @ OrderedQ[{any}] := dressing[
-            obj, {f}, n, Sort @ {any}];
+        dressing[obj, {f}, n_, {any__}] /; Not @ OrderedQ[{any}] := dressing[obj, {f}, n, Sort @ {any}];
         Protect[dressing];
     ];
 
 SetSymmetricDressing[obj_, {f__}, {i__Integer}] :=
     Module[{},
         Unprotect[dressing];
-        dressing[obj, {f}, n_, {any__}] /; Not @ OrderedQ[{any}[[{i}]]
-            ] :=
+        dressing[obj, {f}, n_, {any__}] /; Not @ OrderedQ[{any}[[{i}]]] :=
             Module[{new = {any}},
                 new[[{i}]] = Sort @ new[[{i}]];
                 dressing[obj, {f}, n, new]
@@ -216,16 +191,14 @@ SetSymmetricDressing[obj_, {f__}, {i__Integer}] :=
 SetSymmetricDressing[obj_, {f__}, n_Integer] :=
     Module[{},
         Unprotect[dressing];
-        dressing[obj, {f}, n, {any__}] /; Not @ OrderedQ[{any}] := dressing[
-            obj, {f}, n, Sort @ {any}];
+        dressing[obj, {f}, n, {any__}] /; Not @ OrderedQ[{any}] := dressing[obj, {f}, n, Sort @ {any}];
         Protect[dressing];
     ];
 
 SetSymmetricDressing[obj_, {f__}, n_Integer, {i__Integer}] :=
     Module[{},
         Unprotect[dressing];
-        dressing[obj, {f}, n, {any__}] /; Not @ OrderedQ[{any}[[{i}]]
-            ] :=
+        dressing[obj, {f}, n, {any__}] /; Not @ OrderedQ[{any}[[{i}]]] :=
             Module[{new = {any}},
                 new[[{i}]] = Sort @ new[[{i}]];
                 dressing[obj, {f}, n, new]
@@ -238,107 +211,3 @@ SetSymmetricDressing[obj_, {f__}, n_Integer, {i__Integer}] :=
 (*End Private*)
 
 End[]
-
-(* ::Title:: *)
-
-(*Testing*)
-
-(* ::Input:: *)
-
-(*Get["FunKit`"]*)
-
-(*fields= <|*)
-
-(*"cField"-> {*)
-
-(*A[p,{v, c}]*)
-
-(*},*)
-
-(*"Grassmann"->{*)
-
-(*{cb[p,{c}],c[p,{c}]}*)
-
-(*}*)
-
-(*|>;*)
-
-(*truncation=<|*)
-
-(*GammaN->{*)
-
-(*{A,A},{A,A,A},{A,A,A,A},*)
-
-(*{A,cb,c}*)
-
-(*},*)
-
-(*Propagator->{*)
-
-(*{A,A},{cb,c}*)
-
-(*},*)
-
-(*Rdot->{*)
-
-(*{A,A},{cb,c}*)
-
-(*},*)
-
-(*S->{*)
-
-(*{A,A},{A,A,A},{A,A,A,A},*)
-
-(*{cb,c},{cb,c,A}*)
-
-(*}*)
-
-(*|>;*)
-
-(*SetTexStyles[cb->"\\bar{c}"];*)
-
-(*bases={*)
-
-(*GammaN->{*)
-
-(*{A,A}->"AA",{A,A,A}->"AAAClass",{A,A,A,A}->"AAAAClass",*)
-
-(*{A,cb,c}->{"Acbc",1}*)
-
-(*},*)
-
-(*Propagator->{*)
-
-(*{A,A}->"AA",{cb,c}->"cbc"*)
-
-(*},*)
-
-(*Rdot->{*)
-
-(*{A,A}->"AA",{cb,c}->"cbc"*)
-
-(*}*)
-
-(*};*)
-
-(*Setup:=<|*)
-
-(*"FieldSpace"->fields,*)
-
-(*"Truncation"->truncation,*)
-
-(*"FeynmanRules"->bases*)
-
-(*|>;*)
-
-(*SetGlobalSetup[Setup];*)
-
-(**)
-
-(*DerivativeListAcbc={ A[i1],cb[i2],c[i3]};*)
-
-(*TakeDerivatives[Setup,WetterichEquation,DerivativeListAcbc];*)
-
-(*%//Truncate//FSimplify;*)
-
-(*%/.MakeDiagrammaticRules[Setup]*)

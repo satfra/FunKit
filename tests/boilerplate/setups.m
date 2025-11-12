@@ -15,7 +15,13 @@ GetFunKitSetupScalar[] :=
     fields = <|"Commuting" -> {Phi[p]}, "Grassmann" -> {}|>;
     trunc = <|Rdot -> {{Phi, Phi}}, Propagator -> {{Phi, Phi}}, GammaN -> {{Phi}, {Phi, Phi}, {Phi, Phi, Phi}, {Phi, Phi, Phi, Phi}}|>;
     Return[<|"FieldSpace" -> fields, "Truncation" -> trunc|>];
-  ]
+  ];
+
+GetDoFunSetupScalar[] :=
+"
+actionONSymbolic={{Phi,4}};
+setFields[{Phi}];
+";
 
 (* Yukawa Setups *)
 
@@ -33,3 +39,9 @@ GetFunKitSetupYukawa[] :=
     trunc = <|Rdot -> {{Phi, Phi}, {Psi, Psibar}}, Propagator -> {{Phi, Phi}, {Psi, Psibar}}, GammaN -> {{Phi}, {Psi, Psibar}, {Phi, Phi}, {Psi, Psibar, Phi}}|>;
     Return[<|"FieldSpace" -> fields, "Truncation" -> trunc|>];
   ];
+
+GetDoFunSetupYukawa[] :=
+"
+actionYukawaSymbolic={{Phi,2}, {Psi, Psibar}, {Psi, Psibar, Phi}};
+setFields[{Phi}, {{Psi, Psibar}}];
+";

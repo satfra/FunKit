@@ -52,6 +52,9 @@ ResolveDerivatives[expr_, OptionsPattern[]] /; Head[$GlobalSetup] =!= Symbol :=
 ResolveFDOp[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     ResolveFDOp[$GlobalSetup, expr];
 
+FOrderFields[expr_] /; Head[$GlobalSetup] =!= Symbol :=
+    FOrderFields[$GlobalSetup, expr];
+
 (**********************************************************************************
     Global Variables
 **********************************************************************************)

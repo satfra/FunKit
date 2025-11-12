@@ -99,6 +99,8 @@ DoFunSuperindexDiagramQ[expr_] :=
         l = expr //. Times[a__, DoFun`DoDSERGE`op[b__]] :> DoFun`DoDSERGE`op[b];
         If[Head[l] === Plus,
             l = List @@ l
+            ,
+            l = {l};
         ];
         Return[AllTrue[l, DoFunSuperindexDiagramQ]];
     ];
@@ -107,13 +109,15 @@ FunKitForm[diag_] /; DoFunSuperindexDiagramQ[diag] :=
     Module[{repl},
         repl =
             {
-                DoFun`DoDSERGE`op[f__] :> FunKit`FTerm[f]
+                Times[a___, DoFun`DoDSERGE`op[f__]] :> FunKit`FTerm[a, f]
                 , (**)
-                DoFun`DoDSERGE`P[f__] :> FunKit`Propagator[{f}[[All, 1]], {f}[[All, 2 ;; ]]]
+                DoFun`DoDSERGE`op[f__] :> FunKit`FTerm[f]
                 ,
-                DoFun`DoDSERGE`V[f__] :> FunKit`GammaN[{f}[[All, 1]], {f}[[All, 2 ;; ]]]
+                DoFun`DoDSERGE`P[f__] :> FunKit`Propagator[{f}[[All, 1]], {f}[[All, 2]]]
                 ,
-                DoFun`DoDSERGE`dR[f__] :> FunKit`Regulatordot[{f}[[All, 1]], {f}[[All, 2 ;; ]]]
+                DoFun`DoDSERGE`V[f__] :> FunKit`GammaN[{f}[[All, 1]], {f}[[All, 2]]]
+                ,
+                DoFun`DoDSERGE`dR[f__] :> FunKit`Rdot[{f}[[All, 1]], {f}[[All, 2]]]
             };
-        FEx[diag //. repl]
+        FunKit`FEx[diag //. repl]
     ];
