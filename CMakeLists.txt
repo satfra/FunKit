@@ -93,8 +93,8 @@ message(
 
 # get the application directory
 execute_process(
-  COMMAND
-    "${WolframLanguage_wolframscript_EXE} -script ${CMAKE_CURRENT_SOURCE_DIR}/utils/get_wolfram_app_dir.m"
+  COMMAND ${WolframLanguage_wolframscript_EXE} -script
+          ${CMAKE_CURRENT_SOURCE_DIR}/utils/get_wolfram_app_dir.m
   OUTPUT_VARIABLE WOLFRAM_APP_DIR
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 message(STATUS "Wolfram Language application directory: ${WOLFRAM_APP_DIR}")

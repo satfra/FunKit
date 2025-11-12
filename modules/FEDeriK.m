@@ -1,14 +1,15 @@
 (* ::Package:: *)
 
 (* ::Title:: *)
+
 (*FEDeriK - Functional Equation Derivation Kit*)
 
-
 (* ::Section:: *)
+
 (*Exports*)
 
-
 (* ::Input::Initialization:: *)
+
 SetGlobalSetup::usage = "SetGlobalSetup[setup]
 Sets a global setup that is used by all FEDeriK functions when no setup is explicitly provided.
 This allows calling functions like TakeDerivatives[expr, derivativeList] without passing the setup each time.
@@ -118,6 +119,7 @@ Factors can be numbers, indexed objects, fields, derivative operators, or approp
 Certain restrictions apply: If you put two Grassmann fields into the same factor, using this FTerm will lead to errors being thrown.";
 
 Remove["*`F"]
+
 F::usage = "F[expr...]
 Shorthand notation for FEx[FTerm[expr...]].
 Provides a convenient way to create single-term functional expressions.
@@ -193,37 +195,40 @@ Represents the time derivative of field expectation values \[PartialD]_t\:27e8fi
 Used in generalized flow equations where field expectation values are time-dependent.
 This is a predefined correlation function with special index ordering rules.";
 
-
 (* ::Section:: *)
+
 (* Begin Private *)
 
-
 (* ::Input::Initialization:: *)
+
 Begin["`Private`"];
 
-ModuleLoaded::dependency = 
-  "The module `1` requires `2`, which has not been loaded.";
+ModuleLoaded::dependency = "The module `1` requires `2`, which has not been loaded.";
 
 If[ModuleLoaded[FunKit] =!= True,
-      Message[ModuleLoaded::dependency, "FEDeriK", "FunKit"];
-      Abort[];
-  ];
+  Message[ModuleLoaded::dependency, "FEDeriK", "FunKit"];
+  Abort[];
+];
 
 ModuleLoaded[FEDeriK] = True;
 
-
 (* ::Section:: *)
+
 (* Loading components*)
 
-
 (* ::Input::Initialization:: *)
+
 (* Global setup *)
 
 Get[$FunKitDirectory <> "modules/FEDeriK/Global.m"];
 
-(* Algebra: FTerm and FEx definitions *)
+(* Notation: FTerm and FEx definitions *)
 
-Get[$FunKitDirectory <> "modules/FEDeriK/Algebra.m"];
+Get[$FunKitDirectory <> "modules/FEDeriK/Notation.m"];
+
+(* Indexed objects *)
+
+Get[$FunKitDirectory <> "modules/FEDeriK/IndexedObjects.m"];
 
 (* Checks and Assertions *)
 
@@ -232,10 +237,6 @@ Get[$FunKitDirectory <> "modules/FEDeriK/Checks.m"];
 (* FunctionalD *)
 
 Get[$FunKitDirectory <> "modules/FEDeriK/FunctionalD.m"];
-
-(* Indexed objects *)
-
-Get[$FunKitDirectory <> "modules/FEDeriK/IndexedObjects.m"];
 
 (* SuperIndex Transformations *)
 
@@ -273,9 +274,8 @@ Get[$FunKitDirectory <> "modules/FEDeriK/Derivatives.m"];
 
 Get[$FunKitDirectory <> "modules/FEDeriK/MasterEquations.m"];
 
-
 (* ::Section:: *)
-(* End Private *)
 
+(* End Private *)
 
 End[];

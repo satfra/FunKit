@@ -102,3 +102,18 @@ DoFunSuperindexDiagramQ[expr_] :=
         ];
         Return[AllTrue[l, DoFunSuperindexDiagramQ]];
     ];
+
+FunKitForm[diag_] /; DoFunSuperindexDiagramQ[diag] :=
+    Module[{repl},
+        repl =
+            {
+                DoFun`DoDSERGE`op[f__] :> FunKit`FTerm[f]
+                , (**)
+                DoFun`DoDSERGE`P[f__] :> FunKit`Propagator[{f}[[All, 1]], {f}[[All, 2 ;; ]]]
+                ,
+                DoFun`DoDSERGE`V[f__] :> FunKit`GammaN[{f}[[All, 1]], {f}[[All, 2 ;; ]]]
+                ,
+                DoFun`DoDSERGE`dR[f__] :> FunKit`Regulatordot[{f}[[All, 1]], {f}[[All, 2 ;; ]]]
+            };
+        FEx[diag //. repl]
+    ];
