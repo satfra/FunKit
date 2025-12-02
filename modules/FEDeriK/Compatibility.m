@@ -12,14 +12,14 @@ FunKitForm[expr_List] :=
 QMeSNaming[setup_, expr_] :=
     expr;
 
-QMeSNaming[setup_, obj_[fields_List, indices_List] /; MemberQ[$OrderedObjects, obj]] :=
+QMeSNaming[setup_, obj_ /; ObjectQ[obj]] :=
     Module[
         {oldCanonicalOrdering, transf, prefactor, mobj, mfields, mindices, prefix, fieldPart, indexPart}
         ,
         (*QMeS follows b>af>f, so we switch temporarily!*)
         Block[{$CanonicalOrdering},
             $CanonicalOrdering = "b>af>f";
-            transf = OrderObject[setup, obj[fields, indices]];
+            transf = OrderObject[setup, obj];
         ];
         prefactor = 1;
         If[MatchQ[transf, Times[-1, a_]],
@@ -27,10 +27,10 @@ QMeSNaming[setup_, obj_[fields_List, indices_List] /; MemberQ[$OrderedObjects, o
             transf = -transf;
         ];
         mobj = Head[transf];
-        mfields = (List @@ transf)[[1]];
-        mindices = (List @@ transf)[[2]];
+        mfields = getFields[transf];
+        mindices = getIndices[transf];
         prefix =
-            Switch[obj,
+            Switch[Head[obj],
                 Propagator,
                     "G"
                 ,
@@ -52,7 +52,7 @@ QMeSForm[setup_, expr_] :=
     Map[QMeSNaming[setup, #]&, expr, {1, 3}] //. {FEx :> List, FTerm :> Times};
 
 QMeSForm[setup_, expr_Association] :=
-    Map[QMeSForm[setup, #]&, expr];
+    AssociationMap[QMeSForm[setup, #]&, expr];
 
 (* Transforming QMeS to FunKit *)
 
@@ -80,7 +80,15 @@ FunKitForm[diag_List] /; QMeSSuperindexDiagramQ[diag] :=
     Module[{pref, newa},
         pref = diag[[1, 2, 1]];
         newa = diag[[2 ;; ]];
-        newa = newa //. {<|"type" -> "Regulatordot", "indices" -> {a__}|> :> Rdot[{a}[[All, 1]], {a}[[All, 2, 1]]], <|"type" -> "Propagator", "indices" -> {a__}|> :> Propagator[{a}[[All, 1]], {a}[[All, 2, 1]]], <|"type" -> "nPoint", "indices" -> {a__}, __|> :> GammaN[{a}[[All, 1]], {a}[[All, 2, 1]]]};
+        newa =
+            newa //.
+                {
+                    <|"type" -> "Regulatordot", "indices" -> {a__}|> :> makeObj[Rdot, {a}[[All, 1]], {a}[[All, 2, 1]]]
+                    ,(**)
+                    <|"type" -> "Propagator", "indices" -> {a__}|> :> makeObj[Propagator, {a}[[All, 1]], {a}[[All, 2, 1]]]
+                    ,(**)
+                    <|"type" -> "nPoint", "indices" -> {a__}, __|> :> makeObj[GammaN, {a}[[All, 1]], {a}[[All, 2, 1]]]
+                };
         Return[FTerm[pref, ##]& @@ newa]
     ];
 
@@ -109,15 +117,15 @@ FunKitForm[diag_] /; DoFunSuperindexDiagramQ[diag] :=
     Module[{repl},
         repl =
             {
-                Times[a___, DoFun`DoDSERGE`op[f__]] :> FunKit`FTerm[a, f]
+                Times[a___, DoFun`DoDSERGE`op[f__]] :> FTerm[a, f]
                 , (**)
-                DoFun`DoDSERGE`op[f__] :> FunKit`FTerm[f]
+                DoFun`DoDSERGE`op[f__] :> FTerm[f]
                 ,
-                DoFun`DoDSERGE`P[f__] :> FunKit`Propagator[{f}[[All, 1]], {f}[[All, 2]]]
+                DoFun`DoDSERGE`P[f__] :> makeObj[Propagator, {f}[[All, 1]], {f}[[All, 2]]]
                 ,
-                DoFun`DoDSERGE`V[f__] :> FunKit`GammaN[{f}[[All, 1]], {f}[[All, 2]]]
+                DoFun`DoDSERGE`V[f__] :> makeObj[GammaN, {f}[[All, 1]], {f}[[All, 2]]]
                 ,
-                DoFun`DoDSERGE`dR[f__] :> FunKit`Rdot[{f}[[All, 1]], {f}[[All, 2]]]
+                DoFun`DoDSERGE`dR[f__] :> makeObj[Rdot, {f}[[All, 1]], {f}[[All, 2]]]
             };
         FunKit`FEx[diag //. repl]
     ];

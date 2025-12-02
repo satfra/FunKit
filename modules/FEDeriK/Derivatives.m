@@ -109,7 +109,7 @@ ResolveDerivatives[setup_, a___] :=
 Options[TakeDerivatives] = {"Symmetries" -> {}};
 
 TakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
-    Module[{result, externalIndexNames, outputReplacements, derivativeListSIDX},
+    Module[{result, externalIndexNames, outputReplacements, derivativeListSIDX, symmetries},
         AssertFSetup[setup];
         AssertDerivativeList[setup, derivativeList];
         (*We take them in reverse order.*)
@@ -119,9 +119,16 @@ TakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
         If[Length[derivativeListSIDX] === 0,
             Return[ResolveDerivatives[setup, result, "Symmetries" -> OptionValue["Symmetries"]]]
         ];
+        If[OptionValue["Symmetries"] === {} && $AutoBuildSymmetryList === True,
+            FunKitDebug[2, "Auto-building symmetry list for derivatives"];
+            symmetries = FMakeSymmetryList[setup, derivativeListSIDX];
+            FunKitDebug[3, "Built symmetries: ", symmetries];
+            ,
+            symmetries = OptionValue["Symmetries"];
+        ];
         FunKitDebug[1, "Adding the derivative operator ", (FTerm @@ (FDOp /@ derivativeListSIDX))];
         (*Perform all the derivatives, one after the other*)
-        result = ResolveDerivatives[setup, (FTerm @@ (FDOp /@ derivativeListSIDX)) ** result];
+        result = ResolveDerivatives[setup, (FTerm @@ (FDOp /@ derivativeListSIDX)) ** result, "Symmetries" -> symmetries];
 (*
 If[ModuleLoaded[AnSEL],
     result = FunKit`FSimplify[setup, result, "Symmetries" -> OptionValue["Symmetries"]]

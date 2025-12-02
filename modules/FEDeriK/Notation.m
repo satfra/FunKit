@@ -293,3 +293,28 @@ AssertFDOp[setup_, expr_] :=
     ];
 
 Protect[FDOp];
+
+(**********************************************************************************
+    Utility definitions
+**********************************************************************************)
+
+getFields[obj_] :=
+    obj[[1]];
+
+getField[obj_, pos_] :=
+    obj[[1, pos]];
+
+getIndices[obj_] :=
+    obj[[2]];
+
+getIndex[obj_, pos_] :=
+    obj[[2, pos]];
+
+getIdxSign[obj_, pos_] :=
+    -2 * Boole[isNeg[getIndex[obj, pos]]] + 1;
+
+makeObj[kind_Symbol, fieldList_List, indexList_List] :=
+    kind[fieldList, indexList];
+
+ObjectQ[expr_] :=
+    MatchQ[expr, _Symbol[_List, _List]] && MemberQ[$OrderedObjects, Head[expr]];

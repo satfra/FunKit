@@ -20,7 +20,7 @@
 
 
 (* ::Input::Initialization:: *)
-If[("AllowInternetUse" /. SystemInformation["Network"])&&$FrontEnd=!=Null,
+If[($AllowInternet&&$NetworkConnected)&&$FrontEnd=!=Null,
 Module[{FCurPacletAddr,FCurPaclet,FCurVersion,
 FInstalledPaclet,FInstalledVersion},
 
@@ -97,7 +97,7 @@ StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic
 
 
 (* ::Input::Initialization:: *)
-If[Length@PacletFind["MaTeX"]===0,
+If[Length@PacletFind["MaTeX"]===0&&($AllowInternet&&$NetworkConnected),
 ResourceFunction["MaTeXInstall"][]
 ]
 Get["MaTeX`"]
@@ -197,6 +197,10 @@ Protect@FunKitDebug;
 
 
 (* ::Input::Initialization:: *)
+FunKit::invalidArguments="Invalid arguments given for function `1`, for correct usage, see `1`::usage."
+
+
+(* ::Input::Initialization:: *)
 PrintTemporary["\!\(\*
 StyleBox[\"Loading\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
@@ -268,8 +272,10 @@ StyleBox[\"FInfo\",\nFontColor->RGBColor[1, 0.5, 0]]\)[].
 To run the testing suite, you can call  \!\(\*
 StyleBox[\"FTest\",\nFontColor->RGBColor[1, 0.5, 0]]\)[].
 "],
-Print["Welcome to Funkit"];
-Print["Author: Franz Richard Sattler"];
+Print["Welcome to \!\(\*
+StyleBox[\"FunKit\",\nFontWeight->\"Bold\"]\)"];
+Print["\!\(\*
+StyleBox[\"Author\",\nFontWeight->\"Bold\"]\): Franz Richard Sattler"];
 Print["\!\(\*
 StyleBox[\"Version\",\nFontWeight->\"Bold\"]\): ",$FunKitVersion];
 Print["\!\(\*
@@ -301,14 +307,8 @@ SetAttributes[framedPrint,HoldAll];
 
 
 (* ::Input::Initialization:: *)
-FInfo["federik"]:=FInfo["FEDeriK"];
-FInfo["Federik"]:=FInfo["FEDeriK"];
-FInfo["FederiK"]:=FInfo["FEDeriK"];
-FInfo["FeDerik"]:=FInfo["FEDeriK"];
-FInfo["FeDeriK"]:=FInfo["FEDeriK"];
-FInfo["feDeriK"]:=FInfo["FEDeriK"];
-FInfo["federiK"]:=FInfo["FEDeriK"];
-FInfo["FEDeriK"]:=Module[{},
+FInfo[str_String]/;(str=!="federik"&&ToLowerCase[str]==="federik"):=FInfo["federik"];
+FInfo["federik"]:=Module[{},
 Print["\!\(\*
 StyleBox[\"General\",\nFontSize->18,\nFontWeight->\"Bold\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->18,\nFontWeight->\"Bold\"]\)\!\(\*

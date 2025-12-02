@@ -35,8 +35,6 @@ FixIndices[setup_, expr_] :=
         Abort[];
     ];
 
-(* ::Input::Initialization:: *)
-
 FDOp::cannotProcess = "The FDOp in `1` cannot be processed. Please expand the term first";
 
 FDOpCount[expr_] :=

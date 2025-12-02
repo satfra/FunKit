@@ -47,6 +47,14 @@ Separates d-dimensional momenta into (d-1)-dimensional spatial parts and time co
 Can be passed as a postRepl or preRepl rule to FormTrace or FORMSimplify.
 Useful for finite-temperature field theory calculations.";
 
+MakeP0Rule::usage = "MakeP0Rule[q, {p1, p2, ...}, {proj1, proj2, ...}]
+Creates a replacement rule to project temporal components of momentum expressions.
+The first argument q is the internal (loop) momentum variable.
+The second argument is a list of external momenta {p1, p2, ...}.
+The third argument is a list of projections {proj1, proj2, ...} for the temporal components.
+Sets vec[pi,0] to the value of proji for finite-temperature field theory calculations.
+Essential for evaluating expressions at specific temporal momentum projections.";
+
 MakeP0FormRule::usage = "MakeP0FormRule[q, {p1, p2, ...}, {proj1, proj2, ...}]
 Creates a FORM rule to project temporal components of momentum expressions.
 The first argument q is the internal (loop) momentum variable.
@@ -297,6 +305,9 @@ id `mom`(0)^-1 = (`proj`)^-1;", <|"mom" -> momentaList[[i]], "proj" -> projectio
 .sort";
         Return[{code}];
     ];
+
+MakeP0Rule[{momenta__}, {projections__}] :=
+    Thread[Map[Global`vec[#, 0]&, {momenta}] -> {projections}];
 
 (* ::Subsubsection:: *)
 

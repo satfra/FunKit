@@ -1,3 +1,7 @@
+(**********************************************************************************
+    Getting lists of fields from setup
+**********************************************************************************)
+
 GetcFields[setup_] :=
     GetcFields[setup] =
         Map[
@@ -88,11 +92,6 @@ GetAntiCommuting[setup_] :=
                 # =!= {}&
             ];
 
-FieldNameQ[setup_, name_Symbol] :=
-    FieldNameQ[setup, name] = MemberQ[Join[GetCommuting[setup], GetAntiCommuting[setup]], name];
-
-(* ::Input::Initialization:: *)
-
 GetFieldPairs[setup_] :=
     GetFieldPairs[setup] = Map[{Head[#[[1]]], Head[#[[2]]]}&, Select[Join[setup["FieldSpace"]["Grassmann"], setup["FieldSpace"]["Commuting"]], Head[#] === List&]];
 
@@ -101,6 +100,13 @@ GetSingleFields[setup_] :=
 
 GetAllFields[setup_] :=
     GetAllFields[setup] = Join[Flatten @ GetFieldPairs[setup], GetSingleFields[setup]];
+
+(**********************************************************************************
+    Getting single field properties
+**********************************************************************************)
+
+FieldNameQ[setup_, name_Symbol] :=
+    FieldNameQ[setup, name] = MemberQ[Join[GetCommuting[setup], GetAntiCommuting[setup]], name];
 
 HasPartnerField[setup_, field_] :=
     HasPartnerField[setup, field] = MemberQ[Flatten @ GetFieldPairs[setup], field];
@@ -135,7 +141,12 @@ IsAnticField[setup_, field_[__]] :=
 IsGrassmann[setup_, field_] :=
     IsGrassmann[setup, field] = IsFermion[setup, field] || IsAntiFermion[setup, field];
 
-(* ::Input::Initialization:: *)
+IsCommuting[setup_, field_] :=
+    IsCommuting[setup, field] = IscField[setup, field] || IsAnticField[setup, field];
+
+(**********************************************************************************
+    Getting partner fields
+**********************************************************************************)
 
 GetPartnerField[setup_, field_Symbol] :=
     GetPartnerField[setup, field] =
@@ -156,11 +167,9 @@ GetPartnerField[setup_, field_Symbol] :=
 GetPartnerField[setup_, field_Symbol[i__]] :=
     GetPartnerField[setup, field][i]
 
-(* ::Subsubsection::Closed:: *)
-
-(*Checking field content of expressions*)
-
-(* ::Input::Initialization:: *)
+(**********************************************************************************
+    Field extraction from expressions
+**********************************************************************************)
 
 ExtractFields[setup_Association, expr_] :=
     Module[{},
@@ -172,8 +181,6 @@ ExtractFieldsWithIndex[setup_Association, expr_] :=
         Return @ Cases[{expr}, Alternatives @@ Map[Blank, GetAllFields[setup]], Infinity];
     ];
 
-(* ::Input::Initialization:: *)
-
 ContainsGrassmann[setup_Association, expr_] :=
     Module[{},
         Return @ AnyTrue[ExtractFields[setup, expr], IsFermion[setup, #] || IsAntiFermion[setup, #]&];
@@ -184,11 +191,9 @@ GrassmannCount[setup_Association, expr_] :=
         Return[Length @ Select[ExtractFieldsWithIndex[setup, expr], IsFermion[setup, Head[#]] || IsAntiFermion[setup, Head[#]]&]];
     ]
 
-(* ::Subsubsection::Closed:: *)
-
-(*Indices*)
-
-(* ::Input::Initialization:: *)
+(**********************************************************************************
+    Index extraction from FTerms / FExs
+**********************************************************************************)
 
 (*Get a list of all unique super-indices within the expression expr*)
 
@@ -204,7 +209,9 @@ GetAllSuperIndices[setup_Association, expr_FEx] :=
         Return @ (GetAllSuperIndices[setup, #]& /@ (List @@ expr))
     ];
 
-(* ::Input::Initialization:: *)
+(**********************************************************************************
+    Getting indexed objects from FTerms / FExs
+**********************************************************************************)
 
 ExtractObjectsWithIndex[setup_Association, expr_FTerm] :=
     Module[{},
@@ -215,8 +222,6 @@ ExtractObjectsWithIndex[setup_Association, expr_FEx] :=
     Module[{},
         Return @ ((ExtractObjectsWithIndex[setup, #]& /@ (List @@ expr)))
     ];
-
-(* ::Input::Initialization:: *)
 
 ExtractObjectsAndIndices[setup_, expr_FTerm] :=
     Module[{idxO, idxF},
@@ -230,14 +235,14 @@ ExtractObjectsAndIndices[setup_Association, expr_FEx] :=
         Return @ DeleteDuplicates @ ({Flatten[#[[All, 1]]], Join @@ #[[All, 2]]}& @ (ExtractObjectsAndIndices[setup, #]& /@ (List @@ expr)))
     ];
 
-(* ::Input::Initialization:: *)
+(**********************************************************************************
+    Examining superindices
+**********************************************************************************)
 
 SuperIndices::undeterminedSums = "There are indices with count > 2 in the expression
     `1`
 This is not allowed for valid terms/equation. Problematic indices:
     `2`";
-
-(* ::Input::Initialization:: *)
 
 (*Get a list of all closed super-indices within the expression expr*)
 
@@ -248,8 +253,6 @@ GetClosedSuperIndices[setup_, expr_] :=
         count = Map[Count[objects, #, {1, 5}]&, indices];
         Return[Pick[indices, Map[Mod[#, 2] === 0&, count]]];
     ];
-
-(* ::Input::Initialization:: *)
 
 (*Get a list of all open super-indices within the expression expr*)
 

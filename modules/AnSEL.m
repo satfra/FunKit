@@ -16,6 +16,11 @@ The name should be a string (e.g., \"l\", \"k\", \"q\") that will be used to gen
 Also creates fermionic variants (lf1, lf2, ...) and bosonic variants for different loop types.
 Default setting is \"l\".";
 
+FMakeSymmetryList::usage = "FMakeSymmetryList[setup, {f1, f2, ...}]
+Generates a list of symmetries for functional expressions based on the provided fields.
+Each field fi should be a valid field symbol defined in the setup.
+Returns a list of symmetry rules that can be used in FSimplify to identify identical diagrams.";
+
 FRoute::usage = "FRoute[setup, expr]
 Routes indices and momenta in functional expressions, organizing terms by loop order.
 For FTerm expressions, returns an Association with keys \"Expression\", \"ExternalIndices\", and \"LoopMomenta\".

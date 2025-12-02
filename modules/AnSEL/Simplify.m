@@ -2,6 +2,62 @@
     Identification of specific diagrams (i.e. FTerms)
 **********************************************************************************)
 
+(*Build a symmetry list*)
+
+$AutoBuildSymmetryList = True;
+
+FSetAutoBuildSymmetryList[flag_:True] :=
+    $AutoBuildSymmetryList = flag;
+
+FMakeSymmetryList[f___] :=
+    Message[FunKit::invalidArguments, FMakeSymmetryList]
+
+FMakeSymmetryList[setup_, {fields___}] /; AllTrue[{fields}, Length[#] == 1&] :=
+    FMakeSymmetryList[setup, Head[#]& /@ {fields}, #[[1]]& /@ {fields}];
+
+FMakeSymmetryList[setup_, {fields___}, {indices___}] :=
+    Module[{symmetries, subSymmetries, cycles, fieldsWPos, curField, idx, curFieldList, symCombine},
+        If[Length[{fields}] =!= Length[{indices}],
+            Print["Error in FMakeSymmetryList: Number of fields and indices must be equal!"];
+            Abort[]
+        ];
+        (*First, annotate all fields with their position and index, then sort them into sets of identical fields*)
+        fieldsWPos = Table[{{fields}[[idx]], {indices}[[idx]], idx}, {idx, 1, Length[{fields}]}];
+        fieldsWPos = GatherBy[fieldsWPos, First];
+        (*First, for all bosonic fields, we can just construct all possible cycles*)
+        subSymmetries = Table[{}, {Length[fieldsWPos]}];
+        Do[
+            curField = fieldsWPos[[idx, 1]];
+            curFieldList = Map[#[[1]][#[[2]]]&, fieldsWPos[[idx]]];
+            If[IsCommuting[setup, curField[[1]]],
+                (*Build all possible cycles for the positions of this field*)
+                cycles = Map[Join[# /. Cycles -> Sequence, {1}]&, PermutationCycles /@ Permutations[Range[Length[fieldsWPos[[idx]]]]]];
+                subSymmetries[[idx]] = BuildSymmetryList[setup, cycles, curFieldList] // DeleteDuplicates;
+            ];
+            If[IsGrassmann[setup, curField[[1]]],
+                (*For fermionic fields, we can only swap pairs, introducing a -1 factor*)
+                cycles = Map[Join[# /. Cycles -> Sequence, {-1}]&, PermutationCycles /@ Permutations[Range[Length[fieldsWPos[[idx]]]]]];
+                cycles = Select[cycles, Length[#[[1]]] == 2&];
+                subSymmetries[[idx]] = BuildSymmetryList[setup, cycles, curFieldList] // DeleteDuplicates;
+                subSymmetries[[idx]] = Join[{<|"Rule" -> {}, "Factor" -> 1|>}, subSymmetries[[idx]]];
+            ];
+            ,
+            {idx, 1, Length[fieldsWPos]}
+        ];
+        (*Merging two rules*)
+        symCombine[a_, b_] :=
+            Module[{ret},
+                ret = Sort @ Join[a["Rule"], b["Rule"]];
+                Return[<|"Rule" -> ret, "Factor" -> a["Factor"] * b["Factor"]|>];
+            ];
+        (*Trivial rule*)
+        symmetries = {<|"Rule" -> {}, "Factor" -> 1|>};
+        Do[symmetries = Outer[symCombine, symmetries, subSymmetries[[idx]]] // Flatten, {idx, 1, Length[fieldsWPos]}];
+        symmetries = symmetries // DeleteDuplicates;
+        (*Next, for all fermionic fields, we can only swap pairs, introducing a -1 factor*)
+        Return[symmetries];
+    ];
+
 (*Get viable starting points for a comparison of two diagrams*)
 
 StartPoints[setup_, t1_FTerm, t2_FTerm] :=
@@ -55,7 +111,35 @@ TermsEqualAndSum::exceededLoopLimit = "Exceeded the maximum allowed length of a 
 
 TermsEqualAndSum::branchFailure = "Arrived at unhandled branch point";
 
-TermsEqualAndSum[setup_, t1_, t2_, MallObjt1_, cidxt1_, oidxt1_, Mmemory1_, entry1_, MallObjt2_, cidxt2_, oidxt2_, Mmemory2_, entry2_, Msign2_] :=
+TermsEqualAndSum[
+    setup_
+    ,
+    t1_
+    ,(* Original term 1 *)
+    t2_
+    ,(* Original term 2 *)
+    MallObjt1_
+    ,
+    cidxt1_
+    ,
+    oidxt1_
+    ,
+    Mmemory1_
+    ,
+    entry1_
+    ,(* Index at which we start in t1 *)
+    MallObjt2_
+    ,
+    cidxt2_
+    ,
+    oidxt2_
+    ,
+    Mmemory2_
+    ,
+    entry2_
+    , (* Index at which we start in t2 *)
+    Msign2_
+] :=
     Module[{allObjt1 = MallObjt1, curIdx1, curPos1, nextInd1, nextPos1, memory1 = Mmemory1, assocFields1, allObjt2 = MallObjt2, curIdx2, curPos2, nextInd2, nextPos2, memory2 = Mmemory2, assocFields2, sign2 = Msign2, iter = 1, idx, jdx, viableBranches, branchSign, branchItRepl, branchObj, temp1, temp2},
         FunKitDebug[3, "Following along a chain of indices."];
         curIdx1 = makePosIdx @ entry1;
@@ -82,7 +166,7 @@ TermsEqualAndSum[setup_, t1_, t2_, MallObjt1_, cidxt1_, oidxt1_, Mmemory1_, entr
             FunKitDebug[3, "Entering through: ", nextInd1, ", ", nextInd2];
             (*Case 1: There is only a single object following*)
             If[Length[nextInd1] === 1,
-                FunKitDebug[3, "Following the index chain."];
+                FunKitDebug[3, "-------- CASE 1: Following the index chain."];
                 (*Check if the open indices aggree*)
                 If[Sort @ Intersection[oidxt1, makePosIdx /@ nextPos1[[1, 2]]] =!= Sort @ Intersection[oidxt2, makePosIdx /@ nextPos2[[1, 2]]],
                     FunKitDebug[3, "FAILURE ------------ Next open indices disagree.", Sort @ Intersection[oidxt1, makePosIdx /@ nextPos1[[1, 2]]], ", ", Sort @ Intersection[oidxt2, makePosIdx /@ nextPos2[[1, 2]]]];
@@ -91,9 +175,15 @@ TermsEqualAndSum[setup_, t1_, t2_, MallObjt1_, cidxt1_, oidxt1_, Mmemory1_, entr
                 (*fix the current object*)
                 {temp1, temp2} = RearrangeFields[setup, curPos1, curPos2, {nextInd1[[1]], nextInd2[[1]]}];
                 sign2 = sign2 * temp1;
+                (*replace first the object*)
                 allObjt2 = allObjt2 /. curPos2 -> temp2;
                 memory2 = memory2 /. curPos2 -> temp2;
-                curPos2 = temp2;
+                (*and then replace the indices with the ones in curPos1*)
+                allObjt2 = allObjt2 /. nextInd2[[1]] -> nextInd1[[1]];
+                memory2 = memory2 /. nextInd2[[1]] -> nextInd1[[1]];
+                curPos2 = temp2 /. nextInd2[[1]] -> nextInd1[[1]];
+                nextPos2[[1]] = nextPos2[[1]] /. nextInd2[[1]] -> nextInd1[[1]];
+                nextInd2[[1]] = nextInd1[[1]];
                 (*fix the next object*)
                 {temp1, temp2} = RearrangeFields[setup, nextPos1[[1]], nextPos2[[1]], {nextInd1[[1]], nextInd2[[1]]}];
                 sign2 = sign2 * temp1;
@@ -123,7 +213,7 @@ TermsEqualAndSum[setup_, t1_, t2_, MallObjt1_, cidxt1_, oidxt1_, Mmemory1_, entr
             ];
             (*Case 2: End of the line.*)
             If[Length[nextInd1] === 0,
-                FunKitDebug[4, "Finished an index chain in (", curPos1, ", ", curPos2, ")"];
+                FunKitDebug[4, "-------- CASE 2: Finished an index chain in (", curPos1, ", ", curPos2, ")"];
                 (*We need to check if both expressions are with FDOps *)
                 If[Head @ curPos1 === Field,
                     temp1 = Cases[t1, FDOp[curPos1[[1, 1]][curPos1[[2, 1]]]], Infinity];
@@ -138,7 +228,7 @@ TermsEqualAndSum[setup_, t1_, t2_, MallObjt1_, cidxt1_, oidxt1_, Mmemory1_, entr
             ];
             (*Case 3: Branching point.*)
             If[Length[nextInd1] > 1,
-                FunKitDebug[3, "Index chain is branching."];
+                FunKitDebug[3, "-------- CASE 3: Index chain is branching."];
                 (*We need to build all possible combinations between the "next" indices and follow these separately, until one of them fits.*)
                 assocFields1 = curPos1[[1, FirstPosition[curPos1[[2]], #][[1]]]]& /@ nextInd1;
                 assocFields2 = curPos2[[1, FirstPosition[curPos2[[2]], #][[1]]]]& /@ nextInd2;
@@ -182,7 +272,7 @@ TermsEqualAndSum[setup_, t1_, t2_, MallObjt1_, cidxt1_, oidxt1_, Mmemory1_, entr
         Abort[];
     ];
 
-(* Given two objects t1, t2, re-order the fields in an indexed object t2 so that it fits the order in t1. Returns both the sign and the reordered t2*)
+(* Given two objects t1, t2, re-order the fields in an indexed object t2 so that the exit index equiv fits the position in t1. Returns both the sign and the reordered t2*)
 
 RearrangeFields[setup_, t1_, t2_, equiv_] :=
     Module[{ipos1, ipos2, idx, sign, newt2},
