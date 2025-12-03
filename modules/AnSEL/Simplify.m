@@ -119,7 +119,9 @@ FMakeSymmetryList[setup_, {fields___}, {indices___}] :=
         symmetries = {<|"Rule" -> {}, "Factor" -> 1|>};
         Do[symmetries = Outer[symCombine, symmetries, subSymmetries[[idx]]] // Flatten, {idx, 1, Length[fieldsWPos]}];
         symmetries = symmetries // DeleteDuplicates;
-        (*Next, for all fermionic fields, we can only swap pairs, introducing a -1 factor*)
+        If[Length[symmetries] === 0,
+            Return[{}]
+        ];
         Return[symmetries];
     ];
 
@@ -195,7 +197,7 @@ TermsEqualAndSum[
     ,(* Index at which we start in t1 *)
     MallObjt2_
     ,
-    cidxt2_
+    Mcidxt2_
     ,
     oidxt2_
     ,
@@ -205,7 +207,7 @@ TermsEqualAndSum[
     , (* Index at which we start in t2 *)
     Msign2_
 ] :=
-    Module[{t1 = it1, t2 = it2, nt1, nt2, allObjt1 = MallObjt1, curIdx1, curPos1, nextInd1, nextPos1, memory1 = Mmemory1, assocFields1, allObjt2 = MallObjt2, curIdx2, curPos2, nextInd2, nextPos2, memory2 = Mmemory2, assocFields2, sign2 = Msign2, iter = 1, idx, jdx, viableBranches, branchSign, branchItRepl, branchObj, temp1, temp2},
+    Module[{t1 = it1, t2 = it2, nt1, nt2, allObjt1 = MallObjt1, curIdx1, curPos1, nextInd1, nextPos1, memory1 = Mmemory1, assocFields1, allObjt2 = MallObjt2, curIdx2, curPos2, nextInd2, nextPos2, memory2 = Mmemory2, assocFields2, sign2 = Msign2, iter = 1, idx, jdx, viableBranches, branchSign, branchItRepl, branchObj, temp1, temp2, cidxt2 = Mcidxt2, curIdxRepl},
         FunKitDebug[3, "Following along a chain of indices."];
         curIdx1 = makePosIdx @ entry1;
         curIdx2 = makePosIdx @ entry2;
@@ -245,6 +247,7 @@ TermsEqualAndSum[
                 nextPos2[[1]] = nextPos2[[1]] /. nextInd2[[1]] -> nextInd1[[1]];
                 t2 = t2 /. nextInd2[[1]] -> nextInd1[[1]];
                 sign2 = sign2 /. nextInd2[[1]] -> nextInd1[[1]];
+                cidxt2 = cidxt2 /. nextInd2[[1]] -> nextInd1[[1]];
                 nextInd2[[1]] = nextInd1[[1]];
                 (*fix the current object*)
                 {temp1, temp2} = RearrangeFields[setup, curPos1, curPos2, {nextInd1[[1]], nextInd2[[1]]}];
@@ -309,18 +312,19 @@ TermsEqualAndSum[
                 FunKitDebug[4, "Viable Branches: ", viableBranches];
                 For[idx = 1, idx <= Length[viableBranches], idx++,
                     branchSign = sign2;
-                    branchObj = allObjt2;
                     Do[
-                        (*Fix the outgoing objects*){branchSign, branchItRepl} = RearrangeFields[setup, curPos1, curPos2, viableBranches[[idx, jdx, All, 1]]];
+                        curIdxRepl = viableBranches[[idx, jdx, 2, 1]] -> viableBranches[[idx, jdx, 1, 1]];
+                        (*Fix the outgoing objects*) {branchSign, branchItRepl} = RearrangeFields[setup, curPos1, curPos2, viableBranches[[idx, jdx, All, 1]]];
                         (*Fix the incoming objects*)
                         {temp1, temp2} = RearrangeFields[setup, viableBranches[[idx, jdx, 1, 3]], viableBranches[[idx, jdx, 2, 3]], viableBranches[[idx, jdx, All, 1]]];
                         branchSign = temp1 * branchSign;
+                        branchObj = allObjt2;
                         branchObj = branchObj /. curPos2 -> branchItRepl;
                         branchObj = branchObj /. viableBranches[[idx, jdx, 2, 3]] -> temp2;
                         nt2 = t2 /. curPos2 -> branchItRepl /. viableBranches[[idx, jdx, 2, 3]] -> temp2;
                         viableBranches[[idx, jdx, 2, 3]] = temp2;
                         FunKitDebug[4, "Branching at ", branchObj];
-                        {branchSign, branchObj, nt2} = TermsEqualAndSum[setup, t1, nt2, allObjt1, cidxt1, oidxt1, Append[memory1, viableBranches[[idx, jdx, 1, 3]]], viableBranches[[idx, jdx, 1, 1]], branchObj, cidxt2, oidxt2, Append[memory2 /. curPos2 -> branchItRepl, viableBranches[[idx, jdx, 2, 3]]], viableBranches[[idx, jdx, 2, 1]], branchSign];
+                        {branchSign, branchObj, nt2} = TermsEqualAndSum[setup, t1, nt2 /. curIdxRepl, allObjt1, cidxt1, oidxt1, Append[memory1, viableBranches[[idx, jdx, 1, 3]]], viableBranches[[idx, jdx, 1, 1]], branchObj /. curIdxRepl, cidxt2 /. curIdxRepl, oidxt2 /. curIdxRepl, Append[memory2 /. curPos2 -> branchItRepl, viableBranches[[idx, jdx, 2, 3]]] /. curIdxRepl, viableBranches[[idx, jdx, 2, 1]] /. curIdxRepl, branchSign /. curIdxRepl];
                         If[branchSign === False,
                             Break[]
                         ];
