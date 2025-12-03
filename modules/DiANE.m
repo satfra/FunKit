@@ -548,19 +548,20 @@ RenewFormatDefinitions[] :=
             $allObjects
         ];
         Format[FTerm[a__], TeXForm] :=
-            Module[{obj, integrals, replNames, idx, prefix, postfix, body = {a}},
+            Module[{obj, integrals, replNames, idx, prefix, postfix, body, fac, terms},
                 integrals = Pick[$availableLoopMomenta, Map[MemberQ[{a}, #, Infinity]&, $availableLoopMomenta]];
                 replNames = Join[Thread[$availableLoopMomenta -> Table[Subscript[Symbol[$loopMomentumName], idx], {idx, 1, Length[$availableLoopMomenta]}]], Thread[$availableLoopMomentaf -> Table[Subscript[Symbol[$loopMomentumName], "f," <> ToString @ idx], {idx, 1, Length[$availableLoopMomentaf]}]]];
                 prefix = StringJoin[Map["\\int_{" <> ToString[TeXForm[#]] <> "}"&, integrals //. replNames]];
                 postfix = "";
-                If[MatchQ[{a}[[1]], b_ /; NumericQ[b] && b < 0],
-                    If[{a}[[1]] === -1,
+                {fac, body} = SplitPrefactor[FTerm[a]];
+                If[MatchQ[fac, b_ /; NumericQ[b] && b < 0],
+                    If[fac === -1,
                         prefix = prefix <> "(-";
                         postfix = ")" <> postfix;
-                        body = body[[2 ;; ]];
                         ,
                         prefix = prefix <> "(";
                         postfix = ")" <> postfix;
+                        body = FTerm[fac] ** body;
                     ]
                 ];
                 body = body //. replNames;
@@ -576,74 +577,7 @@ RenewFormatDefinitions[] :=
                         ,
                         "BodySeparator" -> "\\,"
                         ,
-(*It is not clear why the call to RenewFormatDefinitions[] is necessary here. However, removing it leads to TeXForm ignoring all custom TeXStyles.
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    
-    *)
+                        (*It is not clear why the call to RenewFormatDefinitions[] is necessary here. However, removing it leads to TeXForm ignoring all custom TeXStyles.*)
                         "BodyConverter" ->
                             (
                                 ToString[

@@ -208,7 +208,7 @@ FEx[pre___, annotation_Rule, post_, end___] /; Head[post] =!= Rule :=
 FEx[annotations__Rule] :=
     FEx[];
 
-FEx[FTerm[f___], annotations__Rule] /; ContainsNone[{f}, $allObjects] :=
+FEx[FTerm[f___], annotations__Rule] /; AllTrue[$allObjects, FreeQ[{f}, #, Infinity]&] :=
     FEx[FTerm[f]];
 
 Protect[FEx, FTerm];
@@ -227,20 +227,30 @@ SplitPrefactor[setup_, expr_FTerm] :=
         Return[{Times @@ prefactor, FTerm @@ ret}];
     ];
 
+SplitPrefactor[expr_FTerm] :=
+    Module[{prefactor, ret, objPattern, idx, removeOther},
+        objPattern = Alternatives @@ Join[Map[Blank, $indexedObjects \[Union] {FDOp}], Map[Blank, {AnyField}]];
+        removeOther = Dispatch[{objPattern -> 1}];
+        prefactor = expr /. removeOther;
+        ret = List @@ expr;
+        Do[ret[[idx]] = ret[[idx]] / (ret[[idx]] /. removeOther);, {idx, 1, Length[ret]}];
+        Return[{Times @@ prefactor, FTerm @@ ret}];
+    ];
+
 (**********************************************************************************
     Annotations
 **********************************************************************************)
 
-SeparateFExAnnotations[fex_FEx] :=
+SeparateFExAnnotations[infex_FEx] :=
     Module[
-        {annotations = {}, mainTerms = {}, lastIdx}
+        {annotations = {}, mainTerms = {}, lastIdx, fex = List @@ infex}
         ,
         (*Just go from the back:*)
         lastIdx = Length[fex];
         While[lastIdx >= 1 && Head[fex[[lastIdx]]] === Rule, lastIdx--;];
         mainTerms = fex[[1 ;; lastIdx]];
         annotations = fex[[lastIdx + 1 ;; ]];
-        Return[{mainTerms, Association @@ annotations}];
+        Return[{FEx @@ mainTerms, Association @@ annotations}];
     ];
 
 DropFExAnnotations[fex_FEx] :=

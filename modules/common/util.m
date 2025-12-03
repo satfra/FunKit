@@ -17,5 +17,12 @@ makePosIdx[i_] :=
 exclusions[a_] :=
     And @@ {a =!= List, a =!= Complex, a =!= Plus, a =!= Power, a =!= Times}
 
+customExclusions[a_] :=
+    And @@ {a =!= List, a =!= Complex, a =!= Plus, a =!= Power, a =!= Times, a =!= Rational, a =!= Pattern, a =!= $dummy}
+
 GetAllSymbols[expr_] :=
-    DeleteDuplicates @ Cases[Flatten[{expr} //. Times[a_, b__] :> {a, b} //. a_Symbol[b__] /; exclusions[a] :> {a, b}], _Symbol, Infinity]
+    Module[{obj},
+        obj = DeleteDuplicates @ Cases[expr, (a_Symbol /; customExclusions[a]) | (a_Symbol[__] /; customExclusions[a]), Infinity];
+        obj = DeleteDuplicates @ ((# /. a_[__] :> a)& /@ obj);
+        Return[obj];
+    ];

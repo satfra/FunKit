@@ -113,9 +113,7 @@ AppendTo[tests, TestCreate[resultYukQF, FEx[], TestID -> "Verify Yukawa theory (
 
 resultF2DF = FEx[FunKitResF2, FTerm[-1, DoFunResF2]] // FSimplify;
 
-(* DoFun does some further simplifications by immediately assuming symmetry between i1, i2. *)
-
-resultS2DF = FEx[FunKitResS2, FTerm[-1, DoFunResS2]] /. i2 -> i1 // FSimplify;
+resultS2DF = FEx[FunKitResS2, FTerm[-1, DoFunResS2]] // FSimplify;
 
 AppendTo[tests, TestCreate[resultF2DF, FEx[], TestID -> "Verify Yukawa theory (DoFun): Fermion propagator flow"]];
 

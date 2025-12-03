@@ -592,8 +592,9 @@ FSimplify[setup_, inexpr_FEx, OptionsPattern[]] :=
                 {}
             ];
         symmetries = MergeSymmetries[symmetries, OptionValue["Symmetries"]];
+        FunKitDebug[3, "FSimplify: Using symmetry list ", symmetries];
         If[symmetries === {},
-            Return[FSimplifyNoSym[setup, expr]]
+            Return[MergeFExAnnotations[FSimplifyNoSym[setup, expr], annotations]]
         ];
         FunKitDebug[1, "Simplifying diagrammatic expression of length ", Length[expr], "with symmetry list"];
         subGroups = SeparateTermGroups[setup, expr];
