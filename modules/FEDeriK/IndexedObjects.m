@@ -335,4 +335,7 @@ replFields[setup_] :=
             ];
 
 unreplFields[setup_] :=
-    unreplFields[setup] = Dispatch @ Thread[(Field[{#}, {a_}]& /@ GetAllFields[setup]) :> Evaluate[(#[a]& /@ GetAllFields[setup])]]
+    Module[{allFields},
+        allFields = Join[GetAllFields[setup], {AnyField}];
+        unreplFields[setup] = Dispatch @ Thread[(Field[{#}, {a_}]& /@ allFields) :> Evaluate[(#[a]& /@ allFields)]]
+    ];

@@ -189,9 +189,13 @@ DerivativeListQ[setup_, derivativeList_] :=
             Message[DerivativeListQ::notList];
             Return[False]
         ];
-        If[Not @ AllTrue[derivativeList, FieldQ[setup, #]&],
-            Message[DerivativeListQ::invalidField];
-            Return[False]
+        If[Not @ AllTrue[derivativeList, Quiet[FieldQ[setup, #]]&],
+            If[AllTrue[derivativeList, Head[#] === AnyField || FieldQ[setup, #]&],
+                Message[FunKit::warning, "The derivative list contains AnyField entries."];
+                ,
+                Message[DerivativeListQ::invalidField];
+                Return[False]
+            ]
         ];
         Return[True];
     ];

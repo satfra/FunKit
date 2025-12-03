@@ -4,7 +4,7 @@
 
 Protect[$GlobalSetup];
 
-SetGlobalSetup[setup_] :=
+FSetGlobalSetup[setup_] :=
     Module[{},
         AssertFSetup[setup];
         Unprotect[$GlobalSetup];
@@ -12,7 +12,7 @@ SetGlobalSetup[setup_] :=
         Protect[$GlobalSetup];
     ];
 
-SetGlobalSetup[] :=
+FSetGlobalSetup[] :=
     Module[{},
         Unprotect[$GlobalSetup];
         ClearAll[$GlobalSetup];
@@ -119,3 +119,20 @@ AddCorrelationFunction[name_Symbol] :=
 
 ShowCorrelationFunctions[] :=
     Print[TableForm[Sort @ $CorrelationFunctions]];
+
+(**********************************************************************************
+    Set/unset automatic simplification
+**********************************************************************************)
+
+$AutoBuildSymmetryList = True;
+
+FSetAutoBuildSymmetryList[flag_:True] :=
+    $AutoBuildSymmetryList = flag;
+
+$AutoSimplify = True;
+
+FSetAutoSimplify[flag_:True] :=
+    $AutoSimplify = flag;
+
+FEmptySetup :=
+    <|"FieldSpace" -> <|"Commuting" -> {}, "Grassmann" -> {}|>|>;

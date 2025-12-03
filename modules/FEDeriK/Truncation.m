@@ -249,7 +249,7 @@ FTruncate[setup_, expr_] :=
         FunKitDebug[1, "Finished truncating the given expression"];
         ret = OrderFields[setup, FixIndices[setup, #]& /@ ret];
         ret = MergeFExAnnotations[ret, annotations];
-        If[ModuleLoaded[AnSEL],
+        If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
             ret = FunKit`FSimplify[setup, ret];
         ];
         Return[ret];

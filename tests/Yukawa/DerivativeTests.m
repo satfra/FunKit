@@ -72,7 +72,7 @@ DoFunResYuk = FunKitForm[DoFundiagYukIdx];
 
 yFunKitSetup = GetFunKitSetupYukawa[];
 
-SetGlobalSetup[yFunKitSetup]
+FSetGlobalSetup[yFunKitSetup]
 
 (**** Fermion Propagator ****)
 

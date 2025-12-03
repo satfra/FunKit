@@ -430,10 +430,10 @@ The resulting setup can be then given as
  setup = <|
    "FieldSpace" -> \mmaDef{fields}
   |>;
- \mmaDef{SetGlobalSetup}[setup];
+ \mmaDef{FSetGlobalSetup}[setup];
 \end{mmaCell}
 %
-All functions of \FunKit support two ways to call them. Either a specified setup is always passed as the first argument of the function and the function uses only the local information of the given setup. Or, a \textit{global setup} is specified using \mathem{\mmaDef{SetGlobalSetup}}. Then, all functions of \FunKit can be called without explicitly passing a setup, and they simply use the setup that has been globally specified by the user. To shorten the presentation here, we are going to use this second mode of operating exclusively in this work.
+All functions of \FunKit support two ways to call them. Either a specified setup is always passed as the first argument of the function and the function uses only the local information of the given setup. Or, a \textit{global setup} is specified using \mathem{\mmaDef{FSetGlobalSetup}}. Then, all functions of \FunKit can be called without explicitly passing a setup, and they simply use the setup that has been globally specified by the user. To shorten the presentation here, we are going to use this second mode of operating exclusively in this work.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -553,7 +553,7 @@ Next, we modify the setup as
    "FieldSpace" -> \mmaDef{fields},
    "Truncation" -> \mmaDef{truncation}
   |>;
- \mmaDef{SetGlobalSetup}[\mmaDef{setup}];
+ \mmaDef{FSetGlobalSetup}[\mmaDef{setup}];
 \end{mmaCell}
 %
 We can now easily truncate the above expression like
@@ -807,7 +807,7 @@ To obtain the diagrammatic rules, \FunKit interfaces with the \TensorBases \cite
    "Truncation" -> \mmaDef{truncation},
    "FeynmanRules" -> bases
   |>
- \mmaDef{SetGlobalSetup}[\mmaDef{setup}];
+ \mmaDef{FSetGlobalSetup}[\mmaDef{setup}];
 \end{mmaCell}
 %
 In particular, there are three ways to specify vertex bases:
@@ -878,7 +878,7 @@ We further assume that the field $A$ may have a finite expectation value, and th
 %
 \begin{mmaCell}{Input}
  \mmaDef{setup}["Truncation"][Field] = {{A}}
- \mmaDef{SetGlobalSetup}[\mmaDef{setup}];
+ \mmaDef{FSetGlobalSetup}[\mmaDef{setup}];
 \end{mmaCell}
 %
 We can now directly derive the gluon one-point DSE and show the rendered \LaTeX\xspace output using

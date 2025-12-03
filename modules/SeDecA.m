@@ -19,7 +19,7 @@ Creates a new functional setup association for defining field theory calculation
 Initializes empty field spaces, truncation specifications, and basis definitions.
 Returns a setup association that can be extended with AddCField, AddGrassmann, etc.
 This is the starting point for building any functional field theory calculation.
-Use SetGlobalSetup[setup] to make it available to all FunKit functions.";
+Use FSetGlobalSetup[setup] to make it available to all FunKit functions.";
 
 AddCField::usage = "AddCField[setup, field]
 AddCField[setup, {field1, field2}]
@@ -149,8 +149,7 @@ MakeSetup[] :=
         truncation = <||>;
         bases = <||>;
         diagramStyling = <|"Styles" -> {}|>;
-        setup = <|"FieldSpace" -> fields, "Truncation" -> truncation,
-             "FeynmanRules" -> bases, "DiagramStyling" -> diagramStyling|>;
+        setup = <|"FieldSpace" -> fields, "Truncation" -> truncation, "FeynmanRules" -> bases, "DiagramStyling" -> diagramStyling|>;
         Return[setup]
     ];
 
@@ -170,8 +169,7 @@ AddCField[a___] :=
 
 AddCField[setup_, name_Symbol[p_Symbol]] :=
     Module[{},
-        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"
-            ]["Grassmann"]], name[__], Infinity],
+        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"]["Grassmann"]], name[__], Infinity],
             Message[SeDecA::FieldExists, name];
             Abort[]
         ];
@@ -181,8 +179,7 @@ AddCField[setup_, name_Symbol[p_Symbol]] :=
 
 AddCField[setup_, name_Symbol[p_Symbol, {ind__Symbol}]] :=
     Module[{},
-        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"
-            ]["Grassmann"]], name[__], Infinity],
+        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"]["Grassmann"]], name[__], Infinity],
             Message[SeDecA::FieldExists, name];
             Abort[]
         ];
@@ -192,26 +189,21 @@ AddCField[setup_, name_Symbol[p_Symbol, {ind__Symbol}]] :=
 
 AddCField[setup_, {name1_Symbol[p_Symbol], name2_Symbol[p_Symbol]}] :=
     Module[{},
-        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"
-            ]["Grassmann"]], name1[__] | name2[__], Infinity],
+        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"]["Grassmann"]], name1[__] | name2[__], Infinity],
             Message[SeDecA::FieldExists, {name1, name2}];
             Abort[]
         ];
-        AppendTo[setup["FieldSpace"]["Commuting"], {name1[p], name2[p
-            ]}];
+        AppendTo[setup["FieldSpace"]["Commuting"], {name1[p], name2[p]}];
         setup
     ];
 
-AddCField[setup_, {name1_Symbol[p_Symbol, {ind__Symbol}], name2_Symbol[
-    p_Symbol, {ind__Symbol}]}] :=
+AddCField[setup_, {name1_Symbol[p_Symbol, {ind__Symbol}], name2_Symbol[p_Symbol, {ind__Symbol}]}] :=
     Module[{},
-        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"
-            ]["Grassmann"]], name1[__] | name2[__], Infinity],
+        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"]["Grassmann"]], name1[__] | name2[__], Infinity],
             Message[SeDecA::FieldExists, {name1, name2}];
             Abort[]
         ];
-        AppendTo[setup["FieldSpace"]["Commuting"], {name1[p, {ind}], 
-            name2[p, {ind}]}];
+        AppendTo[setup["FieldSpace"]["Commuting"], {name1[p, {ind}], name2[p, {ind}]}];
         setup
     ];
 
@@ -225,8 +217,7 @@ AddGrassmann[a___] :=
 
 AddGrassmann[setup_, name_Symbol[p_Symbol]] :=
     Module[{},
-        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"
-            ]["Grassmann"]], name[__], Infinity],
+        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"]["Grassmann"]], name[__], Infinity],
             Message[SeDecA::FieldExists, name];
             Abort[]
         ];
@@ -236,8 +227,7 @@ AddGrassmann[setup_, name_Symbol[p_Symbol]] :=
 
 AddGrassmann[setup_, name_Symbol[p_Symbol, {ind__Symbol}]] :=
     Module[{},
-        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"
-            ]["Grassmann"]], name[__], Infinity],
+        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"]["Grassmann"]], name[__], Infinity],
             Message[SeDecA::FieldExists, name];
             Abort[]
         ];
@@ -245,29 +235,23 @@ AddGrassmann[setup_, name_Symbol[p_Symbol, {ind__Symbol}]] :=
         setup
     ];
 
-AddGrassmann[setup_, {name1_Symbol[p_Symbol], name2_Symbol[p_Symbol]}
-    ] :=
+AddGrassmann[setup_, {name1_Symbol[p_Symbol], name2_Symbol[p_Symbol]}] :=
     Module[{},
-        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"
-            ]["Grassmann"]], name1[__] | name2[__], Infinity],
+        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"]["Grassmann"]], name1[__] | name2[__], Infinity],
             Message[SeDecA::FieldExists, {name1, name2}];
             Abort[]
         ];
-        AppendTo[setup["FieldSpace"]["Grassmann"], {name1[p], name2[p
-            ]}];
+        AppendTo[setup["FieldSpace"]["Grassmann"], {name1[p], name2[p]}];
         setup
     ];
 
-AddGrassmann[setup_, {name1_Symbol[p_Symbol, {ind__Symbol}], name2_Symbol[
-    p_Symbol, {ind__Symbol}]}] :=
+AddGrassmann[setup_, {name1_Symbol[p_Symbol, {ind__Symbol}], name2_Symbol[p_Symbol, {ind__Symbol}]}] :=
     Module[{},
-        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"
-            ]["Grassmann"]], name1[__] | name2[__], Infinity],
+        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"]["Grassmann"]], name1[__] | name2[__], Infinity],
             Message[SeDecA::FieldExists, {name1, name2}];
             Abort[]
         ];
-        AppendTo[setup["FieldSpace"]["Grassmann"], {name1[p, {ind}], 
-            name2[p, {ind}]}];
+        AppendTo[setup["FieldSpace"]["Grassmann"], {name1[p, {ind}], name2[p, {ind}]}];
         setup
     ];
 
@@ -344,8 +328,7 @@ AddVertexBasis[setup_, obj_, {fields__Symbol} -> basis_] :=
         ];
         If[ListQ[basis],
             If[Length[basis] < 2,
-                Message[SeDecA::InvalidVertexBasis, {fields} -> basis
-                    ];
+                Message[SeDecA::InvalidVertexBasis, {fields} -> basis];
                 Abort[]
             ];
             elements =
@@ -354,11 +337,9 @@ AddVertexBasis[setup_, obj_, {fields__Symbol} -> basis_] :=
                     ,
                     {basis[[2]]}
                 ];
-            If[AnyTrue[elements, # > TensorBases`TBGetBasisSize[basisName
-                ]&],
+            If[AnyTrue[elements, # > TensorBases`TBGetBasisSize[basisName]&],
                 Message[SeDecA::BasisLength, elements, basisName];
-                Message[SeDecA::InvalidVertexBasis, {fields} -> basis
-                    ];
+                Message[SeDecA::InvalidVertexBasis, {fields} -> basis];
                 Abort[]
             ];
         ];
@@ -435,7 +416,7 @@ End[]
 
 (* ::Input:: *)
 
-(*SetGlobalSetup[MakeSetup[]];*)
+(*FSetGlobalSetup[MakeSetup[]];*)
 
 (**)
 

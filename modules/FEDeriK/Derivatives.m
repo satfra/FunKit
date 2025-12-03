@@ -94,7 +94,7 @@ ResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
             FunKitDebug[1, "Doing derivative pass ", i + 1];
             ret = FEx @@ mmap[ResolveFDOp[setup, #]&, List @@ ret];
             (*If AnSEL has been loaded, use FSimplify to reduce redundant terms*)
-            If[ModuleLoaded[AnSEL],
+            If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
                 FunKitDebug[2, "Simplifying after derivative pass ", i + 1];
                 ret = FunKit`FSimplify[setup, ret, "Symmetries" -> symmetries];
             ];
@@ -142,7 +142,7 @@ TakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
         FunKitDebug[1, "Adding the derivative operator ", (FTerm @@ (FDOp /@ derivativeListSIDX))];
         (*Perform all the derivatives, one after the other*)
         result = ResolveDerivatives[setup, (FTerm @@ (FDOp /@ derivativeListSIDX)) ** result];
-        If[ModuleLoaded[AnSEL],
+        If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
             result = FunKit`FSimplify[setup, result];
         ];
         Return[result];

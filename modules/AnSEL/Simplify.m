@@ -74,11 +74,6 @@ MergeSymmetries[sym1_, sym2_] :=
 
 (*Build a symmetry list from a set of fields*)
 
-$AutoBuildSymmetryList = True;
-
-FSetAutoBuildSymmetryList[flag_:True] :=
-    $AutoBuildSymmetryList = flag;
-
 FMakeSymmetryList[f___] :=
     Message[FunKit::invalidArguments, FMakeSymmetryList]
 

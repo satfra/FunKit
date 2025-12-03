@@ -70,7 +70,7 @@ DoFunRes4 = FunKitForm[DoFundiag4Idx]
 
 sFunKitSetup = GetFunKitSetupScalar[];
 
-SetGlobalSetup[sFunKitSetup]
+FSetGlobalSetup[sFunKitSetup]
 
 (**** Propagator ****)
 

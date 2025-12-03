@@ -36,23 +36,39 @@ FInfo["FEDeriK"]
 ```
 which will give you an overview of how to use the package.
 
-For example, you may want to have the general expression for the flow of a two-point function from the Wetterich equation:
+For example, you may want to have the general expression for the most general flow of a two-point function from the Wetterich equation:
+```Mathematica
+FSetAutoSimplify[False];
+TakeDerivatives[FEmptySetup, WetterichEquation, {AnyField[i1],AnyField[i2]}];
+FPrint[FEmptySetup, %];
+```
+We have turned off automatic simplification here to show the raw output, which reads
+
+```math
+\begin{aligned}\  &\frac{1}{2} (-1)^{i_1a} (-1)^{i_2a} (-1)^{cc} (-1)^{ee}\,G^{ab}\,\Gamma_{bi_1c}\,G^{cd}\,\Gamma_{di_2e}\,G^{ef}\,\partial_t R_{af}
+    \\ &\,+\,\left(-\frac{1}{2} (-1)^{i_1a} (-1)^{i_1b} (-1)^{i_2a} (-1)^{cc}\,G^{ab}\,\Gamma_{i_1bi_2c}\,G^{cd}\,\partial_t R_{ad}\right)
+    \\ &\,+\,\frac{1}{2} (-1)^{i_1i_2} (-1)^{i_1a} (-1)^{i_2a} (-1)^{cc} (-1)^{ee}\,G^{ab}\,\Gamma_{bi_2c}\,G^{cd}\,\Gamma_{di_1e}\,G^{ef}\,\partial_t R_{af}
+\end{aligned}
+```
+
+For a scalar field theory, one can get a more explicit expression as follows:
 ```Mathematica
 fields = <|"Commuting"->{Phi[p]}, "Grassmann"->{}|>;
-SetGlobalSetup[<|"FieldSpace"->fields|>];
-TakeDerivatives[WetterichEquation, {Phi[i1], Phi[i2]}]//FPrint;
+truncation = <|GammaN->Table[Table[Phi, {i}], {i, 1, 4}],
+               Propagator->{{Phi, Phi}},
+               Rdot->{{Phi, Phi}}|>;
+FSetGlobalSetup[<|"FieldSpace"->fields, "Truncation"->truncation|>];
+FSetAutoSimplify[True];
+FSetTexStyles[Phi->"\\phi"];
+TakeDerivatives[WetterichEquation, {Phi[i1], Phi[i2]}]//FTruncate//FPrint;
 ```
-Which will produce the output
 
-$$
-\frac{1}{2}\ (-1)^{\text{c}\text{c}}\ (-1)^{\text{e}\text{e}}\ (-1)^{\phi^{i_1}\text{a}}\ (-1)^{\phi^{i_2}\text{a}}\ G^{\text{a}\text{b}}\ \Gamma_{\text{b}\phi^{i_1}\text{c}}\ G^{\text{c}\text{d}}\ \Gamma_{\text{d}\phi^{i_2}\text{e}}\ G^{\text{e}\text{f}}\ \partial_t R_{\text{a}\text{f}}
-$$
-$$
-\ +\ (-\frac{1}{2}\ (-1)^{\text{c}\text{c}}\ (-1)^{\phi^{i_2}\text{a}}\ G^{\text{a}\text{b}}\ (-1)^{\phi^{i_1}\text{a}}\ (-1)^{\phi^{i_1}\text{b}}\ \Gamma_{\phi^{i_1}\text{b}\phi^{i_2}\text{c}}\ G^{\text{c}\text{d}}\ \partial_t R_{\text{a}\text{d}})
-$$
-$$
-\ \ \ +\ \frac{1}{2}\ (-1)^{\text{c}\text{c}}\ (-1)^{\phi^{i_2}\text{a}}\ G^{\text{a}\text{b}}\ \Gamma_{\text{b}\phi^{i_2}\text{c}}\ (-1)^{\text{e}\text{e}}\ (-1)^{\phi^{i_1}\text{a}}\ G^{\text{c}\text{d}}\ \Gamma_{\text{d}\phi^{i_1}\text{e}}\ G^{\text{e}\text{f}}\ \partial_t R_{\text{a}\text{f}}
-$$
+which yields the output
+```math
+\begin{aligned}\  &G^{\phi^{a}\phi^{b}}\,\Gamma_{\phi^{c}\phi^{b}\phi^{i_1}}\,G^{\phi^{c}\phi^{d}}\,\Gamma_{\phi^{e}\phi^{d}\phi^{i_2}}\,G^{\phi^{e}\phi^{f}}\,\partial_t R_{\phi^{f}\phi^{a}}
+    \\ &\,+\,\left(-\frac{1}{2}\,G^{\phi^{a}\phi^{b}}\,\Gamma_{\phi^{c}\phi^{b}\phi^{i_2}\phi^{i_1}}\,G^{\phi^{c}\phi^{d}}\,\partial_t R_{\phi^{d}\phi^{a}}\right)
+\end{aligned}
+```
 
 ## Examples
 

@@ -1,3 +1,7 @@
+(**********************************************************************************
+     Expand Powers of FTerm and FEx up to a given order
+**********************************************************************************)
+
 FExpand[setup_, expr_FTerm, order_Integer] :=
     Module[{ret = expr, n, i, dummy},
         ret = ret //. Power[a_FTerm, b_] /; FreeQ[{a}, FDOp[__], Infinity] :> FEx @@ Table[FTerm[SeriesCoefficient[dummy^b, {dummy, 0, n}] ** NonCommutativeMultiply @@ Table[FixIndices[setup, a], {i, 1, n}]], {n, 0, order}];
@@ -10,7 +14,9 @@ FExpand[setup_, expr_FTerm, order_Integer] :=
 FExpand[setup_, expr_FEx, order_Integer] :=
     Map[FExpand[setup, #, order]&, expr]
 
-(* ::Input::Initialization:: *)
+(**********************************************************************************
+     Expand Powers of derivative operators up to a given order
+**********************************************************************************)
 
 DExpand[setup_, expr_FTerm, order_Integer] :=
     Module[

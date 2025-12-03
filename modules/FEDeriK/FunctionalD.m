@@ -21,13 +21,8 @@ FunctionalD[setup_, expr_, v : (f_[_] | {f_[_], _Integer}).., OptionsPattern[]] 
             Map[(f /: D[#[x_], f[y_], NonConstants -> nonConst] := \[Gamma][{f, #}, {-y, x}])&, GetAllFields[setup]];
         ];
         (*Ignore fields without indices. These are usually tags*)
-        f /: D[f, f[y_], NonConstants -> nonConst] := 0; (*\[Delta][#,y]&;
-            
-            
-            
-            
-            
-            *)
+        f /: D[f, f[y_], NonConstants -> nonConst] := 0;
+        (*\[Delta][#,y]&;*)
         (*Derivative rules for Correlation functions*)
         Map[(f /: D[#[{a__}, {b__}], f[if_], NonConstants -> nonConst] := #[{f, a}, {-if, b}])&, $CorrelationFunctions];
         (*Special derivative rule for Propagator*)

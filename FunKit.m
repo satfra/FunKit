@@ -198,6 +198,7 @@ Protect@FunKitDebug;
 
 (* ::Input::Initialization:: *)
 FunKit::invalidArguments="Invalid arguments given for function `1`, for correct usage, see `1`::usage."
+FunKit::warning="Warning: `1`"
 
 
 (* ::Input::Initialization:: *)

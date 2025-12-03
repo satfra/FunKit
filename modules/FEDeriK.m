@@ -10,10 +10,10 @@
 
 (* ::Input::Initialization:: *)
 
-SetGlobalSetup::usage = "SetGlobalSetup[setup]
+FSetGlobalSetup::usage = "FSetGlobalSetup[setup]
 Sets a global setup that is used by all FEDeriK functions when no setup is explicitly provided.
 This allows calling functions like TakeDerivatives[expr, derivativeList] without passing the setup each time.
-SetGlobalSetup[] clears the global setup.";
+FSetGlobalSetup[] clears the global setup.";
 
 FTruncate::usage = "FTruncate[setup, expr]
 Truncates the given expression according to the truncation tables specified in the setup.
@@ -198,6 +198,15 @@ Phidot::usage = "Phidot[{field}, {index}]
 Represents the time derivative of field expectation values \[PartialD]_t\:27e8field\:27e9.
 Used in generalized flow equations where field expectation values are time-dependent.
 This is a predefined correlation function with special index ordering rules.";
+
+FSetAutoBuildSymmetryList::usage = "FSetAutoBuildSymmetryList[flag]
+Sets whether a symmetry list should be automatically built when taking derivatives. Default is True."
+
+FSetAutoSimplify::usage = "FSetAutoSimplify[flag]
+Sets whether automatic simplification should be applied when taking derivatives and truncating. Default is True."
+
+FEmptySetup::usage = "FEmptySetup
+Returns an empty FEDeriK setup with no fields or truncation tables defined.";
 
 (* ::Section:: *)
 
