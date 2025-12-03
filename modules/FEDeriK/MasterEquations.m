@@ -73,7 +73,7 @@ MakeDSE[setup_, field_] :=
         classAct = MakeClassicalAction[setup];
         (*Take one derivative with "field" classical action*)
         dS =
-            ResolveDerivatives[setup, FTerm[FDOp[field]] ** classAct] //
+            FResolveDerivatives[setup, FTerm[FDOp[field]] ** classAct] //
             ReduceIndices[setup, #]& //
             ReduceIndices[setup, #]&;
         (*Separate powers out into factors in the FTerm. Need this to insert FDOp in the next step*)
@@ -92,5 +92,5 @@ MakeDSE[setup_, field_] :=
                         GetAllFields[setup]
                     ]
                 );
-        dS // ResolveDerivatives[setup, #]&
+        dS // FResolveDerivatives[setup, #]&
     ];

@@ -39,7 +39,7 @@ which will give you an overview of how to use the package.
 For example, you may want to have the general expression for the most general flow of a two-point function from the Wetterich equation:
 ```Mathematica
 FSetAutoSimplify[False];
-TakeDerivatives[FEmptySetup, WetterichEquation, {AnyField[i1],AnyField[i2]}];
+FTakeDerivatives[FEmptySetup, WetterichEquation, {AnyField[i1],AnyField[i2]}];
 FPrint[FEmptySetup, %];
 ```
 We have turned off automatic simplification here to show the raw output, which reads
@@ -60,7 +60,7 @@ truncation = <|GammaN->Table[Table[Phi, {i}], {i, 1, 4}],
 FSetGlobalSetup[<|"FieldSpace"->fields, "Truncation"->truncation|>];
 FSetAutoSimplify[True];
 FSetTexStyles[Phi->"\\phi"];
-TakeDerivatives[WetterichEquation, {Phi[i1], Phi[i2]}]//FTruncate//FPrint;
+FTakeDerivatives[WetterichEquation, {Phi[i1], Phi[i2]}]//FTruncate//FPrint;
 ```
 
 which yields the output

@@ -43,11 +43,11 @@ MakeClassicalAction[] /; Head[$GlobalSetup] =!= Symbol :=
 MakeDSE[field_] /; Head[$GlobalSetup] =!= Symbol :=
     MakeDSE[$GlobalSetup, field];
 
-ResolveDerivatives[expr_] /; Head[$GlobalSetup] =!= Symbol :=
-    ResolveDerivatives[$GlobalSetup, expr, "Symmetries" -> {}];
+FResolveDerivatives[expr_] /; Head[$GlobalSetup] =!= Symbol :=
+    FResolveDerivatives[$GlobalSetup, expr, "Symmetries" -> {}];
 
-ResolveDerivatives[expr_, OptionsPattern[]] /; Head[$GlobalSetup] =!= Symbol :=
-    ResolveDerivatives[$GlobalSetup, expr, "Symmetries" -> OptionValue["Symmetries"]];
+FResolveDerivatives[expr_, OptionsPattern[]] /; Head[$GlobalSetup] =!= Symbol :=
+    FResolveDerivatives[$GlobalSetup, expr, "Symmetries" -> OptionValue["Symmetries"]];
 
 ResolveFDOp[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     ResolveFDOp[$GlobalSetup, expr];

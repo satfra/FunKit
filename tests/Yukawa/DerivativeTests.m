@@ -77,21 +77,21 @@ FSetGlobalSetup[yFunKitSetup]
 (**** Fermion Propagator ****)
 
 FunKitResF2 =
-    TakeDerivatives[yFunKitSetup, WetterichEquation, {Psi[i1], Psibar[i2]}] //
+    FTakeDerivatives[yFunKitSetup, WetterichEquation, {Psi[i1], Psibar[i2]}] //
     FTruncate //
     FSimplify;
 
 (**** Scalar Propagator ****)
 
 FunKitResS2 =
-    TakeDerivatives[yFunKitSetup, WetterichEquation, {Phi[i1], Phi[i2]}] //
+    FTakeDerivatives[yFunKitSetup, WetterichEquation, {Phi[i1], Phi[i2]}] //
     FTruncate //
     FSimplify;
 
 (**** Yukawa vertex ****)
 
 FunKitResYuk =
-    TakeDerivatives[yFunKitSetup, WetterichEquation, {Psi[i1], Psibar[i2], Phi[i3]}] //
+    FTakeDerivatives[yFunKitSetup, WetterichEquation, {Psi[i1], Psibar[i2], Phi[i3]}] //
     FTruncate //
     FSimplify;
 

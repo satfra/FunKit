@@ -75,21 +75,21 @@ FSetGlobalSetup[sFunKitSetup]
 (**** Propagator ****)
 
 FunKitRes2 =
-  TakeDerivatives[sFunKitSetup, WetterichEquation, {Phi[i1], Phi[i2]}] //
+  FTakeDerivatives[sFunKitSetup, WetterichEquation, {Phi[i1], Phi[i2]}] //
   FTruncate //
   FSimplify;
 
 (**** Three-Point ****)
 
 FunKitRes3 =
-  TakeDerivatives[sFunKitSetup, WetterichEquation, {Phi[i1], Phi[i2], Phi[i3]}] //
+  FTakeDerivatives[sFunKitSetup, WetterichEquation, {Phi[i1], Phi[i2], Phi[i3]}] //
   FTruncate //
   FSimplify;
 
 (**** Four-Point ****)
 
 FunKitRes4 =
-  TakeDerivatives[sFunKitSetup, WetterichEquation, {Phi[i1], Phi[i2], Phi[i3], Phi[i4]}] //
+  FTakeDerivatives[sFunKitSetup, WetterichEquation, {Phi[i1], Phi[i2], Phi[i3], Phi[i4]}] //
   FTruncate //
   FSimplify;
 

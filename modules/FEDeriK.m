@@ -12,7 +12,7 @@
 
 FSetGlobalSetup::usage = "FSetGlobalSetup[setup]
 Sets a global setup that is used by all FEDeriK functions when no setup is explicitly provided.
-This allows calling functions like TakeDerivatives[expr, derivativeList] without passing the setup each time.
+This allows calling functions like FTakeDerivatives[expr, derivativeList] without passing the setup each time.
 FSetGlobalSetup[] clears the global setup.";
 
 FTruncate::usage = "FTruncate[setup, expr]
@@ -20,10 +20,10 @@ Truncates the given expression according to the truncation tables specified in t
 Replaces undetermined fields (AnyField) with explicit fields from the truncation and removes terms not included in the truncation.
 The expression must not contain unresolved derivative operators (FDOp).";
 
-TakeDerivatives::usage = "TakeDerivatives[setup, expr, derivativeList]
+FTakeDerivatives::usage = "FTakeDerivatives[setup, expr, derivativeList]
 Takes multiple functional derivatives of expr with respect to the fields specified in derivativeList.
 Returns the result with all derivative operators resolved.
-TakeDerivatives[setup, expr, derivativeList, \"Symmetries\" -> symmetries] allows specifying symmetries for simplification.
+FTakeDerivatives[setup, expr, derivativeList, \"Symmetries\" -> symmetries] allows specifying symmetries for simplification.
 The derivativeList should be a list of field expressions like {A[i1], A[i2]}.";
 
 QMeSForm::usage = "QMeSForm[setup, expr]
@@ -56,17 +56,17 @@ The setup must contain a truncation table with key S specifying the field combin
 WetterichEquation::usage = "WetterichEquation
 The Wetterich equation for the functional renormalization group: \[PartialD]_t \[CapitalGamma] = (1/2) G^{ab} (\[PartialD]_t R)_{ab}.
 Returns an FEx representing the right-hand side of the Wetterich equation with AnyField placeholders.
-This is a predefined master equation that can be used with TakeDerivatives to derive flow equations.";
+This is a predefined master equation that can be used with FTakeDerivatives to derive flow equations.";
 
 MakeDSE::usage = "MakeDSE[setup, field]
 Constructs the Dyson-Schwinger equation for the specified field.
 Takes the functional derivative of the classical action with respect to the field and applies the substitution \[CurlyPhi] \[RightArrow] \[CapitalPhi] + G^{ab} \[Delta]/\[Delta]\[CapitalPhi]^b.
 Returns the DSE with all derivative operators resolved.";
 
-ResolveDerivatives::usage = "ResolveDerivatives[setup, expr]
+FResolveDerivatives::usage = "FResolveDerivatives[setup, expr]
 Iteratively resolves all functional derivative operators (FDOp) in the expression.
 Applies the product rule and functional derivative rules until no FDOp remain.
-ResolveDerivatives[setup, expr, \"Symmetries\" -> symmetries] allows specifying symmetries for simplification during resolution.";
+FResolveDerivatives[setup, expr, \"Symmetries\" -> symmetries] allows specifying symmetries for simplification during resolution.";
 
 GeneralizedFlowEquation::usage = "GeneralizedFlowEquation
 The generalized flow equation: \[PartialD]_t \[CapitalGamma] = -\[CapitalPhi]\:0307^a \[CapitalGamma]_a + (1/2) G^{ab} (\[PartialD]_t R)_{ab} + G^{ac} \[CapitalPhi]\:0307^b_c R_{ab}.
@@ -177,7 +177,7 @@ Important for spontaneous symmetry breaking and background field methods.";
 FDOp::usage = "FDOp[field[index]]
 Represents a functional derivative operator \[Delta]/\[Delta]field acting on everything to its right.
 This is the fundamental building block for taking functional derivatives.
-FDOp operators are resolved using ResolveDerivatives or ResolveFDOp functions.";
+FDOp operators are resolved using FResolveDerivatives or FResolveFDOp functions.";
 
 FMinus::usage = "FMinus[{field1, field2}, {index1, index2}]
 Represents Grassmann minus signs (-1)^{field1\[CenterDot]field2} arising from commuting fermionic fields.
@@ -189,10 +189,10 @@ Placeholder symbol representing an undetermined field type.
 Used in master equations like the Wetterich equation before truncation.
 Gets expanded to explicit fields during the truncation process using FTruncate.";
 
-ResolveFDOp::usage = "ResolveFDOp[setup, expr]
+FResolveFDOp::usage = "FResolveFDOp[setup, expr]
 Resolves the rightmost functional derivative operator (FDOp) in the expression.
 Applies the product rule and functional derivative rules for one FDOp.
-For complete resolution of all derivatives, use ResolveDerivatives instead.";
+For complete resolution of all derivatives, use FResolveDerivatives instead.";
 
 Phidot::usage = "Phidot[{field}, {index}]
 Represents the time derivative of field expectation values \[PartialD]_t\:27e8field\:27e9.

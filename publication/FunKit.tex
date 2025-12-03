@@ -443,7 +443,7 @@ With the \mathem{\mmaDef{setup}} defined, one can immediately start deriving dia
 Above, we have defined the Wetterich equation as \mathem{\mmaDef{wEq}}. We can obtain the RG-flow of the gluon two-point function using
 %
 \begin{mmaCell}{Input}
- \mmaDef{TakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}];
+ \mmaDef{FTakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}];
 \end{mmaCell}
 %
 This will yield a rather large expression, which we can visualise using the \mathem{\mmaDef{FPrint}} and \mathem{\mmaDef{FPlot}} commands, which will be explained in more detail within \Cref{sec:DiANE}.
@@ -453,7 +453,7 @@ This will yield a rather large expression, which we can visualise using the \mat
 %\hspace{40pt}
 \begin{minipage}{0.7\linewidth}
 \begin{mmaCell}{Input}
- \mmaDef{TakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FPrint}//\mmaDef{FPlot};
+ \mmaDef{FTakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FPrint}//\mmaDef{FPlot};
 \end{mmaCell}
 \vspace{-2.5ex}
 \begin{equation*}
@@ -471,15 +471,15 @@ This will yield a rather large expression, which we can visualise using the \mat
 \end{minipage}
 \end{widetext}
 %
-\FunKit has automatically simplified the diagrams resulting from the derivation. We can also do the above in a more manual manner by explicitly specifying derivative operators and resolving them. Any functional derivative is specified as an operator \mathem{\mmaDef{FDOp}} acting on everything after it. To resolve derivatives, \FunKit provides the functions \mathem{\mmaDef{ResolveFDOp}} to resolve the right-most \mathem{\mmaDef{FDOp}} in an expression, and \mathem{\mmaDef{ResolveDerivatives}} to fully resolve all derivatives. Explicitly, we can write the above also as
+\FunKit has automatically simplified the diagrams resulting from the derivation. We can also do the above in a more manual manner by explicitly specifying derivative operators and resolving them. Any functional derivative is specified as an operator \mathem{\mmaDef{FDOp}} acting on everything after it. To resolve derivatives, \FunKit provides the functions \mathem{\mmaDef{FResolveFDOp}} to resolve the right-most \mathem{\mmaDef{FDOp}} in an expression, and \mathem{\mmaDef{FResolveDerivatives}} to fully resolve all derivatives. Explicitly, we can write the above also as
 %
 \begin{widetext}
 %\vspace{-2pt}
 %\hspace{40pt}
 \begin{minipage}{0.5\linewidth}
 \begin{mmaCell}{Input}
- \mmaDef{ResolveFDOp}[
-   \mmaDef{ResolveFDOp}[
+ \mmaDef{FResolveFDOp}[
+   \mmaDef{FResolveFDOp}[
      \mmaDef{F}[\mmaDef{FDOp}@A[i1], \mmaDef{FDOp}@A[i2], \mmaDef{wEq}]
     ]
   ]//\mmaDef{FPrint}//\mmaDef{FPlot};
@@ -516,14 +516,14 @@ This will yield a rather large expression, which we can visualise using the \mat
 In the above, we have used the shorthand \mathem{\mmaDef{F}[...]}, which is replaced by \mathem{\mmaDef{FEx}[\mmaDef{FTerm}[...]]}. The result of resolving the derivative operators has not been automatically simplified. This can be done using \mathem{\mmaDef{FSimplify}}, i.e.
 %
 \begin{mmaCell}{Input}
- \mmaDef{ResolveFDOp}[
-   \mmaDef{ResolveFDOp}[
+ \mmaDef{FResolveFDOp}[
+   \mmaDef{FResolveFDOp}[
      \mmaDef{F}[\mmaDef{FDOp}@A[i1], \mmaDef{FDOp}@A[i2], \mmaDef{wEq}]
     ]
   ]//\mmaDef{FSimplify}//\mmaDef{FPrint}//\mmaDef{FPlot};
 \end{mmaCell}
 %
-which yields precisely the same output as when using \mathem{\mmaDef{TakeDerivatives}} or \mathem{\mmaDef{ResolveDerivatives}}, both of which invoke the simplification step automatically.
+which yields precisely the same output as when using \mathem{\mmaDef{FTakeDerivatives}} or \mathem{\mmaDef{FResolveDerivatives}}, both of which invoke the simplification step automatically.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -561,7 +561,7 @@ We can now easily truncate the above expression like
 \begin{widetext}
 \begin{minipage}{0.8\linewidth}
 \begin{mmaCell}{Input}
- \mmaDef{TakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FPrint}//\mmaDef{FPlot};
+ \mmaDef{FTakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FPrint}//\mmaDef{FPlot};
 \end{mmaCell}
 \vspace{-3.5ex}
 \begin{equation*}
@@ -591,7 +591,7 @@ Finally, the superfield indices have to be turned into explicit group indices, a
 \hspace{-25pt}
 \begin{minipage}{0.8\linewidth}
 \begin{mmaCell}{Input}
- \mmaDef{TakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute}//\mmaDef{FPrint};
+ \mmaDef{FTakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute}//\mmaDef{FPrint};
 \end{mmaCell}
 \vspace{-3.0ex}
 \begin{equation*}
@@ -615,7 +615,7 @@ The \mathem{\mmaDef{FRoute}} command groups together terms with the same loop or
 \hspace{-30pt}
 \begin{minipage}{1.0\linewidth}
 \begin{mmaCell}{Input}
- gluonDSE = \mmaDef{TakeDerivatives}[\mmaDef{MakeDSE}[A[i1]], \{A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute};
+ gluonDSE = \mmaDef{FTakeDerivatives}[\mmaDef{MakeDSE}[A[i1]], \{A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute};
  {gluonDSE}["0-Loop"]//\mmaDef{FPrint}
  {gluonDSE}["1-Loop"]["LoopMomenta"]
  {gluonDSE}["1-Loop"]//\mmaDef{FPrint};
@@ -827,7 +827,7 @@ with the above definition of \mathem{\mmaDef{setup}}, the diagrammatic rules can
 With this, one can directly obtain the explicit expressions for diagrams. For example, the 0-loop term of the gluon propagator DSE can be calculated as
 %
 \begin{mmaCell}{Input}
- DSEAA = \mmaDef{TakeDerivatives}[
+ DSEAA = \mmaDef{FTakeDerivatives}[
    \mmaDef{MakeDSE}[A[i1]], \{A[i2]\}
   ]//\mmaDef{FTruncate}//\mmaDef{FSimplify}//\mmaDef{FRoute};
  DSEAA["0-Loop"]["Expression"]

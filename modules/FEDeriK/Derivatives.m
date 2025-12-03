@@ -1,22 +1,22 @@
 (**********************************************************************************
-    ResolveFDOp : Resolve a single occurrence of FDOp in an FTerm or FEx.
+    FResolveFDOp : Resolve a single occurrence of FDOp in an FTerm or FEx.
 **********************************************************************************)
 
-ResolveFDOp::nested = "The given term contains nested FDOp. Before proceeding, you need to expand these with DExpand. 
+FResolveFDOp::nested = "The given term contains nested FDOp. Before proceeding, you need to expand these with DExpand. 
 Error in `1`";
 
-ResolveFDOp[setup_, FEx_FEx] :=
+FResolveFDOp[setup_, FEx_FEx] :=
     Module[{},
-        Return[FEx @@ Map[ResolveFDOp[setup, #]&, List @@ FEx]];
+        Return[FEx @@ Map[FResolveFDOp[setup, #]&, List @@ FEx]];
     ];
 
-ResolveFDOp[setup_, term_FTerm] :=
+FResolveFDOp[setup_, term_FTerm] :=
     Module[
         {rTerm = term, FDOpPos, termsNoFDOp, dF, idx, i, obj, ind, a, dTerms, nPre, nPost, ret, cTerm, doFields, fw, bw}
         ,
         (*We cannot proceed if any nested FDOp are present*)
         If[MemberQ[(List @@ rTerm), FTerm[pre___, FDOp[__], post___], {1, 5}],
-            Message[ResolveFDOp::nested, term];
+            Message[FResolveFDOp::nested, term];
             Abort[]
         ];
         (*If no derivatives are present, do nothing*)
@@ -92,7 +92,7 @@ ResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
             MemberQ[ret, FDOp[__], Infinity] && i < $MaxDerivativeIterations
             ,
             FunKitDebug[1, "Doing derivative pass ", i + 1];
-            ret = FEx @@ mmap[ResolveFDOp[setup, #]&, List @@ ret];
+            ret = FEx @@ mmap[FResolveFDOp[setup, #]&, List @@ ret];
             (*If AnSEL has been loaded, use FSimplify to reduce redundant terms*)
             If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
                 FunKitDebug[2, "Simplifying after derivative pass ", i + 1];
@@ -112,12 +112,12 @@ ResolveDerivatives[setup_, a___] :=
     ];
 
 (**********************************************************************************
-    TakeDerivatives : Take several functional derivatives on a given expression.
+    FTakeDerivatives : Take several functional derivatives on a given expression.
 **********************************************************************************)
 
-Options[TakeDerivatives] = {"Symmetries" -> {}};
+Options[FTakeDerivatives] = {"Symmetries" -> {}};
 
-TakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
+FTakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
     Module[{result, externalIndexNames, outputReplacements, derivativeListSIDX, symmetries},
         AssertFSetup[setup];
         AssertDerivativeList[setup, derivativeList];
