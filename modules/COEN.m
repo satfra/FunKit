@@ -12,11 +12,6 @@
 
 (* ::Input::Initialization:: *)
 
-SetLoopMomentumName::usage = "SetLoopMomentumName[name]
-Sets the base name for loop momentum variables when generating code output.
-This affects how loop momenta are named in the generated code (C++, Julia, FORM, Fortran).
-The name should be a string that will be used as the base for momentum variables.";
-
 JuliaCode::usage = "JuliaCode[expr]
 Generates Julia code for the given mathematical expression.
 Returns optimized Julia code that evaluates the expression efficiently.
@@ -267,7 +262,7 @@ clangFormatExists = Quiet[RunProcess[{"clang-format", "--help"}]] =!= $Failed;
 
 CreateClangFormat[path_:"./"] :=
 	If[Not @ FileExistsQ[path <> ".clang-format"],
-		Export[path <> "/.clang-format",                                                                                                                                                             "BasedOnStyle: LLVM
+		Export[path <> "/.clang-format",                                                                                                                                                                   "BasedOnStyle: LLVM
 UseTab: Never
 IndentWidth: 2
 TabWidth: 2

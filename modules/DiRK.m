@@ -14,11 +14,6 @@
 
 (* ::Input::Initialization:: *)
 
-SetLoopMomentumName::usage = "SetLoopMomentumName[name]
-Sets the base name for loop momentum variables in diagrammatic rules.
-This affects momentum naming conventions when generating diagrammatic representations.
-The name should be a string that will be used as the base for momentum variables in rules.";
-
 MakeDiagrammaticRules::usage = "MakeDiagrammaticRules[setup]
 Generates replacement rules that convert functional expressions into diagrammatic form.
 Creates rules for propagators, vertices, and other diagrammatic elements based on the setup.

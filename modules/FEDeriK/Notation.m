@@ -141,22 +141,22 @@ FEx /: Times[pre___, FEx[a__], post___] :=
     (
         Message[FEx::TimesError, {pre, FEx[a], post}];
         Abort[]
-    )
+    );
 
 FEx[preFEx__, Times[pre___, FTerm[a__], post___], postFEx__] :=
     (
         Message[FTerm::TimesError, {pre, FTerm[a], post}];
         Abort[]
-    )
+    );
 
-FEx /: NonCommutativeMultiply[FTerm[b__], FEx[c__]] :=
-    FEx[Map[FTerm[b] ** #&, FEx[c]]]
+FEx /: NonCommutativeMultiply[FTerm[b__], FEx[c__FTerm, d___Rule]] :=
+    FEx[Map[FTerm[b] ** #&, FEx[c]], d];
 
-FEx /: NonCommutativeMultiply[FEx[c__], FTerm[b__]] :=
-    FEx[Map[# ** FTerm[b]&, FEx[c]]]
+FEx /: NonCommutativeMultiply[FEx[c__, d___Rule], FTerm[b__]] :=
+    FEx[Map[# ** FTerm[b]&, FEx[c]], d];
 
-FEx /: NonCommutativeMultiply[FEx[a__], FEx[b__]] :=
-    FEx @@ (Flatten @ Table[FEx[{a}[[i]] ** {b}[[j]]], {i, 1, Length[{a}]}, {j, 1, Length[{b}]}])
+FEx /: NonCommutativeMultiply[FEx[a__, r1___Rule], FEx[b__, r2___Rule]] :=
+    FEx[##, r1, r2]& @@ (Flatten @ Table[FEx[{a}[[i]] ** {b}[[j]]], {i, 1, Length[{a}]}, {j, 1, Length[{b}]}]);
 
 (*Removing zeros and ones*)
 
@@ -200,7 +200,48 @@ FEx /: FTerm[pre___, FEx[a__], post___] :=
 FEx[pre___, FTerm[prein___, FEx[in___], postin___], post___] :=
     FEx[pre, NonCommutativeMultiply[FTerm[prein], FEx[in], FTerm[postin]], post]
 
+(*Annotations are always moved to the back (e.g. "Symmetries"->{...})*)
+
+FEx[pre___, annotation_Rule, post_, end___] /; Head[post] =!= Rule :=
+    FEx[pre, post, annotation, end];
+
 Protect[FEx, FTerm];
+
+(**********************************************************************************
+    Splitting into prefactor and indexed objects
+**********************************************************************************)
+
+SplitPrefactor[setup_, expr_FTerm] :=
+    Module[{prefactor, ret, objPattern, idx, removeOther},
+        objPattern = Alternatives @@ Join[Map[Blank, $indexedObjects \[Union] {FDOp}], Map[Blank, GetAllFields[setup] \[Union] {AnyField}]];
+        removeOther = Dispatch[{objPattern -> 1}];
+        prefactor = expr /. removeOther;
+        ret = List @@ expr;
+        Do[ret[[idx]] = ret[[idx]] / (ret[[idx]] /. removeOther);, {idx, 1, Length[ret]}];
+        Return[{Times @@ prefactor, FTerm @@ ret}];
+    ];
+
+(**********************************************************************************
+    Annotations
+**********************************************************************************)
+
+SeparateFExAnnotations[fex_FEx] :=
+    Module[
+        {annotations = {}, mainTerms = {}, lastIdx}
+        ,
+        (*Just go from the back:*)
+        lastIdx = Length[fex];
+        While[lastIdx >= 1 && Head[fex[[lastIdx]]] === Rule, lastIdx--;];
+        mainTerms = fex[[1 ;; lastIdx]];
+        annotations = fex[[lastIdx + 1 ;; ]];
+        Return[{mainTerms, Association @@ annotations}];
+    ];
+
+DropFExAnnotations[fex_FEx] :=
+    SeparateFExAnnotations[fex][[1]];
+
+MergeFExAnnotations[mainTerms_FEx, annotations_Association] :=
+    FEx[##]& @@ Join[List @@ mainTerms, Normal @ annotations];
 
 (**********************************************************************************
     Checks and assertions

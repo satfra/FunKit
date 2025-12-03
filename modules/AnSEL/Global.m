@@ -14,11 +14,14 @@ FSimplify[expr_FEx] /; Head[$GlobalSetup] =!= Symbol :=
 FSimplify[expr_FEx, OptionsPattern[]] /; Head[$GlobalSetup] =!= Symbol :=
     FSimplify[$GlobalSetup, expr, (Sequence @@ Thread[Rule @@ {#, OptionValue[FSimplify, #]}]& @ Keys[Options[FSimplify]])];
 
+FMakeSymmetryList[expr_FEx] /; Head[$GlobalSetup] =!= Symbol :=
+    FMakeSymmetryList[$GlobalSetup, expr];
+
 (**********************************************************************************
     Global Variables
 **********************************************************************************)
 
-SetLoopMomentumName[name_String] :=
+FSetLoopMomentumName[name_String] :=
     Module[{},
         If[StringQ[$loopMomentumName],
             Unprotect @@ Table[$loopMomentumName <> ToString[idx], {idx, 1, 50}];
@@ -39,4 +42,4 @@ SetLoopMomentumName[name_String] :=
         Protect[$availableLoopMomenta, $availableLoopMomentaf, $availableLoopMomentafb];
     ];
 
-SetLoopMomentumName["l"];
+FSetLoopMomentumName["l"];

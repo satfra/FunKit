@@ -65,12 +65,20 @@ ResolveDerivatives[setup_, term_FTerm, OptionsPattern[]] :=
     ResolveDerivatives[setup, FEx[term], "Symmetries" -> OptionValue["Symmetries"]]
 
 ResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
-    Module[{ret = eq, mmap, fw, bw, i},
+    Module[{ret = eq, annotations, mmap, fw, bw, i, symmetries},
         FunKitDebug[1, "Resolving derivatives"];
         If[FreeQ[ret, FDOp[__], Infinity],
             Return[ReduceFEx[setup, FEx[ret]]]
         ];
-        {fw, bw} = GetSuperIndexTermTransformations[setup, eq];
+        {ret, annotations} = SeparateFExAnnotations[ret];
+        symmetries =
+            If[KeyExistsQ[annotations, "Symmetries"],
+                annotations["Symmetries"]
+                ,
+                {}
+            ];
+        symmetries = MergeSymmetries[symmetries, OptionValue["Symmetries"]];
+        {fw, bw} = GetSuperIndexTermTransformations[setup, ret];
         ret = ret // fw;
         (*ParallelMap will incur some overhead, but it quickly pays off*)
         mmap =
@@ -85,15 +93,16 @@ ResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
             ,
             FunKitDebug[1, "Doing derivative pass ", i + 1];
             ret = FEx @@ mmap[ResolveFDOp[setup, #]&, List @@ ret];
-(*If AnSEL has been loaded, use FSimplify to reduce redundant terms
-If[ModuleLoaded[AnSEL],
-    ret = FunKit`FSimplify[setup, ret, "Symmetries" -> OptionValue["Symmetries"]]
-];*)
+            (*If AnSEL has been loaded, use FSimplify to reduce redundant terms*)
+            If[ModuleLoaded[AnSEL],
+                FunKitDebug[2, "Simplifying after derivative pass ", i + 1];
+                ret = FunKit`FSimplify[setup, ret, "Symmetries" -> symmetries];
+            ];
             i++;
         ];
         ret = ret // bw;
         FunKitDebug[1, "Finished resolving derivatives"];
-        Return[ret];
+        Return[MergeFExAnnotations[ret, annotations]];
     ]
 
 ResolveDerivatives[setup_, a___] :=
@@ -119,19 +128,22 @@ TakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
         If[Length[derivativeListSIDX] === 0,
             Return[ResolveDerivatives[setup, result, "Symmetries" -> OptionValue["Symmetries"]]]
         ];
-        If[OptionValue["Symmetries"] === {} && $AutoBuildSymmetryList === True,
+        If[ModuleLoaded[AnSEL] && OptionValue["Symmetries"] === {} && $AutoBuildSymmetryList === True,
             FunKitDebug[2, "Auto-building symmetry list for derivatives"];
-            symmetries = FMakeSymmetryList[setup, derivativeListSIDX];
+            symmetries = FunKit`FMakeSymmetryList[setup, derivativeListSIDX];
             FunKitDebug[3, "Built symmetries: ", symmetries];
             ,
             symmetries = OptionValue["Symmetries"];
         ];
+        symmetries = MergeSymmetries[symmetries, OptionValue["Symmetries"]];
+        If[symmetries =!= {},
+            result = FEx[result, "Symmetries" -> symmetries]
+        ];
         FunKitDebug[1, "Adding the derivative operator ", (FTerm @@ (FDOp /@ derivativeListSIDX))];
         (*Perform all the derivatives, one after the other*)
-        result = ResolveDerivatives[setup, (FTerm @@ (FDOp /@ derivativeListSIDX)) ** result, "Symmetries" -> symmetries];
-(*
-If[ModuleLoaded[AnSEL],
-    result = FunKit`FSimplify[setup, result, "Symmetries" -> OptionValue["Symmetries"]]
-];*)
+        result = ResolveDerivatives[setup, (FTerm @@ (FDOp /@ derivativeListSIDX)) ** result];
+        If[ModuleLoaded[AnSEL],
+            result = FunKit`FSimplify[setup, result];
+        ];
         Return[result];
     ];

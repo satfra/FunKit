@@ -105,8 +105,7 @@ ModuleLoaded[DiANE] = True;
 (* ::Input::Initialization:: *)
 
 MakeTexIndexList[{i__}] :=
-    Module[{ni = Length[{i}], isLower, indices = {i}, lowerList, upperList,
-         removeTrailingPhantoms},
+    Module[{ni = Length[{i}], isLower, indices = {i}, lowerList, upperList, removeTrailingPhantoms},
         isLower = Map[MatchQ[#, Times[-1, _]]&, {i}];
         indices =
             Table[
@@ -123,8 +122,7 @@ MakeTexIndexList[{i__}] :=
                 If[isLower[[idx]],
                     ToString @ TeXForm[indices[[idx]]]
                     ,
-                    "\\phantom{" <> ToString @ TeXForm[indices[[idx]]
-                        ] <> "}"
+                    "\\phantom{" <> ToString @ TeXForm[indices[[idx]]] <> "}"
                 ]
                 ,
                 {idx, 1, ni}
@@ -132,8 +130,7 @@ MakeTexIndexList[{i__}] :=
         upperList =
             Table[
                 If[isLower[[idx]],
-                    "\\phantom{" <> ToString @ TeXForm[indices[[idx]]
-                        ] <> "}"
+                    "\\phantom{" <> ToString @ TeXForm[indices[[idx]]] <> "}"
                     ,
                     ToString @ TeXForm[indices[[idx]]]
                 ]
@@ -200,16 +197,14 @@ MakeIdxField[f_, i_] :=
     ]
 
 MakeTexIndexList[{f__}, {i__}] :=
-    Module[{ni = Length[{f}], isLower, fields = {f}, indices = {i}, lowerList,
-         upperList, removeTrailingPhantoms},
+    Module[{ni = Length[{f}], isLower, fields = {f}, indices = {i}, lowerList, upperList, removeTrailingPhantoms},
         isLower = Map[MatchQ[#, Times[-1, _]]&, {i}];
         lowerList =
             Table[
                 If[isLower[[idx]],
                     MakeIdxField[fields[[idx]], indices[[idx]], up]
                     ,
-                    "\\phantom{" <> MakeIdxField[fields[[idx]], indices
-                        [[idx]], up] <> "}"
+                    "\\phantom{" <> MakeIdxField[fields[[idx]], indices[[idx]], up] <> "}"
                 ]
                 ,
                 {idx, 1, ni}
@@ -217,8 +212,7 @@ MakeTexIndexList[{f__}, {i__}] :=
         upperList =
             Table[
                 If[isLower[[idx]],
-                    "\\phantom{" <> MakeIdxField[fields[[idx]], indices
-                        [[idx]], up] <> "}"
+                    "\\phantom{" <> MakeIdxField[fields[[idx]], indices[[idx]], up] <> "}"
                     ,
                     MakeIdxField[fields[[idx]], indices[[idx]], up]
                 ]
@@ -248,8 +242,7 @@ MakeTexIndexList[{f__}, {i__}] :=
 
 (* ::Input::Initialization:: *)
 
-$availableIndices = Join[Alphabet["English"], Alphabet["English", "CommonAlphabetUpper"
-    ], Alphabet["Greek"]];
+$availableIndices = Join[Alphabet["English"], Alphabet["English", "CommonAlphabetUpper"], Alphabet["Greek"]];
 
 (* ::Input::Initialization:: *)
 
@@ -265,15 +258,12 @@ prettySuperIndices[setup_, expr_FTerm] :=
         closedIndices = GetClosedSuperIndices[setup, expr];
         openIndices = GetOpenSuperIndices[setup, expr];
         indices = $availableIndices;
-        Do[indices = Select[indices, # =!= ToString[openIndices[[i]]]&
-            ], {i, 1, Length[openIndices]}];
-        repl = Thread[closedIndices -> indices[[1 ;; Length[closedIndices
-            ]]]];
+        Do[indices = Select[indices, # =!= ToString[openIndices[[i]]]&], {i, 1, Length[openIndices]}];
+        repl = Thread[closedIndices -> indices[[1 ;; Length[closedIndices]]]];
         Return[expr //. repl]
     ];
 
-prettySuperIndices[setup_, expr_Association] /; isLoopAssociation[expr
-    ] :=
+prettySuperIndices[setup_, expr_Association] /; isLoopAssociation[expr] :=
     Association[
         Normal[expr] /.
             FEx[a___] :>
@@ -293,8 +283,7 @@ prettySuperIndices[setup_, expr_List] :=
         expr
     ];
 
-prettySuperIndices[setup_, expr_Association] /; isRoutedAssociation[expr
-    ] :=
+prettySuperIndices[setup_, expr_Association] /; isRoutedAssociation[expr] :=
     Association @ Map[prettySuperIndices[setup, #]&, Normal @ expr];
 
 prettySuperIndices[setup_, a_] :=
@@ -311,46 +300,35 @@ prettyExplicitIndices[setup_, expr_FEx] :=
     Map[prettyExplicitIndices[setup, #]&, expr];
 
 prettyExplicitIndices[setup_, expr_FTerm] :=
-    Module[{allIndices, closedIndices, openIndices, repl, indices, ret
-         = expr},
-        allIndices = Select[ExtractObjectsAndIndices[setup, expr][[2]],
-             Head[#] === List&];
+    Module[{allIndices, closedIndices, openIndices, repl, indices, ret = expr},
+        allIndices = Select[ExtractObjectsAndIndices[setup, expr][[2]], Head[#] === List&];
         allIndices =
             Map[
                 If[Length[#] === 2,
                     #
                     ,
-                    ret = ret /. # -> Join[#, {Hash[Sort @ {#, -#}]}]
-                        ;
+                    ret = ret /. # -> Join[#, {Hash[Sort @ {#, -#}]}];
                     Join[#, {Hash[Sort @ {#, -#}]}]
                 ]&
                 ,
                 allIndices
             ];
         allIndices = allIndices[[All, 2]];
-        closedIndices = Pick[allIndices, Count[allIndices, #] === 2& 
-            /@ allIndices];
-        openIndices = Pick[allIndices, Count[allIndices, #] =!= 2& /@
-             allIndices];
+        closedIndices = Pick[allIndices, Count[allIndices, #] === 2& /@ allIndices];
+        openIndices = Pick[allIndices, Count[allIndices, #] =!= 2& /@ allIndices];
         indices = $availableIndices;
-        repl = Thread[closedIndices -> indices[[1 ;; Length[closedIndices
-            ]]]] \[Union] Thread[openIndices -> indices[[Length[closedIndices] + 
-            1 ;; Length[closedIndices] + Length[openIndices]]]];
+        repl = Thread[closedIndices -> indices[[1 ;; Length[closedIndices]]]] \[Union] Thread[openIndices -> indices[[Length[closedIndices] + 1 ;; Length[closedIndices] + Length[openIndices]]]];
         Return[ret //. repl]
     ];
 
-prettyExplicitIndices[setup_, expr_Association] /; isLoopAssociation[
-    expr] :=
-    Association[Normal[expr] /. FEx[a___] :> prettyExplicitIndices[setup,
-         FEx[a]]]
+prettyExplicitIndices[setup_, expr_Association] /; isLoopAssociation[expr] :=
+    Association[Normal[expr] /. FEx[a___] :> prettyExplicitIndices[setup, FEx[a]]]
 
 prettyExplicitIndices[setup_, expr_List] :=
     Map[prettyExplicitIndices[setup, #]&, expr];
 
-prettyExplicitIndices[setup_, expr_Association] /; isRoutedAssociation[
-    expr] :=
-    Association @ Map[prettyExplicitIndices[setup, #]&, Normal @ expr
-        ];
+prettyExplicitIndices[setup_, expr_Association] /; isRoutedAssociation[expr] :=
+    Association @ Map[prettyExplicitIndices[setup, #]&, Normal @ expr];
 
 prettyExplicitIndices[setup_, a_] :=
     (
@@ -426,8 +404,7 @@ isRoutedAssociation[expr_] :=
 
 RenewFormatDefinitions[] :=
     Module[{},
-        Unprotect[FDOp, GammaN, Propagator, Rdot, FTerm, FEx, \[Gamma],
-             \[Delta], FMinus, S];
+        Unprotect[FDOp, GammaN, Propagator, Rdot, FTerm, FEx, \[Gamma], \[Delta], FMinus, S];
         Unprotect @@ $allObjects;
         (*Field formatting with superindices*)
         Map[
@@ -442,20 +419,17 @@ RenewFormatDefinitions[] :=
                     Module[{head, arg},
                         head = Keys[#] //. $TexStyles //. $Fields;
                         arg = Format[any, TeXForm] // ToString;
-                        TeXUtilities`TeXVerbatim[head <> "^{" <> arg 
-                            <> "}"]
+                        TeXUtilities`TeXVerbatim[head <> "^{" <> arg <> "}"]
                     ];
                 Format[Subscript[Keys[#], any_], TeXForm] :=
                     Module[{head, arg},
                         head = Keys[#] //. $TexStyles //. $Fields;
                         arg = Format[any, TeXForm] // ToString;
-                        TeXUtilities`TeXVerbatim[head <> "_{" <> arg 
-                            <> "}"]
+                        TeXUtilities`TeXVerbatim[head <> "_{" <> arg <> "}"]
                     ];
             )&
             ,
-            $TexStyles \[Union] Select[$Fields, FreeQ[Keys[$TexStyles
-                ], Keys[#]]&]
+            $TexStyles \[Union] Select[$Fields, FreeQ[Keys[$TexStyles], Keys[#]]&]
         ];
         (*Field formatting with explicit indices*)
         Map[
@@ -464,35 +438,28 @@ RenewFormatDefinitions[] :=
                     Module[{head, arg},
                         head = Keys[#] //. $TexStyles //. $Fields;
                         arg = Format[indices, TeXForm] // ToString;
-                        TeXUtilities`TeXVerbatim[head <> arg <> "(" <>
-                             ToString[TeXForm[p]] <> ")"]
+                        TeXUtilities`TeXVerbatim[head <> arg <> "(" <> ToString[TeXForm[p]] <> ")"]
                     ];
-                Format[Superscript[Keys[#], {p_, indices_}], TeXForm]
-                     :=
+                Format[Superscript[Keys[#], {p_, indices_}], TeXForm] :=
                     Module[{head, arg},
                         head = Keys[#] //. $TexStyles //. $Fields;
                         arg = Format[indices, TeXForm] // ToString;
-                        TeXUtilities`TeXVerbatim[head <> "^{" <> arg 
-                            <> "}(" <> ToString[TeXForm[p]] <> ")"]
+                        TeXUtilities`TeXVerbatim[head <> "^{" <> arg <> "}(" <> ToString[TeXForm[p]] <> ")"]
                     ];
                 Format[Subscript[Keys[#], {p_, indices_}], TeXForm] :=
-                    
                     Module[{head, arg},
                         head = Keys[#] //. $TexStyles //. $Fields;
                         arg = Format[indices, TeXForm] // ToString;
-                        TeXUtilities`TeXVerbatim[head <> "_{" <> arg 
-                            <> "}(" <> ToString[TeXForm[p]] <> ")"]
+                        TeXUtilities`TeXVerbatim[head <> "_{" <> arg <> "}(" <> ToString[TeXForm[p]] <> ")"]
                     ];
             )&
             ,
-            $TexStyles \[Union] Select[$Fields, FreeQ[Keys[$TexStyles
-                ], Keys[#]]&]
+            $TexStyles \[Union] Select[$Fields, FreeQ[Keys[$TexStyles], Keys[#]]&]
         ];
         (*Other formatting*)
         Format[FDOp[f_], TeXForm] :=
             Module[{},
-                TeXUtilities`TeXDelimited["\\frac{\\delta}{\\delta", 
-                    f, "}"]
+                TeXUtilities`TeXDelimited["\\frac{\\delta}{\\delta", f, "}"]
             ];
         Map[
             (
@@ -539,11 +506,9 @@ RenewFormatDefinitions[] :=
         ];
         Map[
             (
-                Format[#[{f__}, {i__}], TeXForm] /; AllTrue[{i}, (Head[
-                    #] === List)&] :=
+                Format[#[{f__}, {i__}], TeXForm] /; AllTrue[{i}, (Head[#] === List)&] :=
                     Module[{sub, sup, ret},
-                        {sub, sup} = MakeTexIndexList[{f}, -{i}[[All,
-                             2]]];
+                        {sub, sup} = MakeTexIndexList[{f}, -{i}[[All, 2]]];
                         ret =
                             Switch[#,
                                 Propagator,
@@ -576,25 +541,17 @@ RenewFormatDefinitions[] :=
                         If[StringLength[sup] =!= 0,
                             ret = ret <> "^{" <> sup <> "}"
                         ];
-                        TeXUtilities`TeXVerbatim[ret <> "(" <> StringRiffle[
-                            Map[ToString @ TeXForm[#]&, {i}[[All, 1]]], ","] <> ")"]
+                        TeXUtilities`TeXVerbatim[ret <> "(" <> StringRiffle[Map[ToString @ TeXForm[#]&, {i}[[All, 1]]], ","] <> ")"]
                     ]
             )&
             ,
             $allObjects
         ];
         Format[FTerm[a__], TeXForm] :=
-            Module[{obj, integrals, replNames, idx, prefix, postfix, 
-                body = {a}},
-                integrals = Pick[$availableLoopMomenta, Map[MemberQ[{
-                    a}, #, Infinity]&, $availableLoopMomenta]];
-                replNames = Join[Thread[$availableLoopMomenta -> Table[
-                    Subscript[Symbol[$loopMomentumName], idx], {idx, 1, Length[$availableLoopMomenta
-                    ]}]], Thread[$availableLoopMomentaf -> Table[Subscript[Symbol[$loopMomentumName
-                    ], "f," <> ToString @ idx], {idx, 1, Length[$availableLoopMomentaf]}]
-                    ]];
-                prefix = StringJoin[Map["\\int_{" <> ToString[TeXForm[
-                    #]] <> "}"&, integrals //. replNames]];
+            Module[{obj, integrals, replNames, idx, prefix, postfix, body = {a}},
+                integrals = Pick[$availableLoopMomenta, Map[MemberQ[{a}, #, Infinity]&, $availableLoopMomenta]];
+                replNames = Join[Thread[$availableLoopMomenta -> Table[Subscript[Symbol[$loopMomentumName], idx], {idx, 1, Length[$availableLoopMomenta]}]], Thread[$availableLoopMomentaf -> Table[Subscript[Symbol[$loopMomentumName], "f," <> ToString @ idx], {idx, 1, Length[$availableLoopMomentaf]}]]];
+                prefix = StringJoin[Map["\\int_{" <> ToString[TeXForm[#]] <> "}"&, integrals //. replNames]];
                 postfix = "";
                 If[MatchQ[{a}[[1]], b_ /; NumericQ[b] && b < 0],
                     If[{a}[[1]] === -1,
@@ -607,10 +564,7 @@ RenewFormatDefinitions[] :=
                     ]
                 ];
                 body = body //. replNames;
-                body = body //. Map[# -> Subscript[Symbol[StringTake[
-                    SymbolName[#], {1}]], ToExpression @ StringTake[SymbolName[#], {2, -1
-                    }]]&, Select[GetAllSymbols[body], StringMatchQ[SymbolName[#], LetterCharacter
-                     ~~ DigitCharacter..]&]];
+                body = body //. Map[# -> Subscript[Symbol[StringTake[SymbolName[#], {1}]], ToExpression @ StringTake[SymbolName[#], {2, -1}]]&, Select[GetAllSymbols[body], StringMatchQ[SymbolName[#], LetterCharacter ~~ DigitCharacter..]&]];
                 TeXUtilities`TeXDelimited[
                         prefix
                         ,
@@ -705,20 +659,14 @@ RenewFormatDefinitions[] :=
             ];
         Format[FEx[a___], TeXForm] :=
             If[Length[Flatten[(List @@ #&) /@ {a}]] <= 9,
-                TeXUtilities`TeXDelimited["", a, "", "DelimSeparator"
-                     -> "", "BodySeparator" -> "\n\\,+\\,", "BodyConverter" -> (ToString[
-                    Format[#, TeXForm]]&)]
+                TeXUtilities`TeXDelimited["", a, "", "DelimSeparator" -> "", "BodySeparator" -> "\n\\,+\\,", "BodyConverter" -> (ToString[Format[#, TeXForm]]&)]
                 ,
-                TeXUtilities`TeXDelimited["\\begin{aligned}\\  &", a,
-                     "\n\\end{aligned}", "DelimSeparator" -> "", "BodySeparator" -> "\n\\\\ &\\,+\\,",
-                     "BodyConverter" -> (ToString[Format[#, TeXForm]]&)]
+                TeXUtilities`TeXDelimited["\\begin{aligned}\\  &", a, "\n\\end{aligned}", "DelimSeparator" -> "", "BodySeparator" -> "\n\\\\ &\\,+\\,", "BodyConverter" -> (ToString[Format[#, TeXForm]]&)]
             ];
         Unprotect[Association];
-        Format[Association[a__], TeXForm] /; isRoutedAssociation[Association[
-            a]] :=
+        Format[Association[a__], TeXForm] /; isRoutedAssociation[Association[a]] :=
             Module[{parts},
-                parts = (List @@ Association[a])[[All, Key["Expression"
-                    ]]];
+                parts = (List @@ Association[a])[[All, Key["Expression"]]];
                 parts = ToString[TeXForm[FEx[#]]]& /@ parts;
                 parts =
                     Join[
@@ -726,9 +674,7 @@ RenewFormatDefinitions[] :=
                         ,
                         Map[
                             If[StringTake[#, {1, 17}] === "\\begin{aligned}&\n",
-                                
-                                StringJoin[{"\\begin{aligned}&\n\\,+\\,",
-                                     StringTake[#, {18, -1}]}]
+                                StringJoin[{"\\begin{aligned}&\n\\,+\\,", StringTake[#, {18, -1}]}]
                                 ,
                                 StringJoin[{"\\,+\\,", #}]
                             ]&
@@ -736,12 +682,10 @@ RenewFormatDefinitions[] :=
                             parts[[2 ;; ]]
                         ]
                     ];
-                TeXUtilities`TeXVerbatim["\\begin{aligned}&\n" <> StringRiffle[
-                    parts, "\n \\\&\n"] <> "\n\\end{aligned}"]
+                TeXUtilities`TeXVerbatim["\\begin{aligned}&\n" <> StringRiffle[parts, "\n \\\&\n"] <> "\n\\end{aligned}"]
             ];
         Protect[Association];
-        Protect[FDOp, GammaN, Propagator, Rdot, FTerm, FEx, \[Gamma],
-             \[Delta], FMinus, S];
+        Protect[FDOp, GammaN, Propagator, Rdot, FTerm, FEx, \[Gamma], \[Delta], FMinus, S];
         Protect @@ $allObjects;
     ];
 
@@ -755,22 +699,22 @@ RenewFormatDefinitions[] :=
 
 FTex[setup_, expr_] :=
     Module[{prExp = expr, fields},
+        If[Head[prExp] === FEx,
+            prExp = DropFExAnnotations[prExp];
+        ];
         AssertFSetup[setup];
         fields = GetAllFields[setup];
         FunKitDebug[1, "Creating LaTeX expression"];
         (*update the formatting definitions for TeXForm*)
-        $Fields = Thread[fields -> Map[ToString[TeXForm[#]]&, fields]
-            ];
+        $Fields = Thread[fields -> Map[ToString[TeXForm[#]]&, fields]];
         RenewFormatDefinitions[];
         (*Assign human-readable superindices*)
         prExp = prettySuperIndices[setup, prExp];
         prExp = prettyExplicitIndices[setup, prExp];
         (*make fields with indices to sub-/super-script*)
-        prExp = prExp //. Map[#[Times[-1, a_]] :> Subscript[#, a]&, fields
-            ] //. Map[#[a_] :> Superscript[#, a]&, fields];
+        prExp = prExp //. Map[#[Times[-1, a_]] :> Subscript[#, a]&, fields] //. Map[#[a_] :> Superscript[#, a]&, fields];
         (*For correct rendering, fully expand any FTerms*)
-        prExp = prExp //. FTerm[pre___, Times[a_, b_], post___] :> FTerm[
-            pre, a, b, post];
+        prExp = prExp //. FTerm[pre___, Times[a_, b_], post___] :> FTerm[pre, a, b, post];
         Return[
             prExp //
             TeXForm //
@@ -778,8 +722,7 @@ FTex[setup_, expr_] :=
         ];
     ];
 
-FTex[setup_, expr_List] /; AllTrue[expr, (Head[#] === FEx || Head[#] 
-    === FTerm)&] :=
+FTex[setup_, expr_List] /; AllTrue[expr, (Head[#] === FEx || Head[#] === FTerm)&] :=
     FTex[setup, FEx @@ expr];
 
 (*For the output of a full routing*)
@@ -806,67 +749,57 @@ FPrint[setup_, expr_] :=
 
 MakeEdgeRule[setup_, obj_] :=
     Module[{},
-        If[IsAntiFermion[setup, obj[[1, 1]]] && IsFermion[setup, obj[[
-            1, 2]]],
-            Return[makePosIdx @ obj[[2, 1]] -> makePosIdx @ obj[[2, 2
-                ]]]
+        If[IsAntiFermion[setup, obj[[1, 1]]] && IsFermion[setup, obj[[1, 2]]],
+            Return[makePosIdx @ obj[[2, 1]] -> makePosIdx @ obj[[2, 2]]]
         ];
-        If[IsFermion[setup, obj[[1, 1]]] && IsAntiFermion[setup, obj[[
-            1, 2]]],
-            Return[makePosIdx @ obj[[2, 2]] -> makePosIdx @ obj[[2, 1
-                ]]]
+        If[IsFermion[setup, obj[[1, 1]]] && IsAntiFermion[setup, obj[[1, 2]]],
+            Return[makePosIdx @ obj[[2, 2]] -> makePosIdx @ obj[[2, 1]]]
         ];
-        Return[makePosIdx @ obj[[2, 1]] <-> makePosIdx @ obj[[2, 2]]]
-            ;
+        Return[makePosIdx @ obj[[2, 1]] <-> makePosIdx @ obj[[2, 2]]];
     ];
 
 (* ::Input::Initialization:: *)
 
 crosscircle[r_] :=
-    Graphics[{Thick, Line[{{r / Sqrt[2], r / Sqrt[2]}, {-r / Sqrt[2],
-         -r / Sqrt[2]}}], Line[{{r / Sqrt[2], -r / Sqrt[2]}, {-r / Sqrt[2], r
-         / Sqrt[2]}}], Circle[{0, 0}, r]}];
+    Graphics[{Thick, Line[{{r / Sqrt[2], r / Sqrt[2]}, {-r / Sqrt[2], -r / Sqrt[2]}}], Line[{{r / Sqrt[2], -r / Sqrt[2]}, {-r / Sqrt[2], r / Sqrt[2]}}], Circle[{0, 0}, r]}];
 
 cross[r_] :=
-    Graphics[{Line[{{r / Sqrt[2], r / Sqrt[2]}, {-r / Sqrt[2], -r / Sqrt[
-        2]}}], Line[{{r / Sqrt[2], -r / Sqrt[2]}, {-r / Sqrt[2], r / Sqrt[2]}
-        }]}];
+    Graphics[{Line[{{r / Sqrt[2], r / Sqrt[2]}, {-r / Sqrt[2], -r / Sqrt[2]}}], Line[{{r / Sqrt[2], -r / Sqrt[2]}, {-r / Sqrt[2], r / Sqrt[2]}}]}];
 
-$standardVertexStyles = {GammaN -> Graphics @ Style[Disk[{0, 0}, 2], 
-    Gray], S -> Graphics @ Style[Disk[{0, 0}, 1.5], Black], Rdot -> crosscircle[
-    1], Field -> cross[1], R -> Graphics @ Style[Disk[{0, 0}, 2], Blue], 
-    Phidot -> Graphics @ Style[Polygon[{{2, 0}, {0, 2 * Sqrt[3]}, {-2, 0}
-    }], Black]};
+$standardVertexStyles = {GammaN -> Graphics @ Style[Disk[{0, 0}, 2], Gray], S -> Graphics @ Style[Disk[{0, 0}, 1.5], Black], Rdot -> crosscircle[1], Field -> cross[1], R -> Graphics @ Style[Disk[{0, 0}, 2], Blue], Phidot -> Graphics @ Style[Polygon[{{2, 0}, {0, 2 * Sqrt[3]}, {-2, 0}}], Black]};
 
-$standardVertexSize = {GammaN -> 0.15, S -> 0.05, Rdot -> 0.25, Field
-     -> 0.1, R -> 0.2};
+$standardVertexSize = {GammaN -> 0.15, S -> 0.05, Rdot -> 0.25, Field -> 0.1, R -> 0.2};
 
 (* ::Input::Initialization:: *)
 
 arcFunc[g_, r_:1.5][list_, DirectedEdge[x_, x_]] :=
-    With[{v = DynamicLocation["VertexID$" <> ToString[VertexIndex[g, 
-        x]], Automatic, Center]},
-        Arrow[BezierCurve[Join[{v}, ScalingTransform[r {1, 1}, list[[
-            1]]][list[[{5, 8, 10, 16, 18, 21}]]], {v}], SplineDegree -> 7]]
+    With[{v = DynamicLocation["VertexID$" <> ToString[VertexIndex[g, x]], Automatic, Center]},
+        Arrow[BezierCurve[Join[{v}, ScalingTransform[r {1, 1}, list[[1]]][list[[{5, 8, 10, 16, 18, 21}]]], {v}], SplineDegree -> 7]]
     ]
 
 arcFuncUn[g_, r_:1.5][list_, UndirectedEdge[x_, x_]] :=
-    With[{v = DynamicLocation["VertexID$" <> ToString[VertexIndex[g, 
-        x]], Automatic, Center]},
-        Arrow[BezierCurve[Join[{v}, ScalingTransform[r {1, 1}, list[[
-            1]]][list[[{5, 8, 10, 16, 18, 21}]]], {v}], SplineDegree -> 7]]
+    With[{v = DynamicLocation["VertexID$" <> ToString[VertexIndex[g, x]], Automatic, Center]},
+        Arrow[BezierCurve[Join[{v}, ScalingTransform[r {1, 1}, list[[1]]][list[[{5, 8, 10, 16, 18, 21}]]], {v}], SplineDegree -> 7]]
     ]
 
 (* ::Input::Initialization:: *)
 
 FPlot::FDOp = "Cannot plot diagrams with unresolved derivative operators!";
 
+braceTexTerm[expr_] :=
+    Module[
+        {ret}
+        ,
+        (*TODO*)
+        ret = ToString[expr];
+        If[StringTake[ret, 1] != "(",
+            ret = "\\left(" <> ret <> "\\right)"
+        ];
+        Return[ret];
+    ];
+
 GetDiagram[setup_, expr_FTerm] :=
-    Module[{PossibleVertices, PossibleEdges, Styles, diag, allObj, fieldObj,
-         vertices, edges, vertexReplacements, graph, phantomVertices, edgeFields,
-         fieldVertices, fieldEdges, fieldEdgeFields, oidx, externalVertices, 
-        vertexNames, doubledVertices, externalEdges, externalFields, idx, prefactor,
-         doubledEdges, doFields, eWeights, addVertexSizes = {}},
+    Module[{PossibleVertices, PossibleEdges, Styles, diag, allObj, fieldObj, vertices, edges, vertexReplacements, graph, phantomVertices, edgeFields, fieldVertices, fieldEdges, fieldEdgeFields, oidx, externalVertices, vertexNames, doubledVertices, externalEdges, externalFields, idx, prefactor, doubledEdges, doFields, eWeights, addVertexSizes = {}},
         If[MemberQ[expr, FDOp[__], Infinity],
             Message[FPlot::FDOp];
             Abort[]
@@ -877,8 +810,7 @@ GetDiagram[setup_, expr_FTerm] :=
             Join[
                 {GammaN, S, Rdot, Field, R, Phidot}
                 ,
-                If[KeyExistsQ[setup, "DiagramStyling"] && KeyExistsQ[
-                    setup["DiagramStyling"], "Vertices"],
+                If[KeyExistsQ[setup, "DiagramStyling"] && KeyExistsQ[setup["DiagramStyling"], "Vertices"],
                     setup["DiagramStyling"]["Vertices"]
                     ,
                     {}
@@ -888,24 +820,19 @@ GetDiagram[setup_, expr_FTerm] :=
             Join[
                 {Propagator}
                 ,
-                If[KeyExistsQ[setup, "DiagramStyling"] && KeyExistsQ[
-                    setup["DiagramStyling"], "Edges"],
+                If[KeyExistsQ[setup, "DiagramStyling"] && KeyExistsQ[setup["DiagramStyling"], "Edges"],
                     setup["DiagramStyling"]["Edges"]
                     ,
                     {}
                 ]
             ];
         Styles =
-            If[KeyExistsQ[setup, "DiagramStyling"] && KeyExistsQ[setup[
-                "DiagramStyling"], "Styles"],
+            If[KeyExistsQ[setup, "DiagramStyling"] && KeyExistsQ[setup["DiagramStyling"], "Styles"],
                 setup["DiagramStyling"]["Styles"]
                 ,
-                Thread[(# -> ColorData[97, "ColorList"][[1 ;; Length[
-                    #]]])& @ DeleteDuplicates[GetAllFields[setup] /. Map[#[[1]] -> #[[2]]&,
-                     GetFieldPairs[setup]]]]
+                Thread[(# -> ColorData[97, "ColorList"][[1 ;; Length[#]]])& @ DeleteDuplicates[GetAllFields[setup] /. Map[#[[1]] -> #[[2]]&, GetFieldPairs[setup]]]]
             ];
-        Styles = Join[Styles, Map[GetPartnerField[setup, #[[1]]] -> #
-            [[2]]&, Select[Styles, HasPartnerField[setup, #[[1]]]&]]];
+        Styles = Join[Styles, Map[GetPartnerField[setup, #[[1]]] -> #[[2]]&, Select[Styles, HasPartnerField[setup, #[[1]]]&]]];
         If[FreeQ[Keys[Styles], AnyField],
             Styles = Join[Styles, {AnyField -> {Blue, Dotted}}]
         ];
@@ -915,14 +842,12 @@ GetDiagram[setup_, expr_FTerm] :=
                 Select[allObj, Head[#] === Field&] /.
                     Field[{f_}, {i_}] :>
                         Module[{oi},
-                            {Propagator[{f, GetPartnerField[setup, f]
-                                }, {oi, i}], Field[{f}, {oi}]}
+                            {Propagator[{f, GetPartnerField[setup, f]}, {oi, i}], Field[{f}, {oi}]}
                         ]
             ];
         allObj = Select[allObj, Head[#] =!= Field&];
         (*prepare vertices*)
-        vertices = Select[allObj, MemberQ[PossibleVertices, Head[#]] 
-            && (FreeQ[PossibleEdges, Head[#]] || Length[#[[2]]] =!= 2)&];
+        vertices = Select[allObj, MemberQ[PossibleVertices, Head[#]] && (FreeQ[PossibleEdges, Head[#]] || Length[#[[2]]] =!= 2)&];
         vertexReplacements =
             Flatten @
                 Module[{v},
@@ -935,8 +860,7 @@ GetDiagram[setup_, expr_FTerm] :=
                         vertices
                     ]
                 ];
-        vertices = Map[Head[#] @@ ((makePosIdx /@ #[[2]] /. vertexReplacements
-            ) // DeleteDuplicates)&, vertices];
+        vertices = Map[Head[#] @@ ((makePosIdx /@ #[[2]] /. vertexReplacements) // DeleteDuplicates)&, vertices];
         (*Edge case: we have a vertex twice!*)
         (*first, extract all vertex names*)
         doubledVertices = Select[vertices, Length[#] > 1&];
@@ -944,8 +868,7 @@ GetDiagram[setup_, expr_FTerm] :=
         doubledEdges = {};
         Do[
             If[Length[doubledVertices[[idx]]] === 2,
-                AppendTo[doubledEdges, doubledVertices[[idx, 1]] \[UndirectedEdge]
-                     doubledVertices[[idx, 2]]];
+                AppendTo[doubledEdges, doubledVertices[[idx, 1]] \[UndirectedEdge] doubledVertices[[idx, 2]]];
             ];
             ,
             {idx, 1, Length[doubledVertices]}
@@ -954,43 +877,28 @@ GetDiagram[setup_, expr_FTerm] :=
         doubledEdges = Map[Style[#, Thick, Black]&, doubledEdges];
         (*Props and vertices for attached fields*)
         fieldVertices = Select[fieldObj, (Head[#] === Field)&];
-        fieldVertices = Map[Head[#] @@ ((makePosIdx /@ #[[2]] /. vertexReplacements
-            ) // DeleteDuplicates)&, fieldVertices];
+        fieldVertices = Map[Head[#] @@ ((makePosIdx /@ #[[2]] /. vertexReplacements) // DeleteDuplicates)&, fieldVertices];
         fieldEdges = Select[fieldObj, (Head[#] =!= Field)&];
-        fieldEdgeFields = Table[SelectFirst[fieldEdges[[idx, 1]], MemberQ[
-            Styles, #, Infinity]&], {idx, 1, Length[fieldEdges]}];
-        fieldEdges = Map[MakeEdgeRule[setup, #]&, fieldEdges /. vertexReplacements
-            ];
-        fieldEdges = Table[Style[fieldEdges[[idx]], ##]& @@ Flatten @
-             {fieldEdgeFields[[idx]] /. Styles}, {idx, 1, Length[fieldEdges]}];
+        fieldEdgeFields = Table[SelectFirst[fieldEdges[[idx, 1]], MemberQ[Styles, #, Infinity]&], {idx, 1, Length[fieldEdges]}];
+        fieldEdges = Map[MakeEdgeRule[setup, #]&, fieldEdges /. vertexReplacements];
+        fieldEdges = Table[Style[fieldEdges[[idx]], ##]& @@ Flatten @ {fieldEdgeFields[[idx]] /. Styles}, {idx, 1, Length[fieldEdges]}];
         (*prepare edges*)
-        edges = Select[allObj, MemberQ[PossibleEdges, Head[#]] && Length[
-            #[[2]]] === 2&];
-        edgeFields = Table[SelectFirst[edges[[idx, 1]], MemberQ[Styles,
-             #, Infinity]&], {idx, 1, Length[edges]}];
-        edges = Map[MakeEdgeRule[setup, #]&, edges /. vertexReplacements
-            ];
-        edges = Table[Style[edges[[idx]], ##]& @@ Flatten @ {edgeFields
-            [[idx]] /. Styles}, {idx, 1, Length[edges]}];
+        edges = Select[allObj, MemberQ[PossibleEdges, Head[#]] && Length[#[[2]]] === 2&];
+        edgeFields = Table[SelectFirst[edges[[idx, 1]], MemberQ[Styles, #, Infinity]&], {idx, 1, Length[edges]}];
+        edges = Map[MakeEdgeRule[setup, #]&, edges /. vertexReplacements];
+        edges = Table[Style[edges[[idx]], ##]& @@ Flatten @ {edgeFields[[idx]] /. Styles}, {idx, 1, Length[edges]}];
         (*Add additional vertices for external indices*)
         externalVertices = GetOpenSuperIndices[setup, diag];
-        externalFields = Table[SelectFirst[allObj, MemberQ[makePosIdx
-             /@ #[[2]], externalVertices[[idx]]]&], {idx, 1, Length[externalVertices
-            ]}];
-        externalFields = Table[externalFields[[idx, 1, FirstPosition[
-            makePosIdx /@ externalFields[[idx, 2]], externalVertices[[idx]]][[1]]
-            ]], {idx, 1, Length[externalVertices]}];
+        externalFields = Table[SelectFirst[allObj, MemberQ[makePosIdx /@ #[[2]], externalVertices[[idx]]]&], {idx, 1, Length[externalVertices]}];
+        externalFields = Table[externalFields[[idx, 1, FirstPosition[makePosIdx /@ externalFields[[idx, 2]], externalVertices[[idx]]][[1]]]], {idx, 1, Length[externalVertices]}];
         externalVertices = Unique /@ externalVertices;
-        externalEdges = Table[MakeEdgeRule[setup, Propagator[{GetPartnerField[
-            setup, externalFields[[idx]]], externalFields[[idx]]}, {externalVertices
-            [[idx]], GetOpenSuperIndices[setup, diag][[idx]] /. vertexReplacements
-            }]], {idx, 1, Length[externalVertices]}];
-        externalEdges = Table[Style[externalEdges[[idx]], ##]& @@ Flatten
-             @ {externalFields[[idx]] /. Styles}, {idx, 1, Length[externalEdges]}
-            ];
+        externalEdges = Table[MakeEdgeRule[setup, Propagator[{GetPartnerField[setup, externalFields[[idx]]], externalFields[[idx]]}, {externalVertices[[idx]], GetOpenSuperIndices[setup, diag][[idx]] /. vertexReplacements}]], {idx, 1, Length[externalVertices]}];
+        externalEdges = Table[Style[externalEdges[[idx]], ##]& @@ Flatten @ {externalFields[[idx]] /. Styles}, {idx, 1, Length[externalEdges]}];
         (*get the prefactor*)
-        prefactor = Times @@ (diag /. doFields /. Map[Blank[#] -> 1&,
-             Join[{Field}, $allObjects]]);
+        prefactor =
+            FTex[FTerm[Times @@ (diag /. doFields /. Map[Blank[#] -> 1&, Join[{Field}, $indexedObjects]])]] //
+            braceTexTerm //
+            MaTeX`MaTeX;
         oidx = GetOpenSuperIndices[setup, diag];
         Do[
             If[MemberQ[externalEdges, oidx[[idx]], Infinity],
@@ -999,23 +907,10 @@ GetDiagram[setup_, expr_FTerm] :=
             ,
             {idx, 1, Length[GetOpenSuperIndices[setup, diag]]}
         ];
-        vertexNames = DeleteDuplicates @ Flatten[List @@ #& /@ vertices
-            ];
-        eWeights = Join[Map[1&, edges], Map[1&, externalEdges], Map[1&,
-             fieldEdges], Map[0.5&, doubledEdges]];
-        graph = Graph[Join[vertexNames, externalVertices, fieldVertices
-            [[All, 1]]], Join[edges, externalEdges, fieldEdges, doubledEdges], EdgeWeight
-             -> eWeights, VertexShape -> Join[Thread[vertices[[All, 1]] -> (vertices
-            [[All, 0]] /. $standardVertexStyles)], Thread[externalVertices -> Map[
-            Graphics @ Style[Disk[{0, 0}, 0.0], Gray]&, externalVertices]], Thread[
-            fieldVertices[[All, 1]] -> (fieldVertices[[All, 0]] /. $standardVertexStyles
-            )]], VertexSize -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 
-            0]] /. $standardVertexSize)], addVertexSizes], GraphLayout -> {"SpringElectricalEmbedding",
-             "EdgeWeighted" -> True}, PerformanceGoal -> "Quality", ImageSize -> 
-            Small, EdgeStyle -> Arrowheads[{{.07, .6}}]];
-        prefactor * Graph[graph, EdgeShapeFunction -> {x_ \[DirectedEdge]
-             x_ :> arcFunc[graph, 20.0], x_ \[UndirectedEdge] x_ :> arcFuncUn[graph,
-             20.0]}]
+        vertexNames = DeleteDuplicates @ Flatten[List @@ #& /@ vertices];
+        eWeights = Join[Map[1&, edges], Map[1&, externalEdges], Map[1&, fieldEdges], Map[0.5&, doubledEdges]];
+        graph = Graph[Join[vertexNames, externalVertices, fieldVertices[[All, 1]]], Join[edges, externalEdges, fieldEdges, doubledEdges], EdgeWeight -> eWeights, VertexShape -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. $standardVertexStyles)], Thread[externalVertices -> Map[Graphics @ Style[Disk[{0, 0}, 0.0], Gray]&, externalVertices]], Thread[fieldVertices[[All, 1]] -> (fieldVertices[[All, 0]] /. $standardVertexStyles)]], VertexSize -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. $standardVertexSize)], addVertexSizes], GraphLayout -> {"SpringElectricalEmbedding", "EdgeWeighted" -> False}, PerformanceGoal -> "Quality", ImageSize -> Small, EdgeStyle -> Arrowheads[{{.07, .6}}]];
+        Row[{prefactor, Graph[graph, EdgeShapeFunction -> {x_ \[DirectedEdge] x_ :> arcFunc[graph, 20.0], x_ \[UndirectedEdge] x_ :> arcFuncUn[graph, 20.0]}]}]
     ];
 
 FPlot[setup_, expr_FTerm] :=
@@ -1026,7 +921,7 @@ FPlot[setup_, expr_FTerm] :=
 
 FPlot[setup_, expr_FEx] :=
     Module[{},
-        Print[Plus @@ (GetDiagram[setup, #]& /@ expr)];
+        Print[Plus @@ (GetDiagram[setup, #]& /@ (DropFExAnnotations @ expr))];
         Return @ expr
     ];
 
@@ -1038,8 +933,7 @@ FPlot[setup_, expr_Association] /; isLoopAssociation[expr] :=
 
 FPlot[setup_, expr_Association] /; isRoutedAssociation @ expr :=
     Module[{},
-        FPlot[setup, (List @@ routedAssociation)[[All, Key["Expression"
-            ]]]];
+        FPlot[setup, (List @@ routedAssociation)[[All, Key["Expression"]]]];
         Return @ expr
     ];
 

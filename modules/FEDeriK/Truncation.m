@@ -221,6 +221,8 @@ FTruncate[setup_, expr_] :=
     Module[{
         ret
         ,
+        annotations
+        ,
         mmap =
             If[Total[Length /@ (List @@ FEx[expr])] > 10,
                 ParallelMap
@@ -237,12 +239,18 @@ FTruncate[setup_, expr_] :=
             Message[FTruncate::FDOp];
             Abort[]
         ];
+        {ret, annotations} = SeparateFExAnnotations[FEx[expr]];
         FunKitDebug[1, "Truncating the given expression"];
         (*First, resolve open indices directly*)
-        ret = mmap[OTrunc[setup, #]&, FEx[expr]];
+        ret = mmap[OTrunc[setup, #]&, FEx[ret]];
         (*Then, take care of closed indices recursively*)
         ret = mmap[LTrunc[setup, #]&, FEx[ret]];
         ret = truncationPass[setup, ReduceIndices[setup, ret]];
         FunKitDebug[1, "Finished truncating the given expression"];
-        OrderFields[setup, FixIndices[setup, #]& /@ ret]
+        ret = OrderFields[setup, FixIndices[setup, #]& /@ ret];
+        ret = MergeFExAnnotations[ret, annotations];
+        If[ModuleLoaded[AnSEL],
+            ret = FunKit`FSimplify[setup, ret];
+        ];
+        Return[ret];
     ];

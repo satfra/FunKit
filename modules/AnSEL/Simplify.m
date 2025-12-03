@@ -2,7 +2,77 @@
     Identification of specific diagrams (i.e. FTerms)
 **********************************************************************************)
 
-(*Build a symmetry list*)
+(* Construct all permutations of fields in a derivativeList and their prefactors, given a list of symmetries *)
+
+BuildSymmetryList[setup_, symmetries_, derivativeList_] :=
+    Module[{procDerList, buildOneSymmetry},
+        If[Head[symmetries] =!= List,
+            Print["Symmetries must be given as a list!"];
+            Abort[]
+        ];
+        If[Length[symmetries] == 0,
+            Return[{}]
+        ];
+        If[Length[derivativeList] == 0,
+            Return[{}]
+        ];
+        procDerList = derivativeList /. unreplFields[setup];
+        buildOneSymmetry[sym_] :=
+            Module[{valid = True, buildCycle, pairs},
+                If[AnyTrue[sym[[ ;; -2]], Not[Head[#] === List]&],
+                    valid = False
+                ];
+                pairs = Subsets[sym[[ ;; -2]], {2}];
+                valid = Not @ AnyTrue[Map[ContainsAny[#[[1]], #[[2]]]&, pairs], Identity];
+                If[Not @ valid,
+                    Print[sym, " is  not a valid symmetry!"];
+                    Abort[]
+                ];
+                buildCycle[cyc_] :=
+                    Module[{cycvalid = True, numberRules, idx, nextIdx},
+                        If[AnyTrue[cyc, Not[IntegerQ[#]]&],
+                            cycvalid = False
+                        ];
+                        If[AnyTrue[cyc, (# > Length[derivativeList]) || (# < 1)&],
+                            cycvalid = False
+                        ];
+                        If[Not @ cycvalid,
+                            Print[cyc, " is  not a valid cycle!"];
+                            Abort[]
+                        ];
+                        numberRules = {};
+                        For[idx = 1, idx <= Length[cyc], idx++,
+                            nextIdx = Mod[(idx), Length[cyc]] + 1;
+                            numberRules = Join[numberRules, {{cyc[[idx]], cyc[[nextIdx]]}}];
+                        ];
+                        Return[Map[procDerList[[#[[1]], 1]] -> procDerList[[#[[2]], 1]]&, numberRules]];
+                    ];
+                <|"Rule" -> Flatten[Map[buildCycle, sym[[ ;; -2]]], 1], "Factor" -> sym[[-1]]|>
+            ];
+        Return @ Join[{<|"Rule" -> {}, "Factor" -> 1|>}, Map[buildOneSymmetry, symmetries /. Cycles -> Identity]];
+    ];
+
+(*Merge Symmetry lists*)
+
+MergeSymmetries[sym1_, sym2_] :=
+    Module[{symCombine},
+        Return[Join[sym1, sym2] // DeleteDuplicates];
+        (* I am not sure we want to automatically blow up the number of rules*)
+        symCombine[a_, b_] :=
+            Module[{ret},
+                ret = Join[a["Rule"] /. b["Rule"], b["Rule"]] // DeleteDuplicates;
+                (* remove any trivial rules*)
+                ret = Sort @ Select[ret, Not @ MatchQ[#, HoldPattern[a_ -> a_]]&];
+                Return[<|"Rule" -> ret, "Factor" -> a["Factor"] * b["Factor"]|>];
+            ];
+        Return[
+            Outer[symCombine, sym1, sym2] //
+            Flatten //
+            DeleteDuplicates
+        ];
+    ];
+
+(*Build a symmetry list from a set of fields*)
 
 $AutoBuildSymmetryList = True;
 
@@ -114,9 +184,9 @@ TermsEqualAndSum::branchFailure = "Arrived at unhandled branch point";
 TermsEqualAndSum[
     setup_
     ,
-    t1_
+    it1_
     ,(* Original term 1 *)
-    t2_
+    it2_
     ,(* Original term 2 *)
     MallObjt1_
     ,
@@ -140,7 +210,7 @@ TermsEqualAndSum[
     , (* Index at which we start in t2 *)
     Msign2_
 ] :=
-    Module[{allObjt1 = MallObjt1, curIdx1, curPos1, nextInd1, nextPos1, memory1 = Mmemory1, assocFields1, allObjt2 = MallObjt2, curIdx2, curPos2, nextInd2, nextPos2, memory2 = Mmemory2, assocFields2, sign2 = Msign2, iter = 1, idx, jdx, viableBranches, branchSign, branchItRepl, branchObj, temp1, temp2},
+    Module[{t1 = it1, t2 = it2, nt1, nt2, allObjt1 = MallObjt1, curIdx1, curPos1, nextInd1, nextPos1, memory1 = Mmemory1, assocFields1, allObjt2 = MallObjt2, curIdx2, curPos2, nextInd2, nextPos2, memory2 = Mmemory2, assocFields2, sign2 = Msign2, iter = 1, idx, jdx, viableBranches, branchSign, branchItRepl, branchObj, temp1, temp2},
         FunKitDebug[3, "Following along a chain of indices."];
         curIdx1 = makePosIdx @ entry1;
         curIdx2 = makePosIdx @ entry2;
@@ -155,12 +225,12 @@ TermsEqualAndSum[
             (*If the (set of) next object(s) is different for 1 and 2, we can immediately abort.*)
             If[Sort @ Map[Head[#][Sort[#[[1]]]]&, nextPos1] =!= Sort @ Map[Head[#][Sort[#[[1]]]]&, nextPos2],
                 FunKitDebug[3, "FAILURE ------------ Heads do not match: ", nextPos1, ", ", nextPos2];
-                Return[{False, allObjt2}]
+                Return[{False, allObjt2, t2}]
             ];
             (*Check if the external indices in the current object match *)
             If[Intersection[oidxt1, makePosIdx /@ (curPos1[[2]])] =!= Intersection[oidxt2, makePosIdx /@ (curPos2[[2]])],
                 FunKitDebug[3, "FAILURE ------------ Current open indices disagree: ", Intersection[oidxt1, makePosIdx /@ (curPos1[[2]])], ", ", Intersection[oidxt2, makePosIdx /@ (curPos2[[2]])]];
-                Return[{False, allObjt2}]
+                Return[{False, allObjt2, t2}]
             ];
             FunKitDebug[3, "Next objects along the chain: ", nextPos1, ", ", nextPos2];
             FunKitDebug[3, "Entering through: ", nextInd1, ", ", nextInd2];
@@ -170,35 +240,42 @@ TermsEqualAndSum[
                 (*Check if the open indices aggree*)
                 If[Sort @ Intersection[oidxt1, makePosIdx /@ nextPos1[[1, 2]]] =!= Sort @ Intersection[oidxt2, makePosIdx /@ nextPos2[[1, 2]]],
                     FunKitDebug[3, "FAILURE ------------ Next open indices disagree.", Sort @ Intersection[oidxt1, makePosIdx /@ nextPos1[[1, 2]]], ", ", Sort @ Intersection[oidxt2, makePosIdx /@ nextPos2[[1, 2]]]];
-                    Return[{False, allObjt2}]
+                    Return[{False, allObjt2, t2}]
                 ];
+                (*replace the indices with the ones in curPos1*)
+                FunKitDebug[4, "Replacing index ", nextInd2[[1]], " with ", nextInd1[[1]]];
+                allObjt2 = allObjt2 /. nextInd2[[1]] -> nextInd1[[1]];
+                memory2 = memory2 /. nextInd2[[1]] -> nextInd1[[1]];
+                curPos2 = curPos2 /. nextInd2[[1]] -> nextInd1[[1]];
+                nextPos2[[1]] = nextPos2[[1]] /. nextInd2[[1]] -> nextInd1[[1]];
+                t2 = t2 /. nextInd2[[1]] -> nextInd1[[1]];
+                sign2 = sign2 /. nextInd2[[1]] -> nextInd1[[1]];
+                nextInd2[[1]] = nextInd1[[1]];
                 (*fix the current object*)
                 {temp1, temp2} = RearrangeFields[setup, curPos1, curPos2, {nextInd1[[1]], nextInd2[[1]]}];
                 sign2 = sign2 * temp1;
+                t2 = t2 /. curPos2 -> temp2;
                 (*replace first the object*)
                 allObjt2 = allObjt2 /. curPos2 -> temp2;
                 memory2 = memory2 /. curPos2 -> temp2;
-                (*and then replace the indices with the ones in curPos1*)
-                allObjt2 = allObjt2 /. nextInd2[[1]] -> nextInd1[[1]];
-                memory2 = memory2 /. nextInd2[[1]] -> nextInd1[[1]];
-                curPos2 = temp2 /. nextInd2[[1]] -> nextInd1[[1]];
-                nextPos2[[1]] = nextPos2[[1]] /. nextInd2[[1]] -> nextInd1[[1]];
-                nextInd2[[1]] = nextInd1[[1]];
+                curPos2 = temp2;
                 (*fix the next object*)
                 {temp1, temp2} = RearrangeFields[setup, nextPos1[[1]], nextPos2[[1]], {nextInd1[[1]], nextInd2[[1]]}];
                 sign2 = sign2 * temp1;
                 allObjt2 = allObjt2 /. nextPos2[[1]] -> temp2;
                 memory2 = memory2 /. nextPos2[[1]] -> temp2;
+                t2 = t2 /. nextPos2[[1]] -> temp2;
                 nextPos2[[1]] = temp2;
+                FunKitDebug[4, "New sign: ", sign2];
                 (*Check if we closed a loop*)
                 If[FirstPosition[memory1, nextPos1[[1]]] === FirstPosition[memory2, nextPos2[[1]]] && NumericQ[FirstPosition[memory1, nextPos1[[1]]][[1]]],
                     FunKitDebug[3, "SUCCESS ------------ Closed a loop."];
-                    Return[{sign2, allObjt2}]
+                    Return[{sign2, allObjt2, t2}]
                 ];
                 (*Closed one loop, but not the other*)
                 If[FirstPosition[memory1, nextPos1[[1]]] =!= FirstPosition[memory2, nextPos2[[1]]],
                     FunKitDebug[3, "FAILURE ------------ Closed only one loop."];
-                    Return[{False, allObjt2}]
+                    Return[{False, allObjt2, t2}]
                 ];
                 (*step forward*)
                 curIdx1 = nextInd1[[1]];
@@ -220,11 +297,11 @@ TermsEqualAndSum[
                     temp2 = Cases[t2, FDOp[curPos2[[1, 1]][curPos2[[2, 1]]]], Infinity];
                     If[Length[temp1] =!= Length[temp2],
                         FunKitDebug[3, "FAILURE ------------ Number of FDOps is different."];
-                        Return[{False, allObjt2}]
+                        Return[{False, allObjt2, t2}]
                     ];
                 ];
                 FunKitDebug[3, "SUCCESS ------------ Index chain ended with equality."];
-                Return[{sign2, allObjt2}]
+                Return[{sign2, allObjt2, t2}]
             ];
             (*Case 3: Branching point.*)
             If[Length[nextInd1] > 1,
@@ -245,9 +322,10 @@ TermsEqualAndSum[
                         branchSign = temp1 * branchSign;
                         branchObj = branchObj /. curPos2 -> branchItRepl;
                         branchObj = branchObj /. viableBranches[[idx, jdx, 2, 3]] -> temp2;
+                        nt2 = t2 /. curPos2 -> branchItRepl /. viableBranches[[idx, jdx, 2, 3]] -> temp2;
                         viableBranches[[idx, jdx, 2, 3]] = temp2;
                         FunKitDebug[4, "Branching at ", branchObj];
-                        {branchSign, branchObj} = TermsEqualAndSum[setup, t1, t2, allObjt1, cidxt1, oidxt1, Append[memory1, viableBranches[[idx, jdx, 1, 3]]], viableBranches[[idx, jdx, 1, 1]], branchObj, cidxt2, oidxt2, Append[memory2 /. curPos2 -> branchItRepl, viableBranches[[idx, jdx, 2, 3]]], viableBranches[[idx, jdx, 2, 1]], branchSign];
+                        {branchSign, branchObj, nt2} = TermsEqualAndSum[setup, t1, nt2, allObjt1, cidxt1, oidxt1, Append[memory1, viableBranches[[idx, jdx, 1, 3]]], viableBranches[[idx, jdx, 1, 1]], branchObj, cidxt2, oidxt2, Append[memory2 /. curPos2 -> branchItRepl, viableBranches[[idx, jdx, 2, 3]]], viableBranches[[idx, jdx, 2, 1]], branchSign];
                         If[branchSign === False,
                             Break[]
                         ];
@@ -258,10 +336,10 @@ TermsEqualAndSum[
                         Continue[]
                     ];
                     FunKitDebug[3, "SUCCESS ------------ Branch ", idx, " succeeded, branchSign is ", branchSign];
-                    Return[{branchSign, branchObj}];
+                    Return[{branchSign, branchObj, nt2}];
                 ];
                 FunKitDebug[3, "FAILURE ------------ Branch failed."];
-                Return[{False, allObjt2}];
+                Return[{False, allObjt2, t2}];
             ];
             (*Nothing should lead here*)
             Message[TermsEqualAndSum::branchFailure];
@@ -272,10 +350,13 @@ TermsEqualAndSum[
         Abort[];
     ];
 
-(* Given two objects t1, t2, re-order the fields in an indexed object t2 so that the exit index equiv fits the position in t1. Returns both the sign and the reordered t2*)
-
 RearrangeFields[setup_, t1_, t2_, equiv_] :=
-    Module[{ipos1, ipos2, idx, sign, newt2},
+    Module[
+        {ipos1, ipos2, idx, sign, newt2}
+        ,
+(* Given two objects t1, t2, re-order the fields in the indexed object t2,
+so that the exit index equivalently fits the position in t1.
+Returns both the sign and the reordered t2*)
         ipos1 = FirstPosition[makePosIdx /@ t1[[2]], equiv[[1]]][[1]];
         ipos2 = FirstPosition[makePosIdx /@ t2[[2]], equiv[[2]]][[1]];
         (*nothing to do:*)
@@ -304,7 +385,7 @@ TermsEqualAndSum::undeterminedFields = "Error: Cannot equate terms if they are n
 
 TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
     Module[
-        {t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2], startPoints, doFields, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther}
+        {t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2], nt1, nt2, curIdx2, curIdxRepl, startPoints, doFields, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2}
         ,
         (*If[MemberQ[t1,AnyField,Infinity],Message[TermsEqualAndSum::undeterminedFields];Abort[]];*)
         (*Briefly check the trivial case*)
@@ -350,19 +431,24 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
         FunKitDebug[3, "Comparing the terms \n  ", t1, "\n  ", t2];
         (*If the terms are equal for any starting candidates for t2, we have succeeded*)
         For[idx = 1, idx <= Length[startPoints[[3]]], idx++,
-            (*We need to identify all possible insertion points in t2 that fit the insertion in t1*)startt2 = startPoints[[3, idx]];
+            startt2 = startPoints[[3, idx]];
+            (*We need to identify all possible insertion points in t2 that fit the insertion in t1*)
             (*starting indices can only be 1. closed indices 2. have same field content as the starting point in t1. We pick these out with the following 2 commands*)
             cidxstartt2 = Map[(MemberQ[cidxt2, #[[1]]] && #[[2]] === startt1fields[[1]])&, Transpose[{makePosIdx /@ startt2[[2]], startt2[[1]]}]];
             cidxstartt2 = Pick[makePosIdx /@ startt2[[2]], cidxstartt2];
             (*Loop over all possible starting indices*)
             For[jdx = 1, jdx <= Length[cidxstartt2], jdx++,
-                (*re-order the starting point so that it fits the first. *){startsign, nstartt2} = RearrangeFields[setup, startt1, startt2, {cidxstartt1[[1]], cidxstartt2[[jdx]]}];
-                FunKitDebug[3, "Starting sign: ", startsign];
+                curIdx2 = cidxstartt2[[jdx]];
+                curIdxRepl = curIdx2 -> cidxstartt1[[1]];
+                (*re-order the starting point so that it fits the first.*)
+                {startsign, nstartt2} = RearrangeFields[setup, startt1, startt2, {cidxstartt1[[1]], curIdx2}];
                 branchAllObjt2 = allObjt2 /. startt2 -> nstartt2;
                 (*iterate the diagram*)
-                FunKitDebug[3, "StartPoints: \n  ", startt1, "\n  ", nstartt2];
-                FunKitDebug[3, "StartIndices: \n  ", cidxstartt1[[1]], "\n  ", cidxstartt2[[jdx]]];
-                {equal, branchAllObjt2} = TermsEqualAndSum[setup, t1, t2, allObjt1, cidxt1, oidxt1, {startt1}, cidxstartt1[[1]], branchAllObjt2, cidxt2, oidxt2, {nstartt2}, cidxstartt2[[jdx]], startsign];
+                FunKitDebug[3, "Starting sign: ", startsign /. curIdxRepl];
+                FunKitDebug[3, "Starting point replacement: ", curIdxRepl];
+                FunKitDebug[3, "StartPoints: \n  ", startt1, "\n  ", nstartt2 /. curIdxRepl];
+                FunKitDebug[3, "StartIndices: \n  ", cidxstartt1[[1]], "\n  ", curIdx2 /. curIdxRepl];
+                {equal, branchAllObjt2, nt2} = TermsEqualAndSum[setup, t1, t2 /. curIdxRepl, allObjt1, cidxt1, oidxt1, {startt1}, cidxstartt1[[1]], branchAllObjt2 /. curIdxRepl, cidxt2 /. curIdxRepl, oidxt2 /. curIdxRepl, {nstartt2} /. curIdxRepl, curIdx2 /. curIdxRepl, startsign /. curIdxRepl];
                 FunKitDebug[3, "Finished pass ", jdx, " with equal=", equal];
                 (*If we found an equality, break out*)
                 If[equal =!= False,
@@ -375,19 +461,21 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
         ];
         (*If equal===False, the terms are clearly not equal*)
         If[equal === False,
-            Return[False]
+            Return[False];
         ];
-        FunKitDebug[3, "Found two equal terms"];
-        removeOther = Dispatch[{Alternatives @@ Map[Blank, $allObjects \[Union] {FDOp}] -> 1, Alternatives @@ Map[Blank, GetAllFields[setup] \[Union] {AnyField}] -> 1}];
         (*No need to do any ordering if there are no explicit Grassmanns in the expression*)
         If[GrassmannCount[setup, t1] === 0,
-            factor = (equal * Times @@ (t2 /. removeOther) + Times @@ (t1 /. removeOther)) / Times @@ (t1 /. removeOther);
-            FunKitDebug[3, "With prefactor: ", factor];
-            Return @ FTerm[factor, t1];
+            FunKitDebug[2, "Found two equal terms"];
+            {fac1, terms1} = SplitPrefactor[setup, t1];
+            {fac2, terms2} = SplitPrefactor[setup, nt2];
+            factor = fac1 + equal * fac2;
+            FunKitDebug[2, "With prefactor: ", factor];
+            Return @ FTerm[factor, terms1];
         ];
+        FunKitDebug[2, "STOPPING HERE: Need to resolve Grassmann factors!"];
+        Return[False];
         Print[Style["FATAL: Could not resolve Grassmann factors", Red]];
         Abort[];
-        Return @ FTerm[standardOrderGrassmanns[t1][[1]] * standardOrderGrassmanns[t2][[1]] * (equal * (Times @@ t2) + (Times @@ t1)) / (Times @@ t1) /. Alternatives @@ Map[Blank, $allObjects \[Union] {FDOp}] -> 1 /. Alternatives @@ Map[Blank, GetAllFields[setup]] -> 1, t1];
     ];
 
 (**********************************************************************************
@@ -432,56 +520,6 @@ SubFSimplify[setup_, expr_FEx] :=
         Return[FEx @@ ret];
     ];
 
-(* Construct all permutations of fields in a derivativeList and their prefactors, given a list of symmetries *)
-
-BuildSymmetryList[setup_, symmetries_, derivativeList_] :=
-    Module[{procDerList, buildOneSymmetry},
-        If[Head[symmetries] =!= List,
-            Print["Symmetries must be given as a list!"];
-            Abort[]
-        ];
-        If[Length[symmetries] == 0,
-            Return[{}]
-        ];
-        If[Length[derivativeList] == 0,
-            Return[{}]
-        ];
-        procDerList = derivativeList /. unreplFields[setup];
-        buildOneSymmetry[sym_] :=
-            Module[{valid = True, buildCycle, pairs},
-                If[AnyTrue[sym[[ ;; -2]], Not[Head[#] === List]&],
-                    valid = False
-                ];
-                pairs = Subsets[sym[[ ;; -2]], {2}];
-                valid = Not @ AnyTrue[Map[ContainsAny[#[[1]], #[[2]]]&, pairs], Identity];
-                If[Not @ valid,
-                    Print[sym, " is  not a valid symmetry!"];
-                    Abort[]
-                ];
-                buildCycle[cyc_] :=
-                    Module[{cycvalid = True, numberRules, idx, nextIdx},
-                        If[AnyTrue[cyc, Not[IntegerQ[#]]&],
-                            cycvalid = False
-                        ];
-                        If[AnyTrue[cyc, (# > Length[derivativeList]) || (# < 1)&],
-                            cycvalid = False
-                        ];
-                        If[Not @ cycvalid,
-                            Print[cyc, " is  not a valid cycle!"];
-                            Abort[]
-                        ];
-                        numberRules = {};
-                        For[idx = 1, idx <= Length[cyc], idx++,
-                            nextIdx = Mod[(idx), Length[cyc]] + 1;
-                            numberRules = Join[numberRules, {{cyc[[idx]], cyc[[nextIdx]]}}];
-                        ];
-                        Return[Map[procDerList[[#[[1]], 1]] -> procDerList[[#[[2]], 1]]&, numberRules]];
-                    ];
-                <|"Rule" -> Flatten[Map[buildCycle, sym[[ ;; -2]]], 1], "Factor" -> sym[[-1]]|>
-            ];
-        Return @ Join[{<|"Rule" -> {}, "Factor" -> 1|>}, Map[buildOneSymmetry, symmetries /. Cycles -> Identity]];
-    ];
-
 (* Withing a group of possibly matching FTerms, check for any possible equalities, but this time with a given list of symmetries *)
 
 SubFSimplify[setup_, expr_FEx, symmetryList_] :=
@@ -489,9 +527,9 @@ SubFSimplify[setup_, expr_FEx, symmetryList_] :=
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
                 For[kdx = 1, kdx <= Length[symmetryList], kdx++,
-                    red = symmetryList[[kdx, Key["Factor"]]] * TermsEqualAndSum[setup, ret[[idx]], ret[[jdx]] /. symmetryList[[kdx, Key["Rule"]]]];
+                    red = TermsEqualAndSum[setup, ret[[idx]], ret[[jdx]] /. symmetryList[[kdx, Key["Rule"]]]];
                     If[red =!= False,
-                        ret[[idx]] = red;
+                        ret[[idx]] = FTerm[symmetryList[[kdx, Key["Factor"]]]] ** red;
                         ret = Delete[ret, jdx];
                         jdx--;
                         kdx = Length[symmetryList] + 1;
@@ -534,8 +572,6 @@ FSimplify[setup_, inexpr_FEx, OptionsPattern[]] :=
         ,
         res
         ,
-        symmetryList
-        ,
         map =
             If[$FunKitDebugLevel >= 2,
                 Map
@@ -544,15 +580,24 @@ FSimplify[setup_, inexpr_FEx, OptionsPattern[]] :=
             ]
         ,
         expr
+        ,
+        annotations
     },
-        expr = FOrderFields[setup, inexpr];
-        If[OptionValue["Symmetries"] === {},
+        {expr, annotations} = SeparateFExAnnotations[inexpr];
+        expr = FOrderFields[setup, expr];
+        symmetries =
+            If[KeyExistsQ[annotations, "Symmetries"],
+                annotations["Symmetries"]
+                ,
+                {}
+            ];
+        symmetries = MergeSymmetries[symmetries, OptionValue["Symmetries"]];
+        If[symmetries === {},
             Return[FSimplifyNoSym[setup, expr]]
         ];
         FunKitDebug[1, "Simplifying diagrammatic expression of length ", Length[expr], "with symmetry list"];
         subGroups = SeparateTermGroups[setup, expr];
-        symmetryList = BuildSymmetryList[setup, OptionValue["Symmetries"][[1]], AnyField[#]& /@ OptionValue["Symmetries"][[2]]];
-        res = FEx @@ map[SubFSimplify[setup, #, symmetryList]&, subGroups];
+        res = FEx @@ map[SubFSimplify[setup, #, symmetries]&, subGroups];
         FunKitDebug[1, "FTerms before: ", Length[expr], ", after: ", Length[res]];
-        Return[res];
+        Return[MergeFExAnnotations[res, annotations]];
     ];

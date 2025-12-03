@@ -10,7 +10,7 @@
 
 (* ::Input::Initialization:: *)
 
-SetLoopMomentumName::usage = "SetLoopMomentumName[name]
+FSetLoopMomentumName::usage = "FSetLoopMomentumName[name]
 Sets the base name for loop momentum variables used in functional calculations.
 The name should be a string (e.g., \"l\", \"k\", \"q\") that will be used to generate loop momenta l1, l2, l3, etc.
 Also creates fermionic variants (lf1, lf2, ...) and bosonic variants for different loop types.
