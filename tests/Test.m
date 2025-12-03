@@ -55,7 +55,7 @@ RunAndReportTests[tests_List, testFileName_String] :=
 
 (* Main script execution logic *)
 
-Module[{testFiles, totalSuccesses = 0, totalFailures = 0, mOrange = RGBColor[0.8, 0.4, 0], mRed = RGBColor[0.435294, 0, 0], mGreen = RGBColor[0.0235294, 0.235294, 0.0235294]},
+result = Module[{testFiles, totalSuccesses = 0, totalFailures = 0, mOrange = RGBColor[0.8, 0.4, 0], mRed = RGBColor[0.435294, 0, 0], mGreen = RGBColor[0.0235294, 0.235294, 0.0235294]},
     AppendTo[$Path, DirectoryName[$InputFileName]];
     AppendTo[$Path, FileNameJoin[{DirectoryName[$InputFileName], "..", "modules"}]];
     testFiles = FileNames["*Tests.m", DirectoryName[$InputFileName], 2];
@@ -89,3 +89,5 @@ Module[{testFiles, totalSuccesses = 0, totalFailures = 0, mOrange = RGBColor[0.8
     Print[Style["---------------------------------", Bold, mOrange]];
     Return[totalFailures];
 ];
+
+Exit[result];

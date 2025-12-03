@@ -205,6 +205,12 @@ FEx[pre___, FTerm[prein___, FEx[in___], postin___], post___] :=
 FEx[pre___, annotation_Rule, post_, end___] /; Head[post] =!= Rule :=
     FEx[pre, post, annotation, end];
 
+FEx[annotations__Rule] :=
+    FEx[];
+
+FEx[FTerm[f___], annotations__Rule] /; ContainsNone[{f}, $allObjects] :=
+    FEx[FTerm[f]];
+
 Protect[FEx, FTerm];
 
 (**********************************************************************************
