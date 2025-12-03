@@ -57,7 +57,7 @@ ReduceIndices[setup_, term_FTerm] :=
         cases = Select[cases, FreeQ[getFields[#], AnyField]&];
         casesFMinus = Select[cases, Head[#] === FMinus&];
         cases = Select[cases, Head[#] === \[Gamma]&];
-        closed = Map[MemberQ[closedSIndices, MakePosIdx[#]]&, Indices /@ cases, {2}];
+        closed = Map[MemberQ[closedSIndices, makePosIdx[#]]&, getIndices /@ cases, {2}];
         casesOpen = Pick[cases, Map[Not[#[[1]] || #[[2]]]&, closed]];
         cases = Pick[cases, Map[#[[1]] || #[[2]]&, closed]];
         (*closed is a truth array indicating which indices of cases are closed *)

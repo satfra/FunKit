@@ -72,7 +72,6 @@ ClearAll[LTrunc];
 
 LTrunc[setup_, expr_] :=
     (
-        Print[expr];
         Message[FTruncate::wrongExpr];
         Abort[]
     )

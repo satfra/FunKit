@@ -53,18 +53,18 @@ FResolveFDOp[setup_, term_FTerm] :=
     ];
 
 (**********************************************************************************
-    ResolveDerivatives : Iteratively resolve all derivative operators in an FTerm or FEx
+    FResolveDerivatives : Iteratively resolve all derivative operators in an FTerm or FEx
 **********************************************************************************)
 
-ResolveDerivatives::argument = "The given argument is neither an FTerm nor a FEx.
+FResolveDerivatives::argument = "The given argument is neither an FTerm nor a FEx.
 The argument was `1`";
 
-Options[ResolveDerivatives] = {"Symmetries" -> {}};
+Options[FResolveDerivatives] = {"Symmetries" -> {}};
 
-ResolveDerivatives[setup_, term_FTerm, OptionsPattern[]] :=
-    ResolveDerivatives[setup, FEx[term], "Symmetries" -> OptionValue["Symmetries"]]
+FResolveDerivatives[setup_, term_FTerm, OptionsPattern[]] :=
+    FResolveDerivatives[setup, FEx[term], "Symmetries" -> OptionValue["Symmetries"]]
 
-ResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
+FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
     Module[{ret = eq, annotations, mmap, fw, bw, i, symmetries},
         FunKitDebug[1, "Resolving derivatives"];
         If[FreeQ[ret, FDOp[__], Infinity],
@@ -105,9 +105,9 @@ ResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
         Return[MergeFExAnnotations[ret, annotations]];
     ]
 
-ResolveDerivatives[setup_, a___] :=
+FResolveDerivatives[setup_, a___] :=
     Module[{},
-        Message[ResolveDerivatives::argument, {a}];
+        Message[FResolveDerivatives::argument, {a}];
         Abort[];
     ];
 
@@ -126,7 +126,7 @@ FTakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
         (*First, fix the indices in the input equation, i.e. make everything have unique names*)
         result = FixIndices[setup, FEx[expr]];
         If[Length[derivativeListSIDX] === 0,
-            Return[ResolveDerivatives[setup, result, "Symmetries" -> OptionValue["Symmetries"]]]
+            Return[FResolveDerivatives[setup, result, "Symmetries" -> OptionValue["Symmetries"]]]
         ];
         If[ModuleLoaded[AnSEL] && OptionValue["Symmetries"] === {} && $AutoBuildSymmetryList === True,
             FunKitDebug[2, "Auto-building symmetry list for derivatives"];
@@ -141,7 +141,7 @@ FTakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
         ];
         FunKitDebug[1, "Adding the derivative operator ", (FTerm @@ (FDOp /@ derivativeListSIDX))];
         (*Perform all the derivatives, one after the other*)
-        result = ResolveDerivatives[setup, (FTerm @@ (FDOp /@ derivativeListSIDX)) ** result];
+        result = FResolveDerivatives[setup, (FTerm @@ (FDOp /@ derivativeListSIDX)) ** result];
         If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
             result = FunKit`FSimplify[setup, result];
         ];

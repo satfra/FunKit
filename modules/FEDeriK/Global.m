@@ -22,11 +22,11 @@ FSetGlobalSetup[] :=
 FTruncate[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     FTruncate[$GlobalSetup, expr];
 
-TakeDerivatives[expr_, derivativeList_] /; Head[$GlobalSetup] =!= Symbol :=
-    TakeDerivatives[$GlobalSetup, expr, derivativeList, "Symmetries" -> {}];
+FTakeDerivatives[expr_, derivativeList_] /; Head[$GlobalSetup] =!= Symbol :=
+    FTakeDerivatives[$GlobalSetup, expr, derivativeList, "Symmetries" -> {}];
 
-TakeDerivatives[expr_, derivativeList_, OptionsPattern[]] /; Head[$GlobalSetup] =!= Symbol :=
-    TakeDerivatives[$GlobalSetup, expr, derivativeList, "Symmetries" -> OptionValue["Symmetries"]];
+FTakeDerivatives[expr_, derivativeList_, OptionsPattern[]] /; Head[$GlobalSetup] =!= Symbol :=
+    FTakeDerivatives[$GlobalSetup, expr, derivativeList, "Symmetries" -> OptionValue["Symmetries"]];
 
 QMeSForm[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     QMeSForm[$GlobalSetup, expr];
@@ -49,8 +49,8 @@ FResolveDerivatives[expr_] /; Head[$GlobalSetup] =!= Symbol :=
 FResolveDerivatives[expr_, OptionsPattern[]] /; Head[$GlobalSetup] =!= Symbol :=
     FResolveDerivatives[$GlobalSetup, expr, "Symmetries" -> OptionValue["Symmetries"]];
 
-ResolveFDOp[expr_] /; Head[$GlobalSetup] =!= Symbol :=
-    ResolveFDOp[$GlobalSetup, expr];
+FResolveFDOp[expr_] /; Head[$GlobalSetup] =!= Symbol :=
+    FResolveFDOp[$GlobalSetup, expr];
 
 FOrderFields[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     FOrderFields[$GlobalSetup, expr];
