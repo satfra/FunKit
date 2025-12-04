@@ -527,7 +527,7 @@ RenewFormatDefinitions[] :=
 
 FTex[setup_, expr_] :=
     Module[
-        {prExp = expr, fields, ret}
+        {prExp = expr, fields, ret, idx}
         ,
         (*Turn a given expression into LaTeX code*)
         If[Head[prExp] === FEx,
@@ -548,6 +548,7 @@ FTex[setup_, expr_] :=
         prExp = prExp //. FTerm[pre___, Times[a_, b_], post___] :> FTerm[pre, a, b, post];
         ret = ToString[TeXForm[prExp]];
         ret = StringReplace[ret, "\\text{" ~~ s:LetterCharacter ~~ "}" -> s];
+        Do[ret = StringReplace[ret, "\\text{" ~~ ToString[$TexStyles[[idx, 1]]] ~~ "}" -> $TexStyles[[idx, 2]]], {idx, 1, Length[$TexStyles]}];
         Return[ret];
     ];
 
