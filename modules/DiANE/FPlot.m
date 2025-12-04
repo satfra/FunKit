@@ -1,11 +1,12 @@
-(* ::Section:: *)
-
-(*Diagram drawing*)
-
-(* ::Input::Initialization:: *)
+(**********************************************************************************
+    Styling and Definitions of Graphical Elements for Diagram Drawing
+**********************************************************************************)
 
 MakeEdgeRule[setup_, obj_] :=
-    Module[{},
+    Module[
+        {}
+        ,
+        (*Depending on the type of fields involved, get a directed or undirected edge*)
         If[IsAntiFermion[setup, obj[[1, 1]]] && IsFermion[setup, obj[[1, 2]]],
             Return[makePosIdx @ obj[[2, 1]] -> makePosIdx @ obj[[2, 2]]]
         ];
@@ -14,8 +15,6 @@ MakeEdgeRule[setup_, obj_] :=
         ];
         Return[makePosIdx @ obj[[2, 1]] <-> makePosIdx @ obj[[2, 2]]];
     ];
-
-(* ::Input::Initialization:: *)
 
 crosscircle[r_] :=
     Graphics[{Thick, Line[{{r / Sqrt[2], r / Sqrt[2]}, {-r / Sqrt[2], -r / Sqrt[2]}}], Line[{{r / Sqrt[2], -r / Sqrt[2]}, {-r / Sqrt[2], r / Sqrt[2]}}], Circle[{0, 0}, r]}];
@@ -27,8 +26,6 @@ $standardVertexStyles = {GammaN -> Graphics @ Style[Disk[{0, 0}, 2], Gray], S ->
 
 $standardVertexSize = {GammaN -> 0.15, S -> 0.05, Rdot -> 0.25, Field -> 0.1, R -> 0.2};
 
-(* ::Input::Initialization:: *)
-
 arcFunc[g_, r_:1.5][list_, DirectedEdge[x_, x_]] :=
     With[{v = DynamicLocation["VertexID$" <> ToString[VertexIndex[g, x]], Automatic, Center]},
         Arrow[BezierCurve[Join[{v}, ScalingTransform[r {1, 1}, list[[1]]][list[[{5, 8, 10, 16, 18, 21}]]], {v}], SplineDegree -> 7]]
@@ -39,7 +36,9 @@ arcFuncUn[g_, r_:1.5][list_, UndirectedEdge[x_, x_]] :=
         Arrow[BezierCurve[Join[{v}, ScalingTransform[r {1, 1}, list[[1]]][list[[{5, 8, 10, 16, 18, 21}]]], {v}], SplineDegree -> 7]]
     ]
 
-(* ::Input::Initialization:: *)
+(**********************************************************************************
+    Diagram Drawing
+**********************************************************************************)
 
 FPlot::FDOp = "Cannot plot diagrams with unresolved derivative operators!";
 
@@ -196,5 +195,3 @@ FPlot[setup_, a_] :=
         Message[FPlot::type, Head[a]];
         Abort[]
     )
-
-(* ::Section:: *) 

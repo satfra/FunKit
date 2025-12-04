@@ -35,8 +35,8 @@ Can handle both individual loop-order associations and complete routed expressio
 Used when you need to go back from explicit momentum space to abstract superindex form.";
 
 FSimplify::usage = "FSimplify[setup, expr]
-Simplifies functional expressions by identifying and combining identical terms.
-Uses sophisticated diagram comparison algorithms to detect terms that differ only by index relabeling.
+Simplifies functional expressions by identifying and combining terms.
+Uses diagram comparison to detect terms that differ only by index relabeling or prefactor.
 FSimplify[setup, expr, \"Symmetries\" -> symmetries] allows specifying symmetries to enhance simplification.
 Significantly reduces the number of terms in complex functional calculations.
 Essential for making large diagrammatic expressions manageable.";

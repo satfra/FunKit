@@ -26,3 +26,8 @@ GetAllSymbols[expr_] :=
         obj = DeleteDuplicates @ ((# /. a_[__] :> a)& /@ obj);
         Return[obj];
     ];
+
+(*File handling*)
+
+makeTemporaryFileName[] :=
+    ToString[AbsoluteTime[] * 10^6 // Round] <> "_" <> ToString[RandomInteger[{10^6, 10^7}]]

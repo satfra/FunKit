@@ -78,11 +78,6 @@ If[ModuleLoaded[FEDeriK] =!= True,
 
 ModuleLoaded[DiRK] = True;
 
-(* ::Input::Initialization:: *)
-
-makeTemporaryFileName[] :=
-    ToString[AbsoluteTime[] * 10^6 // Round] <> "_" <> ToString[RandomInteger[{10^6, 10^7}]]
-
 (* ::Section:: *)
 
 (*Making diagrammatic rules*)
