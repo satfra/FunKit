@@ -55,6 +55,7 @@ For a scalar field theory, one can get a more explicit expression as follows:
 ```Mathematica
 fields = <|"Commuting"->{Phi[p]}, "Grassmann"->{}|>;
 truncation = <|GammaN->Table[Table[Phi, {i}], {i, 1, 4}],
+               S->{{Phi, Phi}, {Phi, Phi, Phi, Phi}},
                Propagator->{{Phi, Phi}},
                Rdot->{{Phi, Phi}}|>;
 FSetGlobalSetup[<|"FieldSpace"->fields, "Truncation"->truncation|>];
@@ -69,6 +70,31 @@ which yields the output
     \\ &\,+\,\left(-\frac{1}{2}\,G^{\phi^{a}\phi^{b}}\,\Gamma_{\phi^{c}\phi^{b}\phi^{i_2}\phi^{i_1}}\,G^{\phi^{c}\phi^{d}}\,\partial_t R_{\phi^{d}\phi^{a}}\right)
 \end{aligned}
 ```
+
+For the same theory, we can also derive the Dyson-Schwinger equation for the same two-point function:
+```Mathematica
+FTakeDerivatives[MakeDSE[Phi[i1]], {Phi[i2]}]//FTruncate//FPrint;
+```
+which gives
+```math
+\begin{aligned}\  &S_{\phi^{i_2}\phi^{i_1}}
+    \\ &\,+\,\frac{\phi^{a} \phi^{b}}{2}\,S_{\phi^{b}\phi^{a}\phi^{i_2}\phi^{i_1}}
+    \\ &\,+\,\frac{1}{2}\,S_{\phi^{a}\phi^{b}\phi^{i_2}\phi^{i_1}}\,G^{\phi^{a}\phi^{b}}
+    \\ &\,+\,\left(-\frac{\phi^{a}}{2}\,S_{\phi^{b}\phi^{c}\phi^{a}\phi^{i_1}}\,G^{\phi^{d}\phi^{c}}\,\Gamma_{\phi^{e}\phi^{d}\phi^{i_2}}\,G^{\phi^{b}\phi^{e}}\right)
+    \\ &\,+\,\frac{1}{2}\,S_{\phi^{a}\phi^{b}\phi^{c}\phi^{i_1}}\,G^{\phi^{d}\phi^{b}}\,\Gamma_{\phi^{e}\phi^{d}\phi^{i_2}}\,G^{\phi^{f}\phi^{e}}\,G^{\phi^{g}\phi^{a}}\,\Gamma_{\phi^{h}\phi^{g}\phi^{f}}\,G^{\phi^{c}\phi^{h}}
+    \\ &\,+\,\left(-\frac{1}{6}\,S_{\phi^{a}\phi^{b}\phi^{c}\phi^{i_1}}\,G^{\phi^{d}\phi^{b}}\,G^{\phi^{e}\phi^{a}}\,\Gamma_{\phi^{f}\phi^{e}\phi^{d}\phi^{i_2}}\,G^{\phi^{c}\phi^{f}}\right)
+\end{aligned}
+```
+
+If you wish to wish to remove the remaining fields (i.e. go to the symmetric regime), you can add the line
+```Mathematica
+    ...
+    Field->{},
+    ...
+```
+to the truncation definition above.
+
+You can of course define arbitrary master equations besides the pre-defined `WetterichEquation` and `MakeDSE` ones (among others), see the documentation for details.
 
 ## Examples
 
