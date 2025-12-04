@@ -207,7 +207,7 @@ TermsEqualAndSum[
     , (* Index at which we start in t2 *)
     Msign2_
 ] :=
-    Module[{t1 = it1, t2 = it2, nt1, nt2, allObjt1 = MallObjt1, curIdx1, curPos1, nextInd1, nextPos1, memory1 = Mmemory1, assocFields1, allObjt2 = MallObjt2, curIdx2, curPos2, nextInd2, nextPos2, memory2 = Mmemory2, assocFields2, sign2 = Msign2, iter = 1, idx, jdx, viableBranches, branchSign, branchItRepl, branchObj, temp1, temp2, cidxt2 = Mcidxt2, curIdxRepl},
+    Module[{t1 = it1, t2 = it2, nt1, nt2, allObjt1 = MallObjt1, curIdx1, curPos1, nextInd1, nextPos1, memory1 = Mmemory1, assocFields1, allObjt2 = MallObjt2, curIdx2, curPos2, nextInd2, nextPos2, memory2 = Mmemory2, assocFields2, sign2 = Msign2, iter = 1, idx, jdx, viableBranches, branchSign, branchItRepl, branchObj, temp1, temp2, cidxt2 = Mcidxt2, curIdxRepl, ncidxt2, noidxt2, nmemory2, allIdxRepl = {}, nallIdxRepl, nallIdxReplNew},
         FunKitDebug[3, "Following along a chain of indices."];
         curIdx1 = makePosIdx @ entry1;
         curIdx2 = makePosIdx @ entry2;
@@ -222,12 +222,12 @@ TermsEqualAndSum[
             (*If the (set of) next object(s) is different for 1 and 2, we can immediately abort.*)
             If[Sort @ Map[Head[#][Sort[#[[1]]]]&, nextPos1] =!= Sort @ Map[Head[#][Sort[#[[1]]]]&, nextPos2],
                 FunKitDebug[3, "FAILURE ------------ Heads do not match: ", nextPos1, ", ", nextPos2];
-                Return[{False, allObjt2, t2}]
+                Return[{False, allObjt2, t2, allIdxRepl}]
             ];
             (*Check if the external indices in the current object match *)
             If[Intersection[oidxt1, makePosIdx /@ (curPos1[[2]])] =!= Intersection[oidxt2, makePosIdx /@ (curPos2[[2]])],
                 FunKitDebug[3, "FAILURE ------------ Current open indices disagree: ", Intersection[oidxt1, makePosIdx /@ (curPos1[[2]])], ", ", Intersection[oidxt2, makePosIdx /@ (curPos2[[2]])]];
-                Return[{False, allObjt2, t2}]
+                Return[{False, allObjt2, t2, allIdxRepl}]
             ];
             FunKitDebug[3, "Next objects along the chain: ", nextPos1, ", ", nextPos2];
             FunKitDebug[3, "Entering through: ", nextInd1, ", ", nextInd2];
@@ -237,17 +237,19 @@ TermsEqualAndSum[
                 (*Check if the open indices aggree*)
                 If[Sort @ Intersection[oidxt1, makePosIdx /@ nextPos1[[1, 2]]] =!= Sort @ Intersection[oidxt2, makePosIdx /@ nextPos2[[1, 2]]],
                     FunKitDebug[3, "FAILURE ------------ Next open indices disagree.", Sort @ Intersection[oidxt1, makePosIdx /@ nextPos1[[1, 2]]], ", ", Sort @ Intersection[oidxt2, makePosIdx /@ nextPos2[[1, 2]]]];
-                    Return[{False, allObjt2, t2}]
+                    Return[{False, allObjt2, t2, allIdxRepl}]
                 ];
                 (*replace the indices with the ones in curPos1*)
                 FunKitDebug[4, "Replacing index ", nextInd2[[1]], " with ", nextInd1[[1]]];
-                allObjt2 = allObjt2 /. nextInd2[[1]] -> nextInd1[[1]];
-                memory2 = memory2 /. nextInd2[[1]] -> nextInd1[[1]];
-                curPos2 = curPos2 /. nextInd2[[1]] -> nextInd1[[1]];
-                nextPos2[[1]] = nextPos2[[1]] /. nextInd2[[1]] -> nextInd1[[1]];
-                t2 = t2 /. nextInd2[[1]] -> nextInd1[[1]];
-                sign2 = sign2 /. nextInd2[[1]] -> nextInd1[[1]];
-                cidxt2 = cidxt2 /. nextInd2[[1]] -> nextInd1[[1]];
+                curIdxRepl = nextInd2[[1]] -> nextInd1[[1]];
+                AppendTo[allIdxRepl, curIdxRepl];
+                allObjt2 = allObjt2 /. allIdxRepl;
+                memory2 = memory2 /. allIdxRepl;
+                curPos2 = curPos2 /. allIdxRepl;
+                nextPos2[[1]] = nextPos2[[1]] /. allIdxRepl;
+                t2 = t2 /. allIdxRepl;
+                sign2 = sign2 /. allIdxRepl;
+                cidxt2 = cidxt2 /. allIdxRepl;
                 nextInd2[[1]] = nextInd1[[1]];
                 (*fix the current object*)
                 {temp1, temp2} = RearrangeFields[setup, curPos1, curPos2, {nextInd1[[1]], nextInd2[[1]]}];
@@ -268,12 +270,12 @@ TermsEqualAndSum[
                 (*Check if we closed a loop*)
                 If[FirstPosition[memory1, nextPos1[[1]]] === FirstPosition[memory2, nextPos2[[1]]] && NumericQ[FirstPosition[memory1, nextPos1[[1]]][[1]]],
                     FunKitDebug[3, "SUCCESS ------------ Closed a loop."];
-                    Return[{sign2, allObjt2, t2}]
+                    Return[{sign2, allObjt2, t2, allIdxRepl}]
                 ];
                 (*Closed one loop, but not the other*)
                 If[FirstPosition[memory1, nextPos1[[1]]] =!= FirstPosition[memory2, nextPos2[[1]]],
                     FunKitDebug[3, "FAILURE ------------ Closed only one loop."];
-                    Return[{False, allObjt2, t2}]
+                    Return[{False, allObjt2, t2, allIdxRepl}]
                 ];
                 (*step forward*)
                 curIdx1 = nextInd1[[1]];
@@ -295,11 +297,11 @@ TermsEqualAndSum[
                     temp2 = Cases[t2, FDOp[curPos2[[1, 1]][curPos2[[2, 1]]]], Infinity];
                     If[Length[temp1] =!= Length[temp2],
                         FunKitDebug[3, "FAILURE ------------ Number of FDOps is different."];
-                        Return[{False, allObjt2, t2}]
+                        Return[{False, allObjt2, t2, allIdxRepl}]
                     ];
                 ];
                 FunKitDebug[3, "SUCCESS ------------ Index chain ended with equality."];
-                Return[{sign2, allObjt2, t2}]
+                Return[{sign2, allObjt2, t2, allIdxRepl}]
             ];
             (*Case 3: Branching point.*)
             If[Length[nextInd1] > 1,
@@ -312,19 +314,34 @@ TermsEqualAndSum[
                 FunKitDebug[4, "Viable Branches: ", viableBranches];
                 For[idx = 1, idx <= Length[viableBranches], idx++,
                     branchSign = sign2;
+                    branchObj = allObjt2;
+                    ncidxt2 = cidxt2;
+                    noidxt2 = oidxt2;
+                    nt2 = t2;
+                    nmemory2 = memory2;
+                    nallIdxRepl = allIdxRepl;
                     Do[
                         curIdxRepl = viableBranches[[idx, jdx, 2, 1]] -> viableBranches[[idx, jdx, 1, 1]];
-                        (*Fix the outgoing objects*) {branchSign, branchItRepl} = RearrangeFields[setup, curPos1, curPos2, viableBranches[[idx, jdx, All, 1]]];
+                        AppendTo[nallIdxRepl, curIdxRepl];
+                        (*Fix the outgoing objects*)
+                        {branchSign, branchItRepl} = RearrangeFields[setup, curPos1, curPos2, viableBranches[[idx, jdx, All, 1]]];
                         (*Fix the incoming objects*)
                         {temp1, temp2} = RearrangeFields[setup, viableBranches[[idx, jdx, 1, 3]], viableBranches[[idx, jdx, 2, 3]], viableBranches[[idx, jdx, All, 1]]];
-                        branchSign = temp1 * branchSign;
-                        branchObj = allObjt2;
+                        branchSign = temp1 * branchSign /. nallIdxRepl;
                         branchObj = branchObj /. curPos2 -> branchItRepl;
                         branchObj = branchObj /. viableBranches[[idx, jdx, 2, 3]] -> temp2;
-                        nt2 = t2 /. curPos2 -> branchItRepl /. viableBranches[[idx, jdx, 2, 3]] -> temp2;
-                        viableBranches[[idx, jdx, 2, 3]] = temp2;
+                        branchObj = branchObj /. nallIdxRepl;
+                        nt2 = nt2 /. curPos2 -> branchItRepl /. viableBranches[[idx, jdx, 2, 3]] -> temp2;
+                        nt2 = nt2 /. nallIdxRepl;
+                        viableBranches[[idx, jdx, 2, 1]] = viableBranches[[idx, jdx, 2, 1]] /. nallIdxRepl;
+                        ncidxt2 = ncidxt2 /. nallIdxRepl;
+                        noidxt2 = noidxt2 /. nallIdxRepl;
+                        nmemory2 = nmemory2 /. nallIdxRepl;
+                        viableBranches[[idx, jdx, 2, 3]] = temp2 /. nallIdxRepl;
                         FunKitDebug[4, "Branching at ", branchObj];
-                        {branchSign, branchObj, nt2} = TermsEqualAndSum[setup, t1, nt2 /. curIdxRepl, allObjt1, cidxt1, oidxt1, Append[memory1, viableBranches[[idx, jdx, 1, 3]]], viableBranches[[idx, jdx, 1, 1]], branchObj /. curIdxRepl, cidxt2 /. curIdxRepl, oidxt2 /. curIdxRepl, Append[memory2 /. curPos2 -> branchItRepl, viableBranches[[idx, jdx, 2, 3]]] /. curIdxRepl, viableBranches[[idx, jdx, 2, 1]] /. curIdxRepl, branchSign /. curIdxRepl];
+                        {branchSign, branchObj, nt2, nallIdxReplNew} = TermsEqualAndSum[setup, t1, nt2, allObjt1, cidxt1, oidxt1, Append[memory1, viableBranches[[idx, jdx, 1, 3]]], viableBranches[[idx, jdx, 1, 1]], branchObj, ncidxt2, noidxt2, Append[memory2 /. curPos2 -> branchItRepl, viableBranches[[idx, jdx, 2, 3]]] /. nallIdxRepl, viableBranches[[idx, jdx, 2, 1]], branchSign];
+                        nallIdxRepl = Join[nallIdxRepl, nallIdxReplNew] // DeleteDuplicates;
+                        FunKitDebug[6, "Returned from branch call ", jdx, " of ", Length[viableBranches[[idx]]]];
                         If[branchSign === False,
                             Break[]
                         ];
@@ -335,10 +352,10 @@ TermsEqualAndSum[
                         Continue[]
                     ];
                     FunKitDebug[3, "SUCCESS ------------ Branch ", idx, " succeeded, branchSign is ", branchSign];
-                    Return[{branchSign, branchObj, nt2}];
+                    Return[{branchSign, branchObj, nt2, nallIdxRepl}];
                 ];
                 FunKitDebug[3, "FAILURE ------------ Branch failed."];
-                Return[{False, allObjt2, t2}];
+                Return[{False, allObjt2, t2, allIdxRepl}];
             ];
             (*Nothing should lead here*)
             Message[TermsEqualAndSum::branchFailure];
@@ -384,7 +401,7 @@ TermsEqualAndSum::undeterminedFields = "Error: Cannot equate terms if they are n
 
 TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
     Module[
-        {t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2], nt1, nt2, curIdx2, curIdxRepl, startPoints, doFields, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2}
+        {t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2], nt1, nt2, curIdx2, curIdxRepl, startPoints, doFields, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2, nallIdxReplNew}
         ,
         (*If[MemberQ[t1,AnyField,Infinity],Message[TermsEqualAndSum::undeterminedFields];Abort[]];*)
         (*Briefly check the trivial case*)
@@ -447,7 +464,8 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
                 FunKitDebug[3, "Starting point replacement: ", curIdxRepl];
                 FunKitDebug[3, "StartPoints: \n  ", startt1, "\n  ", nstartt2 /. curIdxRepl];
                 FunKitDebug[3, "StartIndices: \n  ", cidxstartt1[[1]], "\n  ", curIdx2 /. curIdxRepl];
-                {equal, branchAllObjt2, nt2} = TermsEqualAndSum[setup, t1, t2 /. curIdxRepl, allObjt1, cidxt1, oidxt1, {startt1}, cidxstartt1[[1]], branchAllObjt2 /. curIdxRepl, cidxt2 /. curIdxRepl, oidxt2 /. curIdxRepl, {nstartt2} /. curIdxRepl, curIdx2 /. curIdxRepl, startsign /. curIdxRepl];
+                {equal, branchAllObjt2, nt2, nallIdxReplNew} = TermsEqualAndSum[setup, t1, t2 /. curIdxRepl, allObjt1, cidxt1, oidxt1, {startt1}, cidxstartt1[[1]], branchAllObjt2 /. curIdxRepl, cidxt2 /. curIdxRepl, oidxt2 /. curIdxRepl, {nstartt2} /. curIdxRepl, curIdx2 /. curIdxRepl, startsign /. curIdxRepl];
+                FunKitDebug[6, "Returned from main call"];
                 FunKitDebug[3, "Finished pass ", jdx, " with equal=", equal];
                 (*If we found an equality, break out*)
                 If[equal =!= False,
@@ -508,7 +526,7 @@ SubFSimplify[setup_, expr_FEx] :=
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
                 red = TermsEqualAndSum[setup, ret[[idx]], ret[[jdx]]];
-                FunKitDebug[3, "Comparing ", idx, " and ", jdx, ", result: ", red];
+                FunKitDebug[3, "Compared ", idx, " and ", jdx, ", result: ", red];
                 If[red =!= False,
                     ret[[idx]] = red;
                     ret = Delete[ret, jdx];
@@ -527,6 +545,7 @@ SubFSimplify[setup_, expr_FEx, symmetryList_] :=
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
                 For[kdx = 1, kdx <= Length[symmetryList], kdx++,
                     red = TermsEqualAndSum[setup, ret[[idx]], ret[[jdx]] /. symmetryList[[kdx, Key["Rule"]]]];
+                    FunKitDebug[3, "Compared ", idx, " and ", jdx, ", result: ", red];
                     If[red =!= False,
                         ret[[idx]] = FTerm[symmetryList[[kdx, Key["Factor"]]]] ** red;
                         ret = Delete[ret, jdx];

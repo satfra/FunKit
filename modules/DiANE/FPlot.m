@@ -43,18 +43,6 @@ arcFuncUn[g_, r_:1.5][list_, UndirectedEdge[x_, x_]] :=
 
 FPlot::FDOp = "Cannot plot diagrams with unresolved derivative operators!";
 
-braceTexTerm[expr_] :=
-    Module[
-        {ret}
-        ,
-        (*TODO*)
-        ret = ToString[expr];
-        If[StringTake[ret, 1] != "(",
-            ret = "\\left(" <> ret <> "\\right)"
-        ];
-        Return[ret];
-    ];
-
 GetDiagram[setup_, expr_FTerm] :=
     Module[{PossibleVertices, PossibleEdges, Styles, diag, allObj, fieldObj, vertices, edges, vertexReplacements, graph, phantomVertices, edgeFields, fieldVertices, fieldEdges, fieldEdgeFields, oidx, externalVertices, vertexNames, doubledVertices, externalEdges, externalFields, idx, prefactor, doubledEdges, doFields, eWeights, addVertexSizes = {}},
         If[MemberQ[expr, FDOp[__], Infinity],
@@ -152,10 +140,17 @@ GetDiagram[setup_, expr_FTerm] :=
         externalEdges = Table[MakeEdgeRule[setup, Propagator[{GetPartnerField[setup, externalFields[[idx]]], externalFields[[idx]]}, {externalVertices[[idx]], GetOpenSuperIndices[setup, diag][[idx]] /. vertexReplacements}]], {idx, 1, Length[externalVertices]}];
         externalEdges = Table[Style[externalEdges[[idx]], ##]& @@ Flatten @ {externalFields[[idx]] /. Styles}, {idx, 1, Length[externalEdges]}];
         (*get the prefactor*)
+        prefactor = FTerm[Times @@ (diag /. doFields /. Map[Blank[#] -> 1&, Join[{Field}, $indexedObjects]])];
         prefactor =
-            FTex[FTerm[Times @@ (diag /. doFields /. Map[Blank[#] -> 1&, Join[{Field}, $indexedObjects]])]] //
-            braceTexTerm //
-            MaTeX`MaTeX;
+            If[prefactor === FTerm[],
+                ""
+                ,
+                If[prefactor === FTerm[-1],
+                    "-1" // MaTeX`MaTeX
+                    ,
+                    FTex[prefactor] // MaTeX`MaTeX
+                ]
+            ];
         oidx = GetOpenSuperIndices[setup, diag];
         Do[
             If[MemberQ[externalEdges, oidx[[idx]], Infinity],
