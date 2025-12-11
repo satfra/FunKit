@@ -103,7 +103,7 @@ FEx::TimesError = "A FEx cannot be multiplied using Times[__]. To multiply FExs,
 
 (*Removal of zero FTerms*)
 
-FEx[pre___, FTerm[___, 0, ___], post___] :=
+FEx[pre___, FTerm[0], post___] :=
     FEx[pre, post]
 
 FEx[pre___, FTerm[], mid___, FTerm[], post___] :=
@@ -186,8 +186,34 @@ FEx /: FTerm[FEx[a__], FEx[b__]] :=
 
 (*Reduction of immediately nested FExs*)
 
-FEx[pre___, FEx[in___], post___] :=
-    FEx[pre, in, post]
+PrepareForMerge[a_List] :=
+    Module[{prev, ret = a},
+        prev = {};
+        While[
+            ret =!= prev
+            ,
+            prev = ret;
+            ret =
+                Map[
+                        If[Head[#] === FEx,
+                            List @@ #
+                            ,
+                            #
+                        ]&
+                        ,
+                        ret
+                    ] // Flatten;
+        ];
+        Return[ret]
+    ];
+
+FEx[pre___, FEx[], post___] :=
+    FEx[pre, post]
+
+FEx[pre___, FEx[in__], post___] :=
+    FEx @@ PrepareForMerge[{pre, in, post}];
+
+(*
 
 FEx /: FTerm[FEx[a__]] :=
     FEx[a]
@@ -210,6 +236,8 @@ FEx[annotations__Rule] :=
 
 FEx[FTerm[f___], annotations__Rule] /; AllTrue[$allObjects, FreeQ[{f}, #, Infinity]&] :=
     FEx[FTerm[f]];
+
+*)
 
 Protect[FEx, FTerm];
 

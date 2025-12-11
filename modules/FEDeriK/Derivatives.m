@@ -7,7 +7,7 @@ Error in `1`";
 
 FResolveFDOp[setup_, FEx_FEx] :=
     Module[{},
-        Return[FEx @@ Map[FResolveFDOp[setup, #]&, List @@ FEx]];
+        Return[FEx @@ ParallelMap[FResolveFDOp[setup, #]&, List @@ FEx]];
     ];
 
 FResolveFDOp[setup_, term_FTerm] :=
@@ -82,7 +82,7 @@ FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
         ret = ret // fw;
         (*ParallelMap will incur some overhead, but it quickly pays off*)
         mmap =
-            If[Total[Length /@ (List @@ FEx[ret])] > 10,
+            If[Total[Length /@ (List @@ FEx[ret])] > 2,
                 ParallelMap
                 ,
                 Map
@@ -92,7 +92,13 @@ FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
             MemberQ[ret, FDOp[__], Infinity] && i < $MaxDerivativeIterations
             ,
             FunKitDebug[1, "Doing derivative pass ", i + 1];
-            ret = FEx @@ mmap[FResolveFDOp[setup, #]&, List @@ ret];
+            Print["Derivative pass ", i + 1];
+            Print["mmap is ", mmap];
+            ret = mmap[FResolveFDOp[setup, #]&, List @@ ret];
+            Print["Finished pass ", i + 1];
+            Return[ret];
+            ret = FEx @@ ret;
+            Print["FFFFFinished pass ", i + 1];
             (*If AnSEL has been loaded, use FSimplify to reduce redundant terms*)
             If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
                 FunKitDebug[2, "Simplifying after derivative pass ", i + 1];
@@ -118,13 +124,15 @@ FResolveDerivatives[setup_, a___] :=
 Options[FTakeDerivatives] = {"Symmetries" -> {}};
 
 FTakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
-    Module[{result, externalIndexNames, outputReplacements, derivativeListSIDX, symmetries},
+    Module[{result, externalIndexNames, outputReplacements, derivativeListSIDX, symmetries, annotations},
         AssertFSetup[setup];
         AssertDerivativeList[setup, derivativeList];
         (*We take them in reverse order.*)
         derivativeListSIDX = derivativeList;
+        (***)
+        {result, annotations} = SeparateFExAnnotations[FEx[expr]];
         (*First, fix the indices in the input equation, i.e. make everything have unique names*)
-        result = FixIndices[setup, FEx[expr]];
+        result = FixIndices[setup, result];
         If[Length[derivativeListSIDX] === 0,
             Return[FResolveDerivatives[setup, result, "Symmetries" -> OptionValue["Symmetries"]]]
         ];
@@ -136,6 +144,9 @@ FTakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
             symmetries = OptionValue["Symmetries"];
         ];
         symmetries = MergeSymmetries[symmetries, OptionValue["Symmetries"]];
+        If[KeyExistsQ[annotations, "Symmetries"],
+            symmetries = MergeSymmetries[symmetries, annotations["Symmetries"]];
+        ];
         If[symmetries =!= {},
             result = FEx[result, "Symmetries" -> symmetries]
         ];
