@@ -240,9 +240,14 @@ TermsEqualAndSum[
                     Return[{False, allObjt2, t2, allIdxRepl}]
                 ];
                 (*replace the indices with the ones in curPos1*)
-                FunKitDebug[4, "Replacing index ", nextInd2[[1]], " with ", nextInd1[[1]]];
-                curIdxRepl = nextInd2[[1]] -> nextInd1[[1]];
+                curIdxRepl =
+                    If[nextInd1[[1]] =!= Null && nextInd2[[1]] =!= Null,
+                        nextInd2[[1]] -> nextInd1[[1]]
+                        ,
+                        {}
+                    ];
                 AppendTo[allIdxRepl, curIdxRepl];
+                FunKitDebug[4, "Replacing indices: ", curIdxRepl];
                 allObjt2 = allObjt2 /. allIdxRepl;
                 memory2 = memory2 /. allIdxRepl;
                 curPos2 = curPos2 /. allIdxRepl;
@@ -323,6 +328,7 @@ TermsEqualAndSum[
                     Do[
                         curIdxRepl = viableBranches[[idx, jdx, 2, 1]] -> viableBranches[[idx, jdx, 1, 1]];
                         AppendTo[nallIdxRepl, curIdxRepl];
+                        FunKitDebug[4, "Replacing indices: ", curIdxRepl];
                         (*Fix the outgoing objects*)
                         {branchSign, branchItRepl} = RearrangeFields[setup, curPos1, curPos2, viableBranches[[idx, jdx, All, 1]]];
                         (*Fix the incoming objects*)
@@ -373,6 +379,9 @@ RearrangeFields[setup_, t1_, t2_, equiv_] :=
 (* Given two objects t1, t2, re-order the fields in the indexed object t2,
 so that the exit index equivalently fits the position in t1.
 Returns both the sign and the reordered t2*)
+        If[equiv[[1]] === Null || equiv[[2]] === Null,
+            Return[{1, t2}]
+        ];
         ipos1 = FirstPosition[makePosIdx /@ t1[[2]], equiv[[1]]][[1]];
         ipos2 = FirstPosition[makePosIdx /@ t2[[2]], equiv[[2]]][[1]];
         (*nothing to do:*)
@@ -401,7 +410,7 @@ TermsEqualAndSum::undeterminedFields = "Error: Cannot equate terms if they are n
 
 TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
     Module[
-        {t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2], nt1, nt2, curIdx2, curIdxRepl, startPoints, doFields, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2, nallIdxReplNew}
+        {t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2], nt1, nt2, curIdx1, curIdx2, curIdxRepl, startPoints, doFields, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2, nallIdxReplNew}
         ,
         (*If[MemberQ[t1,AnyField,Infinity],Message[TermsEqualAndSum::undeterminedFields];Abort[]];*)
         (*Briefly check the trivial case*)
@@ -436,7 +445,7 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
         (*We pick the first candidate for t1 and iterate over all candidates for t2.*)
         startt1 = startPoints[[2, 1]];
         (*starting indices can only be closed indices! We pick these out with the following 4 commands*)
-        startt1fields = startt1[[1]];
+        startt1fields = getFields[startt1];
         cidxstartt1 = Map[MemberQ[cidxt1, makePosIdx @ #]&, startt1[[2]]];
         startt1fields = Pick[startt1fields, cidxstartt1];
         cidxstartt1 = makePosIdx /@ Pick[startt1[[2]], cidxstartt1];
@@ -445,6 +454,11 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
             Return[False]
         ];
         FunKitDebug[3, "Comparing the terms \n  ", t1, "\n  ", t2];
+        If[Length[cidxstartt1] == 1,
+            curIdx1 = Null
+            ,
+            curIdx1 = cidxstartt1[[1]];
+        ];
         (*If the terms are equal for any starting candidates for t2, we have succeeded*)
         For[idx = 1, idx <= Length[startPoints[[3]]], idx++,
             startt2 = startPoints[[3, idx]];
@@ -454,17 +468,28 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
             cidxstartt2 = Pick[makePosIdx /@ startt2[[2]], cidxstartt2];
             (*Loop over all possible starting indices*)
             For[jdx = 1, jdx <= Length[cidxstartt2], jdx++,
-                curIdx2 = cidxstartt2[[jdx]];
-                curIdxRepl = curIdx2 -> cidxstartt1[[1]];
+                If[Length[cidxstartt2] == 1,
+                    curIdx2 = Null
+                    ,
+                    curIdx2 = cidxstartt2[[jdx]];
+                ];
+                curIdxRepl =
+                    If[curIdx1 =!= Null && curIdx2 =!= Null,
+                        curIdx2 -> curIdx1
+                        ,
+                        {}
+                    ];
+                FunKitDebug[4, "Replacing indices: ", curIdxRepl];
                 (*re-order the starting point so that it fits the first.*)
-                {startsign, nstartt2} = RearrangeFields[setup, startt1, startt2, {cidxstartt1[[1]], curIdx2}];
+                {startsign, nstartt2} = RearrangeFields[setup, startt1, startt2, {curIdx1, curIdx2}];
                 branchAllObjt2 = allObjt2 /. startt2 -> nstartt2;
+                (*if nstartt2 (first object) has only one field, set the start index to Null*)
                 (*iterate the diagram*)
                 FunKitDebug[3, "Starting sign: ", startsign /. curIdxRepl];
                 FunKitDebug[3, "Starting point replacement: ", curIdxRepl];
                 FunKitDebug[3, "StartPoints: \n  ", startt1, "\n  ", nstartt2 /. curIdxRepl];
-                FunKitDebug[3, "StartIndices: \n  ", cidxstartt1[[1]], "\n  ", curIdx2 /. curIdxRepl];
-                {equal, branchAllObjt2, nt2, nallIdxReplNew} = TermsEqualAndSum[setup, t1, t2 /. curIdxRepl, allObjt1, cidxt1, oidxt1, {startt1}, cidxstartt1[[1]], branchAllObjt2 /. curIdxRepl, cidxt2 /. curIdxRepl, oidxt2 /. curIdxRepl, {nstartt2} /. curIdxRepl, curIdx2 /. curIdxRepl, startsign /. curIdxRepl];
+                FunKitDebug[3, "StartIndices: \n  ", curIdx1, "\n  ", curIdx2 /. curIdxRepl];
+                {equal, branchAllObjt2, nt2, nallIdxReplNew} = TermsEqualAndSum[setup, t1, t2 /. curIdxRepl, allObjt1, cidxt1, oidxt1, {startt1}, curIdx1, branchAllObjt2 /. curIdxRepl, cidxt2 /. curIdxRepl, oidxt2 /. curIdxRepl, {nstartt2} /. curIdxRepl, curIdx2 /. curIdxRepl, startsign /. curIdxRepl];
                 FunKitDebug[6, "Returned from main call"];
                 FunKitDebug[3, "Finished pass ", jdx, " with equal=", equal];
                 (*If we found an equality, break out*)

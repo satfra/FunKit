@@ -49,7 +49,7 @@ fermionicExtMomRouting[setup_, vertex_] :=
 (* The main routing function *)
 
 FRoute[setup_, expr_FTerm] :=
-    Module[{openIndices, closedIndices, objects, ret = ReduceFTerm[setup, ReduceIndices[setup, expr]], doFields, idx, a, indPos, assocField, subObj, subMom, subExtMom, indStruct, externalIndices, externalMomenta, kind, f, momRepl, i, mom, loopMomenta, sidx, discard, rightMomenta, closedIndex, nextObj, tmp, flag},
+    Module[{openIndices, closedIndices, objects, ret = ReduceFTerm[setup, ReduceIndices[setup, expr]], doFields, idx, a, indPos, assocField, subObj, subMom, subExtMom, indStruct, externalIndices, externalMomenta, kind, f, momRepl, i, mom, loopMomenta, sidx, discard, rightMomenta, closedIndex, nextObj, tmp, flag, availMomemnta},
         FunKitDebug[1, "FRoute: routing the sub-term ", expr];
         (*We first get all closed, open indices and all indexed objects. *)
         doFields = replFields[setup];
@@ -74,6 +74,7 @@ FRoute[setup_, expr_FTerm] :=
             nextObj = FirstPosition[objects, nextObj[[1]]];
             (*Swap the object right after with nextObj*)
             If[nextObj =!= "NotFound" && nextObj[[1]] =!= idx + 1,
+                nextObj = nextObj[[1]];
                 FunKitDebug[2, "  FRoute: Swapping objects at positions ", idx + 1, " and ", nextObj];
                 tmp = objects[[idx + 1]];
                 objects[[idx + 1]] = objects[[nextObj]];
@@ -84,7 +85,8 @@ FRoute[setup_, expr_FTerm] :=
         ];
         (*Now, momenta. As a first step, we insert the correct index structures into all superindices and define momentum variables at every single vertex. We loop over all closed indices.*)
         Do[
-            (*The indexed object we currently modify. There are always two and we simply grab the first. *)subObj = Select[objects, MemberQ[#, closedIndices[[idx]], Infinity]&][[1]];
+            subObj = Select[objects, MemberQ[#, closedIndices[[idx]], Infinity]&][[1]];
+            (*The indexed object we currently modify. There are always two and we simply grab the first. *)
             (*The position of the current index inside the subObj*)
             indPos = FirstPosition[subObj[[2]], closedIndices[[idx]]][[1]];
             (*See what kind of field is associated with the index*)
@@ -184,26 +186,30 @@ Momentum conservation is already enforced here, i.e. \!\(
             (*********************************************************************************)
             If[Length[subExtMom] === 0,
                 (*If we have nothing to enforce, skip this object. This is the case for 1-Point functions*)
-                If[Length[subObj[[2, All, 1]]] < 2,
+                availMomenta = Total[subObj[[2, All]]];
+                availMomenta = makePosIdx /@ Flatten[{availMomenta //. {Plus[a_, b__] :> List[a, b], Times[a_loopMomentum, b__] :> List[a, b]}}];
+                availMomenta = Select[availMomenta, MatchQ[#, loopMomentum[__, _]]&];
+                If[Length[availMomenta] < 2,
                     Continue[]
                 ];
                 FunKitDebug[3, "      FRoute: No external momenta"];
                 (*Grab the first loopMomentum that is fermionic*)
-                tmp = subObj[[2, All]] //. loopMomentum[_, True] -> loopMomentum[1, True];
+                tmp = subObj[[2, All]] /. loopMomentum[_, True] -> loopMomentum[1, True];
+                (* Get rid of fermionic momenta that are NOT available (i.e. already routed)*)
+                tmp = tmp /. loopMomentum[a_, b_] /; FreeQ[availMomenta, loopMomentum[a, b]] :> {};
                 f = Select[tmp, MemberQ[#, loopMomentum[_, True], Infinity]&];
                 If[Length[f] =!= 0,
                     f = Position[tmp, f[[1]]][[1, 1]];
+                    (*Make a list of momenta out of the momentum sum in the subObj at position f *)
+                    tmp = makePosIdx /@ Flatten[{subObj[[2, f, 1]] //. {Plus[a_, b__] :> List[a, b], Times[a_loopMomentum, b__] :> List[a, b]}}];
+                    (*Grab one of the momenta which is a loopMomentum *)
+                    mom = Select[tmp, MatchQ[#, loopMomentum[_, True]]&];
+                    If[Length[mom] === 0,
+                        mom = Select[availMomenta, MatchQ[#, loopMomentum[_, False]]&];
+                    ];
                     ,
                     (*Otherwise, we have no (purely) fermionic loop momenta, so just grab the first bosonic one*)
-                    f = Select[subObj[[2, All]], MemberQ[#, loopMomentum[_, False], Infinity]&];
-                    f = Position[subObj[[2]], f[[1]]][[1, 1]];
-                ];
-                (*Make a list of momenta out of the momentum sum in the subObj at position f *)
-                tmp = makePosIdx /@ Flatten[{subObj[[2, f, 1]] //. {Plus[a_, b__] :> List[a, b], Times[a_loopMomentum, b__] :> List[a, b]}}];
-                (*Grab one of the momenta which is a loopMomentum *)
-                mom = Select[tmp, MatchQ[#, loopMomentum[_, True]]&];
-                If[Length[mom] === 0,
-                    mom = Select[tmp, MatchQ[#, loopMomentum[_, False]]&];
+                    mom = Select[availMomenta, MatchQ[#, loopMomentum[_, False]]&];
                 ];
                 mom = mom[[1]];
                 (*Now create the replacement rule*)
@@ -221,32 +227,18 @@ Momentum conservation is already enforced here, i.e. \!\(
                 flag = fermionicExtMomRouting[setup, subObj];
                 FunKitDebug[3, "        Are we routing a fermionic external momentum? ", flag];
                 (*If we have a fermionic external momentum, we need to route it correctly. In that case, try to find a fermionic loopMomentum*)
-                If[flag,
-                    f = Select[subObj[[2, All]], MemberQ[#, loopMomentum[_, True], Infinity]&];
-                    FunKitDebug[5, "        1. Chose f =  ", f];
-                ];
-                (*Otherwise, or, if we can't find a fermionic loopMomentum, pick a bosonic one*)
-                If[Not @ flag || Length[f] === 0,
-                    f = Select[subObj[[2, All]], MemberQ[#, loopMomentum[_, False], Infinity]&];
-                    (* There's one more (nested) case: we have only fermionic loop Momenta, but no external fermionic one.*)
-                    If[Length[f] === 0,
-                        f = Select[subObj[[2, All]], MemberQ[#, loopMomentum[_, True], Infinity]&];
-                    ];
-                    FunKitDebug[5, "        2. Chose f =  ", f];
-                ];
-                f = Position[subObj[[2]], f[[1]]][[1, 1]];
-                FunKitDebug[5, "        Final f =  ", f];
-                (*Make a list of momenta out of the momentum sum in the subObj at position f *)
-                tmp = makePosIdx /@ Flatten[{subObj[[2, f, 1]] //. {Plus[a_, b__] :> List[a, b], Times[a_loopMomentum, b__] :> List[a, b]}}];
-                FunKitDebug[5, "        tmp =  ", tmp];
+                availMomenta = Total[subObj[[2, All]]];
+                availMomenta = makePosIdx /@ Flatten[{availMomenta //. {Plus[a_, b__] :> List[a, b], Times[a_loopMomentum, b__] :> List[a, b]}}];
+                availMomenta = Select[availMomenta, MatchQ[#, loopMomentum[__, _]]&];
+                FunKitDebug[5, "        available loop momenta =  ", availMomenta];
                 (*Grab one of the momenta which is a loopMomentum *)
                 If[flag,
-                    mom = Select[tmp, MatchQ[#, loopMomentum[_, True]]&];
+                    mom = Select[availMomenta, MatchQ[#, loopMomentum[_, True]]&];
                 ];
                 If[Not @ flag || Length[mom] === 0,
-                    mom = Select[tmp, MatchQ[#, loopMomentum[_, False]]&];
+                    mom = Select[availMomenta, MatchQ[#, loopMomentum[_, False]]&];
                     If[Length[mom] === 0,
-                        mom = Select[tmp, MatchQ[#, loopMomentum[_, True]]&];
+                        mom = Select[availMomenta, MatchQ[#, loopMomentum[_, True]]&];
                     ];
                 ];
                 mom = mom[[1]];
