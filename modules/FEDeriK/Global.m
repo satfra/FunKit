@@ -1,5 +1,6 @@
 (**********************************************************************************
-    Global Setup
+    Global Setup: If $GlobalSetup is set, all functions that take a setup as first
+    argument will use this setup automatically if called without setup.
 **********************************************************************************)
 
 Protect[$GlobalSetup];
@@ -56,7 +57,12 @@ FOrderFields[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     FOrderFields[$GlobalSetup, expr];
 
 (**********************************************************************************
-    Global Variables
+    Global Variables:
+    - What objects are recognized by default
+    - Which ones have been registered by the user
+    - What is explicitly non-commuting
+    - Maximum number of derivative iterations
+    - Default canonical ordering (order of bosons, fermions, antifermions)
 **********************************************************************************)
 
 $userCorrelationFunctions = {};
@@ -87,7 +93,7 @@ $CanonicalOrdering = "b>af>f";
 Protect @@ $allObjects;
 
 (**********************************************************************************
-    Modifying/Showing the global lists
+    Functions to allow the user to add their own objects
 **********************************************************************************)
 
 AddIndexedObject[name_Symbol] :=
@@ -121,7 +127,8 @@ ShowCorrelationFunctions[] :=
     Print[TableForm[Sort @ $CorrelationFunctions]];
 
 (**********************************************************************************
-    Set/unset automatic simplification
+    Set/unset automatic simplification and 
+    construction of symmetry lists when taking derivatives
 **********************************************************************************)
 
 $AutoBuildSymmetryList = True;
@@ -133,6 +140,10 @@ $AutoSimplify = True;
 
 FSetAutoSimplify[flag_:True] :=
     $AutoSimplify = flag;
+
+(**********************************************************************************
+    An empty setup for default use, testing, etc.
+**********************************************************************************)
 
 FEmptySetup :=
     <|"FieldSpace" -> <|"Commuting" -> {}, "Grassmann" -> {}|>|>;

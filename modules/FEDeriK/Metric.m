@@ -65,25 +65,28 @@ ReduceIndices[setup_, term_FTerm] :=
         (*replace the terms in question by the evaluated metric factor*)
         result = result /. Map[# :> metric[setup, getIdxSign[#, 1] getField[#, 1], getIdxSign[#, 2] getField[#, 2]]&, Join[cases, casesOpen]];
         (*replace the remaining indices. If both are up or both or down, the remaining indices change signs.*)
-        result =
-            result /.
-                Table[
-                    both =
-                        If[!Xor[isNeg[getIndex[cases[[i]], 1]], isNeg[getIndex[cases[[i]], 2]]],
-                            -1
+        If[Length[cases] > 0,
+            result =
+                result /.
+                    Table[
+                        both =
+                            If[!Xor[isNeg[getIndex[cases[[i]], 1]], isNeg[getIndex[cases[[i]], 2]]],
+                                -1
+                                ,
+                                1
+                            ];
+                        If[closed[[i, 1]],
+                            makePosIdx[getIndex[cases[[i]], 1]] -> both * makePosIdx[getIndex[cases[[i]], 2]]
                             ,
-                            1
-                        ];
-                    If[closed[[i, 1]],
-                        makePosIdx[getIndex[cases[[i]], 1]] -> both * makePosIdx[getIndex[cases[[i]], 2]]
+                            makePosIdx[getIndex[cases[[i]], 2]] -> both * makePosIdx[getIndex[cases[[i]], 1]]
+                        ]
                         ,
-                        makePosIdx[getIndex[cases[[i]], 2]] -> both * makePosIdx[getIndex[cases[[i]], 1]]
-                    ]
-                    ,
-                    {i, 1, Length[cases]}
-                ];
+                        {i, 1, Length[cases]}
+                    ];
+        ];
         (*Resolve all FMinus factors*)
         result = result /. Map[# -> CommuteSign[setup, getField[#, 1], getField[#, 2]]&, casesFMinus];
+        FunKitDebug[5, "Reduced factors in FTerm: ", cases];
         Return[result];
     ];
 

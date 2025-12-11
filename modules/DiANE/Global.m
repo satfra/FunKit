@@ -1,5 +1,6 @@
 (**********************************************************************************
-    Global Setup
+    Global Setup: If $GlobalSetup is set, all functions that take a setup as first
+    argument will use this setup automatically if called without setup.
 **********************************************************************************)
 
 FPrint[expr_] /; Head[$GlobalSetup] =!= Symbol :=
