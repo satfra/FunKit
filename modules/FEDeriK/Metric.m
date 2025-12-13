@@ -58,12 +58,14 @@ ReduceIndices[setup_, term_FTerm] :=
         casesFMinus = Select[cases, Head[#] === FMinus&];
         cases = Select[cases, Head[#] === \[Gamma]&];
         closed = Map[MemberQ[closedSIndices, makePosIdx[#]]&, getIndices /@ cases, {2}];
-        casesOpen = Pick[cases, Map[Not[#[[1]] || #[[2]]]&, closed]];
-        cases = Pick[cases, Map[#[[1]] || #[[2]]&, closed]];
+(*casesOpen = Pick[cases, Map[Not[#[[1]] || #[[2]]]&, closed]];
+cases = Pick[cases, Map[#[[1]] || #[[2]]&, closed]];*)
         (*closed is a truth array indicating which indices of cases are closed *)
-        closed = Pick[closed, Map[#[[1]] || #[[2]]&, closed]];
+        (*closed = Pick[closed, Map[#[[1]] || #[[2]]&, closed]];*)
         (*replace the terms in question by the evaluated metric factor*)
-        result = result /. Map[# :> metric[setup, getIdxSign[#, 1] getField[#, 1], getIdxSign[#, 2] getField[#, 2]]&, Join[cases, casesOpen]];
+        FunKitDebug[5, "Found factors in FTerm: ", cases];
+        FunKitDebug[5, "Closed indices: ", closed];
+        result = result /. Map[# :> metric[setup, getIdxSign[#, 1] getField[#, 1], getIdxSign[#, 2] getField[#, 2]]&, cases];
         (*replace the remaining indices. If both are up or both or down, the remaining indices change signs.*)
         If[Length[cases] > 0,
             result =
@@ -86,7 +88,6 @@ ReduceIndices[setup_, term_FTerm] :=
         ];
         (*Resolve all FMinus factors*)
         result = result /. Map[# -> CommuteSign[setup, getField[#, 1], getField[#, 2]]&, casesFMinus];
-        FunKitDebug[5, "Reduced factors in FTerm: ", cases];
         Return[result];
     ];
 

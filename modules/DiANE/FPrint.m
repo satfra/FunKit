@@ -220,6 +220,8 @@ $TexStyles = {};
 
 $Fields = {};
 
+$Setup = {};
+
 AddTexStyles::invalidRule = "The given set of style rules does not follow the pattern Symbol->String.";
 
 AddTexStyles[a__Rule] :=
@@ -429,7 +431,7 @@ RenewFormatDefinitions[] :=
                 replNames = Join[Thread[$availableLoopMomenta -> Table[Subscript[Symbol[$loopMomentumName], idx], {idx, 1, Length[$availableLoopMomenta]}]], Thread[$availableLoopMomentaf -> Table[Subscript[Symbol[$loopMomentumName], "f," <> ToString @ idx], {idx, 1, Length[$availableLoopMomentaf]}]]];
                 prefix = StringJoin[Map["\\int_{" <> ToString[TeXForm[#]] <> "}"&, integrals //. replNames]];
                 postfix = "";
-                {fac, body} = SplitPrefactor[FTerm[a]];
+                {fac, body} = SplitPrefactor[$Setup, FTerm[a]];
                 body = List @@ body;
                 If[MemberQ[fac, _?Negative, {0, 1}],
                     If[fac === -1,
@@ -531,13 +533,14 @@ FTex[setup_, expr_] :=
         ,
         (*Turn a given expression into LaTeX code*)
         If[Head[prExp] === FEx,
-            prExp = DropFExAnnotations[prExp];
+            prExp = FEx @@ DropFExAnnotations[prExp];
         ];
         AssertFSetup[setup];
         fields = GetAllFields[setup];
         FunKitDebug[1, "Creating LaTeX expression"];
         (*update the formatting definitions for TeXForm*)
         $Fields = Thread[fields -> Map[ToString[TeXForm[#]]&, fields]];
+        $Setup = setup;
         RenewFormatDefinitions[];
         (*Assign human-readable superindices*)
         prExp = prettySuperIndices[setup, prExp];

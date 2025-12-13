@@ -418,14 +418,27 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
         If[it1 === it2,
             Return @ FTerm[2, t1]
         ];
-        If[t1[[2 ;; ]] === t2[[2 ;; ]],
-            Return @ FTerm[t1[[1]] + t2[[1]], t1[[2 ;; ]]]
+        If[Length[t1] >= 2 && Length[t2] >= 2,
+            If[t1[[2 ;; ]] === t2[[2 ;; ]],
+                Return @ FTerm[t1[[1]] + t2[[1]], t1[[2 ;; ]]]
+            ];
+            If[t1[[2 ;; ]] === t2[[1 ;; ]],
+                Return @ FTerm[t1[[1]] + 1, t1[[2 ;; ]]]
+            ];
+            If[t1[[1 ;; ]] === t2[[2 ;; ]],
+                Return @ FTerm[1 + t2[[1]], t2[[2 ;; ]]]
+            ];
         ];
-        If[t1[[2 ;; ]] === t2[[1 ;; ]],
-            Return @ FTerm[t1[[1]] + 1, t1[[2 ;; ]]]
+        (*Let's obtain closed superindices*)
+        cidxt1 = GetClosedSuperIndices[setup, t1];
+        cidxt2 = GetClosedSuperIndices[setup, t2];
+        If[Length[cidxt1] =!= Length[cidxt2],
+            FunKitDebug[3, "    Different number of closed indices: ", Length[cidxt1], " vs ", Length[cidxt2]];
+            Return[False]
         ];
-        If[t1[[1 ;; ]] === t2[[2 ;; ]],
-            Return @ FTerm[1 + t2[[1]], t2[[2 ;; ]]]
+        If[Length[cidxt1] == 0,
+            (*We had the identity already above, so nothing to do here*)
+            Return[False]
         ];
         (*Get all the possible starting points for the search*)
         startPoints = StartPoints[setup, t1, t2];
@@ -438,8 +451,6 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
         (*collect objects for both terms*)
         allObjt1 = Select[ExtractObjectsWithIndex[setup, t1] /. doFields, FreeQ[FMinus[__]]];
         allObjt2 = Select[ExtractObjectsWithIndex[setup, t2] /. doFields, FreeQ[FMinus[__]]];
-        cidxt1 = GetClosedSuperIndices[setup, t1];
-        cidxt2 = GetClosedSuperIndices[setup, t2];
         oidxt1 = GetOpenSuperIndices[setup, t1];
         oidxt2 = GetOpenSuperIndices[setup, t2];
         (*We pick the first candidate for t1 and iterate over all candidates for t2.*)
@@ -521,7 +532,7 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
     ];
 
 (**********************************************************************************
-    Identification of sums of diagrams (i.e. FEx)
+    Identification of sums of diagrams
 **********************************************************************************)
 
 FTermContent[setup_, term_FTerm] :=
@@ -531,7 +542,7 @@ FTermContent[setup_, term_FTerm] :=
 
 (* Given an FEx, subdivide its FTerms into groups with identical content *)
 
-SeparateTermGroups[setup_, expr_FEx] :=
+SeparateTermGroups[setup_, expr_] :=
     Module[
         {ret = List @@ expr, identifierRep, removeFirsts, groupedDiagrams}
         ,
@@ -539,14 +550,23 @@ SeparateTermGroups[setup_, expr_FEx] :=
         identifierRep = Map[FTermContent[setup, #]&, ret];
         identifierRep = Thread[{identifierRep, ret}];
         removeFirsts[ex_] := Map[#[[2]]&, ex];
-        groupedDiagrams = (FEx @@ #)& /@ Map[removeFirsts, GatherBy[identifierRep, #[[1]]&]];
+        groupedDiagrams = Map[removeFirsts, GatherBy[identifierRep, #[[1]]&]];
         FunKitDebug[2, "Separated into ", Length[groupedDiagrams], " groups."];
         Return[groupedDiagrams]
     ];
 
 (* Withing a group of possibly matching FTerms, check for any possible equalities *)
 
-SubFSimplify[setup_, expr_FEx] :=
+SubFSimplify[setup_, expr_] /; Length[expr] > 64 :=
+    Module[{chunks, ret, temp},
+        temp = PrintTemporary[Style["WARNING: FSimplify called on a large expression. This may take a while.", Orange]];
+        chunks = Partition[List @@ expr, UpTo[48]];
+        ret = Flatten[ParallelMap[SubFSimplify[setup, #]&, chunks]];
+        NotebookDelete[temp];
+        Return[SubFSimplify[setup, ret]];
+    ];
+
+SubFSimplify[setup_, expr_] /; Length[expr] <= 64 :=
     Module[{ret = List @@ expr, idx, jdx, red},
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
@@ -559,12 +579,21 @@ SubFSimplify[setup_, expr_FEx] :=
                 ];
             ];
         ];
-        Return[FEx @@ ret];
+        Return[ret];
     ];
 
 (* Withing a group of possibly matching FTerms, check for any possible equalities, but this time with a given list of symmetries *)
 
-SubFSimplify[setup_, expr_FEx, symmetryList_] :=
+SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] > 64 :=
+    Module[{chunks, ret, temp},
+        temp = PrintTemporary[Style["WARNING: FSimplify called on a large expression with symmetries. This may take a while.", Orange]];
+        chunks = Partition[List @@ expr, UpTo[48]];
+        ret = Flatten[ParallelMap[SubFSimplify[setup, #, symmetryList]&, chunks]];
+        NotebookDelete[temp];
+        Return[SubFSimplify[setup, ret, symmetryList]];
+    ];
+
+SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] <= 64 :=
     Module[{ret = List @@ expr, idx, jdx, kdx, red},
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
@@ -580,29 +609,23 @@ SubFSimplify[setup_, expr_FEx, symmetryList_] :=
                 ];
             ];
         ];
-        Return[FEx @@ ret];
+        Return[ret];
     ];
 
 (**********************************************************************************
     FSimplify, as exported by FunKit.
 **********************************************************************************)
 
-FSimplifyNoSym[setup_, expr_FEx] :=
-    Module[{
-        subGroups
-        ,
-        res
-        ,
-        map =
-            If[$FunKitDebugLevel >= 2,
-                Map
-                ,
-                ParallelMap
-            ]
-    },
+FSimplifyNoSym[setup_, expr_] :=
+    Module[{subGroups, res, useParallel},
         FunKitDebug[1, "Simplifying diagrammatic expression of length ", Length[expr]];
         subGroups = SeparateTermGroups[setup, expr];
-        res = FEx @@ map[SubFSimplify[setup, #]&, subGroups];
+        useParallel = AllTrue[subGroups, Length[#] <= 64&];
+        If[useParallel,
+            res = FEx @@ Flatten[ParallelMap[SubFSimplify[setup, #]&, subGroups]];
+            ,
+            res = FEx @@ Flatten[Map[SubFSimplify[setup, #]&, subGroups]];
+        ];
         FunKitDebug[1, "FTerms before: ", Length[expr], ", after: ", Length[res]];
         Return[res];
     ];
@@ -610,22 +633,7 @@ FSimplifyNoSym[setup_, expr_FEx] :=
 Options[FSimplify] = {"Symmetries" -> {}};
 
 FSimplify[setup_, inexpr_FEx, OptionsPattern[]] :=
-    Module[{
-        subGroups
-        ,
-        res
-        ,
-        map =
-            If[$FunKitDebugLevel >= 2,
-                Map
-                ,
-                ParallelMap
-            ]
-        ,
-        expr
-        ,
-        annotations
-    },
+    Module[{subGroups, res, expr, annotations, useParallel},
         {expr, annotations} = SeparateFExAnnotations[inexpr];
         expr = FOrderFields[setup, expr];
         symmetries =
@@ -641,7 +649,21 @@ FSimplify[setup_, inexpr_FEx, OptionsPattern[]] :=
         ];
         FunKitDebug[1, "Simplifying diagrammatic expression of length ", Length[expr], "with symmetry list"];
         subGroups = SeparateTermGroups[setup, expr];
-        res = FEx @@ map[SubFSimplify[setup, #, symmetries]&, subGroups];
+        useParallel = AllTrue[subGroups, Length[#] <= 64&];
+        If[useParallel,
+            res = FEx @@ Flatten[ParallelMap[SubFSimplify[setup, #, symmetries]&, subGroups]];
+            ,
+            res = FEx @@ Flatten[Map[SubFSimplify[setup, #, symmetries]&, subGroups]];
+        ];
         FunKitDebug[1, "FTerms before: ", Length[expr], ", after: ", Length[res]];
         Return[MergeFExAnnotations[res, annotations]];
     ];
+
+FSimplify[setup_, inexpr_FTerm, OptionsPattern[]] :=
+    inexpr;
+
+FSimplify[___] :=
+    (
+        Message[FunKit::invalidArguments, "FSimplify"];
+        Abort[]
+    );

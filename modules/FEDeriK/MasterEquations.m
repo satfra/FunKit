@@ -92,5 +92,7 @@ MakeDSE[setup_, field_] :=
                         GetAllFields[setup]
                     ]
                 );
-        dS // FResolveDerivatives[setup, #]&
+        dS //
+        FResolveDerivatives[setup, #]& //
+        FSimplify[setup, #]&
     ];

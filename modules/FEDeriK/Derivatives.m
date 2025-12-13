@@ -12,7 +12,7 @@ FResolveFDOp[setup_, FEx_FEx] :=
 
 FResolveFDOp[setup_, term_FTerm] :=
     Module[
-        {rTerm = term, FDOpPos, termsNoFDOp, dF, idx, i, obj, ind, a, dTerms, nPre, nPost, ret, cTerm, doFields, fw, bw}
+        {rTerm = term, FDOpPos, termsNoFDOp, dF, idx, i, obj, ind, a, dTerms, nPre, nPost, ret, cTerm, doFields, fw, bw, deriv}
         ,
         (*We cannot proceed if any nested FDOp are present*)
         If[MemberQ[(List @@ rTerm), FTerm[pre___, FDOp[__], post___], {1, 5}],
@@ -30,6 +30,7 @@ FResolveFDOp[setup_, term_FTerm] :=
             Return[FEx[0]]
         ];
         dF = rTerm[[FDOpPos, 1]];
+        FunKitDebug[2, "Found derivative operator ", FDOp[dF], " at position ", FDOpPos, " in given term."];
         (*Perform the product rule*)
         nPre = FDOpPos - 1;
         nPost = Length[rTerm] - FDOpPos;
@@ -38,7 +39,12 @@ FResolveFDOp[setup_, term_FTerm] :=
         dTerms = Table[0, {idx, 1, nPost}];
         doFields = replFields[setup];
         Do[
-            dTerms[[idx]] = FTerm[termsNoFDOp[[ ;; nPre + idx - 1]], FTerm[cTerm, FunctionalD[setup, termsNoFDOp[[nPre + idx]], dF]], termsNoFDOp[[nPre + idx + 1 ;; ]]];
+            deriv = FunctionalD[setup, termsNoFDOp[[nPre + idx]], dF] // Expand;
+            If[Head[deriv] === Plus,
+                deriv = FEx @@ (FTerm /@ deriv);
+            ];
+            dTerms[[idx]] = FTerm[termsNoFDOp[[ ;; nPre + idx - 1]], FTerm[cTerm, deriv], termsNoFDOp[[nPre + idx + 1 ;; ]]];
+            FunKitDebug[5, "Performed derivative on term ", idx, ": ", dTerms[[idx]]];
             obj = ExtractObjectsWithIndex[setup, FTerm[termsNoFDOp[[nPre + idx]]]];
             obj = Select[obj, MemberQ[$nonCommutingObjects, Head[#]] || MatchQ[#, _Symbol[_]]&];
             obj = obj /. doFields;
@@ -47,6 +53,7 @@ FResolveFDOp[setup_, term_FTerm] :=
             ,
             {idx, 1, nPost}
         ];
+        FunKitDebug[6, "Result: ", dTerms];
         (*Note: up till here, the performance impact is minimal.However, the following blowup of terms will multiply it*)
         dTerms = ReduceIndices[setup, FEx @@ dTerms];
         Return[ReduceFEx[setup, dTerms]];
@@ -65,7 +72,7 @@ FResolveDerivatives[setup_, term_FTerm, OptionsPattern[]] :=
     FResolveDerivatives[setup, FEx[term], "Symmetries" -> OptionValue["Symmetries"]]
 
 FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
-    Module[{ret = eq, annotations, mmap, fw, bw, i, symmetries},
+    Module[{ret = eq, annotations, fw, bw, i, symmetries},
         FunKitDebug[1, "Resolving derivatives"];
         If[FreeQ[ret, FDOp[__], Infinity],
             Return[ReduceFEx[setup, FEx[ret]]]
@@ -79,36 +86,25 @@ FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
             ];
         symmetries = MergeSymmetries[symmetries, OptionValue["Symmetries"]];
         {fw, bw} = GetSuperIndexTermTransformations[setup, ret];
-        ret = ret // fw;
+        ret = BalancedMap[fw, ret];
         (*ParallelMap will incur some overhead, but it quickly pays off*)
-        mmap =
-            If[Total[Length /@ (List @@ FEx[ret])] > 2,
-                ParallelMap
-                ,
-                Map
-            ];
         i = 0;
         While[
             MemberQ[ret, FDOp[__], Infinity] && i < $MaxDerivativeIterations
             ,
             FunKitDebug[1, "Doing derivative pass ", i + 1];
-            Print["Derivative pass ", i + 1];
-            Print["mmap is ", mmap];
-            ret = mmap[FResolveFDOp[setup, #]&, List @@ ret];
-            Print["Finished pass ", i + 1];
-            Return[ret];
-            ret = FEx @@ ret;
-            Print["FFFFFinished pass ", i + 1];
+            ret = BalancedMap[FResolveFDOp[setup, #]&, ret];
+            ret = (FEx /@ ret) /. FEx -> List // Flatten;
             (*If AnSEL has been loaded, use FSimplify to reduce redundant terms*)
-            If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
-                FunKitDebug[2, "Simplifying after derivative pass ", i + 1];
-                ret = FunKit`FSimplify[setup, ret, "Symmetries" -> symmetries];
+            If[ModuleLoaded[AnSEL] && $AutoSimplify === True && Length[ret] < 32,
+                ret = List @@ FunKit`FSimplify[setup, FEx @@ ret, "Symmetries" -> symmetries];
             ];
+            FunKitDebug[1, "Finished pass ", i + 1, ", current length: ", Length[ret]];
             i++;
         ];
-        ret = ret // bw;
+        ret = BalancedMap[bw, ret];
         FunKitDebug[1, "Finished resolving derivatives"];
-        Return[MergeFExAnnotations[ret, annotations]];
+        Return[MergeFExAnnotations[FEx @@ ret, annotations]];
     ]
 
 FResolveDerivatives[setup_, a___] :=
@@ -123,14 +119,17 @@ FResolveDerivatives[setup_, a___] :=
 
 Options[FTakeDerivatives] = {"Symmetries" -> {}};
 
-FTakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
+FTakeDerivatives[setup_, expr_FTerm, derivativeList_, OptionsPattern[]] :=
+    FTakeDerivatives[setup, FEx[expr], derivativeList, "Symmetries" -> OptionValue["Symmetries"]];
+
+FTakeDerivatives[setup_, expr_FEx, derivativeList_, OptionsPattern[]] :=
     Module[{result, externalIndexNames, outputReplacements, derivativeListSIDX, symmetries, annotations},
         AssertFSetup[setup];
         AssertDerivativeList[setup, derivativeList];
         (*We take them in reverse order.*)
         derivativeListSIDX = derivativeList;
         (***)
-        {result, annotations} = SeparateFExAnnotations[FEx[expr]];
+        {result, annotations} = SeparateFExAnnotations[expr];
         (*First, fix the indices in the input equation, i.e. make everything have unique names*)
         result = FixIndices[setup, result];
         If[Length[derivativeListSIDX] === 0,
@@ -148,13 +147,10 @@ FTakeDerivatives[setup_, expr_, derivativeList_, OptionsPattern[]] :=
             symmetries = MergeSymmetries[symmetries, annotations["Symmetries"]];
         ];
         If[symmetries =!= {},
-            result = FEx[result, "Symmetries" -> symmetries]
+            result = FEx[FEx @@ result, "Symmetries" -> symmetries]
         ];
         FunKitDebug[1, "Adding the derivative operator ", (FTerm @@ (FDOp /@ derivativeListSIDX))];
         (*Perform all the derivatives, one after the other*)
-        result = FResolveDerivatives[setup, (FTerm @@ (FDOp /@ derivativeListSIDX)) ** result];
-        If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
-            result = FunKit`FSimplify[setup, result];
-        ];
+        result = FResolveDerivatives[setup, (FTerm @@ (FDOp /@ derivativeListSIDX)) ** (FEx @@ result)];
         Return[result];
     ];

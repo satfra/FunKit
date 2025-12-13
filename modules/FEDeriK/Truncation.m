@@ -2,7 +2,7 @@
 
 truncationPass[setup_, expr_FEx] :=
     Module[{},
-        truncationPass[setup, #]& /@ expr
+        Map[truncationPass[setup, #]&, expr]
     ];
 
 truncationList[setup_] :=
@@ -67,8 +67,6 @@ indices::inconsistentContractions = "The index `1` has been contracted in an inc
 
 indices::inconsistentFieldContractions = "The fields `1` have been contracted in an inconsistent way in the expression
     `2`";
-
-ClearAll[LTrunc];
 
 LTrunc[setup_, expr_] :=
     (
@@ -216,19 +214,8 @@ OTrunc[setup_, expr_FTerm] :=
         Return[truncationPass[setup, ret] /. undoFields];
     ];
 
-FTruncate[setup_, expr_] :=
-    Module[{
-        ret
-        ,
-        annotations
-        ,
-        mmap =
-            If[Total[Length /@ (List @@ FEx[expr])] > 10,
-                ParallelMap
-                ,
-                Map
-            ]
-    },
+FTruncate[setup_, expr_FEx] :=
+    Module[{ret0, ret1, ret2, ret3, annotations},
         AssertFSetup[setup];
         If[KeyFreeQ[setup, "Truncation"],
             Message[FTruncate::noTruncation];
@@ -238,18 +225,21 @@ FTruncate[setup_, expr_] :=
             Message[FTruncate::FDOp];
             Abort[]
         ];
-        {ret, annotations} = SeparateFExAnnotations[FEx[expr]];
         FunKitDebug[1, "Truncating the given expression"];
+        {ret0, annotations} = SeparateFExAnnotations[expr];
         (*First, resolve open indices directly*)
-        ret = mmap[OTrunc[setup, #]&, FEx[ret]];
+        ret0 = BalancedMap[OTrunc[setup, #]&, ret0];
         (*Then, take care of closed indices recursively*)
-        ret = mmap[LTrunc[setup, #]&, FEx[ret]];
-        ret = truncationPass[setup, ReduceIndices[setup, ret]];
+        ret0 = BalancedMap[LTrunc[setup, #]&, ret0];
+        ret0 = BalancedMap[ReduceIndices[setup, #]&, ret0];
         FunKitDebug[1, "Finished truncating the given expression"];
-        ret = OrderFields[setup, FixIndices[setup, #]& /@ ret];
-        ret = MergeFExAnnotations[ret, annotations];
+        ret0 = OrderFields[setup, FixIndices[setup, #]& /@ ret0];
+        (*Directly remove all FEx[]*)
+        ret0 = ret0 /. FEx[] -> {} // Flatten;
+        ret0 = FEx @@ ret0;
+        ret0 = MergeFExAnnotations[ret0, annotations];
         If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
-            ret = FunKit`FSimplify[setup, ret];
+            ret0 = FunKit`FSimplify[setup, ret0];
         ];
-        Return[ret];
+        Return[ret0];
     ];

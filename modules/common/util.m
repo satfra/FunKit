@@ -31,3 +31,30 @@ GetAllSymbols[expr_] :=
 
 makeTemporaryFileName[] :=
     ToString[AbsoluteTime[] * 10^6 // Round] <> "_" <> ToString[RandomInteger[{10^6, 10^7}]]
+
+(*Balanced mapping to avoid large memory consumption in parallel processing*)
+
+ParallelMapSerialized[f_, data_, opts___] :=
+    ParallelMap[f[BinaryDeserialize @ #]&, BinarySerialize /@ data, opts];
+
+BalancedMap[f_, list_FEx] :=
+    Module[{ret, forceParallel},
+        ret = List @@ list;
+        forceParallel = Total[Length /@ ret] > 10;
+        ret = BalancedMap[f, ret, forceParallel];
+        Return[FEx @@ ret];
+    ];
+
+BalancedMap[f_, list_List, forceParallel_:False] :=
+    Module[{len = Length[list], chunks, ret, mChunk},
+        DistributeDefinitions[f];
+        (*Subdivide into chunks of length 128*)
+        chunks = Partition[list, UpTo[8192]];
+        ret = Table[{}, {Length[chunks]}];
+        For[i = 1, i <= Length[chunks], i++,
+            mChunk = chunks[[i]];
+            ret[[i]] = ParallelMapSerialized[f, mChunk] // Timing;
+            ret[[i]] = ret[[i, 2]];
+        ];
+        Return[Flatten[ret]]
+    ];

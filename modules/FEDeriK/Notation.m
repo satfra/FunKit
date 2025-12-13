@@ -20,6 +20,9 @@ FTerm::FTermPowerError = "An FTerm cannot be taken to a power of an FTerm.";
 
 (*Multiplication of FTerms. *)
 
+FTerm /: NonCommutativeMultiply[FTerm[], FTerm[]] :=
+    FTerm[]
+
 FTerm /: NonCommutativeMultiply[FTerm[a__], FTerm[b__]] :=
     FTerm[a, b]
 
@@ -103,20 +106,35 @@ FEx::TimesError = "A FEx cannot be multiplied using Times[__]. To multiply FExs,
 
 (*Removal of zero FTerms*)
 
+FExNumericMerge[expr_] :=
+    Module[{ret = expr, numeric = 0},
+        ret =
+            Map[
+                    If[# === FTerm[],
+                        numeric = numeric + 1;
+                        {}
+                        ,
+                        If[# === FTerm[0],
+                            {}
+                            ,
+                            #
+                        ]
+                    ]&
+                    ,
+                    ret
+                ] // Flatten;
+        If[ret =!= {},
+            Return[{FTerm[numeric], ret} /. FTerm[0] -> {} // Flatten]
+            ,
+            Return[{FTerm[numeric] /. FTerm[0] -> {} // Flatten}]
+        ];
+    ];
+
+FEx[pre__, FTerm[], post___] :=
+    FEx @@ FExNumericMerge[{pre, FTerm[], post}];
+
 FEx[pre___, FTerm[0], post___] :=
-    FEx[pre, post]
-
-FEx[pre___, FTerm[], mid___, FTerm[], post___] :=
-    FEx[FTerm[2], pre, mid, post]
-
-FEx[pre___, FTerm[a_], mid___, FTerm[b_], post___] /; NumericQ[a] && NumericQ[b] :=
-    FEx[FTerm[a + b], pre, mid, post]
-
-FEx[pre___, FTerm[], mid___, FTerm[a_], post___] /; NumericQ[a] :=
-    FEx[FTerm[a + 1], pre, mid, post]
-
-FEx[pre___, FTerm[a_], mid___, FTerm[], post___] /; NumericQ[a] :=
-    FEx[FTerm[a + 1], pre, mid, post]
+    FEx @@ FExNumericMerge[{pre, FTerm[], post}];
 
 (*Sum splitting of FTerms*)
 
@@ -186,7 +204,7 @@ FEx /: FTerm[FEx[a__], FEx[b__]] :=
 
 (*Reduction of immediately nested FExs*)
 
-PrepareForMerge[a_List] :=
+FExMerge[a_List] :=
     Module[{prev, ret = a},
         prev = {};
         While[
@@ -204,16 +222,14 @@ PrepareForMerge[a_List] :=
                         ret
                     ] // Flatten;
         ];
-        Return[ret]
+        Return[ret];
     ];
 
-FEx[pre___, FEx[], post___] :=
-    FEx[pre, post]
-
 FEx[pre___, FEx[in__], post___] :=
-    FEx @@ PrepareForMerge[{pre, in, post}];
+    FEx @@ (FExMerge[{pre, in, post}]);
 
-(*
+FEx[pre___, FEx[], post___] :=
+    FEx @@ (FExMerge[{pre, post}]);
 
 FEx /: FTerm[FEx[a__]] :=
     FEx[a]
@@ -237,9 +253,21 @@ FEx[annotations__Rule] :=
 FEx[FTerm[f___], annotations__Rule] /; AllTrue[$allObjects, FreeQ[{f}, #, Infinity]&] :=
     FEx[FTerm[f]];
 
-*)
-
 Protect[FEx, FTerm];
+
+(**********************************************************************************
+    Expanding Plus[ ... ] inside FEx and FTerm
+**********************************************************************************)
+
+FExpand[expr_FTerm] :=
+    Module[{ret = expr},
+        Return[ret];
+    ];
+
+FExpand[expr_FEx] :=
+    Module[{ret = expr},
+        Return[ret];
+    ];
 
 (**********************************************************************************
     Splitting into prefactor and indexed objects
@@ -247,7 +275,7 @@ Protect[FEx, FTerm];
 
 SplitPrefactor[setup_, expr_FTerm] :=
     Module[{prefactor, ret, objPattern, idx, removeOther},
-        objPattern = Alternatives @@ Join[Map[Blank, $indexedObjects \[Union] {FDOp}], Map[Blank, GetAllFields[setup] \[Union] {AnyField}]];
+        objPattern = Alternatives @@ Join[Map[Blank, $indexedObjects \[Union] {FDOp}], Map[Blank, GetAllFields[setup] \[Union] {AnyField}], Map[Superscript[#, _]&, GetAllFields[setup] \[Union] {AnyField}]];
         removeOther = Dispatch[{objPattern -> 1}];
         prefactor = expr /. removeOther;
         ret = List @@ expr;
@@ -278,7 +306,7 @@ SeparateFExAnnotations[infex_FEx] :=
         While[lastIdx >= 1 && Head[fex[[lastIdx]]] === Rule, lastIdx--;];
         mainTerms = fex[[1 ;; lastIdx]];
         annotations = fex[[lastIdx + 1 ;; ]];
-        Return[{FEx @@ mainTerms, Association @@ annotations}];
+        Return[{mainTerms, Association @@ annotations}];
     ];
 
 DropFExAnnotations[fex_FEx] :=

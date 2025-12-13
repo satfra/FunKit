@@ -301,7 +301,7 @@ makeMomentaAlternatives[mom_] :=
 
 FRoute[setup_, expr_FEx] :=
     Module[{results, ret, idx, subidx},
-        results = DropFExAnnotations[expr];
+        results = FEx @@ DropFExAnnotations[expr];
         results = FRoute[setup, #]& /@ (List @@ results);
         results = GatherBy[results, Length[#["LoopMomenta"]]&];
         results = Map[<|"Expression" -> FEx @@ #[[All, Key["Expression"]]], "ExternalIndices" -> #[[1, Key["ExternalIndices"]]], "LoopMomenta" -> makeMomentaAlternatives /@ #[[1, Key["LoopMomenta"]]]|>&, results];

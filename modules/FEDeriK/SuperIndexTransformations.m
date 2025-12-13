@@ -94,7 +94,7 @@ GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
         Return[{replForward, replBackward}];
     ];
 
-GetSuperIndexTermTransformations[setup_, eq_FEx] :=
+GetSuperIndexTermTransformations[setup_, eq_] :=
     Module[{repl, replForward, replBackward, doFields, undoFields, forwardFunction, backwardFunction},
         doFields = replFields[setup];
         undoFields = unreplFields[setup];
@@ -119,4 +119,4 @@ GetSuperIndexTermTransformations[setup_, eq_FEx] :=
     ];
 
 GetSuperIndexTermTransformations[setup_, term_FTerm] :=
-    GetSuperIndexTermTransformations[setup, FEx[term]];
+    GetSuperIndexTermTransformations[setup, {term}];

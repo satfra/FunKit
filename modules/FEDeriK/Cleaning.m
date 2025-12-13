@@ -1,5 +1,13 @@
 (*Given a user-defined term or master equation, give all (closed) indices unique names.*)
 
+FixIndices[setup_, expr_List] :=
+    Module[
+        {}
+        ,
+        (*Indices should be fixed on a per-term basis to ensure we do not mess up things*)
+        Return[FixIndices[setup, #]& /@ expr];
+    ];
+
 FixIndices[setup_, expr_FEx] :=
     Module[
         {}
