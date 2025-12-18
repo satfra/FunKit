@@ -161,6 +161,7 @@ IterateDiagram[setup_Association, allObj_, closedIndices_, openIndices_, curPos_
     Module[{otherIndices, followObjects, i},
         FunKitDebug[4, "Inspecting: ", curPos];
         (*All indices except the one we entered with*)
+        FunKitDebug[4, "Entry index: ", entryIdx];
         otherIndices = DeleteCases[makePosIdx /@ curPos[[2]], entryIdx];
         otherIndices = Intersection[otherIndices, closedIndices];
         FunKitDebug[4, "Found outgoing indices: ", otherIndices];
@@ -410,7 +411,7 @@ TermsEqualAndSum::undeterminedFields = "Error: Cannot equate terms if they are n
 
 TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
     Module[
-        {t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2], nt1, nt2, curIdx1, curIdx2, curIdxRepl, startPoints, doFields, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2, nallIdxReplNew}
+        {t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2], nt1, nt2, curIdx1, curIdx2, curIdxRepl, startPoints, doFields, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2, nallIdxReplNew, tmp}
         ,
         (*If[MemberQ[t1,AnyField,Infinity],Message[TermsEqualAndSum::undeterminedFields];Abort[]];*)
         (*Briefly check the trivial case*)
@@ -465,7 +466,8 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
             Return[False]
         ];
         FunKitDebug[3, "Comparing the terms \n  ", t1, "\n  ", t2];
-        If[Length[cidxstartt1] == 1,
+        If[Length[Intersection[startt1[[2]], cidxt1]] == 1,
+            (*If there are no other closed indices, the current index is outgoing and we should not mark it as entry*)
             curIdx1 = Null
             ,
             curIdx1 = cidxstartt1[[1]];
@@ -478,8 +480,10 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
             cidxstartt2 = Map[(MemberQ[cidxt2, #[[1]]] && #[[2]] === startt1fields[[1]])&, Transpose[{makePosIdx /@ startt2[[2]], startt2[[1]]}]];
             cidxstartt2 = Pick[makePosIdx /@ startt2[[2]], cidxstartt2];
             (*Loop over all possible starting indices*)
+            FunKitDebug[4, "We have: ", Length[cidxstartt2], " possible starting indices in t2."];
             For[jdx = 1, jdx <= Length[cidxstartt2], jdx++,
-                If[Length[cidxstartt2] == 1,
+                If[Length[Intersection[startt2[[2]], cidxt2]] == 1,
+                    (*If there are no other closed indices, the current index is outgoing and we should not mark it as entry*)
                     curIdx2 = Null
                     ,
                     curIdx2 = cidxstartt2[[jdx]];

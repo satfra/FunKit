@@ -166,7 +166,7 @@ prettySuperIndices[setup_, expr_Association] /; isRoutedAssociation[expr] :=
 
 prettySuperIndices[setup_, a_] :=
     (
-        Message[prettySuperIndices::type, Head @ a];
+        Message[prettySuperIndices::type, FullForm[a]];
         Abort[]
     )
 
