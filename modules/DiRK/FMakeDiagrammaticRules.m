@@ -1,7 +1,7 @@
 Options[FMakeDiagrammaticRules] = {"DerivePropagators" -> True};
 
 FMakeDiagrammaticRules[setup_, OptionsPattern[]] :=
-    Module[{ruleList, truncationList, idx, jdx, kdx, minusRule, object, fieldContent, rule, dress, minusOrig, minusBasis, subset = All, orderOrig, orderBasis, newBasisName},
+    Module[{ruleList, truncationList, idx, jdx, kdx, minusRule, object, fieldContent, rule, dress, minusOrig, minusBasis, subset = All, orderOrig, orderBasis, newBasisName, propMom},
         ruleList = {};
         truncationList = Normal[setup["FeynmanRules"]];
         For[idx = 1, idx <= Length[truncationList], idx++,
@@ -52,13 +52,13 @@ FMakeDiagrammaticRules[setup_, OptionsPattern[]] :=
                             TensorBases`TBRestrictBasis[rule, newBasisName, subset]
                         ];
                         orderBasis = Reverse @ orderBasis;
-                        ((CommuteSign[setup, ##]& @@ fieldContent) * TensorBases`TBMakePropagator[newBasisName, Table[dressing[InverseProp, Reverse @ fieldContent, subset[[kdx]], $mom], {kdx, 1, Length[subset]}]])
+                        ((CommuteSign[setup, ##]& @@ fieldContent) * TensorBases`TBMakePropagator[newBasisName, Table[dressing[InverseProp, Reverse @ fieldContent, subset[[kdx]], $mom], {kdx, 1, Length[subset]}], propMom])
                         ,
                         FunKitDebug[2, "Creating nPoint rule"];
                         (Table[dressing[object, fieldContent, subset[[kdx]], $mom], {kdx, 1, Length[subset]}])
                     ];
                 rule = minusOrig * minusRule * minusBasis * dress . (Table[$tens[rule, subset[[kdx]], $ind], {kdx, 1, Length[subset]}]);
-                AppendTo[ruleList, OrderObject[setup, object[fieldContent, ind : (_List)]] :> (Evaluate @ rule) /. $tens -> TensorBases`TBGetVertex /. $mom :> ind$[[All, 1]] /. $ind :> Flatten /@ ind$[[$order]] /. $order -> (Evaluate @ orderBasis)]
+                AppendTo[ruleList, OrderObject[setup, object[fieldContent, ind : (_List)]] :> (Evaluate @ rule) /. $tens -> TensorBases`TBGetVertex /. $mom :> ind$[[All, 1]] /. {$ind :> Flatten /@ ind$[[$order]], propMom :> ind$[[$order[[1]], 1]]} /. $order -> (Evaluate @ orderBasis)];
             ];
         ];
         Return[ruleList];
