@@ -2,9 +2,6 @@
     Overall Defs
 **********************************************************************************)
 
-F[expr___] :=
-    FEx[FTerm[expr]];
-
 type::error = "The expression given is neither an FEx nor an FTerm.";
 
 (**********************************************************************************
@@ -68,17 +65,28 @@ FTerm /: Plus[FTerm[], FTerm[b_]] /; NumericQ[b] :=
     FTerm[1 + b];
 
 FTerm /: Power[FTerm[], n_] :=
-    FTerm[]
+    FTerm[];
+
+FTerm /: Log[FTerm[]] :=
+    FTerm[0];
+
+FTerm[{}] :=
+    FTerm[0];
 
 FTerm /: Times[a_, FTerm[]] :=
     FTerm[a];
 
 FTerm /: Power[FTerm[a_], b_] /; NumericQ[a] && NumericQ[b] :=
-    FTerm[Power[a, b]]; FTerm /: Plus[FTerm[a_], FTerm[b_]] /; NumericQ[a] && NumericQ[b] :=
+    FTerm[Power[a, b]];
+
+FTerm /: Plus[FTerm[a_], FTerm[b_]] /; NumericQ[a] && NumericQ[b] :=
     FTerm[a + b];
 
 FTerm /: Times[FTerm[a_], FTerm[b_]] /; NumericQ[a] && NumericQ[b] :=
     FTerm[a * b];
+
+FTerm /: Times[a_, FTerm[b__]] /; NumericQ[a] :=
+    FTerm[a, b];
 
 (*Pre-reduction of zero FTerms*)
 
@@ -114,7 +122,8 @@ FExNumericMerge[expr_] :=
                         numeric = numeric + 1;
                         {}
                         ,
-                        If[# === FTerm[0],
+                        If[Length[#] === 1 && NumericQ[#[[1]]],
+                            numeric = numeric + #[[1]];
                             {}
                             ,
                             #
@@ -123,18 +132,21 @@ FExNumericMerge[expr_] :=
                     ,
                     ret
                 ] // Flatten;
-        If[ret =!= {},
-            Return[{FTerm[numeric], ret} /. FTerm[0] -> {} // Flatten]
-            ,
+        If[ret === {},
             Return[{FTerm[numeric] /. FTerm[0] -> {} // Flatten}]
+            ,
+            Return[{FTerm[numeric], ret} /. FTerm[0] -> {} // Flatten]
         ];
     ];
 
 FEx[pre__, FTerm[], post___] :=
     FEx @@ FExNumericMerge[{pre, FTerm[], post}];
 
-FEx[pre___, FTerm[0], post___] :=
-    FEx @@ FExNumericMerge[{pre, FTerm[], post}];
+FEx[pre__, FTerm[a_], post___] /; NumericQ[a] :=
+    FEx @@ FExNumericMerge[{pre, FTerm[a], post}];
+
+FEx[FTerm[0], post___] :=
+    FEx[post];
 
 (*Sum splitting of FTerms*)
 
@@ -201,6 +213,11 @@ FEx /: FTerm[FEx[a__]] :=
 
 FEx /: FTerm[FEx[a__], FEx[b__]] :=
     FEx @@ (Flatten @ Table[FEx[{a}[[i]] ** {b}[[j]]], {i, 1, Length[{a}]}, {j, 1, Length[{b}]}])
+
+(*Fixing missing FTerms*)
+
+FEx[pre___, a_, post___] /; (Head[a] =!= FTerm && Head[a] =!= FEx && Head[a] =!= Rule && FreeQ[{a}, Pattern, Infinity]) :=
+    (FEx[pre, FTerm[a], post]);
 
 (*Reduction of immediately nested FExs*)
 

@@ -26,6 +26,13 @@ Returns the result with all derivative operators resolved.
 FTakeDerivatives[setup, expr, derivativeList, \"Symmetries\" -> symmetries] allows specifying symmetries for simplification.
 The derivativeList should be a list of field expressions like {A[i1], A[i2]}.";
 
+FAddFDRule::usage = "FAddFDRule[object, wrt, result]
+Adds a custom functional derivative rule to be used when taking derivatives with FunctionalD.
+TODO";
+
+FClearFDRules::usage = "FClearFDRules[]
+Clears all custom functional derivative rules added with FAddFDRule.";
+
 QMeSForm::usage = "QMeSForm[setup, expr]
 Converts expressions containing indexed objects (like Propagator, GammaN) to QMeS-style notation.
 Transforms correlation functions to symbolic forms suitable for further processing.
@@ -121,13 +128,6 @@ FTerm::usage = "FTerm[factor1, factor2, ...]
 Represents a single term in a functional equation as a product of factors.
 Factors can be numbers, indexed objects, fields, derivative operators, or appropriate combinations thereof.
 Certain restrictions apply: If you put two Grassmann fields into the same factor, using this FTerm will lead to errors being thrown.";
-
-Remove["*`F"]
-
-F::usage = "F[expr...]
-Shorthand notation for FEx[FTerm[expr...]].
-Provides a convenient way to create single-term functional expressions.
-Equivalent to wrapping the expression in both FEx and FTerm tags.";
 
 Propagator::usage = "Propagator[{field1, field2}, {index1, index2}]
 Represents the two-point correlation function (propagator) G_{field1,field2} with specified indices.

@@ -52,7 +52,7 @@ truncationPass[setup_, expr_] :=
 
 (* ::Input::Initialization:: *)
 
-FTruncate::wrongExpr = "Cannot truncate an expression which is neither an FEx nor an FTerm.";
+FTruncate::wrongExpr = "Cannot truncate an expression which is neither an FEx nor an FTerm. The expression was `1`";
 
 FTruncate::noTruncation = "The given setup does not have a key \"Truncation\"";
 
@@ -68,9 +68,12 @@ indices::inconsistentContractions = "The index `1` has been contracted in an inc
 indices::inconsistentFieldContractions = "The fields `1` have been contracted in an inconsistent way in the expression
     `2`";
 
+LTrunc[setup_, {}] :=
+    {}
+
 LTrunc[setup_, expr_] :=
     (
-        Message[FTruncate::wrongExpr];
+        Message[FTruncate::wrongExpr, expr];
         Abort[]
     )
 
@@ -160,6 +163,9 @@ LTrunc[setup_, expr_FTerm] :=
         Abort[];
     ];
 
+OTrunc[setup_, {}] :=
+    {}
+
 OTrunc[setup_, expr_FTerm] :=
     Module[{ret = List @@ expr, curi, allObj, openIndices, i, allFields = GetAllFields[setup], idx, subObj, idxOccur, idxPos, ignore, doFields, a, undoFields},
         FunKitDebug[3, "Truncating the term (open indices) ", expr];
@@ -231,6 +237,7 @@ FTruncate[setup_, expr_FEx] :=
         ret0 = BalancedMap[OTrunc[setup, #]&, ret0];
         (*Then, take care of closed indices recursively*)
         ret0 = BalancedMap[LTrunc[setup, #]&, ret0];
+        (*Finally, reduce indices again to be safe*)
         ret0 = BalancedMap[ReduceIndices[setup, #]&, ret0];
         FunKitDebug[1, "Finished truncating the given expression"];
         ret0 = OrderFields[setup, FixIndices[setup, #]& /@ ret0];

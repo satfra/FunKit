@@ -121,6 +121,7 @@ ReduceFEx[setup_, equation_] :=
     Module[{reduced = equation},
         AssertFSetup[setup];
         AssertFEx[reduced];
+        reduced = Select[reduced, # =!= {} && # =!= FTerm[0]&];
         (*Amend the index structure*)
         reduced = FixIndices[setup, reduced];
         (*Make sure all terms are reduced*)

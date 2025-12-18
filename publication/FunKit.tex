@@ -719,7 +719,7 @@ Any field derivative in \FEDeriK is directly expressed using the metric, with th
 	\,,\qquad
 	\frac{\delta \Phi_b}{\delta \Phi^a} = \gamma_{ab}
 	\,,\notag\\[1ex]
-	\frac{\delta \Phi_b}{\delta \Phi_a} &= \gamma^{ba}
+	\frac{\delta \Phi_b}{\delta \Phi_a} &= \gamma^{ab}
 	\,,\qquad
 	\frac{\delta \Phi_b}{\delta \Phi_a} = \gamma^{a}_{\phantom{a}b}
 	\,.
@@ -821,7 +821,7 @@ In particular, there are three ways to specify vertex bases:
 with the above definition of \mathem{\mmaDef{setup}}, the diagrammatic rules can be automatically derived using
 %
 \begin{mmaCell}{Input}
- diagRules = \mmaDef{MakeDiagrammaticRules}[];
+ diagRules = \mmaDef{FMakeDiagrammaticRules}[];
 \end{mmaCell}
 %
 With this, one can directly obtain the explicit expressions for diagrams. For example, the 0-loop term of the gluon propagator DSE can be calculated as

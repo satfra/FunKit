@@ -3,8 +3,8 @@
     argument will use this setup automatically if called without setup.
 **********************************************************************************)
 
-MakeDiagrammaticRules[] /; Head[$GlobalSetup] =!= Symbol :=
-    MakeDiagrammaticRules[$GlobalSetup];
+FMakeDiagrammaticRules[] /; Head[$GlobalSetup] =!= Symbol :=
+    FMakeDiagrammaticRules[$GlobalSetup];
 
 (*Make sure dressing, InverseProp is properly (not) defined*)
 

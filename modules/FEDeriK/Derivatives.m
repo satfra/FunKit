@@ -152,5 +152,6 @@ FTakeDerivatives[setup_, expr_FEx, derivativeList_, OptionsPattern[]] :=
         FunKitDebug[1, "Adding the derivative operator ", (FTerm @@ (FDOp /@ derivativeListSIDX))];
         (*Perform all the derivatives, one after the other*)
         result = FResolveDerivatives[setup, (FTerm @@ (FDOp /@ derivativeListSIDX)) ** (FEx @@ result)];
+        (*Finally, reduce indices again to clean up any duplicates introduced by the derivatives*)
         Return[result];
     ];
