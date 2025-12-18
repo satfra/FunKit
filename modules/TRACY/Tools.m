@@ -82,19 +82,18 @@ fortranToMathematica[expr_String] :=
             pres =!= res
             ,
             pres = res;
-            res = StringReplace[res, {Shortest[(a_ /; Not @ hasFortranOperator[a]) ~~ "(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> a ~~ "[" ~~ arg1 ~~ "]", Shortest["pow(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "Power[" ~~ arg1 ~~ "]", Shortest["sqrt(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "Sqrt[" ~~ arg1 ~~ "]", Shortest["FTxsp(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "sp[" ~~ arg1 ~~ "]", Shortest["FTxsps(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "sps[" ~~ arg1 ~~ "]", Shortest["FTxvec(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "vec[" ~~ arg1 ~~ "]", Shortest["FTxvecs(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "vecs[" ~~ arg1 ~~ "]", Shortest["FTxvecs(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "vecs[" ~~ arg1 ~~ "]", Shortest["w(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "$w$[" ~~ arg1 ~~ "]", "**" -> "^", " " -> "", "&\n&" -> " ", "i_" -> "\!\(\*TagBox[
-StyleBox[
-RowBox[{\"Complex\", \"[\", 
-RowBox[{\"0\", \",\", \"1\"}], \"]\"}],\nShowSpecialCharacters->False,\nShowStringCharacters->True,\nNumberMarks->True],
-FullForm]\)", "expr=" ~~ a__ :> a}];
+            res = StringReplace[res, {Shortest[(a_ /; Not @ hasFortranOperator[a]) ~~ "(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> a ~~ "[" ~~ arg1 ~~ "]", Shortest["pow(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "Power[" ~~ arg1 ~~ "]", Shortest["sqrt(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "Sqrt[" ~~ arg1 ~~ "]", Shortest["FTxsp(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "sp[" ~~ arg1 ~~ "]", Shortest["FTxsps(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "sps[" ~~ arg1 ~~ "]", Shortest["FTxvec(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "vec[" ~~ arg1 ~~ "]", Shortest["FTxvecs(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "vecs[" ~~ arg1 ~~ "]", Shortest["FTxvecs(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "vecs[" ~~ arg1 ~~ "]", Shortest["w(" ~~ (arg1__ /; balancedBracesQ[arg1]) ~~ ")"] :> "$w$[" ~~ arg1 ~~ "]", "**" -> "^", " " -> "", "&\n&" -> " ", "i_" -> "Complex[0,1]", "expr=" ~~ a__ :> a}];
             res = StringReplace[res, Map[ToString[#[[2]]] -> ToString[#[[1]]]&, FormTracer`GetExtraVarsSynonyms[]]];
         ];
         StringReplace[res, ";" -> "\n"]
     ];
 
-ImportAndSimplifyFORM[file_, transf_ : (#&), mSimplify_ : (Simplify[#, Trig -> False, TimeConstraint -> 0.05]&)] :=
-    Module[{fortran, math, splitmath, getAffectedVar, tempExpr, evalExpr, strExpr, expr, i, monitor},
+$DefaultTimeConstraint = 0.1;
+
+ImportAndSimplifyFORM[file_, transf_ : (#&)] :=
+    Module[{fortran, math, splitmath, getAffectedVar, tempExpr, evalExpr, strExpr, expr, i, monitor, mSimplify = (Simplify[#, Trig -> False, TimeConstraint -> $DefaultTimeConstraint]&)},
         fortran = Import[file, "Text"];
+        FunKitDebug[6, "FORM exported code: \n", fortran];
         math = fortranToMathematica[fortran];
         splitmath = StringSplit[math, "\n"];
         getAffectedVar[line_String] :=
@@ -119,13 +118,16 @@ ImportAndSimplifyFORM[file_, transf_ : (#&), mSimplify_ : (Simplify[#, Trig -> F
                 Do[
                     strExpr = getAffectedVar[tempExpr[[i]]];
                     expr = strExpr ~~ "=" ~~ ToString[mSimplify] ~~ "[" ~~ ToString[transf] ~~ "[" ~~ strExpr ~~ "]]";
+                    FunKitDebug[6, "Evaluating: ", tempExpr[[i]]];
                     ToExpression[tempExpr[[i]]];
+                    FunKitDebug[6, "Evaluating: ", expr];
                     ToExpression[expr];
                     ,
                     {i, 1, Length[tempExpr]}
                 ]
             ];
         ];
+        FunKitDebug[6, "Converted Mathematica code: \n", evalExpr];
         Return[ToExpression[evalExpr]];
     ];
 
