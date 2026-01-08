@@ -28,8 +28,9 @@ Print["Initialization complete.\n"];
 
 (* Function to run and report tests *)
 
-RunAndReportTests[tests_List, testFileName_String] :=
+RunAndReportTests[exprText_String, testFileName_String] :=
     Module[{result, successCount, failureCount, mGreen = RGBColor[0.0235294, 0.235294, 0.0235294], mRed = RGBColor[0.435294, 0, 0]},
+        ToExpression[exprText];
         result = TestReport[tests];
         successCount = Length[result["TestsSucceededKeys"]];
         failureCount = Length[result["TestsFailedWrongResultsKeys"]];
@@ -55,39 +56,40 @@ RunAndReportTests[tests_List, testFileName_String] :=
 
 (* Main script execution logic *)
 
-result = Module[{testFiles, totalSuccesses = 0, totalFailures = 0, mOrange = RGBColor[0.8, 0.4, 0], mRed = RGBColor[0.435294, 0, 0], mGreen = RGBColor[0.0235294, 0.235294, 0.0235294]},
-    AppendTo[$Path, DirectoryName[$InputFileName]];
-    AppendTo[$Path, FileNameJoin[{DirectoryName[$InputFileName], "..", "modules"}]];
-    testFiles = FileNames["*Tests.m", DirectoryName[$InputFileName], 2];
-    Print[Style["Discovering and running tests...", Bold, mOrange]];
-    Print[Style["---------------------------------", Bold, mOrange]];
-    Scan[
-        (
-            Print["Running tests from: " <> FileNameTake[#, -2]];
-            Get[#];
-            If[ValueQ[tests],
-                Module[{results},
-                    results = RunAndReportTests[tests, FileNameTake[#, -2]];
-                    totalSuccesses += results[[1]];
-                    totalFailures += results[[2]];
-                    Print[""]; (* newline separator *)
+result =
+    Module[{exprText, testFiles, totalSuccesses = 0, totalFailures = 0, mOrange = RGBColor[0.8, 0.4, 0], mRed = RGBColor[0.435294, 0, 0], mGreen = RGBColor[0.0235294, 0.235294, 0.0235294]},
+        AppendTo[$Path, DirectoryName[$InputFileName]];
+        AppendTo[$Path, FileNameJoin[{DirectoryName[$InputFileName], "..", "modules"}]];
+        testFiles = FileNames["*Tests.m", DirectoryName[$InputFileName], 2];
+        Print[Style["Discovering and running tests...", Bold, mOrange]];
+        Print[Style["---------------------------------", Bold, mOrange]];
+        Scan[
+            (
+                Print["Running tests from: " <> FileNameTake[#, -2]];
+                exprText = Import[#, "Text"];
+                If[StringContainsQ[exprText, "tests ="] || StringContainsQ[exprText, "tests="],
+                    Module[{results},
+                        results = RunAndReportTests[exprText, FileNameTake[#, -2]];
+                        totalSuccesses += results[[1]];
+                        totalFailures += results[[2]];
+                        Print[""]; (* newline separator *)
+                    ]
+                    ,
+                    (
+                        Print["  ERROR: Test file ", FileNameTake[#, -2], " does not define a 'tests' variable."];
+                        totalFailures++;
+                    )
                 ]
-                ,
-                (
-                    Print["  ERROR: Test file ", FileNameTake[#, -2], " does not define a 'tests' variable."];
-                    totalFailures++;
-                )
-            ]
-        )&
-        ,
-        testFiles
+            )&
+            ,
+            testFiles
+        ];
+        Print[Style["---------------------------------", Bold, mOrange]];
+        Print[Style["Overall Test Summary", Bold, mOrange]];
+        Print[Style["---------------------------------", Bold, mOrange]];
+        Print[Style["✓ " <> ToString[totalSuccesses] <> " passed", mGreen, Bold], "    ", Style["x " <> ToString[totalFailures] <> " failed", mRed, Bold]];
+        Print[Style["---------------------------------", Bold, mOrange]];
+        Return[totalFailures];
     ];
-    Print[Style["---------------------------------", Bold, mOrange]];
-    Print[Style["Overall Test Summary", Bold, mOrange]];
-    Print[Style["---------------------------------", Bold, mOrange]];
-    Print[Style["✓ " <> ToString[totalSuccesses] <> " passed", mGreen, Bold], "    ", Style["x " <> ToString[totalFailures] <> " failed", mRed, Bold]];
-    Print[Style["---------------------------------", Bold, mOrange]];
-    Return[totalFailures];
-];
 
 Exit[result];

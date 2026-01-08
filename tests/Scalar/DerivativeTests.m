@@ -56,13 +56,13 @@ DoFunRes2 = FunKitForm[DoFundiag2Idx]
 
 DoFundiag3Idx = wrapDoFun[DoFunSetup <> "doRGE[actionONSymbolic,{Phi,Phi,Phi}]"];
 
-DoFunRes3 = FunKitForm[DoFundiag3Idx]
+DoFunRes3 = FunKitForm[DoFundiag3Idx];
 
 (**** Four-Point ****)
 
 DoFundiag4Idx = wrapDoFun[DoFunSetup <> "doRGE[actionONSymbolic,{Phi,Phi,Phi,Phi}]"];
 
-DoFunRes4 = FunKitForm[DoFundiag4Idx]
+DoFunRes4 = FunKitForm[DoFundiag4Idx];
 
 (**********************************************************************************
     FunKit
@@ -70,7 +70,7 @@ DoFunRes4 = FunKitForm[DoFundiag4Idx]
 
 sFunKitSetup = GetFunKitSetupScalar[];
 
-FSetGlobalSetup[sFunKitSetup]
+FSetGlobalSetup[sFunKitSetup];
 
 (**** Propagator ****)
 

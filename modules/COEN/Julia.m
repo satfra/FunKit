@@ -8,8 +8,16 @@
 
 JuliaForm[expr_] :=
     Module[{Fstr},
-        Fstr = ToString[FortranForm[expr //. {E^x_ :> exp[x]}]];
-        StringReplace[Fstr, {a_ ~~ "(i)" -> a ~~ "[i]", a_ ~~ "(-1 + i)" -> a ~~ "[i-1]", a_ ~~ "(1 + i)" -> a ~~ "[i+1]", "**" -> "^", ".*" -> "*", ".+" -> "+", "Pi" -> "\[Pi]", "Sqrt" -> "sqrt", "Coth" -> "coth", "Tanh" -> "tanh"}]
+        Fstr = ToString[FortranForm[expr //. {E^x_ :> Global`tmp$$exp[x]}]];
+        StringReplace[Fstr, 
+        {a_ ~~ "(i)" -> a ~~ "[i]", a_ ~~ "(-1 + i)" -> a ~~ "[i-1]", a_ ~~ "(1 + i)" -> a ~~ "[i+1]", "**" -> "^", ".*" -> "*", ".+" -> "+", "Pi" -> "\[Pi]", 
+        "Sqrt" -> "sqrt",
+        "Log" -> "log", "Exp" -> "exp", "tmp$$exp" -> "exp",
+        "Sin" -> "sin", "Cos" -> "cos", "Tan" -> "tan", "Cot" -> "cot",
+        "ArcSin" -> "asin", "ArcCos" -> "acos", "ArcTan" -> "atan", "ArcCot" -> "acot",
+        "Sinh" -> "sinh", "Cosh" -> "cosh",  "Tanh" -> "tanh", "Coth" -> "coth", 
+        "ArcSinh" -> "asinh", "ArcCosh" -> "acosh", "ArcTanh" -> "atanh", "ArcCoth" -> "acoth"
+        }]
     ];
 
 IndentCode[code_String, level_Integer] :=

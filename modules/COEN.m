@@ -56,9 +56,11 @@ Produces standard C++ header format with include guards.";
 
 MakeCppBlock::usage = ""
 
-MakeCppFunction::usage = "hi"
+MakeCppFunction::usage = "MakeCppFunction[\"Name\"->name, \"Return\"->returnType, \"Parameters\"->paramList, \"Body\"->body, ...]
+Generates a C++ function definition based on specified options. See Options[MakeCppFunction] for available settings.";
 
-MakeJuliaFunction::usage = ""
+MakeJuliaFunction::usage = "MakeJuliaFunction[\"Name\"->name, \"Return\"->returnType, \"Parameters\"->paramList, \"Body\"->body, ...]
+Generates a Julia function definition based on specified options. See Options[MakeJuliaFunction] for available settings.";
 
 MakeFortranFunction::usage = ""
 

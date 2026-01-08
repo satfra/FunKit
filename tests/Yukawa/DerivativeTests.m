@@ -1,10 +1,8 @@
+(* Testing functional derivatives and simplifications: Yukawa theory *)
+
 tests = {};
 
 Import[$FunKitDirectory <> "/tests/boilerplate/setups.m"];
-
-(* Utilities testing *)
-
-(* Test a Yukawa theory *)
 
 (**********************************************************************************
     QMeS
@@ -72,7 +70,7 @@ DoFunResYuk = FunKitForm[DoFundiagYukIdx];
 
 yFunKitSetup = GetFunKitSetupYukawa[];
 
-FSetGlobalSetup[yFunKitSetup]
+FSetGlobalSetup[yFunKitSetup];
 
 (**** Fermion Propagator ****)
 
