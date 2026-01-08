@@ -38,14 +38,13 @@ ParallelMapSerialized[f_, data_, opts___] :=
     ParallelMap[f[BinaryDeserialize @ #]&, BinarySerialize /@ data, opts];
 
 BalancedMap[f_, list_FEx] :=
-    Module[{ret, forceParallel},
+    Module[{ret},
         ret = List @@ list;
-        forceParallel = Total[Length /@ ret] > 10;
-        ret = BalancedMap[f, ret, forceParallel];
+        ret = BalancedMap[f, ret];
         Return[FEx @@ ret];
     ];
 
-BalancedMap[f_, list_List, forceParallel_:False] :=
+BalancedMap[f_, list_List] :=
     Module[{len = Length[list], chunks, ret, mChunk},
         DistributeDefinitions[f];
         (*Subdivide into chunks of length 128*)
@@ -57,4 +56,11 @@ BalancedMap[f_, list_List, forceParallel_:False] :=
             ret[[i]] = ret[[i, 2]];
         ];
         Return[Flatten[ret]]
+    ];
+
+PMap[f_, list_List] :=
+    Module[{ret},
+        DistributeDefinitions[f];
+        ret = ParallelMapSerialized[f, list];
+        Return[ret]
     ];

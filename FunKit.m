@@ -410,3 +410,8 @@ Get[$FunKitDirectory<>"tests/Test.m"]
 (* ::Input::Initialization:: *)
 Protect["FunKit`*"];
 EndPackage[];
+
+
+(* ::Input::Initialization:: *)
+DistributeDefinitions["FunKit`"];
+DistributeDefinitions["FunKit`Private`"];
