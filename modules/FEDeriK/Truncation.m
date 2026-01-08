@@ -247,6 +247,9 @@ FTruncate[setup_, expr_FEx] :=
         ret0 = MergeFExAnnotations[ret0, annotations];
         If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
             ret0 = FunKit`FSimplify[setup, ret0];
+            {ret0, annotations} = SeparateFExAnnotations[ret0];
+            ret0 = BalancedMap[ReduceIndices[setup, #]&, ret0];
+            ret0 = MergeFExAnnotations[FEx @@ ret0, annotations];
         ];
         Return[ret0];
     ];

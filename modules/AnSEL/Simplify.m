@@ -526,6 +526,7 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
             {fac1, terms1} = SplitPrefactor[setup, t1];
             {fac2, terms2} = SplitPrefactor[setup, nt2];
             factor = fac1 + equal * fac2;
+            factor = ReduceIndices[setup, FTerm[factor]];
             FunKitDebug[2, "With prefactor: ", factor];
             Return @ FTerm[factor, terms1];
         ];
@@ -565,7 +566,7 @@ SubFSimplify[setup_, expr_] /; Length[expr] > 64 :=
     Module[{chunks, ret, temp},
         temp = PrintTemporary[Style["WARNING: FSimplify called on a large expression. This may take a while.", Orange]];
         chunks = Partition[List @@ expr, UpTo[48]];
-        ret = Flatten[ParallelMap[SubFSimplify[setup, #]&, chunks]];
+        ret = Flatten[PMap[SubFSimplify[setup, #]&, chunks]];
         NotebookDelete[temp];
         Return[SubFSimplify[setup, ret]];
     ];
@@ -592,7 +593,7 @@ SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] > 64 :=
     Module[{chunks, ret, temp},
         temp = PrintTemporary[Style["WARNING: FSimplify called on a large expression with symmetries. This may take a while.", Orange]];
         chunks = Partition[List @@ expr, UpTo[48]];
-        ret = Flatten[ParallelMap[SubFSimplify[setup, #, symmetryList]&, chunks]];
+        ret = Flatten[PMap[SubFSimplify[setup, #, symmetryList]&, chunks]];
         NotebookDelete[temp];
         Return[SubFSimplify[setup, ret, symmetryList]];
     ];
@@ -624,9 +625,9 @@ FSimplifyNoSym[setup_, expr_] :=
     Module[{subGroups, res, useParallel},
         FunKitDebug[1, "Simplifying diagrammatic expression of length ", Length[expr]];
         subGroups = SeparateTermGroups[setup, expr];
-        useParallel = AllTrue[subGroups, Length[#] <= 64&];
+        useParallel = AllTrue[subGroups, Length[#] <= 64&] && ($FunKitDebugLevel <= 2);
         If[useParallel,
-            res = FEx @@ Flatten[ParallelMap[SubFSimplify[setup, #]&, subGroups]];
+            res = FEx @@ Flatten[PMap[SubFSimplify[setup, #]&, subGroups]];
             ,
             res = FEx @@ Flatten[Map[SubFSimplify[setup, #]&, subGroups]];
         ];
@@ -637,8 +638,9 @@ FSimplifyNoSym[setup_, expr_] :=
 Options[FSimplify] = {"Symmetries" -> {}};
 
 FSimplify[setup_, inexpr_FEx, OptionsPattern[]] :=
-    Module[{subGroups, res, expr, annotations, useParallel},
+    Module[{subGroups, res, expr, annotations, useParallel, symmetries},
         {expr, annotations} = SeparateFExAnnotations[inexpr];
+        expr = FixIndices[setup, expr];
         expr = FOrderFields[setup, expr];
         symmetries =
             If[KeyExistsQ[annotations, "Symmetries"],
@@ -653,9 +655,9 @@ FSimplify[setup_, inexpr_FEx, OptionsPattern[]] :=
         ];
         FunKitDebug[1, "Simplifying diagrammatic expression of length ", Length[expr], "with symmetry list"];
         subGroups = SeparateTermGroups[setup, expr];
-        useParallel = AllTrue[subGroups, Length[#] <= 64&];
+        useParallel = AllTrue[subGroups, Length[#] <= 64&] && ($FunKitDebugLevel <= 2);
         If[useParallel,
-            res = FEx @@ Flatten[ParallelMap[SubFSimplify[setup, #, symmetries]&, subGroups]];
+            res = FEx @@ Flatten[PMap[SubFSimplify[setup, #, Evaluate @ symmetries]&, subGroups]];
             ,
             res = FEx @@ Flatten[Map[SubFSimplify[setup, #, symmetries]&, subGroups]];
         ];

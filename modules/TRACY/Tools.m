@@ -91,7 +91,7 @@ fortranToMathematica[expr_String] :=
 $DefaultTimeConstraint = 0.1;
 
 ImportAndSimplifyFORM[file_, transf_ : (#&)] :=
-    Module[{fortran, math, splitmath, getAffectedVar, tempExpr, evalExpr, strExpr, expr, i, monitor, mSimplify = (Simplify[#, Trig -> False, TimeConstraint -> $DefaultTimeConstraint]&)},
+    Module[{fortran, math, splitmath, getAffectedVar, tempExpr, evalExpr, strExpr, expr, i, monitor, mSimplify = (Simplify[Rationalize[#], Trig -> False, TimeConstraint -> $DefaultTimeConstraint]&)},
         fortran = Import[file, "Text"];
         FunKitDebug[6, "FORM exported code: \n", fortran];
         math = fortranToMathematica[fortran];

@@ -61,6 +61,7 @@ FieldOrderLess[setup_, f1_Symbol, f2_Symbol] :=
         Module[{kind1, kind2, idxOrder, n1, n2},
             kind1 = {IsFermion[setup, #], IsAntiFermion[setup, #], IscField[setup, #], IsAnticField[setup, #], # === AnyField}&[f1];
             kind2 = {IsFermion[setup, #], IsAntiFermion[setup, #], IscField[setup, #], IsAnticField[setup, #], # === AnyField}&[f2];
+
             Switch[$CanonicalOrdering,
                 "f>af>b",
                     idxOrder = {4, 3, 2, 1, 0}
@@ -80,6 +81,7 @@ FieldOrderLess[setup_, f1_Symbol, f2_Symbol] :=
             ];
             n1 = Pick[idxOrder, kind1][[1]];
             n2 = Pick[idxOrder, kind2][[1]];
+
             If[n1 === n2,
                 Return[OrderedQ[{f1, f2}]]
             ];
@@ -161,7 +163,7 @@ GetOrder[setup_, fields_List, reverse_:False] /; BooleanQ[reverse] :=
             ];
         prefactor = 1;
         (*Always compare the ith field with all previous fields and put it in the right place. Iterate until one reaches the end of the array, then it is sorted.*)
-        For[i = 1, i <= Length[nfields], i++,
+        For[i = 2, i <= Length[nfields], i++,
             curi = i;
             (*Check if we should switch curi and curi-1*)
             While[

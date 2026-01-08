@@ -47,7 +47,7 @@ FMakeDiagrammaticRules[setup_, OptionsPattern[]] :=
                     If[OptionValue["DerivePropagators"] && object === Propagator,
                         FunKitDebug[2, "    Creating propagator rule"];
                         newBasisName = rule <> "_restrict_" <> StringReplace[ToString[subset], {" " -> "", "," -> "_", "{" -> "", "}" -> ""}];
-                        FunKitDebug[2, "      Creating restricted basis for propagator inversion ", newBasisName];
+                        FunKitDebug[2, "      Creating restricted basis for propagator inversion ", newBasisName, " with rule ", rule, ", subset ", subset];
                         If[Not @ TensorBases`TBBasisExists[newBasisName],
                             TensorBases`TBRestrictBasis[rule, newBasisName, subset]
                         ];
