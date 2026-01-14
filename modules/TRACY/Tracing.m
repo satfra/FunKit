@@ -7,6 +7,10 @@ Unprotect[FEx, FTerm, FormTracer`FormTrace];
 FEx /: FormTracer`FormTrace[name_String, FEx[a__], preReplRules_ : {}, postReplRules_ : {}, bracket_ : {}] :=
     Module[{idx},
         CreateFormSet[];
+        (*Check if the folder of name exists, if not, create it*)
+        If[Not[DirectoryQ[$TraceCacheDir <> name]],
+            CreateDirectory[$TraceCacheDir <> name];
+        ];
         ParallelTable[FormTracer`FormTrace[$TraceCacheDir <> name <> "/" <> ToString[idx] <> ".m", {a}[[idx]], preReplRules, postReplRules, bracket], {idx, 1, Length[{a}]}]
     ];
 

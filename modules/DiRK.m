@@ -11,11 +11,19 @@
 (* ::Input::Initialization:: *)
 
 FMakeDiagrammaticRules::usage = "FMakeDiagrammaticRules[setup]
-Generates replacement rules that convert functional expressions into diagrammatic form.
-Creates rules for propagators, vertices, and other diagrammatic elements based on the setup.
-Returns a list of transformation rules suitable for use with ReplaceAll (/.).
-Essential for converting abstract functional expressions into concrete diagrammatic representations.
-Used in conjunction with TensorBases for generating basis-specific rules.";
+Generates replacement rules that convert functional expressions into an explicit form that can be traced. 
+The bases are taken from TensorBases, and must be registered with TensorBases beforehand.
+Returns a list of replacement rules. 
+
+You can specify a set of rules for an indexed object, e.g. for the ghost-gluon vertex in GammaN, by
+GammaN -> {{A, cb, c} -> \"Acbc\"}}
+or, to restrict to certain basis elements,
+GammaN -> {{A, cb, c} -> {\"Acbc\", 1}}
+to restrict to multiple elements, just list them:
+GammaN -> {{A, qb, q} -> {\"AqbqDirect\", 1, 4, 7}}
+Furthermore, suppose you have called your ghosts d and db instead of c and cb, you can add this information to the rule, so FunKit can match against the fields specified in the basis:
+GammaN -> {{A, cb, c} -> {\"Acbc\", 1, c -> d, cb -> db}}
+";
 
 FSetSymmetricDressing::usage = "FSetSymmetricDressing[object, fields]
 FSetSymmetricDressing[object, fields, indices] 

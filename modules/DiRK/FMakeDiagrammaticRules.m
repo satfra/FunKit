@@ -1,7 +1,7 @@
 Options[FMakeDiagrammaticRules] = {"DerivePropagators" -> True};
 
 FMakeDiagrammaticRules[setup_, OptionsPattern[]] :=
-    Module[{ruleList, truncationList, idx, jdx, kdx, minusRule, object, fieldContent, rule, dress, minusOrig, minusBasis, subset = All, orderOrig, orderBasis, newBasisName, propMom},
+    Module[{ruleList, truncationList, idx, jdx, kdx, minusRule, object, fieldContent, rule, dress, minusOrig, minusBasis, subset = All, orderOrig, orderBasis, newBasisName, propMom, annotations},
         ruleList = {};
         truncationList = Normal[setup["FeynmanRules"]];
         For[idx = 1, idx <= Length[truncationList], idx++,
@@ -12,14 +12,16 @@ FMakeDiagrammaticRules[setup_, OptionsPattern[]] :=
                 FunKitDebug[1, "  Creating diagrammatic rule for ", rule];
                 (*Check what the subset of the original basis is*)
                 If[Head[rule] === List,
-                    subset =
-                        If[Head[rule[[2]]] === List,
-                            rule[[2]]
-                            ,
-                            {rule[[2]]}
-                        ];
-                    rule = rule[[1]]
+                    annotations = Select[rule, Head[#] === Rule&];
+                    rule = Select[rule, Head[#] =!= Rule&];
+                    If[Length[rule] < 2,
+                        subset = Range[TensorBases`TBGetBasisSize[makePosIdx[rule[[1]]]]];
+                        ,
+                        subset = Flatten[{rule[[2 ;; ]]}];
+                    ];
+                    rule = rule[[1]];
                     ,
+                    annotations = {};
                     subset = Range[TensorBases`TBGetBasisSize[makePosIdx[rule]]];
                 ];
                 minusRule =
@@ -42,7 +44,7 @@ FMakeDiagrammaticRules[setup_, OptionsPattern[]] :=
                         ]
                     ];
                 fieldContent = (Keys @ truncationList[[idx, 2, jdx]])[[orderOrig]];
-                {minusBasis, orderBasis} = GetOrder[setup, fieldContent, TensorBases`TBGetBasisFields[rule]];
+                {minusBasis, orderBasis} = GetOrder[setup, fieldContent, TensorBases`TBGetBasisFields[rule] /. annotations];
                 dress =
                     If[OptionValue["DerivePropagators"] && object === Propagator,
                         FunKitDebug[2, "    Creating propagator rule"];
