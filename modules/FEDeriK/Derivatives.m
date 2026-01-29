@@ -5,9 +5,9 @@
 FResolveFDOp::nested = "The given term contains nested FDOp. Before proceeding, you need to expand these with DExpand. 
 Error in `1`";
 
-FResolveFDOp[setup_, FEx_FEx] :=
+FResolveFDOp[setup_, expr_FEx] :=
     Module[{},
-        Return[FEx @@ ParallelMap[FResolveFDOp[setup, #]&, List @@ FEx]];
+        Return[FEx @@ ParallelMap[FResolveFDOp[setup, #]&, List @@ expr]];
     ];
 
 FResolveFDOp[setup_, term_FTerm] :=
@@ -53,9 +53,9 @@ FResolveFDOp[setup_, term_FTerm] :=
             ,
             {idx, 1, nPost}
         ];
-        FunKitDebug[6, "Result: ", dTerms];
         (*Note: up till here, the performance impact is minimal.However, the following blowup of terms will multiply it*)
         dTerms = ReduceIndices[setup, FEx @@ dTerms];
+        FunKitDebug[6, "Result: ", dTerms];
         Return[ReduceFEx[setup, dTerms]];
     ];
 

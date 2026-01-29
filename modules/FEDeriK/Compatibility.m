@@ -41,7 +41,7 @@ QMeSNaming[setup_, obj_ /; ObjectQ[obj]] :=
                     "Rdot"
                 ,
                 _,
-                    ToString[obj]
+                    ToString[Head[obj]]
             ];
         fieldPart = StringJoin[Map[ToString, mfields]];
         indexPart = Flatten[mindices];

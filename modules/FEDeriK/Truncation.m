@@ -68,19 +68,28 @@ indices::inconsistentContractions = "The index `1` has been contracted in an inc
 indices::inconsistentFieldContractions = "The fields `1` have been contracted in an inconsistent way in the expression
     `2`";
 
+(*inside an object, find all occurences of idx and replace the fields at the respective positions with field.*)
+
+insertFields[obj_, idx_, field_Symbol] :=
+    Module[{ret = obj, positions},
+        positions = Flatten[Position[makePosIdx /@ obj[[2]], makePosIdx @ idx]];
+        Do[ret[[1, positions[[i]]]] = field;, {i, 1, Length[positions]}];
+        Return[ret];
+    ];
+
 LTrunc[setup_, {}] :=
-    {}
+    {};
 
 LTrunc[setup_, expr_] :=
     (
         Message[FTruncate::wrongExpr, expr];
         Abort[]
-    )
+    );
 
 LTrunc[setup_, expr_FEx] :=
     Module[{},
         Map[LTrunc[setup, #]&, expr]
-    ]
+    ];
 
 LTrunc[setup_, expr_FTerm] :=
     Module[{ret = List @@ expr, curi, allObj, closedIndices, openIndices, i, allFields = GetAllFields[setup], idx, subObj, idxOccur, idxPos, ignore, notFoundCuri, doFields, a, undoFields},
@@ -100,12 +109,10 @@ LTrunc[setup_, expr_FTerm] :=
         If[Length[closedIndices] === 0,
             Return[FTerm @@ ret /. undoFields]
         ];
-(*We have to update these global quantities after each iteration
-    *)
+        (*We have to update these global quantities after each iteration*)
         allObj = ExtractObjectsWithIndex[setup, FTerm @@ (ret /. FTerm[__] :> ignore)] /. doFields;
         FunKitDebug[3, "  Searching for the first object that needs expansion..."];
-(*Next, try to find the first factor that needs to be expanded
-    *)
+        (*Next, try to find the first factor that needs to be expanded*)
         notFoundCuri = True;
         curi = 1;
         While[
@@ -143,13 +150,20 @@ LTrunc[setup_, expr_FTerm] :=
             notFoundCuri = False;
         ];
         If[subObj[[1, 1, idxPos[[1]]]] === AnyField && subObj[[2, 1, idxPos[[2]]]] === AnyField,
+            (*Now replace all the fields:*)
             ret =
                 FEx @@
                     Map[
-                        Module[{s1 = subObj[[1]], s2 = subObj[[2]], t},
-                            s1[[1, idxPos[[1]]]] = #;
-                            s2[[1, idxPos[[2]]]] = #;
-                            truncationPass[setup, FTerm @@ (ret /. {subObj[[1]] :> s1, subObj[[2]] :> s2, FMinus[{a_, a_}, {s1[[2, idxPos[[1]]]], s1[[2, idxPos[[1]]]]}] :> FMinus[{#, #}, {s1[[2, idxPos[[1]]]], s1[[2, idxPos[[1]]]]}], FMinus[{a_, a_}, {s2[[2, idxPos[[2]]]], s2[[2, idxPos[[2]]]]}] :> FMinus[{#, #}, {s2[[2, idxPos[[2]]]], s2[[2, idxPos[[2]]]]}], FMinus[{a_, b_}, {s1[[2, idxPos[[1]]]], ib_}] :> FMinus[{#, b}, {s1[[2, idxPos[[1]]]], ib}], FMinus[{a_, b_}, {s2[[2, idxPos[[2]]]], ib_}] :> FMinus[{#, b}, {s2[[2, idxPos[[2]]]], ib}], FMinus[{a_, b_}, {ia_, s1[[2, idxPos[[1]]]]}] :> FMinus[{a, #}, {ia, s1[[2, idxPos[[1]]]]}], FMinus[{a_, b_}, {ia_, s2[[2, idxPos[[2]]]]}] :> FMinus[{a, #}, {ia, s2[[2, idxPos[[2]]]]}]})]
+                        Module[
+                            {s1 = subObj[[1]], s2 = subObj[[2]], idx1, idx2, field1, field2, localRet}
+                            ,
+                            (*Pick the indices associated to where we want to insert a given field:*)
+                            idx1 = s1[[2, idxPos[[1]]]];
+                            idx2 = s2[[2, idxPos[[2]]]];
+                            FunKitDebug[3, "Replacing the index ", makePosIdx[idx1], " by field ", #];
+                            (*And find all index-looking objects and put in a replacement of the field at the right position.*)
+                            localRet = ret /. {obj_[{fs__}, {ids__}] /; (MemberQ[makePosIdx /@ {ids}, idx1] || MemberQ[makePosIdx /@ {ids}, idx2]) :> insertFields[insertFields[obj[{fs}, {ids}], idx2, #], idx1, #]};
+                            truncationPass[setup, FTerm @@ localRet]
                         ]&
                         ,
                         allFields
@@ -220,6 +234,11 @@ OTrunc[setup_, expr_FTerm] :=
         Return[truncationPass[setup, ret] /. undoFields];
     ];
 
+$TruncateOpenIndices = False;
+
+SetTruncateOpenIndices[bool_] /; BooleanQ[bool] :=
+    ($TruncateOpenIndices = bool);
+
 FTruncate[setup_, expr_FEx] :=
     Module[{ret0, ret1, ret2, ret3, annotations},
         AssertFSetup[setup];
@@ -233,8 +252,10 @@ FTruncate[setup_, expr_FEx] :=
         ];
         FunKitDebug[1, "Truncating the given expression"];
         {ret0, annotations} = SeparateFExAnnotations[expr];
-        (*First, resolve open indices directly*)
-        ret0 = BalancedMap[OTrunc[setup, #]&, ret0];
+        If[$TruncateOpenIndices === True,
+            (*First, resolve open indices directly*)
+            ret0 = BalancedMap[OTrunc[setup, #]&, ret0];
+        ];
         (*Then, take care of closed indices recursively*)
         ret0 = BalancedMap[LTrunc[setup, #]&, ret0];
         (*Finally, reduce indices again to be safe*)

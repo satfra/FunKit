@@ -154,16 +154,6 @@ Represents terms in the classical action S with the specified field content and 
 Used in constructing classical actions and Dyson-Schwinger equations.
 The field content determines the type of interaction (2-point, 3-point, 4-point, etc.).";
 
-ABasis::usage = "ABasis[{field1, field2, ...}, {index1, index2, ...}]
-Represents basis elements for correlations involving the gauge field A.
-Used in tensor basis decompositions for gauge theory calculations.
-Provides a systematic way to parameterize gauge field correlation functions.";
-
-VBasis::usage = "VBasis[{field1, field2, ...}, {index1, index2, ...}]
-Represents vector basis elements for tensor decompositions.
-Used in organizing correlation functions according to their vector/tensor structure.
-Helpful for systematic treatment of Lorentz indices in gauge theories.";
-
 \[Gamma]::usage = "\[Gamma][{field1, field2}, {index1, index2}]
 Represents the functional derivative \[Delta]/\[Delta]\[CurlyPhi] operation in functional expressions.
 This symbol appears automatically when functional derivatives are resolved.
@@ -183,6 +173,11 @@ FMinus::usage = "FMinus[{field1, field2}, {index1, index2}]
 Represents Grassmann minus signs (-1)^{field1\[CenterDot]field2} arising from commuting fermionic fields.
 This is automatically generated when reordering expressions containing Grassmann fields.
 Essential for maintaining correct signs in fermionic calculations.";
+
+SymmetryFactor::usage = "SymmetryFactor[{field1, field2, ...}, {index1, index2, ...}]
+Represents the symmetry factor associated with identical fields in an expression.
+When all fields are specified, it evaluates to 1 / (n1! n2! ...), where ni is the number of occurrences of the unique field i.
+";
 
 AnyField::usage = "AnyField
 Placeholder symbol representing an undetermined field type.
@@ -207,6 +202,11 @@ Sets whether automatic simplification should be applied when taking derivatives 
 
 FEmptySetup::usage = "FEmptySetup
 Returns an empty FEDeriK setup with no fields or truncation tables defined.";
+
+SetTruncateOpenIndices::usage = "SetTruncateOpenIndices[bool]
+Sets whether open indices represented by AnyField should be truncated during FTruncate.
+This explicitly means that AnyField will be replaced by all fields known to the setup and then summed over.
+Default is False, meaning open indices are left unchanged during truncation.";
 
 (* ::Section:: *)
 

@@ -19,8 +19,6 @@ FClearFDRules[] :=
 
 FunctionalD::malformed = "Cannot take a derivative of `1`. Expression is either malformed or this is a bug.";
 
-ClearAll[FunctionalD]
-
 SymmetryFactorsFromList[ex_List] :=
     Module[{ret},
         ret = Gather[ex];
@@ -132,7 +130,7 @@ FunctionalD[setup_, expr_, v : (f_[_List, _List] | {f_[_List, _List], _Integer})
             {rule, $userRules}
         ];
         (*Rule for normal functional derivatives*)
-        f /: D[f[{f1_, f2_}, {i_, j_}], f[{f3_, f4_}, {k_, l_}], NonConstants -> nonConst] := \[Gamma][{f1, f3}, {-k, -i}] \[Gamma][{f2, f4}, {-l, -j}];
+        f /: D[f[{f1_, f2_}, {i_, j_}], f[{f3_, f4_}, {k_, l_}], NonConstants -> nonConst] := SymmetryFactor[{f1, f2}, {k, l}] \[Gamma][{f1, f3}, {-k, -i}] \[Gamma][{f2, f4}, {-l, -j}];
         f /: D[f[{f1__}, {i1__}], f[{f2__}, {i2__}], NonConstants -> nonConst] /; Length[{f1}] == Length[{f2}] === Length[{i1}] === Length[{i2}] :=
             Module[
                 {n, combis, ret}

@@ -72,19 +72,19 @@ $userIndexedObjects = {};
 $userOrderedObjects = {};
 
 $CorrelationFunctions :=
-    {Propagator, GammaN} \[Union] $userCorrelationFunctions;
+    Join[{Propagator, GammaN}, $userCorrelationFunctions];
 
 $OrderedObjects :=
-    $CorrelationFunctions \[Union] {R, Rdot, S} \[Union] $userOrderedObjects;
+    Join[$CorrelationFunctions, {R, Rdot, S}, $userOrderedObjects];
 
 $indexedObjects :=
-    $OrderedObjects \[Union] {ABasis, VBasis, \[Gamma], Field} \[Union] $userIndexedObjects;
+    Join[$OrderedObjects, {\[Gamma], Field}, $userIndexedObjects];
 
 $allObjects :=
-    {FMinus} \[Union] $indexedObjects
+    Join[{FMinus, SymmetryFactor}, $indexedObjects]
 
 $nonCommutingObjects :=
-    $CorrelationFunctions \[Union] {FDOp, Field};
+    Join[$CorrelationFunctions, {FDOp, Field}];
 
 $MaxDerivativeIterations = 500;
 
