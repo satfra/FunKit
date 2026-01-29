@@ -19,11 +19,21 @@ FClearFDRules[] :=
 
 FunctionalD::malformed = "Cannot take a derivative of `1`. Expression is either malformed or this is a bug.";
 
-SymmetryFactorsFromList[ex_List] :=
-    Module[{ret},
-        ret = Gather[ex];
-        ret = 1 / Factorial[Length[#]]& /@ ret;
-        Times @@ ret
+SymmetricDerivative::malformed = "Cannot take symmetric derivative with given arguments: number of fields do not match.";
+
+SymmetricDerivative[fields1_, ind1_, fields2_, ind2_] :=
+    Module[{ret, perms,pidx,idx},
+        (*Build all permuatations*)
+        If[Length[fields1] =!= Length[fields2],
+            Message[SymmetricDerivative::malformed];
+            Abort[];
+        ];
+        perms = Permutations[Range[Length[fields2]]];
+        ret = Table[Times@@Table[
+            \[Gamma][{fields1[[idx]] , fields2[[perms[[pidx, idx]]]]} , {ind1[[idx]], -ind2[[perms[[pidx, idx]]]]}]
+            ,
+            {idx, 1, Length[perms[[pidx]]]}],{pidx, 1, Length[perms]}];
+        Return[SymmetryFactor[fields2, ind2] * Total[ret]];
     ];
 
 FunctionalD[setup_, expr_, v : (f_[_] | {f_[_], _Integer}).., OptionsPattern[]] :=
@@ -74,7 +84,6 @@ FunctionalD[setup_, expr_, v : (f_[_] | {f_[_], _Integer}).., OptionsPattern[]] 
         f /: D[Divide[a_, b_], f[y_], NonConstants -> nonConst] :=
             Module[{da, db},
                 FunKitDebug[6, "NestRule: Divide"];
-                FunKitDebug[6, "in: ", {a, b}];
                 da = D[a, f[y], NonConstants -> nonConst];
                 db = D[b, f[y], NonConstants -> nonConst];
                 FEx[FTerm[da, b] / b^2, FTerm[-1, a, db] / b^2]
@@ -130,16 +139,9 @@ FunctionalD[setup_, expr_, v : (f_[_List, _List] | {f_[_List, _List], _Integer})
             {rule, $userRules}
         ];
         (*Rule for normal functional derivatives*)
-        f /: D[f[{f1_, f2_}, {i_, j_}], f[{f3_, f4_}, {k_, l_}], NonConstants -> nonConst] := SymmetryFactor[{f1, f2}, {k, l}] \[Gamma][{f1, f3}, {-k, -i}] \[Gamma][{f2, f4}, {-l, -j}];
-        f /: D[f[{f1__}, {i1__}], f[{f2__}, {i2__}], NonConstants -> nonConst] /; Length[{f1}] == Length[{f2}] === Length[{i1}] === Length[{i2}] :=
-            Module[
-                {n, combis, ret}
-                ,
-                (*construct all combinations of i1, i2*)
-                n = Length[{f1}];
-                Print["NOT YET IMPLEMENTED: FunctionalD for multi-indexed functions"];
-                Abort[];
-            ];
+        (*f /: D[f[{f1_, f2_}, {i_, j_}], f[{f3_, f4_}, {k_, l_}], NonConstants -> nonConst] := SymmetryFactor[{f1, f2}, {k, l}] \[Gamma][{f1, f3}, {-k, -i}] \[Gamma][{f2, f4}, {-l, -j}];*)
+        f /: D[f[{f1__}, {i1__}], f[{f2__}, {i2__}], NonConstants -> nonConst] :=
+            SymmetricDerivative[{f1}, {i1}, {f2}, {i2}];
         (*Rule for normal functional derivatives, but AnyField*)
         (*No derivatives of FTerm, FEx*)
         f /: D[FTerm[a___], f[y__], NonConstants -> nonConst] := FTerm[FDOp[f[y]], a];
@@ -152,7 +154,6 @@ FunctionalD[setup_, expr_, v : (f_[_List, _List] | {f_[_List, _List], _Integer})
         f /: D[Divide[a_, b_], f[y__], NonConstants -> nonConst] :=
             Module[{da, db},
                 FunKitDebug[6, "NestRule: Divide"];
-                FunKitDebug[6, "in: ", {a, b}];
                 da = D[a, f[y], NonConstants -> nonConst];
                 db = D[b, f[y], NonConstants -> nonConst];
                 FEx[FTerm[da, b] / b^2, FTerm[-1, a, db] / b^2]
