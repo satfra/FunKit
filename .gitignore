@@ -6,6 +6,8 @@ publication/*.out
 publication/*.log
 publication/FunKitNotes.bib
 
+TBCache/
+
 .DS_Store
 
 form.set
