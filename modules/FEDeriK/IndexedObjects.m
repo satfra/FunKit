@@ -306,14 +306,14 @@ SuperIndicesValid[setup_, expr_] :=
         Abort[]
     )
 
-SetSymmetricObject[obj_, {f__}] :=
+FSetSymmetricObject[obj_, {f__}] :=
     Module[{},
         Unprotect[obj];
         obj[{f}, {any__}] /; Not @ OrderedQ[{any}] := obj[{f}, Sort @ {any}];
         Protect[obj];
     ];
 
-SetSymmetricObject[obj_, {f__}, {i__Integer}] :=
+FSetSymmetricObject[obj_, {f__}, {i__Integer}] :=
     Module[{},
         Unprotect[obj];
         obj[{f}, {any__}] /; Not @ OrderedQ[{any}[[{i}]]] :=

@@ -8,7 +8,7 @@ CanonicalOrdering::unknownInteger = "The integer `1` should be between 1 and 4."
 
 CanonicalOrdering::unknownString = "The expression `1` should be one of " <> ToString[$AvailableCanonicalOrderings];
 
-SetCanonicalOrdering[a_Integer] :=
+FSetCanonicalOrdering[a_Integer] :=
     Module[{},
         Switch[a,
             1,
@@ -29,7 +29,7 @@ SetCanonicalOrdering[a_Integer] :=
         Print["Canonical ordering set to ", $CanonicalOrdering];
     ];
 
-SetCanonicalOrdering[a_] :=
+FSetCanonicalOrdering[a_] :=
     Module[{},
         Switch[a,
             "f>af>b",
@@ -100,7 +100,7 @@ CommuteSign[setup_, f1_, f2_] :=
 
 $unorderedIndices[_] = 0;
 
-SetUnorderedIndices[obj_, n_Integer] /; n >= 0 && MemberQ[$allObjects, obj] :=
+FSetUnorderedIndices[obj_, n_Integer] /; n >= 0 && MemberQ[$allObjects, obj] :=
     Set[$unorderedIndices[obj], n];
 
 (* In case of a tie, we use lexical ordering: *)

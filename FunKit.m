@@ -175,7 +175,7 @@ End[]
 
 (* ::Input::Initialization:: *)
 $FunKitDebugLevel=0;
-SetFunKitDebugLevel[newLevel_Integer]:=Module[{},
+FSetDebugLevel[newLevel_Integer]:=Module[{},
 Unprotect@$FunKitDebugLevel;
 Set[$FunKitDebugLevel,newLevel];
 Protect@$FunKitDebugLevel;
@@ -358,10 +358,10 @@ framedPrint@ShowCorrelationFunctions[];
 Print["These are special indexed objects, which are always hit by functional derivatives. 
 As an example, take the generalised flow equation ",MaTeX`MaTeX["\\partial_t \\Gamma = -\\dot\\Phi^a\\Gamma_a + \\frac{1}{2}G^{ac}\\Bigg(\\gamma_c^{\\phantom{c}b}\\partial_t  + 2 \\frac{\\delta\\dot{\\Phi}^b}{\\delta\\Phi^c}\\Bigg){R}_{ab}"],
 "First, we add a new correlation function using \!\(\*
-StyleBox[\"AddCorrelationFunction\",\nFontColor->RGBColor[1, 0.5, 0]]\)[Phidot] and mark its last index to be never re-ordered using \!\(\*
-StyleBox[\"SetUnorderedIndices\",\nFontColor->RGBColor[1, 0.5, 0]]\)[Phidot,1]"];
-AddCorrelationFunction[Phidot];
-SetUnorderedIndices[Phidot,1];
+StyleBox[\"FAddCorrelationFunction\",\nFontColor->RGBColor[1, 0.5, 0]]\)[Phidot] and mark its last index to be never re-ordered using \!\(\*
+StyleBox[\"FSetUnorderedIndices\",\nFontColor->RGBColor[1, 0.5, 0]]\)[Phidot,1]"];
+FAddCorrelationFunction[Phidot];
+FSetUnorderedIndices[Phidot,1];
 Print["Then, the flow equation can be written out as 
 
     \!\(\*

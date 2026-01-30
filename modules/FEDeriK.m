@@ -85,34 +85,54 @@ The RG-invariant generalized flow equation with additional terms for maintaining
 Similar to GeneralizedFlowEquation but includes extra contributions to ensure renormalization group invariance.
 Used in advanced functional RG calculations where RG invariance must be preserved exactly.";
 
-AddIndexedObject::usage = "AddIndexedObject[name]
+FAddIndexedObject::usage = "FAddIndexedObject[name]
 Adds a new indexed object to the list of user-defined indexed objects.
 Indexed objects are symbols that can carry field and index information in functional expressions.
 The new object will be automatically protected and included in derivative calculations.";
 
-ShowIndexedObjects::usage = "ShowIndexedObjects[]
+FShowIndexedObjects::usage = "FShowIndexedObjects[]
 Displays a table of all currently defined indexed objects.
 This includes both built-in objects (like Propagator, GammaN, S, R, Rdot) and user-defined objects.
 Useful for checking which indexed objects are available for use in expressions.";
 
-AddCorrelationFunction::usage = "AddCorrelationFunction[name]
+FAddOrderedObject::usage = "FAddOrderedObject[name]
+Adds a new ordered object to the list of user-defined ordered objects.
+Ordered objects are indexed objects that participate in field ordering operations, but not in functional derivative calculations.
+The new object will be automatically protected and included in ordering operations.";
+
+FShowOrderedObjects::usage = "FShowOrderedObjects[]
+Displays a table of all currently defined ordered objects.
+This includes both built-in ordered objects (like R, Rdot, S) and user-defined ones.
+Useful for checking which ordered objects are available for use in expressions.";
+
+FAddCorrelationFunction::usage = "FAddCorrelationFunction[name]
 Adds a new correlation function to the list of user-defined correlation functions.
 Correlation functions are special indexed objects that represent n-point functions in functional methods.
 They are treated as non-commuting objects and participate in functional derivative calculations.";
 
-ShowCorrelationFunctions::usage = "ShowCorrelationFunctions[]
+FShowCorrelationFunctions::usage = "FShowCorrelationFunctions[]
 Displays a table of all currently defined correlation functions.
 This includes built-in correlation functions (Propagator, GammaN) and user-defined ones.
 Correlation functions are the primary objects that functional derivatives act upon.";
 
-SetUnorderedIndices::usage = "SetUnorderedIndices[obj, indices]
+FAddObject::usage = "FAddObject[name]
+Adds a new object to the list of user-defined objects.
+These objects can be used in functional expressions but are not treated as indexed objects.
+The new object will be automatically protected and included in derivative calculations.";
+
+FShowObjects::usage = "FShowObjects[]
+Displays a table of all currently defined objects.
+This includes both built-in objects (like FMinus, SymmetryFactor) and user-defined objects.
+Useful for checking which objects are available for use in expressions.";
+
+FSetUnorderedIndices::usage = "FSetUnorderedIndices[obj, indices]
 Specifies which indices of an indexed object should not be reordered during field ordering operations.
 This is useful for objects like Phidot where the last index (representing the field itself) should remain fixed.
 The indices parameter can be a single integer or list of integers specifying which index positions to keep unordered.";
 
-SetSymmetricObject::usage = "SetSymmetricObject[obj, {fields}]
+FSetSymmetricObject::usage = "SetSymmetricObject[obj, {fields}]
 Defines an indexed object as symmetric in all its indices.
-SetSymmetricObject[obj, {fields}, {positions}] makes the object symmetric only in the specified index positions.
+FSetSymmetricObject[obj, {fields}, {positions}] makes the object symmetric only in the specified index positions.
 This automatically sorts indices to canonical order and can significantly reduce the number of terms in calculations.";
 
 FOrderFields::usage = "FOrderFields[setup, expr]
@@ -203,10 +223,9 @@ Sets whether automatic simplification should be applied when taking derivatives 
 FEmptySetup::usage = "FEmptySetup
 Returns an empty FEDeriK setup with no fields or truncation tables defined.";
 
-SetTruncateOpenIndices::usage = "SetTruncateOpenIndices[bool]
-Sets whether open indices represented by AnyField should be truncated during FTruncate.
-This explicitly means that AnyField will be replaced by all fields known to the setup and then summed over.
-Default is False, meaning open indices are left unchanged during truncation.";
+FTruncateOpenIndices::usage = "FTruncateOpenIndices[setup, expr]
+Truncates open indices in the given expression according to the truncation tables specified in the setup.
+This means explicitly that a sum is taken over all possible fields for every single open index in the expression.";
 
 (* ::Section:: *)
 

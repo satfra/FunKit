@@ -234,10 +234,37 @@ OTrunc[setup_, expr_FTerm] :=
         Return[truncationPass[setup, ret] /. undoFields];
     ];
 
-$TruncateOpenIndices = False;
-
-SetTruncateOpenIndices[bool_] /; BooleanQ[bool] :=
-    ($TruncateOpenIndices = bool);
+FTruncateOpenIndices[setup_, expr_FEx] :=
+    Module[{ret0, ret1, ret2, ret3, annotations},
+        AssertFSetup[setup];
+        If[KeyFreeQ[setup, "Truncation"],
+            Message[FTruncate::noTruncation];
+            Abort[]
+        ];
+        If[MemberQ[expr, FDOp[__], Infinity],
+            Message[FTruncate::FDOp];
+            Abort[]
+        ];
+        FunKitDebug[1, "Truncating (open indices) the given expression"];
+        {ret0, annotations} = SeparateFExAnnotations[expr];
+            (*Resolve open indices directly*)
+            ret0 = BalancedMap[OTrunc[setup, #]&, ret0];
+        (*Finally, reduce indices again to be safe*)
+        ret0 = BalancedMap[ReduceIndices[setup, #]&, ret0];
+        FunKitDebug[1, "Finished truncating (open indices) the given expression"];
+        ret0 = OrderFields[setup, FixIndices[setup, #]& /@ ret0];
+        (*Directly remove all FEx[]*)
+        ret0 = ret0 /. FEx[] -> {} // Flatten;
+        ret0 = FEx @@ ret0;
+        ret0 = MergeFExAnnotations[ret0, annotations];
+        If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
+            ret0 = FunKit`FSimplify[setup, ret0];
+            {ret0, annotations} = SeparateFExAnnotations[ret0];
+            ret0 = BalancedMap[ReduceIndices[setup, #]&, ret0];
+            ret0 = MergeFExAnnotations[FEx @@ ret0, annotations];
+        ];
+        Return[ret0];
+    ];
 
 FTruncate[setup_, expr_FEx] :=
     Module[{ret0, ret1, ret2, ret3, annotations},
@@ -252,11 +279,7 @@ FTruncate[setup_, expr_FEx] :=
         ];
         FunKitDebug[1, "Truncating the given expression"];
         {ret0, annotations} = SeparateFExAnnotations[expr];
-        If[$TruncateOpenIndices === True,
-            (*First, resolve open indices directly*)
-            ret0 = BalancedMap[OTrunc[setup, #]&, ret0];
-        ];
-        (*Then, take care of closed indices recursively*)
+        (*Take care of closed indices recursively*)
         ret0 = BalancedMap[LTrunc[setup, #]&, ret0];
         (*Finally, reduce indices again to be safe*)
         ret0 = BalancedMap[ReduceIndices[setup, #]&, ret0];

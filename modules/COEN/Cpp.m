@@ -146,7 +146,7 @@ WriteCodeToFile[fileName_String, expression_String] :=
         ]
     ];
 
-FormatCode[expression_String] :=
+FormatCppCode[expression_String] :=
     Module[{tmpfileName1, tmpfileName2, output},
         tmpfileName1 = "/tmp/in_" <> makeTemporaryFileName[];
         tmpfileName2 = "/tmp/out_" <> makeTemporaryFileName[];
@@ -187,7 +187,7 @@ formatFORMCode[expr_String] :=
             res = StringReplacePart[res, "auto _tmp" <> ToString[idx] <> "", StringPosition[res, "w[" <> ToString[idx] <> "]", 1]];
         ];
         res = StringReplace[res, {Shortest["w[" ~~ (arg1__ /; balancedRBracesQ[arg1]) ~~ "]"] :> "_tmp" ~~ arg1 ~~ "", "expr=" -> "return ", "\n" -> ""}];
-        res = FormatCode[res];
+        res = FormatCppCode[res];
         (*Get rid of unecessary copies*)
         repl = Map[StringReplace[#, "auto _tmp" ~~ a__ ~~ " = " ~~ b__ ~~ ";" /; hasNoOperators[b] :> "_tmp" ~~ a ~~ "->" ~~ b]&, Select[StringSplit[res, "\n"], StringMatchQ[#, "auto _tmp" ~~ a__ ~~ "=" ~~ b__ ~~ ";" /; hasNoOperators[b]]&]];
         repl = Map[((a_ /; MatchQ[a, "(" | " " | "-"]) ~~ #[[1]] ~~ (b_ /; MatchQ[b, ")" | " " | ";"]) :> a ~~ #[[2]] ~~ b&) @ StringSplit[#, "->"]&, repl];
@@ -196,7 +196,7 @@ formatFORMCode[expr_String] :=
         Return[res];
     ];
 
-FORMCode[expr_] :=
+CppCodeFORM[expr_] :=
     Module[{origVars, tmpfileName, import},
         origVars = FormTracer`GetExtraVars[];
         tmpfileName = "/tmp/FO_" <> makeTemporaryFileName[];
@@ -397,14 +397,14 @@ MakeCppFunction[OptionsPattern[]] :=
                 StringReplace["{\n" <> OptionValue["Body"] <> "\n}", "\n\n" -> ""]
             ];
         FunKitDebug[2, "  Prepared Cpp function; now parsing code."];
-        Return[FormatCode[functionTemplates <> functionPrefix <> functionName <> functionParameters <> functionSuffix <> "\n" <> functionBody]]
+        Return[FormatCppCode[functionTemplates <> functionPrefix <> functionName <> functionParameters <> functionSuffix <> "\n" <> functionBody]]
     ];
 
 MakeCppFunction[expr_, OptionsPattern[]] :=
     Module[{codeParser, newBody},
         codeParser =
             If[OptionValue["CodeParser"] === "FORM",
-                FORMCode
+                CppCodeFORM
                 ,
                 CppCode
             ];
@@ -458,7 +458,7 @@ MakeCppClass[OptionsPattern[]] :=
                     ""
                 ] <> "\n};";
         StringReplace[classBody, {";;" -> ";"}];
-        Return[FormatCode[classPrefix <> className <> classSuffix <> "\n" <> classBody]]
+        Return[FormatCppCode[classPrefix <> className <> classSuffix <> "\n" <> classBody]]
     ];
 
 (* ::Input::Initialization:: *)
@@ -474,7 +474,7 @@ MakeCppHeader[OptionsPattern[]] :=
         headerIncludes = StringRiffle[Map["#include \"" ~~ # ~~ "\""&, OptionValue["Includes"]], "\n"] <> "\n";
         (*create the body*)
         headerBody = StringRiffle[OptionValue["Body"], "\n"];
-        Return[FormatCode[headerPrefix <> "\n" <> headerIncludes <> "\n" <> headerBody]];
+        Return[FormatCppCode[headerPrefix <> "\n" <> headerIncludes <> "\n" <> headerBody]];
     ];
 
 (* ::Input::Initialization:: *)
@@ -506,7 +506,7 @@ MakeCppBlock[OptionsPattern[]] :=
                 ,
                 ""
             ];
-        Return[FormatCode[sourcePrefix <> sourceIncludes <> sourceBody <> sourcePostfix]];
+        Return[FormatCppCode[sourcePrefix <> sourceIncludes <> sourceBody <> sourcePostfix]];
     ];
 
 (* ::Input::Initialization:: *)

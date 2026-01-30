@@ -30,7 +30,7 @@ UseCppPowr[True] enables the use of powr for better performance.
 UseCppPowr[False] uses standard power operations.
 Default behavior depends on the target C++ compiler and optimization needs.";
 
-FORMCode::usage = "FORMCode[expr]
+CppCodeFORM::usage = "CppCodeFORM[expr]
 Generates FORM computer algebra system code for the given expression.
 Returns code suitable for input to FORM for symbolic manipulation.
 Handles polynomials, rational functions, and symbolic expressions.
@@ -62,17 +62,21 @@ Generates a C++ function definition based on specified options. See Options[Make
 MakeJuliaFunction::usage = "MakeJuliaFunction[\"Name\"->name, \"Return\"->returnType, \"Parameters\"->paramList, \"Body\"->body, ...]
 Generates a Julia function definition based on specified options. See Options[MakeJuliaFunction] for available settings.";
 
-MakeFortranFunction::usage = ""
+MakeFortranFunction::usage = "";
 
-DefineCppNames::usage = ""
+CppForm::usage = "CppForm[expr]
+Converts a Mathematica expression into its C++ code representation.";
 
-CppForm::usage = ""
+JuliaForm::usage = "JuliaForm[expr]
+Converts a Mathematica expression into its Julia code representation.";
 
-FormatCode::usage = ""
+FormatCppCode::usage = "FormatCppCode[codeString]
+Uses clangd, if available on the system, to automatically format a given string of C++ code.";
 
-MakeParameterString::usage = ""
+MakeParameterString::usage = "MakeParameterString[param]
+Generates the parameter string for a single parameter, either specified by an Association with keys 'Name', 'Type', 'Const', 'Reference' or by a string giving its name.";
 
-SetRegisterSize::usage = "SetRegisterSize[n]
+FSetRegisterSize::usage = "FSetRegisterSize[n]
 Sets the number of available registers for optimization in C++ code generation.
 This is in particular important for calculations on the GPU, where the number of registers is very limited.
 The default value is 32, but varying $availableRegisters can help optimize performance."

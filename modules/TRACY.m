@@ -10,15 +10,15 @@
 
 (* ::Input::Initialization:: *)
 
-FORMSimplify::usage = "FORMSimplify[expr]
-FORMSimplify[expr, preReplRules, postReplRules]
+FormSimplify::usage = "FormSimplify[expr]
+FormSimplify[expr, preReplRules, postReplRules]
 Simplifies expressions using FORM's output optimization (O4) algorithms.
 The first form uses default replacement rules for momentum expansion.
 The second form allows specifying custom FORM preRepl and postRepl rules.
 Integrates with FormTrace for powerful symbolic manipulation and optimization.
 Essential for handling large expressions that benefit from FORM's optimization capabilities.";
 
-SetAlwaysExpandLorentzTensors::usage = "";
+FSetAlwaysExpandLorentzTensors::usage = "";
 
 IterativelySum::usage = "IterativelySum[list]
 IterativelySum[list, finalSize]
@@ -32,7 +32,7 @@ FormMomentumExpansion::usage = "FormMomentumExpansion[]
 FormMomentumExpansion[momenta...]
 Creates a FORM rule to expand out any scalar products in expressions.
 The optional momenta arguments specify which momenta to expand.
-Can be passed as a postRepl or preRepl rule to FormTrace or FORMSimplify.
+Can be passed as a postRepl or preRepl rule to FormTrace or FormSimplify.
 Essential for converting momentum-space expressions into expanded form for integration.";
 
 FiniteTFormMomentumExpansion::usage = "FiniteTFormMomentumExpansion[]  
@@ -40,7 +40,7 @@ FiniteTFormMomentumExpansion[momenta...]
 Creates a FORM rule to expand scalar products into spatial and temporal parts.
 The optional momenta arguments specify which momenta to expand.
 Separates d-dimensional momenta into (d-1)-dimensional spatial parts and time components.
-Can be passed as a postRepl or preRepl rule to FormTrace or FORMSimplify.
+Can be passed as a postRepl or preRepl rule to FormTrace or FormSimplify.
 Useful for finite-temperature field theory calculations.";
 
 MakeP0Rule::usage = "MakeP0Rule[q, {p1, p2, ...}, {proj1, proj2, ...}]
@@ -83,8 +83,8 @@ The second form removes files from a specific subdirectory within the cache.
 Use this to free up disk space or force recomputation of previously traced expressions.
 Essential for cache management in long-running calculations.";
 
-SetCacheDirectory::usage = "SetCacheDirectory[folder]
-SetCacheDirectory[]
+FSetCacheDirectory::usage = "SetCacheDirectory[folder]
+FSetCacheDirectory[]
 Changes the directory where traced expressions are cached.
 The first form sets the cache directory to the specified folder path.
 The second form resets the cache directory to the default /tmp/TraceCache/.

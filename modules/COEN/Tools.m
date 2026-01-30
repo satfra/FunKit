@@ -66,7 +66,7 @@ $codeOptimizeInterps = {a_Symbol[__] /; Not @ MatchQ[a, Times | Plus | Power | R
 
 $availableRegisters = 32;
 
-SetRegisterSize[n_Integer?Positive] :=
+FSetRegisterSize[n_Integer?Positive] :=
     Module[{},
         $availableRegisters = n;
     ];

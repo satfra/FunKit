@@ -375,10 +375,10 @@ Cell[BoxData[{
           "\[CapitalPi]"}], "}"}]}], "\[IndentingNewLine]", "}"}]}]}], 
     "\[IndentingNewLine]", "|>"}]}], ";"}], "\[IndentingNewLine]", 
  RowBox[{
-  RowBox[{"AddCorrelationFunction", "[", "Phidot", "]"}], ";"}], "\n", 
+  RowBox[{"FAddCorrelationFunction", "[", "Phidot", "]"}], ";"}], "\n", 
  RowBox[{
   RowBox[{
-   RowBox[{"SetUnorderedIndices", "[", 
+   RowBox[{"FSetUnorderedIndices", "[", 
     RowBox[{"Phidot", ",", "1"}], "]"}], ";"}], 
   "\[IndentingNewLine]"}], "\[IndentingNewLine]", 
  RowBox[{

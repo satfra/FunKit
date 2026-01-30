@@ -34,7 +34,7 @@ FTerm /: FormTracer`FormTrace[file_String, FTerm[a__], preReplRules_ : {}, postR
 
 $AlwaysExpandLorentzTensors = True;
 
-SetAlwaysExpandLorentzTensors[set_] /; BooleanQ[set] :=
+FSetAlwaysExpandLorentzTensors[set_] /; BooleanQ[set] :=
     Module[{},
         $AlwaysExpandLorentzTensors = set;
     ];
@@ -88,7 +88,7 @@ IterativelySum[expr_List] :=
         If[Length[returnValue] == 1,
             Return[returnValue]
         ];
-        While[Length[returnValue] > 1, returnValue = ParallelMap[$StandardQuickSimplify @ FORMSimplify[Total[#]]&, Partition[returnValue, UpTo[4]]]];
+        While[Length[returnValue] > 1, returnValue = ParallelMap[$StandardQuickSimplify @ FormSimplify[Total[#]]&, Partition[returnValue, UpTo[4]]]];
         Return[$StandardQuickSimplify[returnValue[[1]]]];
     ]
 
@@ -144,9 +144,9 @@ DiagramSimplify[expr_, mSimplify_ : (Quiet @ Simplify[Simplify[#, Trig -> False,
 
 $standardFORMmomentumRules = {}; FormMomentumExpansion[];
 
-ClearAll[FORMSimplify]
+ClearAll[FormSimplify]
 
-FORMSimplify[obj_, preReplRules_ : {}, postReplRules_ : {}, bracket_ : {}] :=
+FormSimplify[obj_, preReplRules_ : {}, postReplRules_ : {}, bracket_ : {}] :=
     Module[{file, origVars, tmpfileName, import, repl, expr, newSymbols, momenta, momRule, ret},
         file = makeHashFile[{obj, preReplRules, postReplRules, bracket}];
         If[FileExistsQ[file],
@@ -165,12 +165,12 @@ FORMSimplify[obj_, preReplRules_ : {}, postReplRules_ : {}, bracket_ : {}] :=
                 ,
                 {}
             ];
-        FunKitDebug[3, "FORMSimplify: Adding Extra Vars ", newSymbols];
+        FunKitDebug[3, "FormSimplify: Adding Extra Vars ", newSymbols];
         FormTracer`AddExtraVars @@ newSymbols;
         tmpfileName = "/tmp/FS_" <> makeTemporaryFileName[];
         FormTracer`FormTrace[Rationalize[expr /. repl[[1]]], Join[{scallDef}, momRule, preReplRules], postReplRules, {tmpfileName, "O4,saIter=10000,saMinT=10,saMaxT=10000", "fortran90"}, bracket];
         ret = ImportAndSimplifyFORM[tmpfileName];
-        FunKitDebug[2, "FORMSimplify: FORM finished"];
+        FunKitDebug[2, "FormSimplify: FORM finished"];
         FormTracer`DefineExtraVars[origVars];
         RunProcess[$SystemShell, All, "rm " <> tmpfileName];
         ret = (ret) /. repl[[2]] // Rationalize;

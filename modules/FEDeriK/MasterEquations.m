@@ -41,7 +41,7 @@ WetterichEquation :=
 
 AddCorrelationFunction[Phidot];
 
-SetUnorderedIndices[Phidot, 1];
+FSetUnorderedIndices[Phidot, 1];
 
 GeneralizedFlowEquation :=
     Module[{a, b, c},

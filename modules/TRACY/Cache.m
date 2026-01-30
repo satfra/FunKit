@@ -1,6 +1,6 @@
-SetCacheDirectory::invalid = "The directory \"`1` \"could not be created.";
+FSetCacheDirectory::invalid = "The directory \"`1` \"could not be created.";
 
-SetCacheDirectory[str_String] :=
+FSetCacheDirectory[str_String] :=
     Module[{mstr = str},
         If[StringTake[mstr, {-1}] =!= "/",
             mstr = StringJoin[mstr, "/"]
@@ -9,15 +9,15 @@ SetCacheDirectory[str_String] :=
         If[DirectoryQ[mstr],
             Set[$TraceCacheDir, mstr]
             ,
-            Message[SetCacheDirectory::invalid, mstr];
+            Message[FSetCacheDirectory::invalid, mstr];
             Abort[]
         ];
     ];
 
-SetCacheDirectory[] :=
-    SetCacheDirectory["/tmp/TraceCache/"];
+FSetCacheDirectory[] :=
+    FSetCacheDirectory["/tmp/TraceCache/"];
 
-SetCacheDirectory[];
+FSetCacheDirectory[];
 
 ClearTraceCache[] :=
     (

@@ -23,6 +23,9 @@ FSetGlobalSetup[] :=
 FTruncate[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     FTruncate[$GlobalSetup, expr];
 
+FTruncateOpenIndices[expr_] /; Head[$GlobalSetup] =!= Symbol :=
+    FTruncateOpenIndices[$GlobalSetup, expr];
+
 FTakeDerivatives[expr_, derivativeList_] /; Head[$GlobalSetup] =!= Symbol :=
     FTakeDerivatives[$GlobalSetup, expr, derivativeList, "Symmetries" -> {}];
 
@@ -71,6 +74,8 @@ $userIndexedObjects = {};
 
 $userOrderedObjects = {};
 
+$userObjects = {};
+
 $CorrelationFunctions :=
     Join[{Propagator, GammaN}, $userCorrelationFunctions];
 
@@ -81,7 +86,7 @@ $indexedObjects :=
     Join[$OrderedObjects, {\[Gamma], Field}, $userIndexedObjects];
 
 $allObjects :=
-    Join[{FMinus, SymmetryFactor}, $indexedObjects]
+    Join[$indexedObjects, {FMinus, SymmetryFactor}, $userObjects];
 
 $nonCommutingObjects :=
     Join[$CorrelationFunctions, {FDOp, Field}];
@@ -96,34 +101,44 @@ Protect @@ $allObjects;
     Functions to allow the user to add their own objects
 **********************************************************************************)
 
-AddIndexedObject[name_Symbol] :=
+FAddObject[name_Symbol] :=
+    Module[{},
+        AppendTo[$userObjects, name];
+        $userObjects = DeleteDuplicates[$userObjects];
+        Protect @@ $allObjects;
+    ];
+
+FShowObjects[] :=
+    Print[TableForm[Sort @ $allObjects]];
+
+FAddIndexedObject[name_Symbol] :=
     Module[{},
         AppendTo[$userIndexedObjects, name];
         $userIndexedObjects = DeleteDuplicates[$userIndexedObjects];
         Protect @@ $allObjects;
     ];
 
-ShowIndexedObjects[] :=
+FShowIndexedObjects[] :=
     Print[TableForm[Sort @ $indexedObjects]];
 
-AddOrderedObject[name_Symbol] :=
+FAddOrderedObject[name_Symbol] :=
     Module[{},
         AppendTo[$userOrderedObjects, name];
         $userOrderedObjects = DeleteDuplicates[$userOrderedObjects];
         Protect @@ $allObjects;
     ];
 
-ShowOrderedObjects[] :=
+FShowOrderedObjects[] :=
     Print[TableForm[Sort @ $userOrderedObjects]];
 
-AddCorrelationFunction[name_Symbol] :=
+FAddCorrelationFunction[name_Symbol] :=
     Module[{},
         AppendTo[$userCorrelationFunctions, name];
         $userCorrelationFunctions = DeleteDuplicates[$userCorrelationFunctions];
         Protect @@ $allObjects;
     ];
 
-ShowCorrelationFunctions[] :=
+FShowCorrelationFunctions[] :=
     Print[TableForm[Sort @ $CorrelationFunctions]];
 
 (**********************************************************************************

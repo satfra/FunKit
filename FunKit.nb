@@ -599,7 +599,7 @@ Cell[BoxData[{
   RowBox[{"$FunKitDebugLevel", "=", "0"}], ";"}], "\[IndentingNewLine]", 
  RowBox[{
   RowBox[{
-   RowBox[{"SetFunKitDebugLevel", "[", "newLevel_Integer", "]"}], ":=", 
+   RowBox[{"FSetDebugLevel", "[", "newLevel_Integer", "]"}], ":=", 
    RowBox[{"Module", "[", 
     RowBox[{
      RowBox[{"{", "}"}], ",", "\[IndentingNewLine]", 
@@ -1031,13 +1031,13 @@ functional derivatives. \nAs an example, take the generalised flow equation \
 \\\\frac{\\\\delta\\\\dot{\\\\Phi}^b}{\\\\delta\\\\Phi^c}\\\\Bigg){R}_{ab}\>\"\
 ", "]"}], ",", "\[IndentingNewLine]", 
         "\"\<First, we add a new correlation function using \
-\!\(\*StyleBox[\"AddCorrelationFunction\",FontColor->RGBColor[1, 0.5, \
+\!\(\*StyleBox[\"FAddCorrelationFunction\",FontColor->RGBColor[1, 0.5, \
 0]]\)[Phidot] and mark its last index to be never re-ordered using \
-\!\(\*StyleBox[\"SetUnorderedIndices\",FontColor->RGBColor[1, 0.5, \
+\!\(\*StyleBox[\"FSetUnorderedIndices\",FontColor->RGBColor[1, 0.5, \
 0]]\)[Phidot,1]\>\""}], "]"}], ";", "\[IndentingNewLine]", 
-      RowBox[{"AddCorrelationFunction", "[", "Phidot", "]"}], ";", 
+      RowBox[{"FAddCorrelationFunction", "[", "Phidot", "]"}], ";", 
       "\[IndentingNewLine]", 
-      RowBox[{"SetUnorderedIndices", "[", 
+      RowBox[{"FSetUnorderedIndices", "[", 
        RowBox[{"Phidot", ",", "1"}], "]"}], ";", "\[IndentingNewLine]", 
       RowBox[{
       "Print", "[", 
