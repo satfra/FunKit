@@ -36,6 +36,22 @@ arcFuncUn[g_, r_:1.5][list_, UndirectedEdge[x_, x_]] :=
         Arrow[BezierCurve[Join[{v}, ScalingTransform[r {1, 1}, list[[1]]][list[[{5, 8, 10, 16, 18, 21}]]], {v}], SplineDegree -> 7]]
     ]
 
+shortenTexTag::usage = "";
+
+shortTexPref[prefactor_] :=
+    Module[{},
+        If[prefactor === FTerm[],
+            Return[""];
+        ];
+        If[prefactor === FTerm[-1],
+            Return["-1" // MaTeX`MaTeX];
+        ];
+        If[MemberQ[prefactor, FMinus[__], Infinity],
+            Return[shortenTexTag];
+        ];
+        Return[FTex[prefactor]//MaTeX`MaTeX];
+    ];
+
 (**********************************************************************************
     Diagram Drawing
 **********************************************************************************)
@@ -140,16 +156,7 @@ GetDiagram[setup_, expr_FTerm] :=
         externalEdges = Table[Style[externalEdges[[idx]], ##]& @@ Flatten @ {externalFields[[idx]] /. Styles}, {idx, 1, Length[externalEdges]}];
         (*get the prefactor*)
         prefactor = FTerm[Times @@ (diag /. doFields /. Map[Blank[#] -> 1&, Join[{Field}, $indexedObjects]])];
-        prefactor =
-            If[prefactor === FTerm[],
-                ""
-                ,
-                If[prefactor === FTerm[-1],
-                    "-1" // MaTeX`MaTeX
-                    ,
-                    FTex[prefactor] // MaTeX`MaTeX
-                ]
-            ];
+        prefactor = shortTexPref[prefactor];
         oidx = GetOpenSuperIndices[setup, diag];
         Do[
             If[MemberQ[externalEdges, oidx[[idx]], Infinity],
@@ -160,20 +167,30 @@ GetDiagram[setup_, expr_FTerm] :=
         ];
         vertexNames = DeleteDuplicates @ Flatten[List @@ #& /@ vertices];
         eWeights = Join[Map[1&, edges], Map[1&, externalEdges], Map[1&, fieldEdges], Map[0.5&, doubledEdges]];
-        graph = Graph[Join[vertexNames, externalVertices, fieldVertices[[All, 1]]], Join[edges, externalEdges, fieldEdges, doubledEdges], EdgeWeight -> eWeights, VertexShape -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. $standardVertexStyles)], Thread[externalVertices -> Map[Graphics @ Style[Disk[{0, 0}, 0.0], Gray]&, externalVertices]], Thread[fieldVertices[[All, 1]] -> (fieldVertices[[All, 0]] /. $standardVertexStyles)]], VertexSize -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. $standardVertexSize)], addVertexSizes], GraphLayout -> {"SpringElectricalEmbedding", "EdgeWeighted" -> False}, PerformanceGoal -> "Quality", ImageSize -> Small, EdgeStyle -> Arrowheads[{{.07, .6}}]];
-        Row[{prefactor, Graph[graph, EdgeShapeFunction -> {x_ \[DirectedEdge] x_ :> arcFunc[graph, 20.0], x_ \[UndirectedEdge] x_ :> arcFuncUn[graph, 20.0]}]}]
+        graph = Graph[Join[vertexNames, externalVertices, fieldVertices[[All, 1]]], Join[edges, externalEdges, fieldEdges, doubledEdges], 
+        EdgeWeight -> eWeights, VertexShape -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. $standardVertexStyles)], Thread[externalVertices -> Map[Graphics @ Style[Disk[{0, 0}, 0.0], Gray]&, externalVertices]], Thread[fieldVertices[[All, 1]] -> (fieldVertices[[All, 0]] /. $standardVertexStyles)]], VertexSize -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. $standardVertexSize)], addVertexSizes], GraphLayout -> {"SpringElectricalEmbedding", "EdgeWeighted" -> False}, PerformanceGoal -> "Quality", ImageSize -> Small, EdgeStyle -> Arrowheads[{{.07, .6}}]];
+        {prefactor, Graph[graph, EdgeShapeFunction -> {x_ \[DirectedEdge] x_ :> arcFunc[graph, 20.0], x_ \[UndirectedEdge] x_ :> arcFuncUn[graph, 20.0]}]}
     ];
 
 FPlot[setup_, expr_FTerm] :=
     Module[{},
-        Print[GetDiagram[setup, expr]];
+        Print[Row@GetDiagram[setup, expr]];
         Return @ expr
     ];
 
 FPlot[setup_, expr_FEx] :=
-    Module[{},
-        Print[Plus @@ (GetDiagram[setup, #]& /@ (DropFExAnnotations @ expr))];
-        Return @ expr
+    Module[{diags},
+        diags = GetDiagram[setup, #]& /@ (DropFExAnnotations @ expr);
+        If[MemberQ[{diags[[All, 1]]}, shortenTexTag, Infinity],
+            diags = Map[{"\\oplus" // MaTeX`MaTeX, #[[2]]}&, diags];
+            diags[[1,1]] = "";
+            diags = Map[Row, diags];
+            Print @@ diags;
+            ,
+            diags = Map[Row, diags];
+            Print[Plus @@ diags];
+        ];
+        Return[expr];
     ];
 
 FPlot[setup_, expr_Association] /; isLoopAssociation[expr] :=
