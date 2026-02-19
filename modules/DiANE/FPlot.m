@@ -44,7 +44,7 @@ shortTexPref[prefactor_] :=
             Return[""];
         ];
         If[prefactor === FTerm[-1],
-            Return["-1" // MaTeX`MaTeX];
+            Return["(-1)" // MaTeX`MaTeX];
         ];
         If[MemberQ[prefactor, FMinus[__], Infinity],
             Return[shortenTexTag];

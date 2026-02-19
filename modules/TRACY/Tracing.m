@@ -1,3 +1,8 @@
+(*
+Notes: 
+- Don't use BalancedMap here, as we always want to parallelize over the entries.
+*)
+
 (**********************************************************************************
      The actual FormTrace definitions
 **********************************************************************************)

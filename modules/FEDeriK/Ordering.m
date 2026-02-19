@@ -61,7 +61,6 @@ FieldOrderLess[setup_, f1_Symbol, f2_Symbol] :=
         Module[{kind1, kind2, idxOrder, n1, n2},
             kind1 = {IsFermion[setup, #], IsAntiFermion[setup, #], IscField[setup, #], IsAnticField[setup, #], # === AnyField}&[f1];
             kind2 = {IsFermion[setup, #], IsAntiFermion[setup, #], IscField[setup, #], IsAnticField[setup, #], # === AnyField}&[f2];
-
             Switch[$CanonicalOrdering,
                 "f>af>b",
                     idxOrder = {4, 3, 2, 1, 0}
@@ -81,7 +80,6 @@ FieldOrderLess[setup_, f1_Symbol, f2_Symbol] :=
             ];
             n1 = Pick[idxOrder, kind1][[1]];
             n2 = Pick[idxOrder, kind2][[1]];
-
             If[n1 === n2,
                 Return[OrderedQ[{f1, f2}]]
             ];
@@ -181,34 +179,32 @@ GetOrder[setup_, fields_List, reverse_:False] /; BooleanQ[reverse] :=
 OrderObject::cantOrder = "Cannot reorder the fields `1` in the order `2`";
 
 GetOrder[setup_, fields_List, fieldOrder_List] :=
-    Module[{i, curi, prefactor, nfields = fields, norder = Range[Length[fields]]},
-        prefactor = 1;
-        (*Always compare the ith field with all previous fields and put it in the right place. Iterate until one reaches the end of the array, then it is sorted.*)
-        i = 1;
-        While[
-            i <= Length[nfields]
-            ,
-            curi = i;
-            If[nfields[[curi]] === fieldOrder[[curi]],
-                i++;
+    Module[{nfields = fields, norder, prefactor = 1, i, pos, j, len},
+        len = Length[fields];
+        norder = Range[len];
+        (*sanity check*)
+        If[Sort[fields] =!= Sort[fieldOrder],
+            Message[OrderObject::cantOrder, fields, fieldOrder];
+            Abort[]
+        ];
+        For[i = 1, i <= len, i++,
+            If[nfields[[i]] === fieldOrder[[i]],
                 Continue[]
             ];
-            (*Check if we should switch curi and curi-1*)
-            While[
-                nfields[[curi]] =!= fieldOrder[[curi]]
-                ,
-                If[curi + 1 > Length[nfields],
-                    Message[OrderObject::cantOrder, fields, fieldOrder];
-                    Abort[]
-                ];
-                nfields[[{curi, curi + 1}]] = nfields[[{curi + 1, curi}]];
-                norder[[{curi, curi + 1}]] = norder[[{curi + 1, curi}]];
-                prefactor *= CommuteSign[setup, nfields[[curi]], nfields[[curi + 1]]];
-                curi++;
+            pos = FirstPosition[nfields[[i ;; len]], fieldOrder[[i]]];
+            If[pos === Missing["NotFound"],
+                Message[OrderObject::cantOrder, fields, fieldOrder];
+                Abort[]
+            ];
+            pos = pos[[1]] + i - 1;
+            For[j = pos, j > i, j--,
+                prefactor *= CommuteSign[setup, nfields[[j - 1]], nfields[[j]]];
+                nfields[[{j - 1, j}]] = nfields[[{j, j - 1}]];
+                norder[[{j - 1, j}]] = norder[[{j, j - 1}]];
             ];
         ];
-        Return[{prefactor, norder}];
-    ];
+        {prefactor, norder}
+    ]
 
 (* Order an object, e.g. GammaN, Propagator, ... *)
 

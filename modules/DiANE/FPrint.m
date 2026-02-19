@@ -427,7 +427,10 @@ RenewFormatDefinitions[] :=
         ];
         Format[FTerm[a__], TeXForm] :=
             Module[{obj, integrals, replNames, idx, prefix, postfix, body, fac, terms},
-                integrals = Pick[$availableLoopMomenta, Map[MemberQ[{a}, #, Infinity]&, $availableLoopMomenta]];
+                integrals = Join[
+                    Pick[$availableLoopMomenta, Map[MemberQ[{a}, #, Infinity]&, $availableLoopMomenta]],
+                    Pick[$availableLoopMomentaf, Map[MemberQ[{a}, #, Infinity]&, $availableLoopMomentaf]]
+                ];
                 replNames = Join[Thread[$availableLoopMomenta -> Table[Subscript[Symbol[$loopMomentumName], idx], {idx, 1, Length[$availableLoopMomenta]}]], 
                 Thread[$availableLoopMomentaf -> Table[Subsuperscript[Symbol[$loopMomentumName], idx, "(f)"], {idx, 1, Length[$availableLoopMomentaf]}]]];
                 prefix = StringJoin[Map["\\int_{" <> ToString[TeXForm[#]] <> "}"&, integrals //. replNames]];
