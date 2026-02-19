@@ -603,10 +603,10 @@ SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] <= 64 :=
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
                 For[kdx = 1, kdx <= Length[symmetryList], kdx++,
-                    red = TermsEqualAndSum[setup, ret[[idx]], ret[[jdx]] /. symmetryList[[kdx, Key["Rule"]]]];
+                    red = TermsEqualAndSum[setup, ret[[idx]], FTerm[symmetryList[[kdx, Key["Factor"]]]] ** ret[[jdx]] /. symmetryList[[kdx, Key["Rule"]]]];
                     FunKitDebug[3, "Compared ", idx, " and ", jdx, ", result: ", red];
                     If[red =!= False,
-                        ret[[idx]] = FTerm[symmetryList[[kdx, Key["Factor"]]]] ** red;
+                        ret[[idx]] = red;
                         ret = Delete[ret, jdx];
                         jdx--;
                         kdx = Length[symmetryList] + 1;
