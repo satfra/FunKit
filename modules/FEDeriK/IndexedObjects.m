@@ -277,7 +277,7 @@ AllSuperIndicesClosed[setup_, expr_FTerm] :=
     ];
 
 AllSuperIndicesClosed[setup_, expr_FEx] :=
-    And @@ (AllSuperIndicesClosed[setup, #]& /@ expr)
+    And @@ (AllSuperIndicesClosed[setup, #]& /@ (List @@ expr))
 
 AllSuperIndicesClosed[setup_, expr_] :=
     (

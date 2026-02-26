@@ -51,7 +51,7 @@ FMakeDiagrammaticRules[setup_, OptionsPattern[]] :=
                         newBasisName = rule <> "_restrict_" <> StringReplace[ToString[subset], {" " -> "", "," -> "_", "{" -> "", "}" -> ""}];
                         FunKitDebug[2, "      Creating restricted basis for propagator inversion ", newBasisName, " with rule ", rule, ", subset ", subset];
                         If[Not @ TensorBases`TBBasisExists[newBasisName],
-                            TensorBases`TBRestrictBasis[rule, newBasisName, subset]
+                            TensorBases`TBRestrictBasis[rule, newBasisName, subset];
                         ];
                         orderBasis = Reverse @ orderBasis;
                         ((CommuteSign[setup, ##]& @@ fieldContent) * TensorBases`TBMakePropagator[newBasisName, Table[dressing[InverseProp, Reverse @ fieldContent, subset[[kdx]], $mom], {kdx, 1, Length[subset]}], propMom])

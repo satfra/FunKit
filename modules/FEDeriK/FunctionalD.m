@@ -7,7 +7,6 @@ $userRules = {};
 FAddFDRule[obj_, wrt_, res_] :=
     Module[{},
         AppendTo[$userRules, {obj, wrt, res}];
-        Print["$userRules is now: ", $userRules];
     ];
 
 SetAttributes[FAddFDRule, HoldAll];
@@ -22,17 +21,16 @@ FunctionalD::malformed = "Cannot take a derivative of `1`. Expression is either 
 SymmetricDerivative::malformed = "Cannot take symmetric derivative with given arguments: number of fields do not match.";
 
 SymmetricDerivative[fields1_, ind1_, fields2_, ind2_] :=
-    Module[{ret, perms,pidx,idx},
+    Module[
+        {ret, perms, pidx, idx}
+        ,
         (*Build all permuatations*)
         If[Length[fields1] =!= Length[fields2],
             Message[SymmetricDerivative::malformed];
             Abort[];
         ];
         perms = Permutations[Range[Length[fields2]]];
-        ret = Table[Times@@Table[
-            \[Gamma][{fields1[[idx]] , fields2[[perms[[pidx, idx]]]]} , {ind1[[idx]], -ind2[[perms[[pidx, idx]]]]}]
-            ,
-            {idx, 1, Length[perms[[pidx]]]}],{pidx, 1, Length[perms]}];
+        ret = Table[Times @@ Table[\[Gamma][{fields1[[idx]], fields2[[perms[[pidx, idx]]]]}, {ind1[[idx]], -ind2[[perms[[pidx, idx]]]]}], {idx, 1, Length[perms[[pidx]]]}], {pidx, 1, Length[perms]}];
         Return[SymmetryFactor[fields2, ind2] * Total[ret]];
     ];
 
@@ -140,8 +138,7 @@ FunctionalD[setup_, expr_, v : (f_[_List, _List] | {f_[_List, _List], _Integer})
         ];
         (*Rule for normal functional derivatives*)
         (*f /: D[f[{f1_, f2_}, {i_, j_}], f[{f3_, f4_}, {k_, l_}], NonConstants -> nonConst] := SymmetryFactor[{f1, f2}, {k, l}] \[Gamma][{f1, f3}, {-k, -i}] \[Gamma][{f2, f4}, {-l, -j}];*)
-        f /: D[f[{f1__}, {i1__}], f[{f2__}, {i2__}], NonConstants -> nonConst] :=
-            SymmetricDerivative[{f1}, {i1}, {f2}, {i2}];
+        f /: D[f[{f1__}, {i1__}], f[{f2__}, {i2__}], NonConstants -> nonConst] := SymmetricDerivative[{f1}, {i1}, {f2}, {i2}];
         (*Rule for normal functional derivatives, but AnyField*)
         (*No derivatives of FTerm, FEx*)
         f /: D[FTerm[a___], f[y__], NonConstants -> nonConst] := FTerm[FDOp[f[y]], a];
