@@ -139,3 +139,17 @@ add_custom_target(
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m
   COMMENT "Running tests"
   VERBATIM)
+
+# Run a single test file or directory:
+#   make test-single FILE=FEDeriK/FunctionalDTests.m
+#   make test-single FILE=FEDeriK
+# Note: $(FILE) is expanded by Make at build time, not by CMake at configure
+# time. VERBATIM is intentionally omitted so that Make resolves the variable.
+add_custom_target(
+  test-single
+  COMMAND
+    ${WolframLanguage_wolframscript_EXE} -script
+    ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m $(FILE) | tee
+    ${CMAKE_CURRENT_BINARY_DIR}/test.log
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m
+  COMMENT "Running tests")

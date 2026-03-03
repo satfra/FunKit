@@ -148,6 +148,10 @@ from the build directory (if you installed via CMake), or run the tests directly
 Get["FunKit`"]
 FTest[]
 ```
+Running single tests is also possible:
+```bash
+$ make test-single FILE=FEDeriK/FunctionalDTests.m
+```
 
 ## Related software
 

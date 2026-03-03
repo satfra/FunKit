@@ -2,6 +2,11 @@
   Test.m
   This script discovers and runs all Mathematica test files ending in "Tests.m" 
   in its directory.
+
+  Usage:
+    wolframscript -script tests/Test.m                          (* run all tests *)
+    wolframscript -script tests/Test.m FEDeriK/FunctionalDTests.m  (* run single file *)
+    wolframscript -script tests/Test.m FEDeriK                     (* run all tests in FEDeriK/ *)
 *)
 
 (* Hide styling if we are in a CLI context. *)
@@ -57,11 +62,55 @@ RunAndReportTests[exprText_String, testFileName_String] :=
 (* Main script execution logic *)
 
 result =
-    Module[{exprText, testFiles, totalSuccesses = 0, totalFailures = 0, mOrange = RGBColor[0.8, 0.4, 0], mRed = RGBColor[0.435294, 0, 0], mGreen = RGBColor[0.0235294, 0.235294, 0.0235294]},
-        AppendTo[$Path, DirectoryName[$InputFileName]];
-        AppendTo[$Path, FileNameJoin[{DirectoryName[$InputFileName], "..", "modules"}]];
-        testFiles = FileNames["*Tests.m", DirectoryName[$InputFileName], 2];
-        Print[Style["Discovering and running tests...", Bold, mOrange]];
+    Module[{exprText, testFiles, totalSuccesses = 0, totalFailures = 0, mOrange = RGBColor[0.8, 0.4, 0], mRed = RGBColor[0.435294, 0, 0], mGreen = RGBColor[0.0235294, 0.235294, 0.0235294], testDir, filterArg, filterPath},
+        testDir = DirectoryName[$InputFileName];
+        AppendTo[$Path, testDir];
+        AppendTo[$Path, FileNameJoin[{testDir, "..", "modules"}]];
+
+        (* Check for a command-line filter argument.
+           $ScriptCommandLine works with wolframscript, but is empty under
+           wolfram -script.  For the latter, arguments follow the script path
+           in $CommandLine. *)
+        filterArg = Which[
+            Length[$ScriptCommandLine] >= 2,
+                $ScriptCommandLine[[2]],
+            Length[$CommandLine] >= 1,
+                Module[{pos},
+                    pos = Position[$CommandLine, "-script"];
+                    (* Arguments start two positions after -script (skip script path) *)
+                    If[pos =!= {} && Length[$CommandLine] >= pos[[-1, 1]] + 2,
+                        $CommandLine[[pos[[-1, 1]] + 2]],
+                        ""
+                    ]
+                ],
+            True,
+                ""
+        ];
+
+        If[filterArg =!= "",
+            (* Resolve the filter relative to the tests/ directory *)
+            filterPath = FileNameJoin[{testDir, filterArg}];
+            If[FileExistsQ[filterPath] && !DirectoryQ[filterPath],
+                (* Exact file specified *)
+                testFiles = {filterPath};
+                ,
+                If[DirectoryQ[filterPath],
+                    (* Directory specified — find all *Tests.m within it *)
+                    testFiles = FileNames["*Tests.m", filterPath, 2];
+                    ,
+                    (* Try as a glob pattern *)
+                    testFiles = FileNames[filterArg, testDir, 2];
+                    If[testFiles === {},
+                        Print["ERROR: No test files matched: " <> filterArg];
+                        Exit[1];
+                    ];
+                ]
+            ];
+            Print[Style["Running filtered tests (" <> filterArg <> ")...", Bold, mOrange]];
+            ,
+            testFiles = FileNames["*Tests.m", testDir, 2];
+            Print[Style["Discovering and running tests...", Bold, mOrange]];
+        ];
         Print[Style["---------------------------------", Bold, mOrange]];
         Scan[
             (

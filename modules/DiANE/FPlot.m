@@ -38,7 +38,10 @@ arcFuncUn[g_, r_:1.5][list_, UndirectedEdge[x_, x_]] :=
 
 shortenTexTag::usage = "";
 
-shortTexPref[prefactor_] :=
+shortTexPref[setup_, FEx[expr_]] :=
+    shortTexPref[setup, expr];
+
+shortTexPref[setup_, prefactor_] :=
     Module[{},
         If[prefactor === FTerm[],
             Return[""];
@@ -46,10 +49,16 @@ shortTexPref[prefactor_] :=
         If[prefactor === FTerm[-1],
             Return["(-1)" // MaTeX`MaTeX];
         ];
+        If[MatchQ[prefactor, FTerm[_]] && NumericQ[prefactor[[1]]] && prefactor[[1]] < 0,
+            Return["(-" <> FTex[setup, FTerm[-prefactor[[1]]]] <> ")" // MaTeX`MaTeX];
+        ];
+        If[MatchQ[prefactor, FTerm[_]] && NumericQ[prefactor[[1]]] && prefactor[[1]] >= 0,
+            Return[FTex[setup, FTerm @ prefactor[[1]]] // MaTeX`MaTeX];
+        ];
         If[MemberQ[prefactor, FMinus[__], Infinity],
             Return[shortenTexTag];
         ];
-        Return[FTex[prefactor]//MaTeX`MaTeX];
+        Return[FTex[setup, prefactor] // MaTeX`MaTeX];
     ];
 
 (**********************************************************************************
@@ -156,7 +165,7 @@ GetDiagram[setup_, expr_FTerm] :=
         externalEdges = Table[Style[externalEdges[[idx]], ##]& @@ Flatten @ {externalFields[[idx]] /. Styles}, {idx, 1, Length[externalEdges]}];
         (*get the prefactor*)
         prefactor = FTerm[Times @@ (diag /. doFields /. Map[Blank[#] -> 1&, Join[{Field}, $indexedObjects]])];
-        prefactor = shortTexPref[prefactor];
+        prefactor = shortTexPref[setup, prefactor];
         oidx = GetOpenSuperIndices[setup, diag];
         Do[
             If[MemberQ[externalEdges, oidx[[idx]], Infinity],
@@ -167,14 +176,13 @@ GetDiagram[setup_, expr_FTerm] :=
         ];
         vertexNames = DeleteDuplicates @ Flatten[List @@ #& /@ vertices];
         eWeights = Join[Map[1&, edges], Map[1&, externalEdges], Map[1&, fieldEdges], Map[0.5&, doubledEdges]];
-        graph = Graph[Join[vertexNames, externalVertices, fieldVertices[[All, 1]]], Join[edges, externalEdges, fieldEdges, doubledEdges], 
-        EdgeWeight -> eWeights, VertexShape -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. $standardVertexStyles)], Thread[externalVertices -> Map[Graphics @ Style[Disk[{0, 0}, 0.0], Gray]&, externalVertices]], Thread[fieldVertices[[All, 1]] -> (fieldVertices[[All, 0]] /. $standardVertexStyles)]], VertexSize -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. $standardVertexSize)], addVertexSizes], GraphLayout -> {"SpringElectricalEmbedding", "EdgeWeighted" -> False}, PerformanceGoal -> "Quality", ImageSize -> Small, EdgeStyle -> Arrowheads[{{.07, .6}}]];
+        graph = Graph[Join[vertexNames, externalVertices, fieldVertices[[All, 1]]], Join[edges, externalEdges, fieldEdges, doubledEdges], EdgeWeight -> eWeights, VertexShape -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. $standardVertexStyles)], Thread[externalVertices -> Map[Graphics @ Style[Disk[{0, 0}, 0.0], Gray]&, externalVertices]], Thread[fieldVertices[[All, 1]] -> (fieldVertices[[All, 0]] /. $standardVertexStyles)]], VertexSize -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. $standardVertexSize)], addVertexSizes], GraphLayout -> {"SpringElectricalEmbedding", "EdgeWeighted" -> False}, PerformanceGoal -> "Quality", ImageSize -> Small, EdgeStyle -> Arrowheads[{{.07, .6}}]];
         {prefactor, Graph[graph, EdgeShapeFunction -> {x_ \[DirectedEdge] x_ :> arcFunc[graph, 20.0], x_ \[UndirectedEdge] x_ :> arcFuncUn[graph, 20.0]}]}
     ];
 
 FPlot[setup_, expr_FTerm] :=
     Module[{},
-        Print[Row@GetDiagram[setup, expr]];
+        Print[Row @ GetDiagram[setup, expr]];
         Return @ expr
     ];
 
@@ -183,7 +191,7 @@ FPlot[setup_, expr_FEx] :=
         diags = GetDiagram[setup, #]& /@ (DropFExAnnotations @ expr);
         If[MemberQ[{diags[[All, 1]]}, shortenTexTag, Infinity],
             diags = Map[{"\\oplus" // MaTeX`MaTeX, #[[2]]}&, diags];
-            diags[[1,1]] = "";
+            diags[[1, 1]] = "";
             diags = Map[Row, diags];
             Print @@ diags;
             ,
