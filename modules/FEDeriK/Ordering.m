@@ -2,7 +2,7 @@
     Setting the canonical ordering, used throughout FunKit as a standard
 **********************************************************************************)
 
-$AvailableCanonicalOrderings = {"f>af>b", "af>f>b", "b>f>af", "b>af>f"};
+$AvailableCanonicalOrderings = {"g>ag>c", "ag>g>c", "c>g>ag", "c>ag>g"};
 
 CanonicalOrdering::unknownInteger = "The integer `1` should be between 1 and 4.";
 
@@ -12,16 +12,16 @@ FSetCanonicalOrdering[a_Integer] :=
     Module[{},
         Switch[a,
             1,
-                $CanonicalOrdering = "f>af>b"
+                $CanonicalOrdering = "g>ag>c"
             ,
             2,
-                $CanonicalOrdering = "af>f>b"
+                $CanonicalOrdering = "ag>g>c"
             ,
             3,
-                $CanonicalOrdering = "b>f>af"
+                $CanonicalOrdering = "c>g>ag"
             ,
             4,
-                $CanonicalOrdering = "b>af>f"
+                $CanonicalOrdering = "c>ag>g"
             ,
             _,
                 Message[CanonicalOrdering::unknownInteger, a]
@@ -32,17 +32,17 @@ FSetCanonicalOrdering[a_Integer] :=
 FSetCanonicalOrdering[a_] :=
     Module[{},
         Switch[a,
-            "f>af>b",
-                $CanonicalOrdering = "f>af>b"
+            "g>ag>c",
+                $CanonicalOrdering = "g>ag>c"
             ,
-            "af>f>b",
-                $CanonicalOrdering = "af>f>b"
+            "ag>g>c",
+                $CanonicalOrdering = "ag>g>c"
             ,
-            "b>f>af",
-                $CanonicalOrdering = "b>f>af"
+            "c>g>ag",
+                $CanonicalOrdering = "c>g>ag"
             ,
-            "b>af>f",
-                $CanonicalOrdering = "b>af>f"
+            "c>ag>g",
+                $CanonicalOrdering = "c>ag>g"
             ,
             _,
                 Message[CanonicalOrdering::unknownString, a]
@@ -59,20 +59,20 @@ FSetCanonicalOrdering[a_] :=
 FieldOrderLess[setup_, f1_Symbol, f2_Symbol] :=
     FieldOrderLess[setup, f1, f2] =
         Module[{kind1, kind2, idxOrder, n1, n2},
-            kind1 = {IsFermion[setup, #], IsAntiFermion[setup, #], IscField[setup, #], IsAnticField[setup, #], # === AnyField}&[f1];
-            kind2 = {IsFermion[setup, #], IsAntiFermion[setup, #], IscField[setup, #], IsAnticField[setup, #], # === AnyField}&[f2];
+            kind1 = {IsGrassmannField[setup, #], IsAntiGrassmannField[setup, #], IsCommutingField[setup, #], IsAntiCommutingField[setup, #], # === AnyField, IsGrassmannSource[setup, #], IsCSource[setup, #]}&[f1];
+            kind2 = {IsGrassmannField[setup, #], IsAntiGrassmannField[setup, #], IsCommutingField[setup, #], IsAntiCommutingField[setup, #], # === AnyField, IsGrassmannSource[setup, #], IsCSource[setup, #]}&[f2];
             Switch[$CanonicalOrdering,
-                "f>af>b",
-                    idxOrder = {4, 3, 2, 1, 0}
+                "g>ag>c",
+                    idxOrder = {4, 3, 2, 1, 0, -1, -2}
                 ,
-                "af>f>b",
-                    idxOrder = {3, 4, 1, 2, 0}
+                "ag>g>c",
+                    idxOrder = {3, 4, 1, 2, 0, -1, -2}
                 ,
-                "b>f>af",
-                    idxOrder = {2, 1, 4, 3, 0}
+                "c>g>ag",
+                    idxOrder = {2, 1, 4, 3, 0, -2, -1}
                 ,
-                "b>af>f",
-                    idxOrder = {1, 2, 3, 4, 0}
+                "c>ag>g",
+                    idxOrder = {1, 2, 3, 4, 0, -2, -1}
                 ,
                 _,
                     Print["Order failure: order \"" <> $CanonicalOrdering <> "\" unknown."];
@@ -91,7 +91,7 @@ FieldOrderLess[setup_, f1_Symbol, f2_Symbol] :=
 CommuteSign[setup_, f1_, f2_] :=
     CommuteSign[setup, f1, f2] =
         Module[{},
-            Return[-2 * Boole[MemberQ[GetAntiCommuting[setup], f1] && MemberQ[GetAntiCommuting[setup], f2]] + 1];
+            Return[-2 * Boole[MemberQ[GetGrassmann[setup], f1] && MemberQ[GetGrassmann[setup], f2]] + 1];
         ];
 
 (*Excluding indices in certain objects from being reordered*)

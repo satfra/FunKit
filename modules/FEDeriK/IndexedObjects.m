@@ -2,8 +2,8 @@
     Getting lists of fields from setup
 **********************************************************************************)
 
-GetcFields[setup_] :=
-    GetcFields[setup] =
+GetCommutingFields[setup_] :=
+    GetCommutingFields[setup] =
         Map[
             If[Head[#] === List,
                 Head[#[[2]]]
@@ -14,8 +14,8 @@ GetcFields[setup_] :=
             setup["FieldSpace"]["Commuting"]
         ];
 
-GetAnticFields[setup_] :=
-    GetAnticFields[setup] =
+GetAntiCommutingFields[setup_] :=
+    GetAntiCommutingFields[setup] =
         Select[
             Map[
                 If[Head[#] === List,
@@ -30,8 +30,8 @@ GetAnticFields[setup_] :=
             # =!= {}&
         ];
 
-GetFermions[setup_] :=
-    GetFermions[setup] =
+GetGrassmannFields[setup_] :=
+    GetGrassmannFields[setup] =
         Map[
             If[Head[#] === List,
                 Head[#[[2]]]
@@ -42,8 +42,8 @@ GetFermions[setup_] :=
             setup["FieldSpace"]["Grassmann"]
         ];
 
-GetAntiFermions[setup_] :=
-    GetAntiFermions[setup] =
+GetAntiGrassmannFields[setup_] :=
+    GetAntiGrassmannFields[setup] =
         Select[
             Map[
                 If[Head[#] === List,
@@ -79,8 +79,8 @@ GetCommuting[setup_] :=
             GetCSourceFields[setup]
         ];
 
-GetAntiCommuting[setup_] :=
-    GetAntiCommuting[setup] =
+GetGrassmann[setup_] :=
+    GetGrassmann[setup] =
         Join[
             Flatten @
                 Select[
@@ -137,7 +137,7 @@ GetNonSourceFields[setup_] :=
 **********************************************************************************)
 
 FieldNameQ[setup_, name_Symbol] :=
-    FieldNameQ[setup, name] = MemberQ[Join[GetCommuting[setup], GetAntiCommuting[setup]], name];
+    FieldNameQ[setup, name] = MemberQ[Join[GetCommuting[setup], GetGrassmann[setup]], name];
 
 HasPartnerField[setup_, field_] :=
     HasPartnerField[setup, field] = MemberQ[Flatten @ GetFieldPairs[setup], field];
@@ -145,35 +145,35 @@ HasPartnerField[setup_, field_] :=
 HasPartnerField[setup_, field_[__]] :=
     HasPartnerField[setup, field];
 
-IsFermion[setup_, field_] :=
-    IsFermion[setup, field] = MemberQ[GetFermions[setup], field] || IsGrassmannSource[setup, field];
+IsGrassmannField[setup_, field_] :=
+    IsGrassmannField[setup, field] = MemberQ[GetGrassmannFields[setup], field];
 
-IsFermion[setup_, field_[__]] :=
-    IsFermion[setup, field];
+IsGrassmannField[setup_, field_[__]] :=
+    IsGrassmannField[setup, field];
 
-IsAntiFermion[setup_, field_] :=
-    IsAntiFermion[setup, field] = MemberQ[GetAntiFermions[setup], field];
+IsAntiGrassmannField[setup_, field_] :=
+    IsAntiGrassmannField[setup, field] = MemberQ[GetAntiGrassmannFields[setup], field];
 
-IsAntiFermion[setup_, field_[__]] :=
-    IsAntiFermion[setup, field];
+IsAntiGrassmannField[setup_, field_[__]] :=
+    IsAntiGrassmannField[setup, field];
 
-IscField[setup_, field_] :=
-    IscField[setup, field] = MemberQ[GetcFields[setup], field] || IsCSource[setup, field];
+IsCommutingField[setup_, field_] :=
+    IsCommutingField[setup, field] = MemberQ[GetCommutingFields[setup], field];
 
-IscField[setup_, field_[__]] :=
-    IscField[setup, field];
+IsCommutingField[setup_, field_[__]] :=
+    IsCommutingField[setup, field];
 
-IsAnticField[setup_, field_] :=
-    IsAnticField[setup, field] = MemberQ[GetAnticFields[setup], field];
+IsAntiCommutingField[setup_, field_] :=
+    IsAntiCommutingField[setup, field] = MemberQ[GetAntiCommutingFields[setup], field];
 
-IsAnticField[setup_, field_[__]] :=
-    IsAnticField[setup, field];
+IsAntiCommutingField[setup_, field_[__]] :=
+    IsAntiCommutingField[setup, field];
 
 IsGrassmann[setup_, field_] :=
-    IsGrassmann[setup, field] = IsFermion[setup, field] || IsAntiFermion[setup, field] || IsGrassmannSource[setup, field];
+    IsGrassmann[setup, field] = IsGrassmannField[setup, field] || IsAntiGrassmannField[setup, field] || IsGrassmannSource[setup, field];
 
 IsCommuting[setup_, field_] :=
-    IsCommuting[setup, field] = IscField[setup, field] || IsAnticField[setup, field] || IsCSource[setup, field];
+    IsCommuting[setup, field] = IsCommutingField[setup, field] || IsAntiCommutingField[setup, field] || IsCSource[setup, field];
 
 (**********************************************************************************
     Source field predicates
@@ -236,12 +236,12 @@ ExtractFieldsWithIndex[setup_Association, expr_] :=
 
 ContainsGrassmann[setup_Association, expr_] :=
     Module[{},
-        Return @ AnyTrue[ExtractFields[setup, expr], IsFermion[setup, #] || IsAntiFermion[setup, #]&];
+        Return @ AnyTrue[ExtractFields[setup, expr], IsGrassmann[setup, #]&];
     ]
 
 GrassmannCount[setup_Association, expr_] :=
     Module[{},
-        Return[Length @ Select[ExtractFieldsWithIndex[setup, expr], IsFermion[setup, Head[#]] || IsAntiFermion[setup, Head[#]]&]];
+        Return[Length @ Select[ExtractFieldsWithIndex[setup, expr], IsGrassmann[setup, Head[#]]&]];
     ]
 
 (**********************************************************************************

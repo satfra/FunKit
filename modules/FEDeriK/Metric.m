@@ -1,9 +1,9 @@
-(*AntiGrassmann-Grassmann gives 1, otherwise -1*)
+(*AntiGrassmannField-GrassmannField gives 1, otherwise -1*)
 
 GrassOrder[setup_, f1_, f2_, sign_] :=
     GrassOrder[setup, f1, f2, sign] =
         Module[{},
-            (2 * Boole[IsFermion[setup, f1]] - 1) ^ Boole[!(sign === 1)]
+            (2 * Boole[IsGrassmannField[setup, f1]] - 1) ^ Boole[!(sign === 1)]
         ];
 
 (*Return 

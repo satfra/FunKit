@@ -16,9 +16,9 @@ QMeSNaming[setup_, obj_ /; ObjectQ[obj]] :=
     Module[
         {oldCanonicalOrdering, transf, prefactor, mobj, mfields, mindices, prefix, fieldPart, indexPart}
         ,
-        (*QMeS follows b>af>f, so we switch temporarily!*)
+        (*QMeS follows c>ag>g, so we switch temporarily!*)
         Block[{$CanonicalOrdering},
-            $CanonicalOrdering = "b>af>f";
+            $CanonicalOrdering = "c>ag>g";
             transf = OrderObject[setup, obj];
         ];
         prefactor = 1;

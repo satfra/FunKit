@@ -65,7 +65,7 @@ FOrderFields[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     - Which ones have been registered by the user
     - What is explicitly non-commuting
     - Maximum number of derivative iterations
-    - Default canonical ordering (order of bosons, fermions, antifermions)
+    - Default canonical ordering (order of Grassmann fields, anti-Grassmann fields, commuting fields)
 **********************************************************************************)
 
 $userCorrelationFunctions = {};
@@ -93,7 +93,7 @@ $nonCommutingObjects :=
 
 $MaxDerivativeIterations = 500;
 
-$CanonicalOrdering = "b>af>f";
+$CanonicalOrdering = "c>ag>g";
 
 Protect @@ $allObjects;
 

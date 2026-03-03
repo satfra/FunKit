@@ -7,10 +7,10 @@ MakeEdgeRule[setup_, obj_] :=
         {}
         ,
         (*Depending on the type of fields involved, get a directed or undirected edge*)
-        If[IsAntiFermion[setup, obj[[1, 1]]] && IsFermion[setup, obj[[1, 2]]],
+        If[IsAntiGrassmannField[setup, obj[[1, 1]]] && IsGrassmannField[setup, obj[[1, 2]]],
             Return[makePosIdx @ obj[[2, 1]] -> makePosIdx @ obj[[2, 2]]]
         ];
-        If[IsFermion[setup, obj[[1, 1]]] && IsAntiFermion[setup, obj[[1, 2]]],
+        If[IsGrassmannField[setup, obj[[1, 1]]] && IsAntiGrassmannField[setup, obj[[1, 2]]],
             Return[makePosIdx @ obj[[2, 2]] -> makePosIdx @ obj[[2, 1]]]
         ];
         Return[makePosIdx @ obj[[2, 1]] <-> makePosIdx @ obj[[2, 2]]];

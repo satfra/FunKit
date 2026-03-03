@@ -36,7 +36,7 @@ Clears all custom functional derivative rules added with FAddFDRule.";
 QMeSForm::usage = "QMeSForm[setup, expr]
 Converts expressions containing indexed objects (like Propagator, GammaN) to QMeS-style notation.
 Transforms correlation functions to symbolic forms suitable for further processing.
-Uses the canonical ordering 'b>af>f' for field arrangement.";
+Uses the canonical ordering 'c>ag>g' for field arrangement.";
 
 DoFunForm::usage = "DoFunForm[setup, expr]
 Transforms expressions from FunKit-style notation to DoFun-style notation.";
@@ -190,9 +190,9 @@ This is the fundamental building block for taking functional derivatives.
 FDOp operators are resolved using FResolveDerivatives or FResolveFDOp functions.";
 
 FMinus::usage = "FMinus[{field1, field2}, {index1, index2}]
-Represents Grassmann minus signs (-1)^{field1\[CenterDot]field2} arising from commuting fermionic fields.
+Represents Grassmann minus signs (-1)^{field1\[CenterDot]field2} arising from commuting Grassmann fields.
 This is automatically generated when reordering expressions containing Grassmann fields.
-Essential for maintaining correct signs in fermionic calculations.";
+Essential for maintaining correct signs in calculations involving Grassmann fields.";
 
 SymmetryFactor::usage = "SymmetryFactor[{field1, field2, ...}, {index1, index2, ...}]
 Represents the symmetry factor associated with identical fields in an expression.

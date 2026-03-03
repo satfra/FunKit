@@ -1,7 +1,9 @@
 tests = {};
 
+Import[$FunKitDirectory <> "/tests/boilerplate/setups.m"];
+
 (**********************************************************************************
-    b>af>f
+    c>ag>g
 **********************************************************************************)
 
 AppendTo[
@@ -9,7 +11,7 @@ AppendTo[
     ,
     TestCreate[
         Module[{yFunKitSetup},
-            FSetCanonicalOrdering["b>af>f"];
+            FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];
             FunKit`Private`GetOrder[yFunKitSetup, {Psi, Psibar}]
         ]
@@ -25,7 +27,7 @@ AppendTo[
     ,
     TestCreate[
         Module[{yFunKitSetup},
-            FSetCanonicalOrdering["b>af>f"];
+            FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];
             FunKit`Private`GetOrder[yFunKitSetup, {Psibar, Psi}]
         ]
@@ -41,7 +43,7 @@ AppendTo[
     ,
     TestCreate[
         Module[{yFunKitSetup},
-            FSetCanonicalOrdering["b>af>f"];
+            FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];
             FunKit`Private`GetOrder[yFunKitSetup, {Psi, Psibar, Phi}]
         ]
@@ -57,7 +59,7 @@ AppendTo[
     ,
     TestCreate[
         Module[{yFunKitSetup},
-            FSetCanonicalOrdering["b>af>f"];
+            FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];
             FunKit`Private`GetOrder[yFunKitSetup, {Psi, Psibar, Psi, Psibar, Phi}]
         ]
@@ -73,7 +75,7 @@ AppendTo[
     ,
     TestCreate[
         Module[{yFunKitSetup},
-            FSetCanonicalOrdering["b>af>f"];
+            FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];
             FunKit`Private`OrderObject[yFunKitSetup, GammaN[{Psibar, Psi}, {i1, i2}]]
         ]
@@ -89,7 +91,7 @@ AppendTo[
     ,
     TestCreate[
         Module[{yFunKitSetup},
-            FSetCanonicalOrdering["b>af>f"];
+            FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];
             FunKit`Private`OrderObject[yFunKitSetup, GammaN[{Psi, Psibar}, {i1, i2}]]
         ]
@@ -105,7 +107,7 @@ AppendTo[
     ,
     TestCreate[
         Module[{yFunKitSetup},
-            FSetCanonicalOrdering["b>af>f"];
+            FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];
             FunKit`Private`OrderObject[yFunKitSetup, GammaN[{Psi, Psibar, Psi, Psibar, Phi}, {i1, i2, i3, i4, i5}]]
         ]

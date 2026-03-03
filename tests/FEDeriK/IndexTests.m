@@ -11,36 +11,36 @@ sSetup = GetFunKitSetupScalar[];
 ySetup = GetFunKitSetupYukawa[];
 
 (**********************************************************************************
-    GetcFields Tests
+    GetCommutingFields Tests
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[FunKit`Private`GetcFields[sSetup], {Phi}, TestID -> "GetcFields scalar: returns {Phi}"]];
+AppendTo[tests, TestCreate[FunKit`Private`GetCommutingFields[sSetup], {Phi}, TestID -> "GetCommutingFields scalar: returns {Phi}"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`GetcFields[ySetup], {Phi}, TestID -> "GetcFields Yukawa: returns {Phi}"]];
+AppendTo[tests, TestCreate[FunKit`Private`GetCommutingFields[ySetup], {Phi}, TestID -> "GetCommutingFields Yukawa: returns {Phi}"]];
 
 (**********************************************************************************
-    GetAnticFields Tests
+    GetAntiCommutingFields Tests
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[FunKit`Private`GetAnticFields[sSetup], {}, TestID -> "GetAnticFields scalar: empty (no paired commuting fields)"]];
+AppendTo[tests, TestCreate[FunKit`Private`GetAntiCommutingFields[sSetup], {}, TestID -> "GetAntiCommutingFields scalar: empty (no paired commuting fields)"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`GetAnticFields[ySetup], {}, TestID -> "GetAnticFields Yukawa: empty (no paired commuting fields)"]];
+AppendTo[tests, TestCreate[FunKit`Private`GetAntiCommutingFields[ySetup], {}, TestID -> "GetAntiCommutingFields Yukawa: empty (no paired commuting fields)"]];
 
 (**********************************************************************************
-    GetFermions Tests
+    GetGrassmannFields Tests
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[FunKit`Private`GetFermions[sSetup], {}, TestID -> "GetFermions scalar: empty"]];
+AppendTo[tests, TestCreate[FunKit`Private`GetGrassmannFields[sSetup], {}, TestID -> "GetGrassmannFields scalar: empty"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`GetFermions[ySetup], {Psi}, TestID -> "GetFermions Yukawa: returns {Psi}"]];
+AppendTo[tests, TestCreate[FunKit`Private`GetGrassmannFields[ySetup], {Psi}, TestID -> "GetGrassmannFields Yukawa: returns {Psi}"]];
 
 (**********************************************************************************
-    GetAntiFermions Tests
+    GetAntiGrassmannFields Tests
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[FunKit`Private`GetAntiFermions[sSetup], {}, TestID -> "GetAntiFermions scalar: empty"]];
+AppendTo[tests, TestCreate[FunKit`Private`GetAntiGrassmannFields[sSetup], {}, TestID -> "GetAntiGrassmannFields scalar: empty"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`GetAntiFermions[ySetup], {Psibar}, TestID -> "GetAntiFermions Yukawa: returns {Psibar}"]];
+AppendTo[tests, TestCreate[FunKit`Private`GetAntiGrassmannFields[ySetup], {Psibar}, TestID -> "GetAntiGrassmannFields Yukawa: returns {Psibar}"]];
 
 (**********************************************************************************
     GetCommuting Tests
@@ -51,12 +51,12 @@ AppendTo[tests, TestCreate[FunKit`Private`GetCommuting[sSetup], {Phi}, TestID ->
 AppendTo[tests, TestCreate[FunKit`Private`GetCommuting[ySetup], {Phi}, TestID -> "GetCommuting Yukawa: returns {Phi}"]];
 
 (**********************************************************************************
-    GetAntiCommuting Tests
+    GetGrassmann Tests
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[FunKit`Private`GetAntiCommuting[sSetup], {}, TestID -> "GetAntiCommuting scalar: empty"]];
+AppendTo[tests, TestCreate[FunKit`Private`GetGrassmann[sSetup], {}, TestID -> "GetGrassmann scalar: empty"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`GetAntiCommuting[ySetup], {Psibar, Psi}, TestID -> "GetAntiCommuting Yukawa: returns {Psibar, Psi}"]];
+AppendTo[tests, TestCreate[FunKit`Private`GetGrassmann[ySetup], {Psibar, Psi}, TestID -> "GetGrassmann Yukawa: returns {Psibar, Psi}"]];
 
 (**********************************************************************************
     GetFieldPairs Tests
@@ -72,7 +72,7 @@ AppendTo[tests, TestCreate[FunKit`Private`GetFieldPairs[ySetup], {{Psibar, Psi}}
 
 AppendTo[tests, TestCreate[FunKit`Private`GetSingleFields[sSetup], {Phi}, TestID -> "GetSingleFields scalar: returns {Phi}"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`GetSingleFields[ySetup], {Phi}, TestID -> "GetSingleFields Yukawa: returns {Phi} (fermions are paired)"]];
+AppendTo[tests, TestCreate[FunKit`Private`GetSingleFields[ySetup], {Phi}, TestID -> "GetSingleFields Yukawa: returns {Phi} (Grassmann fields are paired)"]];
 
 (**********************************************************************************
     GetAllFields Tests
@@ -111,54 +111,54 @@ AppendTo[tests, TestCreate[FunKit`Private`HasPartnerField[ySetup, Phi], False, T
 AppendTo[tests, TestCreate[FunKit`Private`HasPartnerField[ySetup, Psi[i1]], True, TestID -> "HasPartnerField Yukawa: Psi[i1] (indexed) has partner"]];
 
 (**********************************************************************************
-    IsFermion Tests
+    IsGrassmannField Tests
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[FunKit`Private`IsFermion[ySetup, Psi], True, TestID -> "IsFermion Yukawa: Psi is a fermion"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsGrassmannField[ySetup, Psi], True, TestID -> "IsGrassmannField Yukawa: Psi is a Grassmann field"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`IsFermion[ySetup, Psibar], False, TestID -> "IsFermion Yukawa: Psibar is not a fermion (it is anti-fermion)"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsGrassmannField[ySetup, Psibar], False, TestID -> "IsGrassmannField Yukawa: Psibar is not a Grassmann field (it is anti-Grassmann)"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`IsFermion[ySetup, Phi], False, TestID -> "IsFermion Yukawa: Phi is not a fermion"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsGrassmannField[ySetup, Phi], False, TestID -> "IsGrassmannField Yukawa: Phi is not a Grassmann field"]];
 
 (* Test with indexed field *)
 
-AppendTo[tests, TestCreate[FunKit`Private`IsFermion[ySetup, Psi[i1]], True, TestID -> "IsFermion Yukawa: Psi[i1] (indexed) is a fermion"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsGrassmannField[ySetup, Psi[i1]], True, TestID -> "IsGrassmannField Yukawa: Psi[i1] (indexed) is a Grassmann field"]];
 
 (**********************************************************************************
-    IsAntiFermion Tests
+    IsAntiGrassmannField Tests
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[FunKit`Private`IsAntiFermion[ySetup, Psibar], True, TestID -> "IsAntiFermion Yukawa: Psibar is an anti-fermion"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsAntiGrassmannField[ySetup, Psibar], True, TestID -> "IsAntiGrassmannField Yukawa: Psibar is an anti-Grassmann field"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`IsAntiFermion[ySetup, Psi], False, TestID -> "IsAntiFermion Yukawa: Psi is not an anti-fermion"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsAntiGrassmannField[ySetup, Psi], False, TestID -> "IsAntiGrassmannField Yukawa: Psi is not an anti-Grassmann field"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`IsAntiFermion[ySetup, Phi], False, TestID -> "IsAntiFermion Yukawa: Phi is not an anti-fermion"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsAntiGrassmannField[ySetup, Phi], False, TestID -> "IsAntiGrassmannField Yukawa: Phi is not an anti-Grassmann field"]];
 
 (* Test with indexed field *)
 
-AppendTo[tests, TestCreate[FunKit`Private`IsAntiFermion[ySetup, Psibar[i1]], True, TestID -> "IsAntiFermion Yukawa: Psibar[i1] (indexed) is an anti-fermion"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsAntiGrassmannField[ySetup, Psibar[i1]], True, TestID -> "IsAntiGrassmannField Yukawa: Psibar[i1] (indexed) is an anti-Grassmann field"]];
 
 (**********************************************************************************
-    IscField Tests
+    IsCommutingField Tests
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[FunKit`Private`IscField[sSetup, Phi], True, TestID -> "IscField scalar: Phi is a commuting field"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsCommutingField[sSetup, Phi], True, TestID -> "IsCommutingField scalar: Phi is a commuting field"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`IscField[ySetup, Phi], True, TestID -> "IscField Yukawa: Phi is a commuting field"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsCommutingField[ySetup, Phi], True, TestID -> "IsCommutingField Yukawa: Phi is a commuting field"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`IscField[ySetup, Psi], False, TestID -> "IscField Yukawa: Psi is not a commuting field"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsCommutingField[ySetup, Psi], False, TestID -> "IsCommutingField Yukawa: Psi is not a commuting field"]];
 
 (* Test with indexed field *)
 
-AppendTo[tests, TestCreate[FunKit`Private`IscField[sSetup, Phi[i1]], True, TestID -> "IscField scalar: Phi[i1] (indexed) is a commuting field"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsCommutingField[sSetup, Phi[i1]], True, TestID -> "IsCommutingField scalar: Phi[i1] (indexed) is a commuting field"]];
 
 (**********************************************************************************
-    IsAnticField Tests
+    IsAntiCommutingField Tests
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[FunKit`Private`IsAnticField[sSetup, Phi], False, TestID -> "IsAnticField scalar: Phi is not an anti-commuting-field"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsAntiCommutingField[sSetup, Phi], False, TestID -> "IsAntiCommutingField scalar: Phi is not an anti-commuting-field"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`IsAnticField[ySetup, Psi], False, TestID -> "IsAnticField Yukawa: Psi is not an anti-commuting-field"]];
+AppendTo[tests, TestCreate[FunKit`Private`IsAntiCommutingField[ySetup, Psi], False, TestID -> "IsAntiCommutingField Yukawa: Psi is not an anti-commuting-field"]];
 
 (**********************************************************************************
     IsGrassmann Tests
@@ -210,7 +210,7 @@ AppendTo[tests, TestCreate[FunKit`Private`ExtractFields[sSetup, FTerm[Propagator
 
 AppendTo[tests, TestCreate[FunKit`Private`ExtractFieldsWithIndex[sSetup, FTerm[Phi[i1], Phi[i2]]], {Phi[i1], Phi[i2]}, TestID -> "ExtractFieldsWithIndex scalar: returns indexed fields"]];
 
-AppendTo[tests, TestCreate[Sort @ FunKit`Private`ExtractFieldsWithIndex[ySetup, FTerm[Psi[i1], Psibar[i2]]], Sort @ {Psi[i1], Psibar[i2]}, TestID -> "ExtractFieldsWithIndex Yukawa: returns indexed fermion fields"]];
+AppendTo[tests, TestCreate[Sort @ FunKit`Private`ExtractFieldsWithIndex[ySetup, FTerm[Psi[i1], Psibar[i2]]], Sort @ {Psi[i1], Psibar[i2]}, TestID -> "ExtractFieldsWithIndex Yukawa: returns indexed Grassmann fields"]];
 
 (**********************************************************************************
     ContainsGrassmann Tests
