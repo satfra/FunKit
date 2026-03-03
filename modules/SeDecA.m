@@ -37,6 +37,20 @@ Field pairs: AddGrassmann[setup, {ψ[p], ψbar[p]}] for Dirac fermions
 Supports momentum arguments (p) and spinor/index structures
 Required for fermionic fields in quantum field theory calculations.";
 
+AddCSource::usage = "AddCSource[setup, field]
+Adds a commuting source field to the functional setup.
+Single fields only: AddCSource[setup, J[p]] or AddCSource[setup, J[p, {i}]]
+Source fields behave like normal fields in all respects (functional derivatives,
+ordering, etc.) except that they are excluded from AnyField expansion during FTruncate.
+No paired (anti-field) form is supported for source fields.";
+
+AddGrassmannSource::usage = "AddGrassmannSource[setup, field]
+Adds a Grassmann (anticommuting) source field to the functional setup.
+Single fields only: AddGrassmannSource[setup, eta[p]] or AddGrassmannSource[setup, eta[p, {a}]]
+Source fields behave like normal fields in all respects (functional derivatives,
+ordering, etc.) except that they are excluded from AnyField expansion during FTruncate.
+No paired (anti-field) form is supported for source fields.";
+
 AddVertex::usage = "AddVertex[setup, object, {field1, field2, ...}]
 Defines a vertex structure in the truncation for the specified object.
 The object (e.g., GammaN, Propagator) specifies the type of vertex.
@@ -86,6 +100,20 @@ AddGrassmann[arg_] /; Head[$GlobalSetup] =!= Symbol :=
     (
         Unprotect[$GlobalSetup];
         AddGrassmann[$GlobalSetup, arg];
+        Protect[$GlobalSetup]
+    );
+
+AddCSource[arg_] /; Head[$GlobalSetup] =!= Symbol :=
+    (
+        Unprotect[$GlobalSetup];
+        AddCSource[$GlobalSetup, arg];
+        Protect[$GlobalSetup]
+    );
+
+AddGrassmannSource[arg_] /; Head[$GlobalSetup] =!= Symbol :=
+    (
+        Unprotect[$GlobalSetup];
+        AddGrassmannSource[$GlobalSetup, arg];
         Protect[$GlobalSetup]
     );
 
@@ -145,7 +173,7 @@ ModuleLoaded[SeDecA] = True;
 
 MakeSetup[] :=
     Module[{fields, truncation, bases, diagramStyling, setup},
-        fields = <|"Commuting" -> {}, "Grassmann" -> {}|>;
+        fields = <|"Commuting" -> {}, "Grassmann" -> {}, "CommutingSource" -> {}, "GrassmannSource" -> {}|>;
         truncation = <||>;
         bases = <||>;
         diagramStyling = <|"Styles" -> {}|>;
@@ -256,6 +284,80 @@ AddGrassmann[setup_, {name1_Symbol[p_Symbol, {ind__Symbol}], name2_Symbol[p_Symb
     ];
 
 SetAttributes[AddGrassmann, HoldFirst];
+
+(* ::Input::Initialization:: *)
+
+SeDecA::IncorrectSourceFieldSpecification = "Invalid specification:
+            `1`
+A source field must be of the shape \[Phi][p] or \[Phi][p, {i1,i2,...}]. Pairs are not supported for source fields.";
+
+AddCSource[a___] :=
+    (
+        Message[SeDecA::IncorrectSourceFieldSpecification, {a}];
+        Abort[]
+    );
+
+AddCSource[setup_, name_Symbol[p_Symbol]] :=
+    Module[{},
+        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"]["Grassmann"], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name[__], Infinity],
+            Message[SeDecA::FieldExists, name];
+            Abort[]
+        ];
+        If[Not @ KeyExistsQ[setup["FieldSpace"], "CommutingSource"],
+            AppendTo[setup["FieldSpace"], "CommutingSource" -> {}]
+        ];
+        AppendTo[setup["FieldSpace"]["CommutingSource"], name[p]];
+        setup
+    ];
+
+AddCSource[setup_, name_Symbol[p_Symbol, {ind__Symbol}]] :=
+    Module[{},
+        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"]["Grassmann"], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name[__], Infinity],
+            Message[SeDecA::FieldExists, name];
+            Abort[]
+        ];
+        If[Not @ KeyExistsQ[setup["FieldSpace"], "CommutingSource"],
+            AppendTo[setup["FieldSpace"], "CommutingSource" -> {}]
+        ];
+        AppendTo[setup["FieldSpace"]["CommutingSource"], name[p, {ind}]];
+        setup
+    ];
+
+SetAttributes[AddCSource, HoldFirst];
+
+AddGrassmannSource[a___] :=
+    (
+        Message[SeDecA::IncorrectSourceFieldSpecification, {a}];
+        Abort[]
+    );
+
+AddGrassmannSource[setup_, name_Symbol[p_Symbol]] :=
+    Module[{},
+        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"]["Grassmann"], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name[__], Infinity],
+            Message[SeDecA::FieldExists, name];
+            Abort[]
+        ];
+        If[Not @ KeyExistsQ[setup["FieldSpace"], "GrassmannSource"],
+            AppendTo[setup["FieldSpace"], "GrassmannSource" -> {}]
+        ];
+        AppendTo[setup["FieldSpace"]["GrassmannSource"], name[p]];
+        setup
+    ];
+
+AddGrassmannSource[setup_, name_Symbol[p_Symbol, {ind__Symbol}]] :=
+    Module[{},
+        If[MemberQ[Join[setup["FieldSpace"]["Commuting"], setup["FieldSpace"]["Grassmann"], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name[__], Infinity],
+            Message[SeDecA::FieldExists, name];
+            Abort[]
+        ];
+        If[Not @ KeyExistsQ[setup["FieldSpace"], "GrassmannSource"],
+            AppendTo[setup["FieldSpace"], "GrassmannSource" -> {}]
+        ];
+        AppendTo[setup["FieldSpace"]["GrassmannSource"], name[p, {ind}]];
+        setup
+    ];
+
+SetAttributes[AddGrassmannSource, HoldFirst];
 
 (* ::Input::Initialization:: *)
 

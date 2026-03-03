@@ -301,3 +301,93 @@ AppendTo[tests, TestCreate[(Phi[i1] /. FunKit`Private`replFields[sSetup]) /. Fun
 AppendTo[tests, TestCreate[Psi[i1] /. FunKit`Private`replFields[ySetup], Field[{Psi}, {i1}], TestID -> "replFields Yukawa: Psi[i1] -> Field[{Psi}, {i1}]"]];
 
 AppendTo[tests, TestCreate[AnyField[i1] /. FunKit`Private`replFields[sSetup], Field[{AnyField}, {i1}], TestID -> "replFields scalar: AnyField[i1] -> Field[{AnyField}, {i1}]"]];
+
+(**********************************************************************************
+    Source Field Tests
+**********************************************************************************)
+
+srcSetup = GetFunKitSetupWithSources[];
+
+(* IsCSource Tests *)
+
+AppendTo[tests, TestCreate[FunKit`Private`IsCSource[srcSetup, J], True, TestID -> "IsCSource: J is a commuting source"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`IsCSource[srcSetup, Phi], False, TestID -> "IsCSource: Phi is not a commuting source"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`IsCSource[srcSetup, eta], False, TestID -> "IsCSource: eta is not a commuting source"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`IsCSource[srcSetup, J[i1]], True, TestID -> "IsCSource: J[i1] (indexed) is a commuting source"]];
+
+(* IsGrassmannSource Tests *)
+
+AppendTo[tests, TestCreate[FunKit`Private`IsGrassmannSource[srcSetup, eta], True, TestID -> "IsGrassmannSource: eta is a Grassmann source"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`IsGrassmannSource[srcSetup, Phi], False, TestID -> "IsGrassmannSource: Phi is not a Grassmann source"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`IsGrassmannSource[srcSetup, J], False, TestID -> "IsGrassmannSource: J is not a Grassmann source"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`IsGrassmannSource[srcSetup, eta[i1]], True, TestID -> "IsGrassmannSource: eta[i1] (indexed) is a Grassmann source"]];
+
+(* IsSource Tests *)
+
+AppendTo[tests, TestCreate[FunKit`Private`IsSource[srcSetup, J], True, TestID -> "IsSource: J is a source"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`IsSource[srcSetup, eta], True, TestID -> "IsSource: eta is a source"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`IsSource[srcSetup, Phi], False, TestID -> "IsSource: Phi is not a source"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`IsSource[srcSetup, Psi], False, TestID -> "IsSource: Psi is not a source"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`IsSource[srcSetup, J[i1]], True, TestID -> "IsSource: J[i1] (indexed) is a source"]];
+
+(* GetCSourceFields Tests *)
+
+AppendTo[tests, TestCreate[FunKit`Private`GetCSourceFields[srcSetup], {J}, TestID -> "GetCSourceFields: returns {J}"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`GetCSourceFields[ySetup], {}, TestID -> "GetCSourceFields: empty for Yukawa (no source keys)"]];
+
+(* GetGrassmannSourceFields Tests *)
+
+AppendTo[tests, TestCreate[FunKit`Private`GetGrassmannSourceFields[srcSetup], {eta}, TestID -> "GetGrassmannSourceFields: returns {eta}"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`GetGrassmannSourceFields[ySetup], {}, TestID -> "GetGrassmannSourceFields: empty for Yukawa (no source keys)"]];
+
+(* GetAllSourceFields Tests *)
+
+AppendTo[tests, TestCreate[Sort @ FunKit`Private`GetAllSourceFields[srcSetup], Sort @ {J, eta}, TestID -> "GetAllSourceFields: returns {J, eta}"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`GetAllSourceFields[ySetup], {}, TestID -> "GetAllSourceFields: empty for Yukawa"]];
+
+(* GetNonSourceFields Tests *)
+
+AppendTo[tests, TestCreate[Sort @ FunKit`Private`GetNonSourceFields[srcSetup], Sort @ {Psibar, Psi, Phi}, TestID -> "GetNonSourceFields: excludes sources"]];
+
+AppendTo[tests, TestCreate[Sort @ FunKit`Private`GetNonSourceFields[ySetup], Sort @ {Psibar, Psi, Phi}, TestID -> "GetNonSourceFields: same as GetAllFields for Yukawa"]];
+
+(* GetAllFields includes sources *)
+
+AppendTo[tests, TestCreate[Sort @ FunKit`Private`GetAllFields[srcSetup], Sort @ {Psibar, Psi, Phi, J, eta}, TestID -> "GetAllFields with sources: includes source fields"]];
+
+(* FieldNameQ recognizes sources *)
+
+AppendTo[tests, TestCreate[FunKit`Private`FieldNameQ[srcSetup, J], True, TestID -> "FieldNameQ: J is a recognized field name"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`FieldNameQ[srcSetup, eta], True, TestID -> "FieldNameQ: eta is a recognized field name"]];
+
+(* IsCommuting includes commuting sources *)
+
+AppendTo[tests, TestCreate[FunKit`Private`IsCommuting[srcSetup, J], True, TestID -> "IsCommuting: J (commuting source) is commuting"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`IsCommuting[srcSetup, eta], False, TestID -> "IsCommuting: eta (Grassmann source) is not commuting"]];
+
+(* IsGrassmann includes Grassmann sources *)
+
+AppendTo[tests, TestCreate[FunKit`Private`IsGrassmann[srcSetup, eta], True, TestID -> "IsGrassmann: eta (Grassmann source) is Grassmann"]];
+
+AppendTo[tests, TestCreate[FunKit`Private`IsGrassmann[srcSetup, J], False, TestID -> "IsGrassmann: J (commuting source) is not Grassmann"]];
+
+(* GetSingleFields includes sources *)
+
+AppendTo[tests, TestCreate[MemberQ[FunKit`Private`GetSingleFields[srcSetup], J], True, TestID -> "GetSingleFields: includes J"]];
+
+AppendTo[tests, TestCreate[MemberQ[FunKit`Private`GetSingleFields[srcSetup], eta], True, TestID -> "GetSingleFields: includes eta"]];

@@ -105,7 +105,7 @@ LTrunc[setup_, expr_FEx] :=
     ];
 
 LTrunc[setup_, expr_FTerm] :=
-    Module[{ret = List @@ expr, curi, allObj, closedIndices, openIndices, i, allFields = GetAllFields[setup], idx, subObj, idxOccur, idxPos, ignore, notFoundCuri, doFields, a, undoFields},
+    Module[{ret = List @@ expr, curi, allObj, closedIndices, openIndices, i, allFields = GetNonSourceFields[setup], idx, subObj, idxOccur, idxPos, ignore, notFoundCuri, doFields, a, undoFields},
         FunKitDebug[3, "Truncating the term (closed indices) ", expr];
         doFields = replFields[setup];
         undoFields = unreplFields[setup];
@@ -211,7 +211,7 @@ OTrunc[setup_, {}] :=
     {}
 
 OTrunc[setup_, expr_FTerm] :=
-    Module[{ret = List @@ expr, curi, allObj, openIndices, i, allFields = GetAllFields[setup], idx, subObj, idxOccur, idxPos, ignore, doFields, a, undoFields},
+    Module[{ret = List @@ expr, curi, allObj, openIndices, i, allFields = GetNonSourceFields[setup], idx, subObj, idxOccur, idxPos, ignore, doFields, a, undoFields},
         FunKitDebug[3, "Truncating the term (open indices) ", expr];
         doFields = replFields[setup];
         undoFields = unreplFields[setup];

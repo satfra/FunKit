@@ -54,19 +54,26 @@ AssertFieldDef[expr_] :=
 
 FieldSpaceDefQ::association = "The field space definition must be an Association.";
 
-FieldSpaceDefQ::keys = "The field space definition must contain the keys {\"Commuting\",\"Grassmann\"}.";
+FieldSpaceDefQ::keys = "The field space definition must contain the keys {\"Commuting\",\"Grassmann\"} and may optionally contain {\"CommutingSource\",\"GrassmannSource\"}.";
 
 FieldSpaceDefQ::list = "The entries of the field space definition must be lists.";
 
 FieldSpaceDefQ::fields = "The entries of the field space definition must contain valid field definitions.";
 
 FieldSpaceDefQ[fieldSpace_] :=
-    Module[{},
+    Module[{keys, allowedKeys, requiredKeys, sourceKey},
         If[Head[fieldSpace] =!= Association,
             Message[FieldSpaceDefQ::association];
             Return[False]
         ];
-        If[Not @ (Keys[fieldSpace] === {"Commuting", "Grassmann"}),
+        keys = Keys[fieldSpace];
+        requiredKeys = {"Commuting", "Grassmann"};
+        allowedKeys = {"Commuting", "Grassmann", "CommutingSource", "GrassmannSource"};
+        If[Not @ ContainsAll[keys, requiredKeys],
+            Message[FieldSpaceDefQ::keys];
+            Return[False]
+        ];
+        If[Not @ ContainsAll[allowedKeys, keys],
             Message[FieldSpaceDefQ::keys];
             Return[False]
         ];
@@ -85,6 +92,21 @@ FieldSpaceDefQ[fieldSpace_] :=
         If[Not @ (And @@ Map[FieldDefQ, fieldSpace["Grassmann"]]),
             Message[FieldSpaceDefQ::fields];
             Return[False]
+        ];
+        (* Validate optional source field keys when present *)
+        Do[
+            If[KeyExistsQ[fieldSpace, sourceKey],
+                If[Not @ ListQ[fieldSpace[sourceKey]],
+                    Message[FieldSpaceDefQ::list];
+                    Return[False]
+                ];
+                If[Not @ (And @@ Map[FieldDefQ, fieldSpace[sourceKey]]),
+                    Message[FieldSpaceDefQ::fields];
+                    Return[False]
+                ];
+            ];
+            ,
+            {sourceKey, {"CommutingSource", "GrassmannSource"}}
         ];
         Return[True];
     ];

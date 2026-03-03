@@ -45,3 +45,22 @@ GetDoFunSetupYukawa[] :=
 actionYukawaSymbolic={{Phi,2}, {Psi, Psibar}, {Psi, Psibar, Phi}};
 setFields[{Phi}, {{Psi, Psibar}}];
 ";
+
+(* Yukawa setup with source fields *)
+
+GetFunKitSetupWithSources[] :=
+    Module[{p, a, fields, trunc},
+        fields = <|
+            "Commuting" -> {Phi[p]},
+            "Grassmann" -> {{Psibar[p, {a}], Psi[p, {a}]}},
+            "CommutingSource" -> {J[p]},
+            "GrassmannSource" -> {eta[p, {a}]}
+        |>;
+        trunc = <|
+            Rdot -> {{Phi, Phi}, {Psi, Psibar}},
+            Propagator -> {{Phi, Phi}, {Psi, Psibar}, {J, Phi}},
+            GammaN -> {{Phi}, {Psi, Psibar}, {Phi, Phi},
+                       {Psi, Psibar, Phi}, {J}, {J, Phi}}
+        |>;
+        Return[<|"FieldSpace" -> fields, "Truncation" -> trunc|>];
+    ];
