@@ -77,6 +77,19 @@ insertFields[obj_, idx_, field_Symbol] :=
         Return[ret];
     ];
 
+(*Like insertFields, but only replaces positions where the current field is AnyField.*)
+
+insertFieldsIfAnyField[obj_, idx_, field_Symbol] :=
+    Module[{ret = obj, positions},
+        positions = Flatten[Position[makePosIdx /@ obj[[2]], makePosIdx @ idx]];
+        Do[
+            If[ret[[1, positions[[i]]]] === AnyField,
+                ret[[1, positions[[i]]]] = field;
+            ];
+        , {i, 1, Length[positions]}];
+        Return[ret];
+    ];
+
 LTrunc[setup_, {}] :=
     {};
 
@@ -170,11 +183,28 @@ LTrunc[setup_, expr_FTerm] :=
                     ];
             Return[LTrunc[setup, ret /. undoFields]];
         ];
-        If[subObj[[1, 1]][[idxPos[[1]]]] =!= GetPartnerField[subObj[[2, 1]][[idxPos[[2]]]]],
-            Message[indices::inconsistentFieldContractions, {subObj[[1, 1]][[idxPos[[1]]]], subObj[[2, 1]][[idxPos[[2]]]]}, expr];
-            Abort[]
+        (* One side has AnyField, the other has a concrete field.
+           Expand AnyField over all fields (like the both-AnyField case),
+           but only replace positions where the field is currently AnyField. *)
+        Module[{anyIdx},
+            If[subObj[[1, 1, idxPos[[1]]]] === AnyField,
+                anyIdx = subObj[[1, 2, idxPos[[1]]]];
+                ,
+                anyIdx = subObj[[2, 2, idxPos[[2]]]];
+            ];
+            ret =
+                FEx @@
+                    Map[
+                        Module[{localRet},
+                            FunKitDebug[3, "Replacing AnyField at index ", makePosIdx[anyIdx], " with field ", #];
+                            localRet = ret /. {obj_[{fs__}, {ids__}] /; MemberQ[makePosIdx /@ {ids}, makePosIdx @ anyIdx] :> insertFieldsIfAnyField[obj[{fs}, {ids}], anyIdx, #]};
+                            truncationPass[setup, FTerm @@ localRet]
+                        ]&
+                        ,
+                        allFields
+                    ];
+            Return[LTrunc[setup, ret /. undoFields]];
         ];
-        Abort[];
     ];
 
 OTrunc[setup_, {}] :=
