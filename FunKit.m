@@ -36,7 +36,8 @@ If[ChoiceDialog[
 TemplateApply["There is a newer FunKit version on the internet. 
 The installed version is `a`, whereas `b` is available. Do you want to install it?",<|"a"->FInstalledVersion,"b"->FCurVersion|>]
 ,WindowTitle->"Update FunKit",WindowSize->{Medium,All}],
-Import["https://raw.githubusercontent.com/satfra/FunKit/main/FunKitInstaller.m"];Abort[],
+Import["https://raw.githubusercontent.com/satfra/FunKit/main/FunKitInstaller.m"];
+Echo["Please restart your Kernel."];Exit[],
 Print["Consider updating the FunKit package for bugfixes and new features!"];
 ];
 ];
