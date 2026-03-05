@@ -46,6 +46,19 @@ actionYukawaSymbolic={{Phi,2}, {Psi, Psibar}, {Psi, Psibar, Phi}};
 setFields[{Phi}, {{Psi, Psibar}}];
 ";
 
+(* Four-Fermion Setup *)
+
+GetFunKitSetupFourFermion[] :=
+  Module[{p, a, fields, trunc},
+    fields = <|"Commuting" -> {}, "Grassmann" -> {{Psibar[p, {a}], Psi[p, {a}]}}|>;
+    trunc = <|
+        Rdot -> {{Psi, Psibar}},
+        Propagator -> {{Psi, Psibar}},
+        GammaN -> {{Psibar, Psi}, {Psibar, Psibar, Psi, Psi}}
+    |>;
+    Return[<|"FieldSpace" -> fields, "Truncation" -> trunc|>];
+  ];
+
 (* Yukawa setup with source fields *)
 
 GetFunKitSetupWithSources[] :=

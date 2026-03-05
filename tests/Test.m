@@ -36,7 +36,7 @@ Print["Initialization complete.\n"];
 RunAndReportTests[exprText_String, testFileName_String] :=
     Module[{result, successCount, failureCount, mGreen = RGBColor[0.0235294, 0.235294, 0.0235294], mRed = RGBColor[0.435294, 0, 0]},
         ToExpression[exprText];
-        result = TestReport[tests];
+        result = TestReport[tests, ProgressReporting -> False];
         successCount = Length[result["TestsSucceededKeys"]];
         failureCount = Length[result["TestsFailedWrongResultsKeys"]];
         Print[Style["  ✓ " <> ToString[successCount] <> " passed", mGreen], "    ", Style["x " <> ToString[failureCount] <> " failed", mRed]];
@@ -66,27 +66,29 @@ result =
         testDir = DirectoryName[$InputFileName];
         AppendTo[$Path, testDir];
         AppendTo[$Path, FileNameJoin[{testDir, "..", "modules"}]];
-
-        (* Check for a command-line filter argument.
-           $ScriptCommandLine works with wolframscript, but is empty under
-           wolfram -script.  For the latter, arguments follow the script path
-           in $CommandLine. *)
-        filterArg = Which[
-            Length[$ScriptCommandLine] >= 2,
-                $ScriptCommandLine[[2]],
-            Length[$CommandLine] >= 1,
-                Module[{pos},
-                    pos = Position[$CommandLine, "-script"];
-                    (* Arguments start two positions after -script (skip script path) *)
-                    If[pos =!= {} && Length[$CommandLine] >= pos[[-1, 1]] + 2,
-                        $CommandLine[[pos[[-1, 1]] + 2]],
-                        ""
+(* Check for a command-line filter argument.
+   $ScriptCommandLine works with wolframscript, but is empty under
+   wolfram -script.  For the latter, arguments follow the script path
+   in $CommandLine. *)
+        filterArg =
+            Which[
+                Length[$ScriptCommandLine] >= 2,
+                    $ScriptCommandLine[[2]]
+                ,
+                Length[$CommandLine] >= 1,
+                    Module[{pos},
+                        pos = Position[$CommandLine, "-script"];
+                        (* Arguments start two positions after -script (skip script path) *)
+                        If[pos =!= {} && Length[$CommandLine] >= pos[[-1, 1]] + 2,
+                            $CommandLine[[pos[[-1, 1]] + 2]]
+                            ,
+                            ""
+                        ]
                     ]
-                ],
-            True,
-                ""
-        ];
-
+                ,
+                True,
+                    ""
+            ];
         If[filterArg =!= "",
             (* Resolve the filter relative to the tests/ directory *)
             filterPath = FileNameJoin[{testDir, filterArg}];

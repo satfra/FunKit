@@ -2,6 +2,9 @@ publication/*.pdf
 publication/*.aux
 publication/*.synctex.*
 publication/*.bbl
+publication/*.blg
+publication/*latexmk
+publication/*.toc
 publication/*.out
 publication/*.log
 publication/FunKitNotes.bib

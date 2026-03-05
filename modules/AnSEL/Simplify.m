@@ -10,10 +10,14 @@ BuildSymmetryList[setup_, symmetries_, derivativeList_] :=
             Print["Symmetries must be given as a list!"];
             Abort[]
         ];
-        If[Length[symmetries] == 0,
+        If[AnyTrue[symmetries, Not[Head[#] === List]&],
+            Print["Symmetries must be given as a list of lists!"];
+            Abort[]
+        ];
+        If[Length[symmetries] === 0 || symmetries === {{}},
             Return[{}]
         ];
-        If[Length[derivativeList] == 0,
+        If[Length[derivativeList] === 0,
             Return[{}]
         ];
         procDerList = derivativeList /. unreplFields[setup];
@@ -413,21 +417,28 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
     Module[
         {t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2], nt1, nt2, curIdx1, curIdx2, curIdxRepl, startPoints, doFields, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2, nallIdxReplNew, tmp}
         ,
+        (*Start off by default-ordering t1 and t2*)
+        t1 = FOrderFields[setup, t1];
+        t2 = FOrderFields[setup, t2];
         (*If[MemberQ[t1,AnyField,Infinity],Message[TermsEqualAndSum::undeterminedFields];Abort[]];*)
         (*Briefly check the trivial case*)
         FunKitDebug[4, "    TermsEqualAndSum: Comparing \n  ", t1, "\n   &\n  ", t2];
         If[it1 === it2,
+            FunKitDebug[3, "    Terms are identical, returning FTerm[2, t1]."];
             Return @ FTerm[2, t1]
         ];
         If[Length[t1] >= 2 && Length[t2] >= 2,
-            If[t1[[2 ;; ]] === t2[[2 ;; ]],
+            If[t1[[2 ;; ]] === t2[[2 ;; ]] && FreeQ[{t1[[1]]}, Alternatives @@ $indexedObjects, Infinity],
+                FunKitDebug[3, "    Terms are identical starting with t1[[2 ;; ]], returning FTerm[t1[[1]] + t1[[2]], t1[[2 ;; ]]]."];
                 Return @ FTerm[t1[[1]] + t2[[1]], t1[[2 ;; ]]]
             ];
-            If[t1[[2 ;; ]] === t2[[1 ;; ]],
+            If[t1[[2 ;; ]] === t2[[1 ;; ]] && FreeQ[{t1[[1]]}, Alternatives @@ $indexedObjects, Infinity],
+                FunKitDebug[3, "    Terms are identical starting with t1[[2 ;; ]], returning FTerm[t1[[1]] + 1, t1[[2 ;; ]]]."];
                 Return @ FTerm[t1[[1]] + 1, t1[[2 ;; ]]]
             ];
-            If[t1[[1 ;; ]] === t2[[2 ;; ]],
-                Return @ FTerm[1 + t2[[1]], t2[[2 ;; ]]]
+            If[t1[[1 ;; ]] === t2[[2 ;; ]] && FreeQ[{t1[[1]]}, Alternatives @@ $indexedObjects, Infinity],
+                FunKitDebug[3, "    Terms are identical starting with t1[[1 ;; ]], returning FTerm[1 + t2[[1]], t1[[1 ;; ]]]."];
+                Return @ FTerm[1 + t2[[1]], t1[[2 ;; ]]]
             ];
         ];
         (*Let's obtain closed superindices*)
