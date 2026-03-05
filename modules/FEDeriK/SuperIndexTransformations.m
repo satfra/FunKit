@@ -120,3 +120,24 @@ GetSuperIndexTermTransformations[setup_, eq_] :=
 
 GetSuperIndexTermTransformations[setup_, term_FTerm] :=
     GetSuperIndexTermTransformations[setup, {term}];
+
+NormalizeSuperIndices[setup_, expr_FTerm] :=
+    Module[{cindices, orderingFunction},
+        cindices = GetClosedSuperIndices[setup, expr];
+        orderingFunction[e1_, e2_] :=
+            Module[{p1, p2, idx},
+                p1 = FirstPosition[expr, e1];
+                p2 = FirstPosition[expr, e2];
+                For[idx = 1, idx <= Min[Length[p1], Length[p2]], idx++,
+                    If[p1[[idx]] < p2[[idx]],
+                        Return[True]
+                    ];
+                    If[p1[[idx]] > p2[[idx]],
+                        Return[False]
+                    ];
+                ];
+                Return[False];
+            ];
+        cindices = Sort[cindices, orderingFunction];
+        expr /. Thread[cindices -> Table[Symbol["sIdx" <> ToString[idx]], {idx, 1, Length[cindices]}]]
+    ];

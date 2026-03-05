@@ -418,8 +418,8 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
         {t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2], nt1, nt2, curIdx1, curIdx2, curIdxRepl, startPoints, doFields, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2, nallIdxReplNew, tmp}
         ,
         (*Start off by default-ordering t1 and t2*)
-        t1 = FOrderFields[setup, t1];
-        t2 = FOrderFields[setup, t2];
+        t1 = FixIndices[setup, FOrderFields[setup, t1]];
+        t2 = FixIndices[setup, FOrderFields[setup, t2]];
         (*If[MemberQ[t1,AnyField,Infinity],Message[TermsEqualAndSum::undeterminedFields];Abort[]];*)
         (*Briefly check the trivial case*)
         FunKitDebug[4, "    TermsEqualAndSum: Comparing \n  ", t1, "\n   &\n  ", t2];

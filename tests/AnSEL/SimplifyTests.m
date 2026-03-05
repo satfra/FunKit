@@ -89,14 +89,15 @@ AppendTo[
     tests
     ,
     TestCreate[
-        Module[{setup, t1, t2},
+        Module[{setup, t1, t2, res},
             setup = GetFunKitSetupScalar[];
             t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], Propagator[{Phi, Phi}, {i2, i3}]];
             t2 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], Propagator[{Phi, Phi}, {i2, i3}]];
-            FunKit`Private`TermsEqualAndSum[setup, t1, t2]
+            res = FunKit`Private`TermsEqualAndSum[setup, t1, t2];
+            FunKit`Private`NormalizeSuperIndices[setup, res]
         ]
         ,
-        FTerm[2, Propagator[{Phi, Phi}, {i2, i1}], Propagator[{Phi, Phi}, {i3, i2}]]
+        FTerm[2, Propagator[{Phi, Phi}, {sIdx1, i1}], Propagator[{Phi, Phi}, {i3, sIdx1}]]
         ,
         TestID -> "TermsEqualAndSum: identical bosonic terms"
     ]
@@ -106,14 +107,15 @@ AppendTo[
     tests
     ,
     TestCreate[
-        Module[{setup, t1, t2},
+        Module[{setup, t1, t2, res},
             setup = GetFunKitSetupScalar[];
             t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], Propagator[{Phi, Phi}, {i2, i3}]];
             t2 = FTerm[1, Propagator[{Phi, Phi}, {i1, b}], Propagator[{Phi, Phi}, {b, i3}]];
-            FunKit`Private`TermsEqualAndSum[setup, t1, t2]
+            res = FunKit`Private`TermsEqualAndSum[setup, t1, t2];
+            FunKit`Private`NormalizeSuperIndices[setup, res]
         ]
         ,
-        FTerm[2, Propagator[{Phi, Phi}, {i2, i1}], Propagator[{Phi, Phi}, {i3, i2}]]
+        FTerm[2, Propagator[{Phi, Phi}, {sIdx1, i1}], Propagator[{Phi, Phi}, {i3, sIdx1}]]
         ,
         TestID -> "TermsEqualAndSum: different index names"
     ]
@@ -195,14 +197,15 @@ AppendTo[
     tests
     ,
     TestCreate[
-        Module[{setup, t1, t2},
+        Module[{setup, t1, t2, res},
             setup = GetFunKitSetupYukawa[];
             t1 = FTerm[1, Propagator[{Psi, Psibar}, {i1, i2}], GammaN[{Psi, Psibar, Phi}, {-i1, -i3, -i4}], GammaN[{Psi, Psibar, Phi}, {-i5, -i2, -i6}], Propagator[{Psi, Psibar}, {i3, i5}], Propagator[{Phi, Phi}, {i4, i6}]];
             t2 = FTerm[1, Propagator[{Psi, Psibar}, {a, b}], GammaN[{Psi, Psibar, Phi}, {-a, -c, -d}], GammaN[{Psi, Psibar, Phi}, {-e, -b, -f}], Propagator[{Psi, Psibar}, {c, e}], Propagator[{Phi, Phi}, {d, f}]];
-            FunKit`Private`TermsEqualAndSum[setup, t1, t2]
+            res = FunKit`Private`TermsEqualAndSum[setup, t1, t2];
+            FunKit`Private`NormalizeSuperIndices[setup, res]
         ]
         ,
-        FTerm[2, Propagator[{Psi, Psibar}, {i1, i2}], GammaN[{Phi, Psibar, Psi}, {-i4, -i3, -i1}], GammaN[{Phi, Psibar, Psi}, {-i6, -i2, -i5}], Propagator[{Psi, Psibar}, {i3, i5}], Propagator[{Phi, Phi}, {i6, i4}]]
+        FTerm[2, Propagator[{Psi, Psibar}, {sIdx1, sIdx2}], GammaN[{Phi, Psibar, Psi}, {-sIdx3, -sIdx4, -sIdx1}], GammaN[{Phi, Psibar, Psi}, {-sIdx5, -sIdx2, -sIdx6}], Propagator[{Psi, Psibar}, {sIdx4, sIdx6}], Propagator[{Phi, Phi}, {sIdx5, sIdx3}]]
         ,
         TestID -> "TermsEqualAndSum: identical fermionic diagrams"
     ]
@@ -212,16 +215,52 @@ AppendTo[
     tests
     ,
     TestCreate[
-        Module[{setup, t1, t2},
+        Module[{setup, t1, t2, res},
             setup = GetFunKitSetupYukawa[];
             t1 = FTerm[1, Propagator[{Psi, Psibar}, {i1, i2}], GammaN[{Psi, Psibar, Phi}, {-i1, -i3, -i4}], GammaN[{Psi, Psibar, Phi}, {-i5, -i2, -i6}], Propagator[{Psi, Psibar}, {i3, i5}], Propagator[{Phi, Phi}, {i4, i6}]];
             t2 = FTerm[-1, Propagator[{Psibar, Psi}, {b, a}], GammaN[{Psibar, Phi, Psi}, {-c, -d, -a}], GammaN[{Phi, Psi, Psibar}, {-f, -e, -b}], Propagator[{Psibar, Psi}, {e, c}], Propagator[{Phi, Phi}, {d, f}]];
+            res = FunKit`Private`TermsEqualAndSum[setup, t1, t2];
+            FunKit`Private`NormalizeSuperIndices[setup, res]
+        ]
+        ,
+        FTerm[2, Propagator[{Psi, Psibar}, {sIdx1, sIdx2}], GammaN[{Phi, Psibar, Psi}, {-sIdx3, -sIdx4, -sIdx1}], GammaN[{Phi, Psibar, Psi}, {-sIdx5, -sIdx2, -sIdx6}], Propagator[{Psi, Psibar}, {sIdx4, sIdx6}], Propagator[{Phi, Phi}, {sIdx5, sIdx3}]]
+        ,
+        TestID -> "TermsEqualAndSum: reordered fermionic fields"
+    ]
+];
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{setup, t1, t2},
+            setup = GetFunKitSetupFourFermion[];
+            t1 = FTerm[GammaN[{Psibar, Psibar, Psi, Psi}, {-i1, -i2, -i3, -i4}], Propagator[{Psi, Psibar}, {i1, i3}], Propagator[{Psi, Psibar}, {i2, i4}]];
+            t2 = FTerm[GammaN[{Psibar, Psibar, Psi, Psi}, {-i1, -i2, -i3, -i4}], Propagator[{Psi, Psibar}, {i1, i4}], Propagator[{Psi, Psibar}, {i2, i3}]];
             FunKit`Private`TermsEqualAndSum[setup, t1, t2]
         ]
         ,
-        FTerm[2, Propagator[{Psi, Psibar}, {i1, i2}], GammaN[{Phi, Psibar, Psi}, {-i4, -i3, -i1}], GammaN[{Phi, Psibar, Psi}, {-i6, -i2, -i5}], Propagator[{Psi, Psibar}, {i3, i5}], Propagator[{Phi, Phi}, {i6, i4}]]
+        FTerm[0]
         ,
-        TestID -> "TermsEqualAndSum: reordered fermionic fields"
+        TestID -> "FSimplify 4F: Identify two tadpoles with switched legs correctly (expect FEx[] after simplification)"
+    ]
+];
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{setup, t1, t2, res},
+            setup = GetFunKitSetupFourFermion[];
+            t1 = FTerm[GammaN[{Psibar, Psibar, Psi, Psi}, {-i1, -i2, -i3, -i4}], Propagator[{Psi, Psibar}, {i1, i3}], Propagator[{Psi, Psibar}, {i2, i4}]];
+            t2 = FTerm[-1, GammaN[{Psibar, Psibar, Psi, Psi}, {-i1, -i2, -i3, -i4}], Propagator[{Psi, Psibar}, {i1, i4}], Propagator[{Psi, Psibar}, {i2, i3}]];
+            res = FunKit`Private`TermsEqualAndSum[setup, t1, t2];
+            FunKit`Private`NormalizeSuperIndices[setup, res]
+        ]
+        ,
+        FTerm[2, GammaN[{Psibar, Psibar, Psi, Psi}, {-sIdx1, -sIdx2, -sIdx3, -sIdx4}], Propagator[{Psi, Psibar}, {sIdx2, sIdx4}], Propagator[{Psi, Psibar}, {sIdx1, sIdx3}]]
+        ,
+        TestID -> "FSimplify 4F: Identify two tadpoles with switched legs correctly (expect NOT FEx[] after simplification)"
     ]
 ];
 
@@ -240,12 +279,12 @@ AppendTo[
                 FTakeDerivatives[setup, WetterichEquation, {Phi[i1], Phi[i2]}] //
                 FTruncate //
                 FSimplify;
-            Length[result] - 1 === 2
+            Length[result] - 1
         ]
         ,
-        True
+        2
         ,
-        TestID -> "FSimplify: scalar 2-point flow"
+        TestID -> "FSimplify: scalar 2-point flow has 2 terms (tadpole and polarization)"
     ]
 ];
 
@@ -265,7 +304,7 @@ AppendTo[
         ,
         4
         ,
-        TestID -> "FSimplify: scalar 4-point flow"
+        TestID -> "FSimplify: scalar 4-point flow has 4 terms (1 diagram with two 4-point vertices, 2 diagrams with one 4-point vertex, 1 diagram with no 4-point vertices)"
     ]
 ];
 
@@ -389,6 +428,40 @@ AppendTo[
 (**********************************************************************************
     Section 6: FSimplify — four-fermion interactions — 5 tests
 **********************************************************************************)
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{setup, eq1, eq2},
+            setup = GetFunKitSetupFourFermion[];
+            eq1 = FTerm[GammaN[{Psibar, Psibar, Psi, Psi}, {-i1, -i2, -i3, -i4}], Propagator[{Psi, Psibar}, {i1, i3}], Propagator[{Psi, Psibar}, {i2, i4}]];
+            eq2 = FTerm[GammaN[{Psibar, Psibar, Psi, Psi}, {-i1, -i2, -i3, -i4}], Propagator[{Psi, Psibar}, {i1, i4}], Propagator[{Psi, Psibar}, {i2, i3}]];
+            FSimplify[setup, FEx[eq1, eq2]]
+        ]
+        ,
+        FEx[]
+        ,
+        TestID -> "FSimplify 4F: Identify two tadpoles with switched legs correctly (expect FEx[] after simplification)"
+    ]
+];
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{setup, eq1, eq2},
+            setup = GetFunKitSetupFourFermion[];
+            eq1 = FTerm[GammaN[{Psibar, Psibar, Psi, Psi}, {-i1, -i2, -i3, -i4}], Propagator[{Psi, Psibar}, {i1, i3}], Propagator[{Psi, Psibar}, {i2, i4}]];
+            eq2 = FTerm[-1, GammaN[{Psibar, Psibar, Psi, Psi}, {-i1, -i2, -i3, -i4}], Propagator[{Psi, Psibar}, {i1, i4}], Propagator[{Psi, Psibar}, {i2, i3}]];
+            FSimplify[setup, FEx[eq1, eq2]] =!= FEx[]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FSimplify 4F: Identify two tadpoles with switched legs correctly (expect NOT FEx[] after simplification)"
+    ]
+];
 
 AppendTo[
     tests
