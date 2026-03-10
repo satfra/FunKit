@@ -11,7 +11,7 @@ GetCommutingFields[setup_] :=
                 Head[#]
             ]&
             ,
-            setup["FieldSpace"]["Commuting"]
+            Lookup[setup["FieldSpace"], "Commuting", {}]
         ];
 
 GetAntiCommutingFields[setup_] :=
@@ -24,7 +24,7 @@ GetAntiCommutingFields[setup_] :=
                     {}
                 ]&
                 ,
-                setup["FieldSpace"]["Commuting"]
+                Lookup[setup["FieldSpace"], "Commuting", {}]
             ]
             ,
             # =!= {}&
@@ -39,7 +39,7 @@ GetGrassmannFields[setup_] :=
                 Head[#]
             ]&
             ,
-            setup["FieldSpace"]["Grassmann"]
+            Lookup[setup["FieldSpace"], "Grassmann", {}]
         ];
 
 GetAntiGrassmannFields[setup_] :=
@@ -52,7 +52,7 @@ GetAntiGrassmannFields[setup_] :=
                     {}
                 ]&
                 ,
-                setup["FieldSpace"]["Grassmann"]
+                Lookup[setup["FieldSpace"], "Grassmann", {}]
             ]
             ,
             # =!= {}&
@@ -70,7 +70,7 @@ GetCommuting[setup_] :=
                             Head[#]
                         ]&
                         ,
-                        setup["FieldSpace"]["Commuting"]
+                        Lookup[setup["FieldSpace"], "Commuting", {}]
                     ]
                     ,
                     # =!= {}&
@@ -91,7 +91,7 @@ GetGrassmann[setup_] :=
                             Head[#]
                         ]&
                         ,
-                        setup["FieldSpace"]["Grassmann"]
+                        Lookup[setup["FieldSpace"], "Grassmann", {}]
                     ]
                     ,
                     # =!= {}&
@@ -101,16 +101,16 @@ GetGrassmann[setup_] :=
         ];
 
 GetFieldPairs[setup_] :=
-    GetFieldPairs[setup] = Map[{Head[#[[1]]], Head[#[[2]]]}&, Select[Join[setup["FieldSpace"]["Grassmann"], setup["FieldSpace"]["Commuting"]], Head[#] === List&]];
+    GetFieldPairs[setup] = Map[{Head[#[[1]]], Head[#[[2]]]}&, Select[Join[Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "Commuting", {}]], Head[#] === List&]];
 
 GetSingleFields[setup_] :=
     GetSingleFields[setup] = Join[
-        Map[Head[#]&, Select[Join[setup["FieldSpace"]["Grassmann"], setup["FieldSpace"]["Commuting"]], Head[#] =!= List&]],
+        Map[Head[#]&, Select[Join[Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "Commuting", {}]], Head[#] =!= List&]],
         GetAllSourceFields[setup]
     ];
 
 GetAllFields[setup_] :=
-    GetAllFields[setup] = Join[Flatten @ GetFieldPairs[setup], Map[Head[#]&, Select[Join[setup["FieldSpace"]["Grassmann"], setup["FieldSpace"]["Commuting"]], Head[#] =!= List&]], GetAllSourceFields[setup]];
+    GetAllFields[setup] = Join[Flatten @ GetFieldPairs[setup], Map[Head[#]&, Select[Join[Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "Commuting", {}]], Head[#] =!= List&]], GetAllSourceFields[setup]];
 
 (**********************************************************************************
     Source field accessors
@@ -130,7 +130,7 @@ GetAllSourceFields[setup_] :=
 
 GetNonSourceFields[setup_] :=
     GetNonSourceFields[setup] =
-        Join[Flatten @ GetFieldPairs[setup], Map[Head[#]&, Select[Join[setup["FieldSpace"]["Grassmann"], setup["FieldSpace"]["Commuting"]], Head[#] =!= List&]]];
+        Join[Flatten @ GetFieldPairs[setup], Map[Head[#]&, Select[Join[Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "Commuting", {}]], Head[#] =!= List&]]];
 
 (**********************************************************************************
     Getting single field properties

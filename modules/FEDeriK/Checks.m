@@ -54,59 +54,38 @@ AssertFieldDef[expr_] :=
 
 FieldSpaceDefQ::association = "The field space definition must be an Association.";
 
-FieldSpaceDefQ::keys = "The field space definition must contain the keys {\"Commuting\",\"Grassmann\"} and may optionally contain {\"CommutingSource\",\"GrassmannSource\"}.";
+FieldSpaceDefQ::keys = "The field space definition may only contain the keys {\"Commuting\",\"Grassmann\",\"CommutingSource\",\"GrassmannSource\"}. Unknown keys were provided.";
 
 FieldSpaceDefQ::list = "The entries of the field space definition must be lists.";
 
 FieldSpaceDefQ::fields = "The entries of the field space definition must contain valid field definitions.";
 
 FieldSpaceDefQ[fieldSpace_] :=
-    Module[{keys, allowedKeys, requiredKeys, sourceKey},
+    Module[{keys, allowedKeys, optionalKey},
         If[Head[fieldSpace] =!= Association,
             Message[FieldSpaceDefQ::association];
             Return[False]
         ];
         keys = Keys[fieldSpace];
-        requiredKeys = {"Commuting", "Grassmann"};
         allowedKeys = {"Commuting", "Grassmann", "CommutingSource", "GrassmannSource"};
-        If[Not @ ContainsAll[keys, requiredKeys],
-            Message[FieldSpaceDefQ::keys];
-            Return[False]
-        ];
         If[Not @ ContainsAll[allowedKeys, keys],
             Message[FieldSpaceDefQ::keys];
             Return[False]
         ];
-        If[Not @ ListQ[fieldSpace["Commuting"]],
-            Message[FieldSpaceDefQ::list];
-            Return[False]
-        ];
-        If[Not @ (And @@ Map[FieldDefQ, fieldSpace["Commuting"]]),
-            Message[FieldSpaceDefQ::fields];
-            Return[False]
-        ];
-        If[Not @ ListQ[fieldSpace["Grassmann"]],
-            Message[FieldSpaceDefQ::list];
-            Return[False]
-        ];
-        If[Not @ (And @@ Map[FieldDefQ, fieldSpace["Grassmann"]]),
-            Message[FieldSpaceDefQ::fields];
-            Return[False]
-        ];
-        (* Validate optional source field keys when present *)
+        (* Validate all keys when present *)
         Do[
-            If[KeyExistsQ[fieldSpace, sourceKey],
-                If[Not @ ListQ[fieldSpace[sourceKey]],
+            If[KeyExistsQ[fieldSpace, optionalKey],
+                If[Not @ ListQ[fieldSpace[optionalKey]],
                     Message[FieldSpaceDefQ::list];
                     Return[False]
                 ];
-                If[Not @ (And @@ Map[FieldDefQ, fieldSpace[sourceKey]]),
+                If[Not @ (And @@ Map[FieldDefQ, fieldSpace[optionalKey]]),
                     Message[FieldSpaceDefQ::fields];
                     Return[False]
                 ];
             ];
             ,
-            {sourceKey, {"CommutingSource", "GrassmannSource"}}
+            {optionalKey, allowedKeys}
         ];
         Return[True];
     ];

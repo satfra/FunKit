@@ -222,12 +222,12 @@ $Fields = {};
 
 $Setup = {};
 
-AddTexStyles::invalidRule = "The given set of style rules does not follow the pattern Symbol->String.";
+FAddTexStyles::invalidRule = "The given set of style rules does not follow the pattern Symbol->String.";
 
-AddTexStyles[a__Rule] :=
+FAddTexStyles[a__Rule] :=
     Module[{},
         If[Or @@ Map[Head[#] =!= String&, Values[{a}]],
-            Message[AddTexStyles::invalidRule];
+            Message[FAddTexStyles::invalidRule];
             Abort[]
         ];
         $TexStyles = DeleteDuplicates[Join[$TexStyles, {a}]];
@@ -236,7 +236,7 @@ AddTexStyles[a__Rule] :=
 FSetTexStyles[a__Rule] :=
     Module[{},
         If[Or @@ Map[Head[#] =!= String&, Values[{a}]],
-            Message[AddTexStyles::invalidRule];
+            Message[FAddTexStyles::invalidRule];
             Abort[]
         ];
         $TexStyles = DeleteDuplicates[{a}];
@@ -427,12 +427,8 @@ RenewFormatDefinitions[] :=
         ];
         Format[FTerm[a__], TeXForm] :=
             Module[{obj, integrals, replNames, idx, prefix, postfix, body, fac, terms},
-                integrals = Join[
-                    Pick[$availableLoopMomenta, Map[MemberQ[{a}, #, Infinity]&, $availableLoopMomenta]],
-                    Pick[$availableLoopMomentaf, Map[MemberQ[{a}, #, Infinity]&, $availableLoopMomentaf]]
-                ];
-                replNames = Join[Thread[$availableLoopMomenta -> Table[Subscript[Symbol[$loopMomentumName], idx], {idx, 1, Length[$availableLoopMomenta]}]], 
-                Thread[$availableLoopMomentaf -> Table[Subsuperscript[Symbol[$loopMomentumName], idx, "(f)"], {idx, 1, Length[$availableLoopMomentaf]}]]];
+                integrals = Join[Pick[$availableLoopMomenta, Map[MemberQ[{a}, #, Infinity]&, $availableLoopMomenta]], Pick[$availableLoopMomentaf, Map[MemberQ[{a}, #, Infinity]&, $availableLoopMomentaf]]];
+                replNames = Join[Thread[$availableLoopMomenta -> Table[Subscript[Symbol[$loopMomentumName], idx], {idx, 1, Length[$availableLoopMomenta]}]], Thread[$availableLoopMomentaf -> Table[Subsuperscript[Symbol[$loopMomentumName], idx, "(f)"], {idx, 1, Length[$availableLoopMomentaf]}]]];
                 prefix = StringJoin[Map["\\int_{" <> ToString[TeXForm[#]] <> "}"&, integrals //. replNames]];
                 postfix = "";
                 {fac, body} = SplitPrefactor[$Setup, FTerm[a]];
