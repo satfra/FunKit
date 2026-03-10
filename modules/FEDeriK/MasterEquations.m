@@ -39,9 +39,11 @@ WetterichEquation :=
     Generalized Flow Equations
 **********************************************************************************)
 
-AddCorrelationFunction[Phidot];
+FAddCorrelationFunction[Phidot];
 
 FSetUnorderedIndices[Phidot, 1];
+
+FSetTexStyles[Phidot -> "\\dot{\\Phi}"];
 
 GeneralizedFlowEquation :=
     Module[{a, b, c},

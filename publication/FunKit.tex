@@ -234,7 +234,9 @@
 
 \begin{abstract}
 We introduce \FunKit, a \texttt{Mathematica} package for the derivation and the tracing of functional equations from general master equations.
-\FunKit provides an expression vocabulary and rules that can treat arbitrary field theories and allows for extension by the user. Besides interfacing with the \texttt{FORM} language to trace large tensor expressions efficiently, \FunKit also provides facilities to export arbitrary Mathematica expressions to C++ or Julia code, including the results of derivations, which can be then numerically treated.
+\FunKit provides an expression vocabulary and rules that can treat arbitrary field theories and allows for extension by the user. 
+Therefore, it allows to model situations such as general DSE and fRG equations, flowing reparametrisations, nPI equations, (modified) STIs and WTIs, sources, and many others.
+Besides interfacing with the \texttt{FORM} language to trace large tensor expressions efficiently, \FunKit also provides facilities to export arbitrary Mathematica expressions to C++ or Julia code, including the results of derivations, which can be then numerically treated.
 \end{abstract}
 
 \maketitle
@@ -245,6 +247,25 @@ We introduce \FunKit, a \texttt{Mathematica} package for the derivation and the 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Introduction}
 \label{sec:Introduction}
+
+\begin{itemize}
+	\item Friederike 1:
+	"
+	Ich hatte dahingehend neulich eine interessante Diskussion mit Michael, weil ich ja versuche seine Gruppe für DiFfRG zu gewinnen und der Tenor war so bisschen, dass er keine Lust hat 500 Blackbox Befehle zu haben von denen er nicht weiß was sie tun und ich denke das ist ein ganz schwerer Kompromiss: Easy to use aber accessible enough to understand.
+	Dein Bsp auf der ersten Seite enthält zb schon 7 Black-boxes wo ich mir denken kann was es tut weil ich die Dinge kenne, das geht aber vermutlich nicht jedem so
+	"
+	%
+	\item Friederike 2: 
+	"
+	Für die Meta Ebene: Ich hatte eher in die Richtung überlegt "wenn ich seit 20 Jahren fRG mache, warum sollte ich mich bemühen das Zeug zu lernen"? Weil meistens suchen sich die Studis ja nicht raus was sie tun, sondern der chef sagt "nimm mal das".
+	
+	Dh der Chef schaut sich das eh nicht an und die Studis müssen sowieso leiden.
+	Dh, wie bekomme ich den Alten Sack überzeugt - und das sind denke ich so Sachen wie
+	"Advanced Simulations, e.g. Gauge theories, Transport coefficients ect require modified Flow equations with novel diagrammatics" -> This famework can do it 
+	Weil sonst benutzen die alle brav weiter DoFun und frag mich nicht weil sie es ja schon kennen
+	Deine Narrative ist ja gerade "ich mache alles in einem" aber ich glaube du willst eher haben "Ich mache alles in einem und mehr, was ihr früher oder später brauchen werdet"
+	"
+\end{itemize}
 
 Functional computations, utilising e.g. the functional Renormalisation Group (fRG) or Dyson-Schwinger equations (DSE), allow for the direct calculation of non-perturbative aspects of quantum field theories and have been utilised with great success in a broad range of physical situations from quantum gravity to QCD to ultracold atoms. For some reviews and introductions to the topic see, e.g., \cite{Roberts:2000aa,Maris:2003vk,Pawlowski:2005xe,Gies:2006wv,Delamotte:2007pf,Rosten:2010vm,Metzner_2012,Fischer:2018sdj,Dupuis:2020fhh,Fu:2022gou}.
 
@@ -315,8 +336,28 @@ With \FunKit, we aim to build on these packages and provide a convenient all-in-
 	\label{fig:workflow}
 \end{figure*}
 
-
-With \FunKit, the derivation of a flow equation in a scalar theory is as simple as:
+As an example, consider how one would derive the flow equation for the two-point function in a scalar~theory:
+%
+\begin{enumerate}
+	\setlength\itemsep{0.1ex}
+	\item Write down all fields used and the vertex truncation of the theory.
+	\item Take two derivatives with respect to two scalar fields of the Wetterich equation.
+	\item Discard any diagrams that include vertices not in the truncation.
+	\item Decide how to propagate momenta through your diagrams and identify the loops in your result.
+\end{enumerate}
+%
+With \FunKit, these steps translate to certain calls to \FunKit's functions that do this for you:
+%
+\begin{enumerate}
+	\setlength\itemsep{0.1ex}
+	\item Define a \textit{setup} that specifies your field space and truncation.
+	\item Use the function \mathem{\mmaDef{FTakeDerivatives}} to take derivatives w.r.t. two fields.
+	\item Use \mathem{\mmaDef{FTruncate}} to discard any diagrams that include vertices not in the truncation.
+	\item Use \mathem{\mmaDef{FRoute}} to route all momenta in the expression and group them by loop order.
+	\item[(5.)] Visualize the result using \mathem{\mmaDef{FPrint}} and \mathem{\mmaDef{FPlot}}.
+\end{enumerate}
+%
+Explicitly, the code to do that, and the output it produces, reads:
 %
 \begin{mmaCell}{Input}
 \mmaDef{FSetGlobalSetup}[<|"FieldSpace" -> <|"Commuting" -> \{Phi[p]\}|>,
@@ -389,7 +430,8 @@ We also provide several example notebooks where the derivation of certain theori
 			\texttt{examples/mSTI-Yang-Mills.nb} & Worked example showing the calculation of the modified Slavnov–Taylor identity (mSTI) for the gluon two-point function. \\[1ex]
 			\texttt{examples/Yang-Mills.nb} & Derivation examples for Yang–Mills theory: DSEs and flow equations with the truncation used in the paper. \\[1ex]
 			\texttt{examples/ScalarTheory.nb} & Minimal scalar-field examples: DSEs and flow equations. \\[1ex]
-			\texttt{examples/Quark-Meson.nb} & Example setup and derivations for a quark–meson-type model (Yukawa interactions): DSEs and flow equations.  \\
+			\texttt{examples/Yukawa.nb} & Example setup and derivations for a Yukawa model: DSEs and flow equations.  \\[1ex]
+			\texttt{examples/FlowingReparametrisation.nb} & Example setup and derivations for fRG equations in a Yukawa model with flowing reparametrisation.\\
 			\bottomrule
 		\end{tabular}
 	\end{tcolorbox}
@@ -745,10 +787,7 @@ The gauge field \mathem{A} is a commuting field and has no partner field. In con
 Fields are always specified together with their full index structure. A momentum variable is obligatory, i.e. a purely scalar field space could be specified as
 %
 \begin{mmaCell}{Input}
-fieldsPhi = <|
-  "Commuting" -> \{\(\pmb{\phi}\)[p]\},
-  "Grassmann" -> \{\}
- |>;
+fieldsPhi = <|"Commuting" -> \{\(\pmb{\phi}\)[p]\}|>;
 \end{mmaCell}
 %
 In the above case of Yang-Mills theory, all fields have additional group structure. These indices must be fully specified with a second, optional list in the argument of the field.
