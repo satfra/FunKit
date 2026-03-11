@@ -21,12 +21,12 @@ JuliaForm[expr_] :=
     ];
 
 IndentCode[code_String, level_Integer] :=
-    Module[{ret = code},
-        For[i = 1, i <= level, i++,
+    Module[{ret = code, idx},
+        For[idx = 1, idx <= level, idx++,
             ret = StringReplace[ret, "\n" -> "\n  "];
         ];
         (*Remove trailing whitespaces*)
-        While[StringTake[ret, {-1}] === " ", ret = StringTake[ret, StringLength[ret] - 1];];
+        While[StringLength[ret] > 0 && StringTake[ret, {-1}] === " ", ret = StringTake[ret, StringLength[ret] - 1];];
         Return[ret];
     ]
 

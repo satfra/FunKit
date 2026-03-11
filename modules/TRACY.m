@@ -43,19 +43,17 @@ Separates d-dimensional momenta into (d-1)-dimensional spatial parts and time co
 Can be passed as a postRepl or preRepl rule to FormTrace or FormSimplify.
 Useful for finite-temperature field theory calculations.";
 
-MakeP0Rule::usage = "MakeP0Rule[q, {p1, p2, ...}, {proj1, proj2, ...}]
+MakeP0Rule::usage = "MakeP0Rule[{p1, p2, ...}, {proj1, proj2, ...}]
 Creates a replacement rule to project temporal components of momentum expressions.
-The first argument q is the internal (loop) momentum variable.
-The second argument is a list of external momenta {p1, p2, ...}.
-The third argument is a list of projections {proj1, proj2, ...} for the temporal components.
+The first argument is a list of momenta {p1, p2, ...}.
+The second argument is a list of projections {proj1, proj2, ...} for the temporal components.
 Sets vec[pi,0] to the value of proji for finite-temperature field theory calculations.
 Essential for evaluating expressions at specific temporal momentum projections.";
 
-MakeP0FormRule::usage = "MakeP0FormRule[q, {p1, p2, ...}, {proj1, proj2, ...}]
+MakeP0FormRule::usage = "MakeP0FormRule[{p1, p2, ...}, {proj1, proj2, ...}]
 Creates a FORM rule to project temporal components of momentum expressions.
-The first argument q is the internal (loop) momentum variable.
-The second argument is a list of external momenta {p1, p2, ...}.
-The third argument is a list of projections {proj1, proj2, ...} for the temporal components.
+The first argument is a list of momenta {p1, p2, ...}.
+The second argument is a list of projections {proj1, proj2, ...} for the temporal components.
 Sets vec[pi,0] to the value of proji for finite-temperature field theory calculations.
 Essential for evaluating expressions at specific temporal momentum projections.";
 
@@ -67,11 +65,11 @@ The third argument is a list of external leg momenta {p1, p2, ...}.
 Projects all momenta to a symmetric configuration with average momentum p.
 Crucial for evaluating loop integrals at the symmetric point for RG calculations.";
 
-MakeSPFiniteTFormRule::usage = "MakeSPFiniteTFormRule[q, p, p1, p2, ...]
+MakeSPFiniteTFormRule::usage = "MakeSPFiniteTFormRule[{l1, l2, ...}, p, {p1, p2, ...}]
 Creates a FORM rule for (d-1)-dimensional symmetric point configuration.
-The first argument q is the internal (loop) momentum variable.
+The first argument is a list of loop momenta {l1, l2, ...}.
 The second argument p is the average spatial momentum scale.
-Remaining arguments are external leg momenta.
+The third argument is a list of external leg momenta {p1, p2, ...}.
 Projects momenta to spatial symmetric point configuration for finite-temperature calculations.
 Separates temporal and spatial components for thermal field theory applications.";
 

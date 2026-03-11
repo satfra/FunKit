@@ -224,6 +224,8 @@ $Setup = {};
 
 FAddTexStyles::invalidRule = "The given set of style rules does not follow the pattern Symbol->String.";
 
+FSetTexStyles::invalidRule = "The given set of style rules does not follow the pattern Symbol->String.";
+
 FAddTexStyles[a__Rule] :=
     Module[{},
         If[Or @@ Map[Head[#] =!= String&, Values[{a}]],
@@ -236,7 +238,7 @@ FAddTexStyles[a__Rule] :=
 FSetTexStyles[a__Rule] :=
     Module[{},
         If[Or @@ Map[Head[#] =!= String&, Values[{a}]],
-            Message[FAddTexStyles::invalidRule];
+            Message[FSetTexStyles::invalidRule];
             Abort[]
         ];
         $TexStyles = DeleteDuplicates[{a}];
@@ -246,6 +248,18 @@ FSetTexStyles[] :=
     Module[{},
         $TexStyles = {};
     ]
+
+FAddTexStyles[___] :=
+    (
+        Message[FunKit::invalidArguments, FAddTexStyles];
+        Abort[]
+    );
+
+FSetTexStyles[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetTexStyles];
+        Abort[]
+    )
 
 (**********************************************************************************
     Utils

@@ -4,9 +4,16 @@
 
 (*A convenience function to quickly obtain the index structure of a given field.*)
 
+FieldSetupIndices::notFound = "The field `1` was not found in the setup's field space.";
+
 FieldSetupIndices[setup_, field_] :=
-    Module[{},
-        List @@ SelectFirst[Flatten @ Values[setup["FieldSpace"]], Head[#] === field&]
+    Module[{result},
+        result = SelectFirst[Flatten @ Values[setup["FieldSpace"]], Head[#] === field&];
+        If[MissingQ[result],
+            Message[FieldSetupIndices::notFound, field];
+            Abort[]
+        ];
+        List @@ result
     ];
 
 FRoute::undeterminedFields = "Cannot route indices in expressions with undetermined fields.";
@@ -16,6 +23,10 @@ FRoute::momentaFailed = "Cannot route momenta in the given expression. Final mom
 FRoute::conservationFail = "Momentum conservation could not be fulfilled. Error in `1`.
 Full Expression:
     `2`";
+
+FRoute::noObjectForIndex = "No indexed object could be found for the index `1`.";
+
+FRoute::noLoopMomentum = "No loop momentum could be found for momentum routing at vertex `1`.";
 
 (*detect if we should route into a fermionic loopMomentum (True) or a bosonic one (False)*)
 
@@ -50,6 +61,7 @@ fermionicExtMomRouting[setup_, vertex_] :=
 
 FRoute[setup_, expr_FTerm] :=
     Module[{openIndices, closedIndices, objects, ret = ReduceFTerm[setup, ReduceIndices[setup, expr]], doFields, idx, a, indPos, assocField, subObj, subMom, subExtMom, indStruct, externalIndices, externalMomenta, kind, f, momRepl, i, mom, loopMomenta, sidx, discard, rightMomenta, closedIndex, nextObj, tmp, flag, availMomemnta},
+        AssertFSetup[setup];
         FunKitDebug[1, "FRoute: routing the sub-term ", expr];
         (*We first get all closed, open indices and all indexed objects. *)
         doFields = replFields[setup];
@@ -73,7 +85,7 @@ FRoute[setup_, expr_FTerm] :=
             ];
             nextObj = FirstPosition[objects, nextObj[[1]]];
             (*Swap the object right after with nextObj*)
-            If[nextObj =!= "NotFound" && nextObj[[1]] =!= idx + 1,
+            If[Not @ MissingQ[nextObj] && nextObj[[1]] =!= idx + 1,
                 nextObj = nextObj[[1]];
                 FunKitDebug[2, "  FRoute: Swapping objects at positions ", idx + 1, " and ", nextObj];
                 tmp = objects[[idx + 1]];
@@ -85,7 +97,12 @@ FRoute[setup_, expr_FTerm] :=
         ];
         (*Now, momenta. As a first step, we insert the correct index structures into all superindices and define momentum variables at every single vertex. We loop over all closed indices.*)
         Do[
-            subObj = Select[objects, MemberQ[#, closedIndices[[idx]], Infinity]&][[1]];
+            subObj = Select[objects, MemberQ[#, closedIndices[[idx]], Infinity]&];
+            If[Length[subObj] === 0,
+                Message[FRoute::noObjectForIndex, closedIndices[[idx]]];
+                Abort[]
+            ];
+            subObj = subObj[[1]];
             (*The indexed object we currently modify. There are always two and we simply grab the first. *)
             (*The position of the current index inside the subObj*)
             indPos = FirstPosition[subObj[[2]], closedIndices[[idx]]][[1]];
@@ -125,7 +142,13 @@ Momentum conservation is already enforced here, i.e. \!\(
 \*SubscriptBox[\(p\), \(n\)]\(.\)\)\)\)*)
         externalIndices = Table[{}, {idx, 1, Length[openIndices]}];
         Do[
-            (*see above*)subObj = Select[objects, MemberQ[#, openIndices[[idx]], Infinity]&][[1]];
+            (*see above*)
+            subObj = Select[objects, MemberQ[#, openIndices[[idx]], Infinity]&];
+            If[Length[subObj] === 0,
+                Message[FRoute::noObjectForIndex, openIndices[[idx]]];
+                Abort[]
+            ];
+            subObj = subObj[[1]];
             indPos = FirstPosition[subObj[[2]], openIndices[[idx]]][[1]];
             assocField = subObj[[1, indPos]];
             indStruct =
@@ -200,6 +223,10 @@ Momentum conservation is already enforced here, i.e. \!\(
                     (*Otherwise, we have no (purely) fermionic loop momenta, so just grab the first bosonic one*)
                     mom = Select[availMomenta, MatchQ[#, loopMomentum[_, False]]&];
                 ];
+                If[Length[mom] === 0,
+                    Message[FRoute::noLoopMomentum, subObj];
+                    Abort[]
+                ];
                 mom = mom[[1]];
                 (*Now create the replacement rule*)
                 momRepl = Solve[Total[subObj[[2, All, 1]]] == 0, mom][[1, 1]];
@@ -229,6 +256,10 @@ Momentum conservation is already enforced here, i.e. \!\(
                     If[Length[mom] === 0,
                         mom = Select[availMomenta, MatchQ[#, loopMomentum[_, True]]&];
                     ];
+                ];
+                If[Length[mom] === 0,
+                    Message[FRoute::noLoopMomentum, subObj];
+                    Abort[]
                 ];
                 mom = mom[[1]];
                 (*now build the replacement rule*)
@@ -331,17 +362,36 @@ isRoutedAssociation[expr_] :=
 
 FUnroute[setup_, assoc_Association] /; isLoopAssociation[assoc] :=
     Module[{},
-        Return @ FUnroute[assoc["Expression"] /. Map[#[[2]] -> #[[1]]&, assoc["ExternalIndices"]]];
+        AssertFSetup[setup];
+        Return @ FUnroute[setup, assoc["Expression"] /. Map[#[[2]] -> #[[1]]&, assoc["ExternalIndices"]]];
     ];
 
 FUnroute[setup_, assoc_Association] /; isRoutedAssociation[assoc] :=
     FEx @@ (FUnroute[setup, #]& /@ (List @@ assoc));
 
 FUnroute[setup_, term_FEx] :=
-    FUnroute[setup, #]& /@ term;
+    Module[{},
+        AssertFSetup[setup];
+        FUnroute[setup, #]& /@ term
+    ];
 
 FUnroute[setup_, term_FTerm] :=
     Module[{fw, bw},
+        AssertFSetup[setup];
         {fw, bw} = GetSuperIndexTermTransformations[setup, term];
         Return[term // fw];
     ];
+
+(* Catch-all definitions *)
+
+FRoute[___] :=
+    (
+        Message[FunKit::invalidArguments, FRoute];
+        Abort[]
+    );
+
+FUnroute[___] :=
+    (
+        Message[FunKit::invalidArguments, FUnroute];
+        Abort[]
+    );

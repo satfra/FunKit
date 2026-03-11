@@ -3,8 +3,14 @@
     argument will use this setup automatically if called without setup.
 **********************************************************************************)
 
-FMakeDiagrammaticRules[] /; Head[$GlobalSetup] =!= Symbol :=
-    FMakeDiagrammaticRules[$GlobalSetup];
+FMakeDiagrammaticRules[opts___?OptionQ] /; Head[$GlobalSetup] =!= Symbol :=
+    FMakeDiagrammaticRules[$GlobalSetup, opts];
+
+FMakeDiagrammaticRules[] /; Head[$GlobalSetup] === Symbol :=
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
 
 (*Make sure dressing, InverseProp is properly (not) defined*)
 

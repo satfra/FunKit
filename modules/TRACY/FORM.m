@@ -10,22 +10,33 @@
 
 (* ::Input::Initialization:: *)
 
+GetFTSynonym::notSymbol = "The value \"`1`\" is not a symbol.";
+
+GetFTSynonym::synonymNotFound = "Could not find a FormTracer synonym for the symbol `1`.";
+
 GetFTSynonym[symbol_] :=
-    Module[{},
+    Module[{result},
         If[symbol === I,
             Return[FTxI // ToString]
         ];
         If[Head[symbol] =!= Symbol,
-            Print["The value \"" <> ToString[symbol] <> "\" is not a symbol!"];
+            Message[GetFTSynonym::notSymbol, symbol];
             Abort[]
         ];
         If[Not @ MemberQ[FormTracer`GetExtraVarsSynonyms[], symbol, Infinity],
             FormTracer`AddExtraVars[symbol]
         ];
-        ToString @ Select[FormTracer`GetExtraVarsSynonyms[], #[[1]] == symbol&][[1, 2]]
+        result = Select[FormTracer`GetExtraVarsSynonyms[], #[[1]] == symbol&];
+        If[Length[result] === 0,
+            Message[GetFTSynonym::synonymNotFound, symbol];
+            Abort[]
+        ];
+        ToString @ result[[1, 2]]
     ];
 
 (* ::Input::Initialization:: *)
+
+RemoveFromExtraVars::extraVarConflict = "Momentum \"`1`\" had been defined as an extra variable in FormTracer.";
 
 RemoveFromExtraVars[obj_] :=
     Module[{extraVars, postExtraVars},
@@ -38,7 +49,7 @@ RemoveFromExtraVars[obj_] :=
             ];
         If[extraVars =!= postExtraVars,
             FormTracer`DefineExtraVars[postExtraVars];
-            Print["Error: Momentum \"" <> ToString[obj] <> "\" had been defined as an extra variable in FormTracer!"];
+            Message[RemoveFromExtraVars::extraVarConflict, obj];
             Abort[];
         ];
     ];

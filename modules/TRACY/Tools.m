@@ -90,15 +90,27 @@ fortranToMathematica[expr_String] :=
 
 $DefaultTimeConstraint = 0.1;
 
+ImportAndSimplifyFORM::emptyOutput = "FORM produced empty output from file `1`.";
+
+ImportAndSimplifyFORM::noVariable = "Could not extract variable from line: `1`.";
+
 ImportAndSimplifyFORM[file_, transf_ : (#&)] :=
     Module[{fortran, math, splitmath, getAffectedVar, tempExpr, evalExpr, strExpr, expr, i, monitor, mSimplify = (Simplify[Rationalize[#], Trig -> False, TimeConstraint -> $DefaultTimeConstraint]&)},
         fortran = Import[file, "Text"];
         FunKitDebug[6, "FORM exported code: \n", fortran];
         math = fortranToMathematica[fortran];
         splitmath = StringSplit[math, "\n"];
+        If[Length[splitmath] === 0,
+            Message[ImportAndSimplifyFORM::emptyOutput, file];
+            Abort[]
+        ];
         getAffectedVar[line_String] :=
             Module[{pos, str},
                 pos = StringPosition[line, Shortest["w[" ~~ (arg1__ /; balancedBracketsQ[arg1]) ~~ "]"]];
+                If[Length[pos] === 0,
+                    Message[ImportAndSimplifyFORM::noVariable, line];
+                    Abort[]
+                ];
                 str = StringTake[line, pos][[1]];
                 Return[str];
             ];

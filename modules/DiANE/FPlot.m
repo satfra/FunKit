@@ -67,6 +67,8 @@ shortTexPref[setup_, prefactor_] :=
 
 FPlot::FDOp = "Cannot plot diagrams with unresolved derivative operators!";
 
+FPlot::noExternalField = "No object could be found for the external index `1`.";
+
 GetDiagram[setup_, expr_FTerm] :=
     Module[{PossibleVertices, PossibleEdges, Styles, diag, allObj, fieldObj, vertices, edges, vertexReplacements, graph, phantomVertices, edgeFields, fieldVertices, fieldEdges, fieldEdgeFields, oidx, externalVertices, vertexNames, doubledVertices, externalEdges, externalFields, idx, prefactor, doubledEdges, doFields, eWeights, addVertexSizes = {}},
         If[MemberQ[expr, FDOp[__], Infinity],
@@ -158,7 +160,18 @@ GetDiagram[setup_, expr_FTerm] :=
         edges = Table[Style[edges[[idx]], ##]& @@ Flatten @ {edgeFields[[idx]] /. Styles}, {idx, 1, Length[edges]}];
         (*Add additional vertices for external indices*)
         externalVertices = GetOpenSuperIndices[setup, diag];
-        externalFields = Table[SelectFirst[allObj, MemberQ[makePosIdx /@ #[[2]], externalVertices[[idx]]]&], {idx, 1, Length[externalVertices]}];
+        externalFields = Table[
+            Module[{found},
+                found = SelectFirst[allObj, MemberQ[makePosIdx /@ #[[2]], externalVertices[[idx]]]&];
+                If[MissingQ[found],
+                    Message[FPlot::noExternalField, externalVertices[[idx]]];
+                    Abort[]
+                ];
+                found
+            ]
+            ,
+            {idx, 1, Length[externalVertices]}
+        ];
         externalFields = Table[externalFields[[idx, 1, FirstPosition[makePosIdx /@ externalFields[[idx, 2]], externalVertices[[idx]]][[1]]]], {idx, 1, Length[externalVertices]}];
         externalVertices = Unique /@ externalVertices;
         externalEdges = Table[MakeEdgeRule[setup, Propagator[{GetPartnerField[setup, externalFields[[idx]]], externalFields[[idx]]}, {externalVertices[[idx]], GetOpenSuperIndices[setup, diag][[idx]] /. vertexReplacements}]], {idx, 1, Length[externalVertices]}];
@@ -182,12 +195,14 @@ GetDiagram[setup_, expr_FTerm] :=
 
 FPlot[setup_, expr_FTerm] :=
     Module[{},
+        AssertFSetup[setup];
         Print[Row @ GetDiagram[setup, expr]];
         Return @ expr
     ];
 
 FPlot[setup_, expr_FEx] :=
     Module[{diags},
+        AssertFSetup[setup];
         diags = GetDiagram[setup, #]& /@ (DropFExAnnotations @ expr);
         If[MemberQ[{diags[[All, 1]]}, shortenTexTag, Infinity],
             diags = Map[{"\\oplus" // MaTeX`MaTeX, #[[2]]}&, diags];
@@ -209,7 +224,7 @@ FPlot[setup_, expr_Association] /; isLoopAssociation[expr] :=
 
 FPlot[setup_, expr_Association] /; isRoutedAssociation @ expr :=
     Module[{},
-        FPlot[setup, (List @@ routedAssociation)[[All, Key["Expression"]]]];
+        FPlot[setup, (List @@ expr)[[All, Key["Expression"]]]];
         Return @ expr
     ];
 

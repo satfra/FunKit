@@ -124,6 +124,10 @@ AllowShortEnumsOnASingleLine: true
 ", "Text"]
     ];
 
+WriteCodeToFile::unchanged = "File `1` unchanged.";
+
+WriteCodeToFile::exported = "Exported to `1`.";
+
 WriteCodeToFile[fileName_String, expression_String] :=
     Module[{tmpfileName},
         tmpfileName = fileName <> ".tmpcode";
@@ -134,14 +138,14 @@ WriteCodeToFile[fileName_String, expression_String] :=
         ];
         If[FileExistsQ[fileName],
             If[Import[fileName, "Text"] == Import[tmpfileName, "Text"],
-                Print[fileName <> " unchanged"];
+                Message[WriteCodeToFile::unchanged, fileName];
                 RunProcess[$SystemShell, All, "rm " <> tmpfileName]
                 ,
-                Print["Exported to " <> fileName];
+                Message[WriteCodeToFile::exported, fileName];
                 RunProcess[$SystemShell, All, "mv " <> tmpfileName <> " " <> fileName]
             ]
             ,
-            Print["Exported to " <> fileName];
+            Message[WriteCodeToFile::exported, fileName];
             RunProcess[$SystemShell, All, "mv " <> tmpfileName <> " " <> fileName]
         ]
     ];
@@ -164,6 +168,12 @@ FormatCppCode[expression_String] :=
         Return[expression]
     ];
 
+FormatCppCode[___] :=
+    (
+        Message[FunKit::invalidArguments, FormatCppCode];
+        Abort[]
+    );
+
 formatFORMCode[expr_String] :=
     Module[{start, res, pres, idx, maxW, repl},
         start = StringPosition[expr, "\n"];
@@ -182,7 +192,15 @@ formatFORMCode[expr_String] :=
             res = StringReplace[res, {Shortest["pow(" ~~ (arg1__) ~~ "," ~~ (arg2 : (DigitCharacter... | "-" ~~ (DigitCharacter...))) ~~ ")"] /; balancedBracesQ[arg1] && StringFreeQ[arg1, ";"] :> "powr<" ~~ arg2 ~~ ">(" ~~ arg1 ~~ ")", Shortest["pow(" ~~ (arg1__) ~~ "," ~~ "1./2." ~~ ")"] /; balancedBracesQ[arg1] && StringFreeQ[arg1, ";"] :> "sqrt(" ~~ arg1 ~~ ")", " " -> ""}];
         ];
         (*turn the buffer into a list of definitions of variables*)
-        maxW = Max[Map[ToExpression @ StringTake[#, {3, -2}]&, StringCases[res, Shortest["w[" ~~ (arg1__ /; balancedRBracesQ[arg1]) ~~ "]"]]]];
+        Module[{wCases},
+            wCases = Map[ToExpression @ StringTake[#, {3, -2}]&, StringCases[res, Shortest["w[" ~~ (arg1__ /; balancedRBracesQ[arg1]) ~~ "]"]]];
+            maxW =
+                If[Length[wCases] === 0,
+                    0
+                    ,
+                    Max[wCases]
+                ];
+        ];
         For[idx = 1, idx <= maxW, idx++,
             res = StringReplacePart[res, "auto _tmp" <> ToString[idx] <> "", StringPosition[res, "w[" <> ToString[idx] <> "]", 1]];
         ];
@@ -307,9 +325,11 @@ prepParam[it_Association] :=
         Return[res];
     ];
 
+prepParam::invalid = "The value `1` is not a valid C++ parameter. Expected a String or Association.";
+
 prepParam[it_] :=
     (
-        Print[it, " is not a valid C++ parameter!"];
+        Message[prepParam::invalid, it];
         Abort[]
     );
 
@@ -461,6 +481,12 @@ MakeCppClass[OptionsPattern[]] :=
         Return[FormatCppCode[classPrefix <> className <> classSuffix <> "\n" <> classBody]]
     ];
 
+MakeCppClass[___] :=
+    (
+        Message[FunKit::invalidArguments, MakeCppClass];
+        Abort[]
+    );
+
 (* ::Input::Initialization:: *)
 
 Options[MakeCppHeader] = {"Includes" -> {}, "Body" -> {}};
@@ -476,6 +502,12 @@ MakeCppHeader[OptionsPattern[]] :=
         headerBody = StringRiffle[OptionValue["Body"], "\n"];
         Return[FormatCppCode[headerPrefix <> "\n" <> headerIncludes <> "\n" <> headerBody]];
     ];
+
+MakeCppHeader[___] :=
+    (
+        Message[FunKit::invalidArguments, MakeCppHeader];
+        Abort[]
+    );
 
 (* ::Input::Initialization:: *)
 
@@ -529,6 +561,6 @@ CreateKernelClass[name_String, integrand_, constant_:0, OptionsPattern[]] :=
         parameters = OptionValue["parameters"];
         parameters = Map[KeyDrop[#, {"Type"}]&, parameters];
         parametersIntegrand = Join[Map[<|"Name" -> #|>&, OptionValue["integrationVariables"]], parameters];
-        ret = MakeCppHeader["Body" -> {MakeCppClass["TemplateTypes" -> {"REG"}, "Name" -> name, "MembersPublic" -> {MakeCppFunction[integrand, "parameters" -> parametersIntegrand, "CodeParser" -> OptionValue["CodeParser"], "Name" -> "kernel", "static" -> True, "CUDA" -> True, "const" -> False, "return" -> "auto", "body" -> OptionValue["integrandBody"]], MakeCppFunction[constant, "parameters" -> parameters, "CodeParser" -> "Cpp", "Name" -> "constant", "static" -> True, "CUDA" -> True, "const" -> False, "return" -> "auto", "body" -> OptionValue["constantBody"]]}, "MembersPrivate" -> {OptionValue["PrivateDefinitions"]}]}];
+        ret = MakeCppHeader["Body" -> {MakeCppClass["TemplateTypes" -> {"REG"}, "Name" -> name, "MembersPublic" -> {MakeCppFunction[integrand, "Parameters" -> parametersIntegrand, "CodeParser" -> OptionValue["CodeParser"], "Name" -> "kernel", "Prefix" -> "static", "Return" -> "auto", "Body" -> OptionValue["integrandBody"]], MakeCppFunction[constant, "Parameters" -> parameters, "CodeParser" -> "Cpp", "Name" -> "constant", "Prefix" -> "static", "Return" -> "auto", "Body" -> OptionValue["constantBody"]]}, "MembersPrivate" -> {OptionValue["PrivateDefinitions"]}]}];
         Return[ret]
     ]

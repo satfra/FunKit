@@ -6,17 +6,52 @@
 FRoute[expr_FEx] /; Head[$GlobalSetup] =!= Symbol :=
     FRoute[$GlobalSetup, expr];
 
+FRoute[expr_FTerm] /; Head[$GlobalSetup] =!= Symbol :=
+    FRoute[$GlobalSetup, expr];
+
 FUnroute[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     FUnroute[$GlobalSetup, expr];
 
 FSimplify[expr_FEx] /; Head[$GlobalSetup] =!= Symbol :=
     FSimplify[$GlobalSetup, expr];
 
+FSimplify[expr_FTerm] /; Head[$GlobalSetup] =!= Symbol :=
+    FSimplify[$GlobalSetup, expr];
+
 FSimplify[expr_FEx, OptionsPattern[]] /; Head[$GlobalSetup] =!= Symbol :=
     FSimplify[$GlobalSetup, expr, (Sequence @@ Thread[Rule @@ {#, OptionValue[FSimplify, #]}]& @ Keys[Options[FSimplify]])];
 
-FMakeSymmetryList[expr_FEx] /; Head[$GlobalSetup] =!= Symbol :=
-    FMakeSymmetryList[$GlobalSetup, expr];
+FMakeSymmetryList[fields_List] /; Head[$GlobalSetup] =!= Symbol :=
+    FMakeSymmetryList[$GlobalSetup, fields];
+
+FMakeSymmetryList[fields_List, indices_List] /; Head[$GlobalSetup] =!= Symbol :=
+    FMakeSymmetryList[$GlobalSetup, fields, indices];
+
+(* Fallback definitions when $GlobalSetup is not set *)
+
+FRoute[expr_FEx] :=
+    (Message[FunKit::noGlobalSetup]; Abort[]);
+
+FRoute[expr_FTerm] :=
+    (Message[FunKit::noGlobalSetup]; Abort[]);
+
+FUnroute[expr_FEx] :=
+    (Message[FunKit::noGlobalSetup]; Abort[]);
+
+FUnroute[expr_FTerm] :=
+    (Message[FunKit::noGlobalSetup]; Abort[]);
+
+FUnroute[expr_Association] /; isLoopAssociation[expr] || isRoutedAssociation[expr] :=
+    (Message[FunKit::noGlobalSetup]; Abort[]);
+
+FSimplify[expr_FEx] :=
+    (Message[FunKit::noGlobalSetup]; Abort[]);
+
+FSimplify[expr_FTerm] :=
+    (Message[FunKit::noGlobalSetup]; Abort[]);
+
+FMakeSymmetryList[fields_List] :=
+    (Message[FunKit::noGlobalSetup]; Abort[]);
 
 (**********************************************************************************
     Global Variables
@@ -44,3 +79,9 @@ FSetLoopMomentumName[name_String] :=
     ];
 
 FSetLoopMomentumName["l"];
+
+FSetLoopMomentumName[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetLoopMomentumName];
+        Abort[]
+    );

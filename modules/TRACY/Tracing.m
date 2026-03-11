@@ -44,6 +44,12 @@ FSetAlwaysExpandLorentzTensors[set_] /; BooleanQ[set] :=
         $AlwaysExpandLorentzTensors = set;
     ];
 
+FSetAlwaysExpandLorentzTensors[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetAlwaysExpandLorentzTensors];
+        Abort[]
+    );
+
 FTerm /: FormTracer`FormTrace[FTerm[a__], preReplRules_ : {}, postReplRules_ : {}, bracket_ : {}] :=
     Module[{expr, origVars, tmpfileName, import, repl, formReps, result, pref},
         origVars = FormTracer`GetExtraVars[];
@@ -112,6 +118,12 @@ IterativelySum[expr_List, finalSize_Integer /; finalSize >= 0] :=
         Return[Flatten[returnValue]]
     ];
 
+IterativelySum[___] :=
+    (
+        Message[FunKit::invalidArguments, IterativelySum];
+        Abort[]
+    );
+
 (**********************************************************************************
      Simplification routines for diagram results
 **********************************************************************************)
@@ -141,11 +153,24 @@ DiagramSimplify[expr_, mSimplify_ : (Quiet @ Simplify[Simplify[#, Trig -> False,
         If[Length[collected] > 1,
             collected = ParallelMap[mSimplify, collected]
             ,
-            collected = mSimplify[collected]
+            collected = {mSimplify[collected[[1]]]}
         ];
         FunKitDebug[2, "DiagramSimplify: Finished"];
         Return[Plus @@ collected]
     ];
+
+FormMomentumExpansion::notImplemented = "FormMomentumExpansion is not yet implemented. Use FiniteTFormMomentumExpansion for finite-temperature calculations.";
+
+FormMomentumExpansion[] :=
+    Module[{},
+        $standardFORMmomentumRules = {};
+    ];
+
+FormMomentumExpansion[___] :=
+    (
+        Message[FormMomentumExpansion::notImplemented];
+        Abort[]
+    );
 
 $standardFORMmomentumRules = {}; FormMomentumExpansion[];
 

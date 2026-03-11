@@ -70,3 +70,9 @@ FSetRegisterSize[n_Integer?Positive] :=
     Module[{},
         $availableRegisters = n;
     ];
+
+FSetRegisterSize[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetRegisterSize];
+        Abort[]
+    );

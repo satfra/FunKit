@@ -33,3 +33,9 @@ FSetSymmetricDressing[obj_, {f__}, n_Integer, {i__Integer}] :=
             ];
         Protect[dressing];
     ];
+
+FSetSymmetricDressing[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetSymmetricDressing];
+        Abort[]
+    );

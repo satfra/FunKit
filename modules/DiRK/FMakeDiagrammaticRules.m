@@ -1,7 +1,14 @@
 Options[FMakeDiagrammaticRules] = {"DerivePropagators" -> True};
 
+FMakeDiagrammaticRules::noFeynmanRules = "The setup does not contain a \"FeynmanRules\" key.";
+
 FMakeDiagrammaticRules[setup_, OptionsPattern[]] :=
     Module[{ruleList, truncationList, idx, jdx, kdx, minusRule, object, fieldContent, rule, dress, minusOrig, minusBasis, subset = All, orderOrig, orderBasis, newBasisName, propMom, annotations},
+        AssertFSetup[setup];
+        If[Not @ KeyExistsQ[setup, "FeynmanRules"],
+            Message[FMakeDiagrammaticRules::noFeynmanRules];
+            Abort[]
+        ];
         ruleList = {};
         truncationList = Normal[setup["FeynmanRules"]];
         For[idx = 1, idx <= Length[truncationList], idx++,
@@ -65,3 +72,9 @@ FMakeDiagrammaticRules[setup_, OptionsPattern[]] :=
         ];
         Return[ruleList];
     ];
+
+FMakeDiagrammaticRules[___] :=
+    (
+        Message[FunKit::invalidArguments, FMakeDiagrammaticRules];
+        Abort[]
+    );

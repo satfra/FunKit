@@ -42,19 +42,18 @@ Returns optimized Fortran code suitable for numerical computation.
 Handles complex numbers, mathematical functions, and array operations.
 Output follows modern Fortran standards for numerical libraries.";
 
-MakeCppClass::usage = "MakeCppClass[className, expressions]
+MakeCppClass::usage = "MakeCppClass[\"Name\"->className, \"MembersPublic\"->{...}, \"MembersPrivate\"->{...}, ...]
 Generates a complete C++ class definition for evaluating mathematical expressions.
-Creates header and implementation files with optimized evaluation methods.
-Includes proper C++ class structure with constructors and member functions.
-Useful for creating reusable C++ numerical evaluation libraries.";
+Creates class structure with optional template types, base classes, and access specifiers.
+See Options[MakeCppClass] for available settings.";
 
-MakeCppHeader::usage = "MakeCppHeader[className, expressions]
-Generates C++ header file declarations for mathematical expression evaluation.
-Creates class interface definitions and function prototypes.
-Designed to work with MakeCppClass for complete C++ code generation.
-Produces standard C++ header format with include guards.";
+MakeCppHeader::usage = "MakeCppHeader[\"Includes\"->{...}, \"Body\"->{...}]
+Generates a C++ header file with pragma-once guard, include directives, and body content.
+See Options[MakeCppHeader] for available settings.";
 
-MakeCppBlock::usage = ""
+MakeCppBlock::usage = "MakeCppBlock[\"Includes\"->{...}, \"Body\"->{...}, \"Namespace\"->name]
+Generates a C++ source code block with optional namespace wrapping, includes, and body content.
+Produces formatted C++ code suitable for compilation.";
 
 MakeCppFunction::usage = "MakeCppFunction[\"Name\"->name, \"Return\"->returnType, \"Parameters\"->paramList, \"Body\"->body, ...]
 Generates a C++ function definition based on specified options. See Options[MakeCppFunction] for available settings.";
@@ -62,7 +61,11 @@ Generates a C++ function definition based on specified options. See Options[Make
 MakeJuliaFunction::usage = "MakeJuliaFunction[\"Name\"->name, \"Return\"->returnType, \"Parameters\"->paramList, \"Body\"->body, ...]
 Generates a Julia function definition based on specified options. See Options[MakeJuliaFunction] for available settings.";
 
-MakeFortranFunction::usage = "";
+MakeFortranFunction::usage = "MakeFortranFunction[\"Name\"->name, \"Parameters\"->paramList, \"Body\"->body, ...]
+MakeFortranFunction[expr, \"Name\"->name, \"Parameters\"->paramList, \"Body\"->body, ...]
+Generates a Fortran function definition based on specified options.
+The second form additionally generates Fortran code for the given expression.
+See Options[MakeFortranFunction] for available settings.";
 
 CppForm::usage = "CppForm[expr]
 Converts a Mathematica expression into its C++ code representation.";
@@ -95,7 +98,7 @@ If[ModuleLoaded[FunKit] =!= True,
 ];
 
 If[ModuleLoaded[FEDeriK] =!= True,
-	Message[ModuleLoaded::dependency, "COEN", "FunKit"];
+	Message[ModuleLoaded::dependency, "COEN", "FEDeriK"];
 	Abort[];
 ];
 

@@ -4,14 +4,22 @@
 
 (* Construct all permutations of fields in a derivativeList and their prefactors, given a list of symmetries *)
 
+BuildSymmetryList::invalidSymmetries = "Symmetries must be given as a list.";
+
+BuildSymmetryList::invalidSymmetryFormat = "Symmetries must be given as a list of lists.";
+
+BuildSymmetryList::invalidSymmetry = "The symmetry `1` is not a valid symmetry.";
+
+BuildSymmetryList::invalidCycle = "The cycle `1` is not a valid cycle.";
+
 BuildSymmetryList[setup_, symmetries_, derivativeList_] :=
     Module[{procDerList, buildOneSymmetry},
         If[Head[symmetries] =!= List,
-            Print["Symmetries must be given as a list!"];
+            Message[BuildSymmetryList::invalidSymmetries];
             Abort[]
         ];
         If[AnyTrue[symmetries, Not[Head[#] === List]&],
-            Print["Symmetries must be given as a list of lists!"];
+            Message[BuildSymmetryList::invalidSymmetryFormat];
             Abort[]
         ];
         If[Length[symmetries] === 0 || symmetries === {{}},
@@ -29,7 +37,7 @@ BuildSymmetryList[setup_, symmetries_, derivativeList_] :=
                 pairs = Subsets[sym[[ ;; -2]], {2}];
                 valid = Not @ AnyTrue[Map[ContainsAny[#[[1]], #[[2]]]&, pairs], Identity];
                 If[Not @ valid,
-                    Print[sym, " is  not a valid symmetry!"];
+                    Message[BuildSymmetryList::invalidSymmetry, sym];
                     Abort[]
                 ];
                 buildCycle[cyc_] :=
@@ -41,7 +49,7 @@ BuildSymmetryList[setup_, symmetries_, derivativeList_] :=
                             cycvalid = False
                         ];
                         If[Not @ cycvalid,
-                            Print[cyc, " is  not a valid cycle!"];
+                            Message[BuildSymmetryList::invalidCycle, cyc];
                             Abort[]
                         ];
                         numberRules = {};
@@ -79,15 +87,21 @@ MergeSymmetries[sym1_, sym2_] :=
 (*Build a symmetry list from a set of fields*)
 
 FMakeSymmetryList[f___] :=
-    Message[FunKit::invalidArguments, FMakeSymmetryList]
+    (
+        Message[FunKit::invalidArguments, FMakeSymmetryList];
+        Abort[]
+    );
 
 FMakeSymmetryList[setup_, {fields___}] /; AllTrue[{fields}, Length[#] == 1&] :=
     FMakeSymmetryList[setup, Head[#]& /@ {fields}, #[[1]]& /@ {fields}];
 
+FMakeSymmetryList::fieldIndexMismatch = "Number of fields and indices must be equal.";
+
 FMakeSymmetryList[setup_, {fields___}, {indices___}] :=
     Module[{symmetries, subSymmetries, cycles, fieldsWPos, curField, idx, curFieldList, symCombine},
+        AssertFSetup[setup];
         If[Length[{fields}] =!= Length[{indices}],
-            Print["Error in FMakeSymmetryList: Number of fields and indices must be equal!"];
+            Message[FMakeSymmetryList::fieldIndexMismatch];
             Abort[]
         ];
         (*First, annotate all fields with their position and index, then sort them into sets of identical fields*)
@@ -161,8 +175,10 @@ StartPoints[setup_, t1_FTerm, t2_FTerm] :=
 
 (*Find all objects following the closed indices attached to the object curPos*)
 
+IterateDiagram::noFollowObject = "No follow object could be found for index `1` in the diagram.";
+
 IterateDiagram[setup_Association, allObj_, closedIndices_, openIndices_, curPos_, entryIdx_] :=
-    Module[{otherIndices, followObjects, i},
+    Module[{otherIndices, followObjects, i, candidates},
         FunKitDebug[4, "Inspecting: ", curPos];
         (*All indices except the one we entered with*)
         FunKitDebug[4, "Entry index: ", entryIdx];
@@ -170,7 +186,16 @@ IterateDiagram[setup_Association, allObj_, closedIndices_, openIndices_, curPos_
         otherIndices = Intersection[otherIndices, closedIndices];
         FunKitDebug[4, "Found outgoing indices: ", otherIndices];
         (*all objects containing the otherIndices*)
-        followObjects = Table[Select[DeleteCases[allObj, curPos], MemberQ[#[[2]], otherIndices[[i]], Infinity]&][[1]], {i, 1, Length[otherIndices]}];
+        followObjects = Table[
+            candidates = Select[DeleteCases[allObj, curPos], MemberQ[#[[2]], otherIndices[[i]], Infinity]&];
+            If[Length[candidates] === 0,
+                Message[IterateDiagram::noFollowObject, otherIndices[[i]]];
+                Abort[]
+            ];
+            candidates[[1]]
+            ,
+            {i, 1, Length[otherIndices]}
+        ];
         FunKitDebug[3, "Found followObjects: ", followObjects];
         Return[{otherIndices, followObjects}]
     ];
@@ -438,7 +463,7 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
             ];
             If[t1[[1 ;; ]] === t2[[2 ;; ]] && FreeQ[{t1[[1]]}, Alternatives @@ $indexedObjects, Infinity],
                 FunKitDebug[3, "    Terms are identical starting with t1[[1 ;; ]], returning FTerm[1 + t2[[1]], t1[[1 ;; ]]]."];
-                Return @ FTerm[1 + t2[[1]], t1[[2 ;; ]]]
+                Return @ FTerm[1 + t2[[1]], t1[[1 ;; ]]]
             ];
         ];
         (*Let's obtain closed superindices*)
@@ -650,6 +675,7 @@ Options[FSimplify] = {"Symmetries" -> {}};
 
 FSimplify[setup_, inexpr_FEx, OptionsPattern[]] :=
     Module[{subGroups, res, expr, annotations, useParallel, symmetries},
+        AssertFSetup[setup];
         {expr, annotations} = SeparateFExAnnotations[inexpr];
         expr = FixIndices[setup, expr];
         expr = FOrderFields[setup, expr];
