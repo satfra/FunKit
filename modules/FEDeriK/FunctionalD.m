@@ -4,10 +4,18 @@
 
 $userRules = {};
 
+FAddFDRule::invalidArgs = "FAddFDRule requires exactly 3 arguments: FAddFDRule[object, withRespectTo, result]. Got `1` argument(s).";
+
 FAddFDRule[obj_, wrt_, res_] :=
     Module[{},
         AppendTo[$userRules, {obj, wrt, res}];
     ];
+
+FAddFDRule[args___] :=
+    (
+        Message[FAddFDRule::invalidArgs, Length[{args}]];
+        Abort[]
+    );
 
 SetAttributes[FAddFDRule, HoldAll];
 

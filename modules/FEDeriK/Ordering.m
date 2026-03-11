@@ -24,7 +24,8 @@ FSetCanonicalOrdering[a_Integer] :=
                 $CanonicalOrdering = "c>ag>g"
             ,
             _,
-                Message[CanonicalOrdering::unknownInteger, a]
+                Message[CanonicalOrdering::unknownInteger, a];
+                Abort[]
         ];
         Print["Canonical ordering set to ", $CanonicalOrdering];
     ];
@@ -45,7 +46,8 @@ FSetCanonicalOrdering[a_] :=
                 $CanonicalOrdering = "c>ag>g"
             ,
             _,
-                Message[CanonicalOrdering::unknownString, a]
+                Message[CanonicalOrdering::unknownString, a];
+                Abort[]
         ];
         Print["Canonical ordering set to ", $CanonicalOrdering];
     ];
@@ -56,9 +58,11 @@ FSetCanonicalOrdering[a_] :=
 
 (*Returns true if f1 < f2, and false if f1 > f2*)
 
+FieldOrderLess::unknownField = "The field `1` does not match any known field category (Grassmann, anti-Grassmann, commuting, anti-commuting, source, or AnyField) in the given setup.";
+
 FieldOrderLess[setup_, f1_Symbol, f2_Symbol] :=
     FieldOrderLess[setup, f1, f2] =
-        Module[{kind1, kind2, idxOrder, n1, n2},
+        Module[{kind1, kind2, idxOrder, n1, n2, picked1, picked2},
             kind1 = {IsGrassmannField[setup, #], IsAntiGrassmannField[setup, #], IsCommutingField[setup, #], IsAntiCommutingField[setup, #], # === AnyField, IsGrassmannSource[setup, #], IsCSource[setup, #]}&[f1];
             kind2 = {IsGrassmannField[setup, #], IsAntiGrassmannField[setup, #], IsCommutingField[setup, #], IsAntiCommutingField[setup, #], # === AnyField, IsGrassmannSource[setup, #], IsCSource[setup, #]}&[f2];
             Switch[$CanonicalOrdering,
@@ -75,11 +79,21 @@ FieldOrderLess[setup_, f1_Symbol, f2_Symbol] :=
                     idxOrder = {1, 2, 3, 4, 0, -2, -1}
                 ,
                 _,
-                    Print["Order failure: order \"" <> $CanonicalOrdering <> "\" unknown."];
+                    Message[CanonicalOrdering::unknownString, $CanonicalOrdering];
                     Abort[];
             ];
-            n1 = Pick[idxOrder, kind1][[1]];
-            n2 = Pick[idxOrder, kind2][[1]];
+            picked1 = Pick[idxOrder, kind1];
+            picked2 = Pick[idxOrder, kind2];
+            If[Length[picked1] === 0,
+                Message[FieldOrderLess::unknownField, f1];
+                Abort[];
+            ];
+            If[Length[picked2] === 0,
+                Message[FieldOrderLess::unknownField, f2];
+                Abort[];
+            ];
+            n1 = picked1[[1]];
+            n2 = picked2[[1]];
             If[n1 === n2,
                 Return[OrderedQ[{f1, f2}]]
             ];
@@ -98,8 +112,16 @@ CommuteSign[setup_, f1_, f2_] :=
 
 $unorderedIndices[_] = 0;
 
+FSetUnorderedIndices::invalidArgs = "Object `1` must be a registered object (MemberQ[$allObjects]) and n (`2`) must be a non-negative integer.";
+
 FSetUnorderedIndices[obj_, n_Integer] /; n >= 0 && MemberQ[$allObjects, obj] :=
     Set[$unorderedIndices[obj], n];
+
+FSetUnorderedIndices[obj_, n_] :=
+    (
+        Message[FSetUnorderedIndices::invalidArgs, obj, n];
+        Abort[]
+    );
 
 (* In case of a tie, we use lexical ordering: *)
 
@@ -281,4 +303,7 @@ OrderFields[setup_, expr_] :=
     Map[OrderObject[setup, #]&, OrderObject[setup, expr], Infinity];
 
 FOrderFields[setup_, expr_] :=
-    OrderFields[setup, expr];
+    (
+        AssertFSetup[setup];
+        OrderFields[setup, expr]
+    );

@@ -62,11 +62,12 @@ FTruncate::missing = "The given truncation misses a truncation table for `1`";
 
 FTruncate::FDOp = "The given expression contains unresolved derivative operators! Cannot truncate before resolving all FDOp.";
 
+FTruncate::emptyTruncation = "The truncation table in the given setup is empty. FTruncate will pass the expression through unchanged. Did you forget to add vertices with AddVertex?";
+
 indices::inconsistentContractions = "The index `1` has been contracted in an inconsistent way in the expression
     `2`";
 
-indices::inconsistentFieldContractions = "The fields `1` have been contracted in an inconsistent way in the expression
-    `2`";
+indices::objectNotFound = "Could not find the expected number of objects containing the index `1` in the expression `2`. Found `3` object(s), expected `4`.";
 
 (*inside an object, find all occurences of idx and replace the fields at the respective positions with field.*)
 
@@ -137,6 +138,10 @@ LTrunc[setup_, expr_FTerm] :=
             ];
             idx = closedIndices[[curi]];
             subObj = Select[allObj, MemberQ[#[[2]], idx, {1, 3}]&];
+            If[Length[subObj] < 2,
+                Message[indices::objectNotFound, idx, expr, Length[subObj], 2];
+                Abort[];
+            ];
             idxOccur =
                 {
                     If[MemberQ[subObj[[1]], -idx, {2}],
@@ -236,6 +241,10 @@ OTrunc[setup_, expr_FTerm] :=
         For[curi = 1, curi <= Length[openIndices], curi++,
             idx = openIndices[[curi]];
             subObj = Select[allObj, MemberQ[#[[2]], idx, {1, 3}]&];
+            If[Length[subObj] < 1,
+                Message[indices::objectNotFound, idx, expr, Length[subObj], 1];
+                Abort[];
+            ];
             idxOccur =
                 If[MemberQ[subObj[[1]], -idx, {2}],
                     -idx
@@ -271,6 +280,9 @@ FTruncateOpenIndices[setup_, expr_FEx] :=
             Message[FTruncate::noTruncation];
             Abort[]
         ];
+        If[Length[Keys[setup["Truncation"]]] === 0,
+            Message[FTruncate::emptyTruncation];
+        ];
         If[MemberQ[expr, FDOp[__], Infinity],
             Message[FTruncate::FDOp];
             Abort[]
@@ -303,6 +315,9 @@ FTruncate[setup_, expr_FEx] :=
             Message[FTruncate::noTruncation];
             Abort[]
         ];
+        If[Length[Keys[setup["Truncation"]]] === 0,
+            Message[FTruncate::emptyTruncation];
+        ];
         If[MemberQ[expr, FDOp[__], Infinity],
             Message[FTruncate::FDOp];
             Abort[]
@@ -327,3 +342,15 @@ FTruncate[setup_, expr_FEx] :=
         ];
         Return[ret0];
     ];
+
+FTruncate[setup_, expr_FTerm] :=
+    FTruncate[setup, FEx[expr]];
+
+FTruncateOpenIndices[setup_, expr_FTerm] :=
+    FTruncateOpenIndices[setup, FEx[expr]];
+
+FTruncate[setup_, expr_] :=
+    (Message[FTruncate::wrongExpr, expr]; Abort[]);
+
+FTruncateOpenIndices[setup_, expr_] :=
+    (Message[FTruncate::wrongExpr, expr]; Abort[]);

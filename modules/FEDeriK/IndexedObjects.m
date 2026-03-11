@@ -201,6 +201,8 @@ IsSource[setup_, field_[__]] :=
     Getting partner fields
 **********************************************************************************)
 
+GetPartnerField::notFound = "The field `1` was not found in the field pairs of the given setup.";
+
 GetPartnerField[setup_, field_Symbol] :=
     GetPartnerField[setup, field] =
         Module[{pairs, sel},
@@ -208,12 +210,16 @@ GetPartnerField[setup_, field_Symbol] :=
                 Return[field]
             ];
             pairs = GetFieldPairs[setup];
-            sel = Select[pairs, MemberQ[#, field, Infinity]&][[1]];
-            sel = DeleteCases[sel, field];
+            sel = Select[pairs, MemberQ[#, field, Infinity]&];
+            If[Length[sel] === 0,
+                Message[GetPartnerField::notFound, field];
+                Abort[];
+            ];
+            sel = DeleteCases[sel[[1]], field];
             If[Length[sel] > 0,
                 Return[sel[[1]]]
             ];
-            Print["field ", field, " not found!"];
+            Message[GetPartnerField::notFound, field];
             Abort[];
         ];
 
@@ -334,7 +340,7 @@ AllSuperIndicesClosed[setup_, expr_FEx] :=
 
 AllSuperIndicesClosed[setup_, expr_] :=
     (
-        Message[type::error];
+        Message[type::error, expr];
         Abort[]
     )
 
@@ -355,9 +361,11 @@ SuperIndicesValid[setup_, expr_FEx] :=
 
 SuperIndicesValid[setup_, expr_] :=
     (
-        Message[type::error];
+        Message[type::error, expr];
         Abort[]
     )
+
+FSetSymmetricObject::emptyFields = "The field list must not be empty. Use FSetSymmetricObject[obj, {field1, field2, ...}].";
 
 FSetSymmetricObject[obj_, {f__}] :=
     Module[{},
@@ -376,6 +384,9 @@ FSetSymmetricObject[obj_, {f__}, {i__Integer}] :=
             ];
         Protect[obj];
     ];
+
+FSetSymmetricObject[_, {}] :=
+    (Message[FSetSymmetricObject::emptyFields]; Abort[]);
 
 (* Expanding / Shortening between Field[{f}, {i...}] and f[i...] *)
 

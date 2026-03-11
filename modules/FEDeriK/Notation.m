@@ -2,7 +2,7 @@
     Overall Defs
 **********************************************************************************)
 
-type::error = "The expression given is neither an FEx nor an FTerm.";
+type::error = "The expression `1` is neither an FEx nor an FTerm.";
 
 (**********************************************************************************
     RULES: FTerm
@@ -12,8 +12,6 @@ Unprotect[FTerm, NonCommutativeMultiply];
 
 FTerm::TimesError = "An FTerm cannot be multiplied using Times[__]. To multiply FTerms, use term1**term2, also with scalars, a**term. Error in expression
 `1`";
-
-FTerm::FTermPowerError = "An FTerm cannot be taken to a power of an FTerm.";
 
 (*Multiplication of FTerms. *)
 

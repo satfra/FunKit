@@ -7,6 +7,7 @@ Error in `1`";
 
 FResolveFDOp[setup_, expr_FEx] :=
     Module[{},
+        AssertFSetup[setup];
         Return[FEx @@ ParallelMap[FResolveFDOp[setup, #]&, List @@ expr]];
     ];
 
@@ -59,6 +60,9 @@ FResolveFDOp[setup_, term_FTerm] :=
         Return[ReduceFEx[setup, dTerms]];
     ];
 
+FResolveFDOp[setup_, expr_] :=
+    (Message[FunKit::invalidArguments, FResolveFDOp]; Abort[]);
+
 (**********************************************************************************
     FResolveDerivatives : Iteratively resolve all derivative operators in an FTerm or FEx
 **********************************************************************************)
@@ -73,6 +77,7 @@ FResolveDerivatives[setup_, term_FTerm, OptionsPattern[]] :=
 
 FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
     Module[{ret = eq, annotations, fw, bw, i, symmetries},
+        AssertFSetup[setup];
         FunKitDebug[1, "Resolving derivatives"];
         If[FreeQ[ret, FDOp[__], Infinity],
             Return[ReduceFEx[setup, FEx[ret]]]

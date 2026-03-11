@@ -41,7 +41,7 @@ Uses the canonical ordering 'c>ag>g' for field arrangement.";
 DoFunForm::usage = "DoFunForm[setup, expr]
 Transforms expressions from FunKit-style notation to DoFun-style notation.";
 
-FunKitForm::usage = "FunKitForm[setup, expr]
+FunKitForm::usage = "FunKitForm[expr]
 Transforms expressions from QMeS-style or DoFun-style notation to FunKit-style notation.
 This involves replacing indexed objects with their FunKit equivalents and adjusting the overall structure.";
 
@@ -130,7 +130,7 @@ Specifies which indices of an indexed object should not be reordered during fiel
 This is useful for objects like Phidot where the last index (representing the field itself) should remain fixed.
 The indices parameter can be a single integer or list of integers specifying which index positions to keep unordered.";
 
-FSetSymmetricObject::usage = "SetSymmetricObject[obj, {fields}]
+FSetSymmetricObject::usage = "FSetSymmetricObject[obj, {fields}]
 Defines an indexed object as symmetric in all its indices.
 FSetSymmetricObject[obj, {fields}, {positions}] makes the object symmetric only in the specified index positions.
 This automatically sorts indices to canonical order and can significantly reduce the number of terms in calculations.";

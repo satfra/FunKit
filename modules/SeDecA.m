@@ -183,6 +183,14 @@ MakeSetup[] :=
 
 SeDecA::FieldExists = "The field `1` has been already defined!";
 
+SeDecA::notASetup = "The first argument must be a setup association (created by MakeSetup[]). Got `1` instead.";
+
+AssertSeDecASetup[setup_] :=
+    If[Not[Head[setup] === Association && KeyExistsQ[setup, "FieldSpace"]],
+        Message[SeDecA::notASetup, Short[setup]];
+        Abort[]
+    ];
+
 (* ::Input::Initialization:: *)
 
 SeDecA::IncorrectFieldSpecification = "Invalid specification:
@@ -197,7 +205,8 @@ AddCField[a___] :=
 
 AddCField[setup_, name_Symbol[p_Symbol]] :=
     Module[{},
-        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}]], name[__], Infinity],
+        AssertSeDecASetup[setup];
+        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name[__], Infinity],
             Message[SeDecA::FieldExists, name];
             Abort[]
         ];
@@ -210,7 +219,8 @@ AddCField[setup_, name_Symbol[p_Symbol]] :=
 
 AddCField[setup_, name_Symbol[p_Symbol, {ind__Symbol}]] :=
     Module[{},
-        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}]], name[__], Infinity],
+        AssertSeDecASetup[setup];
+        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name[__], Infinity],
             Message[SeDecA::FieldExists, name];
             Abort[]
         ];
@@ -223,7 +233,8 @@ AddCField[setup_, name_Symbol[p_Symbol, {ind__Symbol}]] :=
 
 AddCField[setup_, {name1_Symbol[p_Symbol], name2_Symbol[p_Symbol]}] :=
     Module[{},
-        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}]], name1[__] | name2[__], Infinity],
+        AssertSeDecASetup[setup];
+        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name1[__] | name2[__], Infinity],
             Message[SeDecA::FieldExists, {name1, name2}];
             Abort[]
         ];
@@ -236,7 +247,8 @@ AddCField[setup_, {name1_Symbol[p_Symbol], name2_Symbol[p_Symbol]}] :=
 
 AddCField[setup_, {name1_Symbol[p_Symbol, {ind__Symbol}], name2_Symbol[p_Symbol, {ind__Symbol}]}] :=
     Module[{},
-        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}]], name1[__] | name2[__], Infinity],
+        AssertSeDecASetup[setup];
+        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name1[__] | name2[__], Infinity],
             Message[SeDecA::FieldExists, {name1, name2}];
             Abort[]
         ];
@@ -257,7 +269,8 @@ AddGrassmann[a___] :=
 
 AddGrassmann[setup_, name_Symbol[p_Symbol]] :=
     Module[{},
-        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}]], name[__], Infinity],
+        AssertSeDecASetup[setup];
+        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name[__], Infinity],
             Message[SeDecA::FieldExists, name];
             Abort[]
         ];
@@ -270,7 +283,8 @@ AddGrassmann[setup_, name_Symbol[p_Symbol]] :=
 
 AddGrassmann[setup_, name_Symbol[p_Symbol, {ind__Symbol}]] :=
     Module[{},
-        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}]], name[__], Infinity],
+        AssertSeDecASetup[setup];
+        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name[__], Infinity],
             Message[SeDecA::FieldExists, name];
             Abort[]
         ];
@@ -283,7 +297,8 @@ AddGrassmann[setup_, name_Symbol[p_Symbol, {ind__Symbol}]] :=
 
 AddGrassmann[setup_, {name1_Symbol[p_Symbol], name2_Symbol[p_Symbol]}] :=
     Module[{},
-        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}]], name1[__] | name2[__], Infinity],
+        AssertSeDecASetup[setup];
+        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name1[__] | name2[__], Infinity],
             Message[SeDecA::FieldExists, {name1, name2}];
             Abort[]
         ];
@@ -296,7 +311,8 @@ AddGrassmann[setup_, {name1_Symbol[p_Symbol], name2_Symbol[p_Symbol]}] :=
 
 AddGrassmann[setup_, {name1_Symbol[p_Symbol, {ind__Symbol}], name2_Symbol[p_Symbol, {ind__Symbol}]}] :=
     Module[{},
-        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}]], name1[__] | name2[__], Infinity],
+        AssertSeDecASetup[setup];
+        If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name1[__] | name2[__], Infinity],
             Message[SeDecA::FieldExists, {name1, name2}];
             Abort[]
         ];
@@ -323,6 +339,7 @@ AddCSource[a___] :=
 
 AddCSource[setup_, name_Symbol[p_Symbol]] :=
     Module[{},
+        AssertSeDecASetup[setup];
         If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name[__], Infinity],
             Message[SeDecA::FieldExists, name];
             Abort[]
@@ -336,6 +353,7 @@ AddCSource[setup_, name_Symbol[p_Symbol]] :=
 
 AddCSource[setup_, name_Symbol[p_Symbol, {ind__Symbol}]] :=
     Module[{},
+        AssertSeDecASetup[setup];
         If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name[__], Infinity],
             Message[SeDecA::FieldExists, name];
             Abort[]
@@ -357,6 +375,7 @@ AddGrassmannSource[a___] :=
 
 AddGrassmannSource[setup_, name_Symbol[p_Symbol]] :=
     Module[{},
+        AssertSeDecASetup[setup];
         If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name[__], Infinity],
             Message[SeDecA::FieldExists, name];
             Abort[]
@@ -370,6 +389,7 @@ AddGrassmannSource[setup_, name_Symbol[p_Symbol]] :=
 
 AddGrassmannSource[setup_, name_Symbol[p_Symbol, {ind__Symbol}]] :=
     Module[{},
+        AssertSeDecASetup[setup];
         If[MemberQ[Join[Lookup[setup["FieldSpace"], "Commuting", {}], Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "CommutingSource", {}], Lookup[setup["FieldSpace"], "GrassmannSource", {}]], name[__], Infinity],
             Message[SeDecA::FieldExists, name];
             Abort[]
@@ -385,6 +405,8 @@ SetAttributes[AddGrassmannSource, HoldFirst];
 
 (* ::Input::Initialization:: *)
 
+SeDecA::unknownObject = "The object `1` is not a registered indexed object. Registered objects are: `2`. Use FAddIndexedObject or FAddCorrelationFunction to register custom objects before adding vertices.";
+
 SeDecA::InvalidVertex = "The vertex `1` is not valid. A vertex must be a list of (existing) fields.";
 
 AddVertex[a___] :=
@@ -397,7 +419,13 @@ AddVertex[setup_, obj_, {fields__Symbol}] :=
     Module[
         {exist}
         ,
-        (*Check if all fields exist*)
+        AssertSeDecASetup[setup];
+        (* Check if the object is a registered indexed object *)
+        If[Not @ MemberQ[$allObjects, obj],
+            Message[SeDecA::unknownObject, obj, $allObjects];
+            Abort[]
+        ];
+        (* Check if all fields exist *)
         exist = And @@ Map[FieldNameQ[setup, #]&, {fields}];
         If[Not @ exist,
             Message[SeDecA::InvalidVertex, {fields}];
@@ -434,7 +462,13 @@ AddVertexBasis[setup_, obj_, {fields__Symbol} -> basis_] :=
     Module[
         {exist, basisName, elements}
         ,
-        (*Check if all fields exist*)
+        AssertSeDecASetup[setup];
+        (* Check if the object is a registered indexed object *)
+        If[Not @ MemberQ[$allObjects, obj],
+            Message[SeDecA::unknownObject, obj, $allObjects];
+            Abort[]
+        ];
+        (* Check if all fields exist *)
         exist = And @@ Map[FieldNameQ[setup, #]&, {fields}];
         If[Not @ exist,
             Message[SeDecA::InvalidVertexBasis, {fields} -> basis];
@@ -468,6 +502,11 @@ AddVertexBasis[setup_, obj_, {fields__Symbol} -> basis_] :=
                 Message[SeDecA::InvalidVertexBasis, {fields} -> basis];
                 Abort[]
             ];
+        ];
+        (* Cross-validation: ensure a matching Truncation entry exists *)
+        If[KeyFreeQ[setup["Truncation"], obj] || Not @ MemberQ[setup["Truncation"][obj], {fields}],
+            FunKitDebug[1, "AddVertexBasis: auto-adding truncation entry for ", obj, " with fields ", {fields}];
+            AddVertex[setup, obj, {fields}];
         ];
         If[KeyFreeQ[setup["FeynmanRules"], obj],
             AppendTo[setup["FeynmanRules"], obj -> {}]

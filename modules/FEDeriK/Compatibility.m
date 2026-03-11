@@ -49,10 +49,10 @@ QMeSNaming[setup_, obj_ /; ObjectQ[obj]] :=
     ];
 
 QMeSForm[setup_, expr_] :=
-    Map[QMeSNaming[setup, #]&, expr, {1, 3}] //. {FEx :> List, FTerm :> Times};
+    (AssertFSetup[setup]; Map[QMeSNaming[setup, #]&, expr, {1, 3}] //. {FEx :> List, FTerm :> Times});
 
 QMeSForm[setup_, expr_Association] :=
-    AssociationMap[QMeSForm[setup, #]&, expr];
+    (AssertFSetup[setup]; AssociationMap[QMeSForm[setup, #]&, expr]);
 
 (* Transforming QMeS to FunKit *)
 
@@ -129,3 +129,12 @@ FunKitForm[diag_] /; DoFunSuperindexDiagramQ[diag] :=
             };
         FunKit`FEx[diag //. repl]
     ];
+
+(**********************************************************************************
+    DoFunForm: Reverse transformation from FunKit to DoFun notation (not yet implemented)
+**********************************************************************************)
+
+DoFunForm::notImplemented = "DoFunForm is not yet implemented.";
+
+DoFunForm[args___] :=
+    (Message[DoFunForm::notImplemented]; Abort[]);

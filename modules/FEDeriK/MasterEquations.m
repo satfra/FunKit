@@ -96,5 +96,8 @@ MakeDSE[setup_, field_] :=
                 );
         dS //
         FResolveDerivatives[setup, #]& //
-        FSimplify[setup, #]&
+        If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
+            FunKit`FSimplify[setup, #],
+            #
+        ]&
     ];

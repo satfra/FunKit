@@ -141,3 +141,6 @@ NormalizeSuperIndices[setup_, expr_FTerm] :=
         cindices = Sort[cindices, orderingFunction];
         expr /. Thread[cindices -> Table[Symbol["sIdx" <> ToString[idx]], {idx, 1, Length[cindices]}]]
     ];
+
+NormalizeSuperIndices[setup_, expr_FEx] :=
+    Map[NormalizeSuperIndices[setup, #]&, expr];

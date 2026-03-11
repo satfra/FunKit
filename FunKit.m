@@ -200,6 +200,7 @@ Protect@FunKitDebug;
 (* ::Input::Initialization:: *)
 FunKit::invalidArguments="Invalid arguments given for function `1`, for correct usage, see `1`::usage."
 FunKit::warning="Warning: `1`"
+FunKit::noGlobalSetup="No global setup has been set. Either pass a setup as first argument, or set one via FSetGlobalSetup[setup]."
 
 
 (* ::Input::Initialization:: *)
