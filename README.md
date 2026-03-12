@@ -53,13 +53,12 @@ We have turned off automatic simplification here to show the raw output, which r
 
 For a scalar field theory, one can get a more explicit expression as follows:
 ```Mathematica
-fields = <|"Commuting"->{Phi[p]}, "Grassmann"->{}|>;
+fields = <|"Commuting"->{Phi[p]}|>;
 truncation = <|GammaN->Table[Table[Phi, {i}], {i, 1, 4}],
                S->{{Phi, Phi}, {Phi, Phi, Phi, Phi}},
                Propagator->{{Phi, Phi}},
                Rdot->{{Phi, Phi}}|>;
 FSetGlobalSetup[<|"FieldSpace"->fields, "Truncation"->truncation|>];
-FSetAutoSimplify[True];
 FSetTexStyles[Phi->"\\phi"];
 FTakeDerivatives[WetterichEquation, {Phi[i1], Phi[i2]}]//FTruncate//FPrint;
 ```
