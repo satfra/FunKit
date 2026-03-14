@@ -237,6 +237,174 @@ splitForRegisters[definitions_, finalExpr_] :=
     ];
 
 (**********************************************************************************
+    Pass 7: FMA Pattern Restructuring
+    Restructure a*b + c patterns into explicit fma(a, b, c) calls.
+    GPU FMA units execute this as a single instruction with better precision.
+**********************************************************************************)
+
+buildFMAChain[{}] := 0;
+buildFMAChain[{x_}] := x;
+buildFMAChain[terms_List] :=
+    Module[{mulTerms, nonMulTerms, result},
+        mulTerms = Select[terms, MatchQ[#, _Times]&];
+        nonMulTerms = Select[terms, Not @ MatchQ[#, _Times]&];
+        If[Length[mulTerms] === 0,
+            Return[Plus @@ terms]
+        ];
+        (* Build FMA chain: pair each Times term with remaining sum *)
+        result =
+            If[Length[nonMulTerms] > 0,
+                Plus @@ nonMulTerms
+                ,
+                0
+            ];
+        (* Chain from last to first for maximum throughput *)
+        Do[
+            Module[{factors, a, b},
+                factors = List @@ mulTerms[[i]];
+                a = First[factors];
+                b = Times @@ Rest[factors];
+                result = fmaGroup[a, b, result];
+            ],
+            {i, Length[mulTerms], 1, -1}
+        ];
+        result
+    ];
+
+fmaRestructure[expr_] :=
+    If[Not @ $codeFMARestructure,
+        expr
+        ,
+        expr /. p_Plus :> buildFMAChain[List @@ p]
+    ];
+
+(**********************************************************************************
+    Pass 8: Transcendental Hoisting
+    Hoist expensive transcendental calls to temporaries.
+    On GPU, these cost 20-100 cycles vs 4 for multiply.
+**********************************************************************************)
+
+hoistTranscendentals[expr_] :=
+    Module[{transcCalls, uniqueCalls, names, rules, newExpr, expBases, expPairs, extraDefs},
+        (* Find all transcendental calls with non-trivial arguments.
+           Note: Exp[x] evaluates to Power[E, x] in Mathematica, so we must match that form too. *)
+        transcCalls = Join[
+            Cases[expr, (h : Exp | cppExp | Log | Sin | Cos | Tan | Sqrt | Tanh | Sinh | Cosh)[a_] /; !AtomQ[a], Infinity],
+            Cases[expr, Power[E, a_] /; !AtomQ[a], Infinity]
+        ];
+        uniqueCalls = DeleteDuplicates[transcCalls];
+        If[Length[uniqueCalls] === 0,
+            Return[<|"Expr" -> expr, "Definitions" -> {}, "Count" -> 0|>]
+        ];
+        (* Detect Exp[x] / Exp[-x] pairs for reciprocal reuse *)
+        expBases = Join[
+            Cases[uniqueCalls, (Exp | cppExp)[a_] :> a],
+            Cases[uniqueCalls, Power[E, a_] :> a]
+        ];
+        expPairs = {};
+        extraDefs = {};
+        Do[
+            If[MemberQ[expBases, -base],
+                (* Both Exp[x] and Exp[-x] exist — we'll hoist Exp[x] and derive Exp[-x] via reciprocal *)
+                AppendTo[expPairs, base];
+            ],
+            {base, expBases}
+        ];
+        (* Remove Exp[-x] from uniqueCalls if Exp[x] exists, to avoid double-hoisting *)
+        uniqueCalls = Select[uniqueCalls,
+            Not[MatchQ[#, (Exp | cppExp)[a_] /; MemberQ[expPairs, -a]] || MatchQ[#, Power[E, a_] /; MemberQ[expPairs, -a]]]&
+        ];
+        names = Table["_tran" <> ToString[i], {i, 1, Length[uniqueCalls]}];
+        rules = Thread[uniqueCalls -> names];
+        newExpr = expr //. rules;
+        (* For Exp[-x] where Exp[x] was hoisted, replace with powr<-1>(hoisted) *)
+        Do[
+            Module[{negCall, posCall, posName, negRule},
+                posCall = Select[uniqueCalls, MatchQ[#, (Exp | cppExp)[b_] /; b === base]&];
+                If[Length[posCall] > 0,
+                    posName = posCall[[1]] /. rules;
+                    negCall = (Head[posCall[[1]]])[-base];
+                    negRule = negCall -> Power[posName, -1];
+                    newExpr = newExpr //. negRule;
+                ];
+            ],
+            {base, DeleteDuplicates[expPairs]}
+        ];
+        <|
+            "Expr" -> newExpr,
+            "Definitions" -> Table[{names[[i]], uniqueCalls[[i]]}, {i, 1, Length[uniqueCalls]}],
+            "Count" -> Length[uniqueCalls]
+        |>
+    ];
+
+(**********************************************************************************
+    Pass 9: Multi-Kernel Expression Splitting
+    When expressions exceed $codeMaxKernelTerms, split into multiple sub-kernels.
+    Each sub-kernel gets only the CSE definitions it actually references.
+**********************************************************************************)
+
+splitIntoSubKernels[allDefs_, finalExpr_] :=
+    Module[{terms, numTerms, chunkSize, chunks, subKernels, sharedDefs,
+            defNames, defsByName},
+        (* Fall back to standard accumulator if below threshold or not a Plus *)
+        If[Head[finalExpr] =!= Plus,
+            Return[<|"UseSubKernels" -> False, "UseAccumulator" -> False,
+                     "Definitions" -> allDefs, "Expr" -> finalExpr|>]
+        ];
+        terms = List @@ finalExpr;
+        numTerms = Length[terms];
+        chunkSize = $codeMaxKernelTerms;
+        If[numTerms <= chunkSize,
+            Return[splitForRegisters[allDefs, finalExpr]]
+        ];
+        (* Partition into sub-kernel chunks *)
+        chunks = Partition[terms, UpTo[chunkSize]];
+        (* Build name -> definition mapping *)
+        defNames = #[[1]]& /@ allDefs;
+        defsByName = Association @ Table[allDefs[[i, 1]] -> allDefs[[i]], {i, Length[allDefs]}];
+        (* For each chunk, find which definitions it references *)
+        subKernels = Table[
+            Module[{chunkExpr, referencedNames, relevantDefs},
+                chunkExpr = Plus @@ chunk;
+                referencedNames = Intersection[defNames, DeleteDuplicates @ Cases[chunkExpr, _String, Infinity]];
+                (* Also include definitions referenced by other definitions (transitive) *)
+                Module[{prevLen = 0},
+                    While[Length[referencedNames] =!= prevLen,
+                        prevLen = Length[referencedNames];
+                        referencedNames = DeleteDuplicates @ Join[
+                            referencedNames,
+                            Intersection[defNames,
+                                Flatten @ Map[Cases[defsByName[#][[2]], _String, Infinity]&, referencedNames]]
+                        ];
+                    ];
+                ];
+                relevantDefs = Select[allDefs, MemberQ[referencedNames, #[[1]]]&];
+                <|"Terms" -> chunkExpr, "Definitions" -> relevantDefs|>
+            ],
+            {chunk, chunks}
+        ];
+        (* Find definitions used by multiple sub-kernels — these are "shared" *)
+        Module[{allUsed, useCounts, sharedNames, perKernelDefs},
+            allUsed = Flatten @ Map[#["Definitions"][[All, 1]]&, subKernels];
+            useCounts = Counts[allUsed];
+            sharedNames = Keys @ Select[useCounts, # > 1&];
+            sharedDefs = Select[allDefs, MemberQ[sharedNames, #[[1]]]&];
+            (* Remove shared defs from per-kernel defs *)
+            subKernels = Map[
+                <|"Terms" -> #["Terms"],
+                  "Definitions" -> Select[#["Definitions"], Not @ MemberQ[sharedNames, #[[1]]]&]|>&,
+                subKernels
+            ];
+        ];
+        <|
+            "UseSubKernels" -> True,
+            "UseAccumulator" -> False,
+            "SharedDefinitions" -> sharedDefs,
+            "SubKernels" -> subKernels
+        |>
+    ];
+
+(**********************************************************************************
     Pipeline Orchestrator
     Runs all passes in sequence and returns an Association with optimization results.
 **********************************************************************************)
@@ -303,6 +471,45 @@ optimizeExpression[equation_] :=
 
         (* Collect all definitions *)
         allDefs = Join[interpResult["Definitions"], invResult["Definitions"], cseResult["Definitions"]];
+
+        (* Level 3: GPU-specific passes *)
+        If[$codeOptimizationLevel >= 3,
+            Module[{gpuRegs, tranResult},
+                gpuRegs = $codeGPURegisterBudget - interpCount - invCount;
+
+                (* Pass 7: Transcendental hoisting (before FMA so Exp/Log patterns are intact) *)
+                tranResult = hoistTranscendentals[expr];
+                expr = tranResult["Expr"];
+                gpuRegs -= tranResult["Count"];
+                allDefs = Join[allDefs, tranResult["Definitions"]];
+                FunKitDebug[2, "Pass 7: Hoisted ", tranResult["Count"], " transcendentals"];
+
+                (* Pass 8: Multi-kernel splitting (before FMA so Plus nodes are intact) *)
+                splitResult = splitIntoSubKernels[allDefs, expr];
+                FunKitDebug[2, "Pass 8: SubKernels = ", TrueQ[splitResult["UseSubKernels"]]];
+
+                (* Pass 9: FMA restructuring — apply to final result *)
+                If[TrueQ[splitResult["UseSubKernels"]],
+                    splitResult["SharedDefinitions"] = Map[{#[[1]], fmaRestructure[#[[2]]]}&, splitResult["SharedDefinitions"]];
+                    splitResult["SubKernels"] = Map[
+                        <|"Terms" -> fmaRestructure[#["Terms"]],
+                          "Definitions" -> Map[{#[[1]], fmaRestructure[#[[2]]]}&, #["Definitions"]]|>&,
+                        splitResult["SubKernels"]
+                    ];
+                    ,
+                    If[TrueQ[splitResult["UseAccumulator"]],
+                        splitResult["Definitions"] = Map[{#[[1]], fmaRestructure[#[[2]]]}&, splitResult["Definitions"]];
+                        splitResult["Chunks"] = Map[fmaRestructure, splitResult["Chunks"]];
+                        ,
+                        splitResult["Definitions"] = Map[{#[[1]], fmaRestructure[#[[2]]]}&, splitResult["Definitions"]];
+                        splitResult["Expr"] = fmaRestructure[splitResult["Expr"]];
+                    ];
+                ];
+                FunKitDebug[2, "Pass 9: Applied FMA restructuring"];
+
+                Return[splitResult]
+            ];
+        ];
 
         (* Pass 6: Register-pressure splitting (level 2 only) *)
         If[$codeOptimizationLevel >= 2,
@@ -375,4 +582,11 @@ stripQuotedNames[code_String, names_List] :=
     StringReplace[code, Map["\"" <> # <> "\"" -> #&, names]];
 
 getAllVarNames[optimized_] :=
-    Map[#[[1]]&, optimized["Definitions"]];
+    If[TrueQ[optimized["UseSubKernels"]],
+        Join[
+            Map[#[[1]]&, optimized["SharedDefinitions"]],
+            Flatten @ Map[Map[#[[1]]&, #["Definitions"]]&, optimized["SubKernels"]]
+        ]
+        ,
+        Map[#[[1]]&, optimized["Definitions"]]
+    ];

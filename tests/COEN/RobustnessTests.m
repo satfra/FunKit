@@ -163,6 +163,126 @@ FunKit`FSetCodeOptimizationLevel[2];
 FunKit`FSetCodeChunkSize[50];
 
 (**********************************************************************************
+    COEN: FSetGPUTarget validation
+**********************************************************************************)
+
+AppendTo[tests, TestCreate[
+    CheckAbort[FunKit`FSetGPUTarget["invalid"], "AbortTriggered"],
+    "AbortTriggered",
+    {FunKit`FunKit::invalidArguments},
+    TestID -> "FSetGPUTarget with non-boolean should abort"
+]];
+
+AppendTo[tests, TestCreate[
+    CheckAbort[FunKit`FSetGPUTarget[42], "AbortTriggered"],
+    "AbortTriggered",
+    {FunKit`FunKit::invalidArguments},
+    TestID -> "FSetGPUTarget with integer should abort"
+]];
+
+AppendTo[tests, TestCreate[
+    (FunKit`FSetGPUTarget[True]; True),
+    True,
+    TestID -> "FSetGPUTarget with True should succeed"
+]];
+
+FunKit`FSetGPUTarget[False];
+
+(**********************************************************************************
+    COEN: FSetFastMath validation
+**********************************************************************************)
+
+AppendTo[tests, TestCreate[
+    CheckAbort[FunKit`FSetFastMath[42], "AbortTriggered"],
+    "AbortTriggered",
+    {FunKit`FunKit::invalidArguments},
+    TestID -> "FSetFastMath with integer should abort"
+]];
+
+AppendTo[tests, TestCreate[
+    CheckAbort[FunKit`FSetFastMath["yes"], "AbortTriggered"],
+    "AbortTriggered",
+    {FunKit`FunKit::invalidArguments},
+    TestID -> "FSetFastMath with string should abort"
+]];
+
+AppendTo[tests, TestCreate[
+    (FunKit`FSetFastMath[True]; True),
+    True,
+    TestID -> "FSetFastMath with True should succeed"
+]];
+
+FunKit`FSetFastMath[False];
+
+(**********************************************************************************
+    COEN: FSetMaxKernelTerms validation
+**********************************************************************************)
+
+AppendTo[tests, TestCreate[
+    CheckAbort[FunKit`FSetMaxKernelTerms[-1], "AbortTriggered"],
+    "AbortTriggered",
+    {FunKit`FunKit::invalidArguments},
+    TestID -> "FSetMaxKernelTerms with negative value should abort"
+]];
+
+AppendTo[tests, TestCreate[
+    CheckAbort[FunKit`FSetMaxKernelTerms["not a number"], "AbortTriggered"],
+    "AbortTriggered",
+    {FunKit`FunKit::invalidArguments},
+    TestID -> "FSetMaxKernelTerms with string should abort"
+]];
+
+AppendTo[tests, TestCreate[
+    (FunKit`FSetMaxKernelTerms[200]; True),
+    True,
+    TestID -> "FSetMaxKernelTerms with valid integer should succeed"
+]];
+
+FunKit`FSetMaxKernelTerms[500];
+
+(**********************************************************************************
+    COEN: FSetCodePrecision validation
+**********************************************************************************)
+
+AppendTo[tests, TestCreate[
+    CheckAbort[FunKit`FSetCodePrecision["invalid"], "AbortTriggered"],
+    "AbortTriggered",
+    {FunKit`FunKit::invalidArguments},
+    TestID -> "FSetCodePrecision with invalid string should abort"
+]];
+
+AppendTo[tests, TestCreate[
+    CheckAbort[FunKit`FSetCodePrecision[42], "AbortTriggered"],
+    "AbortTriggered",
+    {FunKit`FunKit::invalidArguments},
+    TestID -> "FSetCodePrecision with integer should abort"
+]];
+
+AppendTo[tests, TestCreate[
+    (FunKit`FSetCodePrecision["single"]; True),
+    True,
+    TestID -> "FSetCodePrecision with single should succeed"
+]];
+
+AppendTo[tests, TestCreate[
+    (FunKit`FSetCodePrecision["double"]; True),
+    True,
+    TestID -> "FSetCodePrecision with double should succeed"
+]];
+
+(**********************************************************************************
+    COEN: FSetCodeOptimizationLevel level 3 validation
+**********************************************************************************)
+
+AppendTo[tests, TestCreate[
+    (FunKit`FSetCodeOptimizationLevel[3]; True),
+    True,
+    TestID -> "FSetCodeOptimizationLevel with 3 should succeed"
+]];
+
+FunKit`FSetCodeOptimizationLevel[2];
+
+(**********************************************************************************
     COEN: CppForm basic test
 **********************************************************************************)
 

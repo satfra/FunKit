@@ -89,12 +89,25 @@ Sets the optimization level for C++ code generation.
 Level 0: legacy behavior (simple weighted frequency CSE).
 Level 1: interpolator hoisting + reciprocal hoisting + CSE.
 Level 2: full pipeline including algebraic factoring and register-pressure splitting.
+Level 3: GPU-specific passes (FMA restructuring, transcendental hoisting, sub-kernel splitting).
 Default is 2."
 
 FSetCodeChunkSize::usage = "FSetCodeChunkSize[n]
 Sets the maximum number of terms per accumulator chunk in the register-pressure splitting pass.
 Only relevant when $codeOptimizationLevel >= 2 and $codeUseAccumulator is True.
 Default is 50."
+
+FSetGPUTarget::usage = "FSetGPUTarget[True/False]
+Enables GPU-specific code emission."
+
+FSetFastMath::usage = "FSetFastMath[True/False]
+Enables CUDA fast-math intrinsics (__expf, __logf, etc.). Single precision only."
+
+FSetMaxKernelTerms::usage = "FSetMaxKernelTerms[n]
+Sets max terms per sub-kernel before splitting. Default 500."
+
+FSetCodePrecision::usage = "FSetCodePrecision[p]
+Sets code precision. Accepts \"single\" or \"double\". Default \"double\"."
 
 (* ::Section:: *)
 

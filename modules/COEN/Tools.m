@@ -91,6 +91,18 @@ $codeHoistReciprocals = True;
 
 $codeFactorTerms = True;
 
+$codeGPUTarget = False;
+
+$codeFastMath = False;
+
+$codePrecision = "double";
+
+$codeMaxKernelTerms = 500;
+
+$codeFMARestructure = True;
+
+$codeGPURegisterBudget = 64;
+
 FSetRegisterSize[n_Integer?Positive] :=
     Module[{},
         $availableRegisters = n;
@@ -102,14 +114,59 @@ FSetRegisterSize[___] :=
         Abort[]
     );
 
-FSetCodeOptimizationLevel[n_Integer] /; 0 <= n <= 2 :=
+FSetCodeOptimizationLevel[n_Integer] /; 0 <= n <= 3 :=
     Module[{},
         $codeOptimizationLevel = n;
+        If[n === 3, $codeGPUTarget = True];
     ];
 
 FSetCodeOptimizationLevel[___] :=
     (
         Message[FunKit::invalidArguments, FSetCodeOptimizationLevel];
+        Abort[]
+    );
+
+FSetGPUTarget[b_?BooleanQ] :=
+    Module[{},
+        $codeGPUTarget = b;
+    ];
+
+FSetGPUTarget[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetGPUTarget];
+        Abort[]
+    );
+
+FSetFastMath[b_?BooleanQ] :=
+    Module[{},
+        $codeFastMath = b;
+    ];
+
+FSetFastMath[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetFastMath];
+        Abort[]
+    );
+
+FSetMaxKernelTerms[n_Integer?Positive] :=
+    Module[{},
+        $codeMaxKernelTerms = n;
+    ];
+
+FSetMaxKernelTerms[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetMaxKernelTerms];
+        Abort[]
+    );
+
+FSetCodePrecision[p_String] /; MemberQ[{"single", "double"}, p] :=
+    Module[{},
+        $codePrecision = p;
+    ];
+
+FSetCodePrecision[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetCodePrecision];
         Abort[]
     );
 

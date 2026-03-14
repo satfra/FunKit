@@ -202,3 +202,87 @@ expectedLarge = ToString[NumberForm[largeExpr /. a -> 1.5, 10]];
 AppendTo[tests, TestCreate[exec6 =!= $Failed, True, TestID -> "Verify compilation of large expression with accumulator"]];
 
 AppendTo[tests, TestCreate[output6, expectedLarge, TestID -> "Verify numerical agreement of large expression with accumulator"]];
+
+(**********************************************************************************
+    Optimization level 3 produces valid C++ code
+**********************************************************************************)
+
+fmaCode = "
+#include <cmath>
+auto fma(auto a, auto b, auto c) { return std::fma(a, b, c); }
+";
+
+Block[{FunKit`Private`$codeOptimizationLevel = 3, FunKit`Private`$codeGPURegisterBudget = 32},
+    funBody7 = MakeCppFunction[expr, "Name" -> "fun3", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+];
+
+exec7 = CreateExecutable["
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+
+" <> fmaCode <> "
+" <> powrCode <> "
+" <> funBody7 <> "
+
+int main () {
+  std::cout << std::setprecision (10) << fun3 (1.5) << std::endl;
+}
+", "FunKitCppTest7", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
+
+output7 = Import["!" <> QuoteFile[exec7], "Text"];
+
+AppendTo[tests, TestCreate[exec7 =!= $Failed, True, TestID -> "Verify compilation at optimization level 3"]];
+
+AppendTo[tests, TestCreate[output7, expected, TestID -> "Verify numerical agreement at optimization level 3"]];
+
+(**********************************************************************************
+    FMA detection: verify fma() appears in output
+**********************************************************************************)
+
+Block[{FunKit`Private`$codeOptimizationLevel = 3, FunKit`Private`$codeFMARestructure = True, FunKit`Private`$codeGPURegisterBudget = 32},
+    fmaTestCode = CppCode[a * b + c * d + e];
+];
+
+AppendTo[tests, TestCreate[StringContainsQ[fmaTestCode, "fma("], True, TestID -> "Verify FMA detection in level 3 output"]];
+
+(**********************************************************************************
+    Fast-math intrinsics emission
+**********************************************************************************)
+
+Block[{FunKit`Private`$codeOptimizationLevel = 3, FunKit`Private`$codeFastMath = True, FunKit`Private`$codePrecision = "single", FunKit`Private`$codeGPURegisterBudget = 32},
+    fastMathCode = CppCode[Exp[x] + Log[x]];
+];
+
+AppendTo[tests, TestCreate[StringContainsQ[fastMathCode, "__expf("], True, TestID -> "Verify __expf in fast-math output"]];
+AppendTo[tests, TestCreate[StringContainsQ[fastMathCode, "__logf("], True, TestID -> "Verify __logf in fast-math output"]];
+
+(* Fast-math should NOT emit intrinsics when precision is double *)
+Block[{FunKit`Private`$codeOptimizationLevel = 3, FunKit`Private`$codeFastMath = True, FunKit`Private`$codePrecision = "double", FunKit`Private`$codeGPURegisterBudget = 32},
+    noFastMathCode = CppCode[Exp[x] + Log[x]];
+];
+
+AppendTo[tests, TestCreate[StringFreeQ[noFastMathCode, "__expf("], True, TestID -> "Verify no __expf when precision is double"]];
+
+(**********************************************************************************
+    Sub-kernel splitting
+**********************************************************************************)
+
+largeExprSplit = Sum[Sin[a + i] * Cos[a - i] / (1 + i * a), {i, 1, 600}];
+
+Block[{FunKit`Private`$codeOptimizationLevel = 3, FunKit`Private`$codeMaxKernelTerms = 200, FunKit`Private`$codeGPURegisterBudget = 64},
+    splitCode = CppCode[largeExprSplit];
+];
+
+AppendTo[tests, TestCreate[StringContainsQ[splitCode, "// subkernel 1"], True, TestID -> "Verify sub-kernel splitting produces multiple blocks"]];
+AppendTo[tests, TestCreate[StringContainsQ[splitCode, "// subkernel 2"], True, TestID -> "Verify sub-kernel splitting produces at least 2 blocks"]];
+
+(**********************************************************************************
+    Transcendental hoisting
+**********************************************************************************)
+
+Block[{FunKit`Private`$codeOptimizationLevel = 3, FunKit`Private`$codeGPURegisterBudget = 32},
+    tranCode = CppCode[Exp[a + b * c] + 2 * Exp[a + b * c]];
+];
+
+AppendTo[tests, TestCreate[StringContainsQ[tranCode, "_tran"], True, TestID -> "Verify transcendental hoisting creates _tran variables"]];

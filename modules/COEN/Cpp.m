@@ -22,6 +22,8 @@ CppForm[expr_] :=
         ,
         processedExpr = N[expr /. Power[E, x_] :> cppExp[x]];
         nest := GenerateCode[CExpression[#]]&;
+        (*FMA*)
+        CExpression /: GenerateCode[CExpression[fmaGroup[a_, b_, c_]]] := "fma(" <> nest[a] <> ", " <> nest[b] <> ", " <> nest[c] <> ")";
         (*associativity*)
         CExpression /: GenerateCode[CExpression[Times[a__, Plus[b_, c__], d__]]] := "(" <> nest[Times[a]] <> ") * (" <> nest[Plus[b, c]] <> ") * (" <> nest[Times[d]] <> ")";
         CExpression /: GenerateCode[CExpression[Times[Plus[b_, c__], d__]]] := "(" <> nest[Plus[b, c]] <> ") * (" <> nest[Times[d]] <> ")";
@@ -102,6 +104,16 @@ CppForm[expr_] :=
         CExpression /: GenerateCode[CExpression[Min[a_, b_, c__]]] := "min({" <> nest[a] <> "," <> nest[b] <> StringRiffle[Map[nest, {c}], ","] "})";
         CExpression /: GenerateCode[CExpression[Max[a_, b_]]] := "max(" <> nest[a] <> "," <> nest[b] <> ")";
         CExpression /: GenerateCode[CExpression[Max[a_, b_, c__]]] := "max({" <> nest[a] <> "," <> nest[b] <> StringRiffle[Map[nest, {c}], ","] "})";
+        (*fast-math intrinsics — single precision only, must come AFTER standard rules to override*)
+        If[$codeFastMath && $codePrecision === "single",
+            CExpression /: GenerateCode[CExpression[cppExp[a_]]] := "__expf(" <> nest[a] <> ")";
+            CExpression /: GenerateCode[CExpression[Exp[a_]]] := "__expf(" <> nest[a] <> ")";
+            CExpression /: GenerateCode[CExpression[Log[a_]]] := "__logf(" <> nest[a] <> ")";
+            CExpression /: GenerateCode[CExpression[Sqrt[a_]]] := "__fsqrt_rn(" <> nest[a] <> ")";
+            CExpression /: GenerateCode[CExpression[Sin[a_]]] := "__sinf(" <> nest[a] <> ")";
+            CExpression /: GenerateCode[CExpression[Cos[a_]]] := "__cosf(" <> nest[a] <> ")";
+            CExpression /: GenerateCode[CExpression[Tan[a_]]] := "__tanf(" <> nest[a] <> ")";
+        ];
         Return[ToCCodeString[CExpression[processedExpr]]];
     ];
 
@@ -235,6 +247,32 @@ CppCode[equation_] :=
     Module[{optimized, varNames, definitions, returnStatement},
         optimized = optimizeExpression[equation];
         varNames = getAllVarNames[optimized];
+        (* Sub-kernel pattern (level 3) *)
+        If[TrueQ[optimized["UseSubKernels"]],
+            Module[{subKernels, sharedDefs, sharedCode, subCode, allNames},
+                sharedDefs = optimized["SharedDefinitions"];
+                subKernels = optimized["SubKernels"];
+                allNames = Join[
+                    sharedDefs[[All, 1]],
+                    Flatten @ Map[#["Definitions"][[All, 1]]&, subKernels]
+                ];
+                sharedCode = formatDefinitions[sharedDefs];
+                sharedCode = stripQuotedNames[sharedCode, allNames];
+                subCode = StringJoin @ Table[
+                    Module[{localDefs, termsCode},
+                        localDefs = formatDefinitions[subKernels[[i]]["Definitions"]];
+                        localDefs = stripQuotedNames[localDefs, allNames];
+                        termsCode = CppForm[subKernels[[i]]["Terms"]];
+                        termsCode = stripQuotedNames[termsCode, allNames];
+                        "{ // subkernel " <> ToString[i] <> "\n" <>
+                        localDefs <>
+                        "_acc += " <> termsCode <> ";\n}\n"
+                    ],
+                    {i, Length[subKernels]}
+                ];
+                Return["auto _acc = NumberType(0);\n" <> sharedCode <> subCode <> " return _acc;"]
+            ]
+        ];
         If[optimized["UseAccumulator"],
             (* Accumulator pattern: scoped chunks *)
             definitions = formatDefinitions[optimized["Definitions"]];
