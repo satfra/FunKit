@@ -15,7 +15,10 @@ FortranCode[equation_, name_:"result"] :=
         replacements = Table[replacementObj[[i]] -> Symbol @ replacementNames[[i]], {i, 1, Length[replacementObj]}];
         definitions =
             If[Length[replacementObj] > 0,
-                StringJoin[Table["real, parameter :: " <> ToString[replacementNames[[i]]] <> " = " <> ToString @ FortranForm[FullSimplify @ replacementObj[[i]]] <> "\n", {i, 1, Length[replacementObj]}]] <> "\n"
+                Module[{simplified},
+                    simplified = parallelSimplify[replacementObj];
+                    StringJoin[Table["real, parameter :: " <> ToString[replacementNames[[i]]] <> " = " <> ToString @ FortranForm[simplified[[i]]] <> "\n", {i, 1, Length[replacementObj]}]] <> "\n"
+                ]
                 ,
                 ""
             ];

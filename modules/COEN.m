@@ -84,6 +84,18 @@ Sets the number of available registers for optimization in C++ code generation.
 This is in particular important for calculations on the GPU, where the number of registers is very limited.
 The default value is 32, but varying $availableRegisters can help optimize performance."
 
+FSetCodeOptimizationLevel::usage = "FSetCodeOptimizationLevel[n]
+Sets the optimization level for C++ code generation.
+Level 0: legacy behavior (simple weighted frequency CSE).
+Level 1: interpolator hoisting + reciprocal hoisting + CSE.
+Level 2: full pipeline including algebraic factoring and register-pressure splitting.
+Default is 2."
+
+FSetCodeChunkSize::usage = "FSetCodeChunkSize[n]
+Sets the maximum number of terms per accumulator chunk in the register-pressure splitting pass.
+Only relevant when $codeOptimizationLevel >= 2 and $codeUseAccumulator is True.
+Default is 50."
+
 (* ::Section:: *)
 
 (*Begin Private*)
@@ -113,6 +125,10 @@ ModuleLoaded[COEN] = True;
 (* Tools *)
 
 Get[$FunKitDirectory <> "modules/COEN/Tools.m"];
+
+(* C++ Optimization Pipeline *)
+
+Get[$FunKitDirectory <> "modules/COEN/CppOptimize.m"];
 
 (* C++ *)
 

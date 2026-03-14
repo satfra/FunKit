@@ -92,6 +92,77 @@ AppendTo[tests, TestCreate[
 ]];
 
 (**********************************************************************************
+    COEN: FSetCodeOptimizationLevel validation
+**********************************************************************************)
+
+AppendTo[tests, TestCreate[
+    CheckAbort[FunKit`FSetCodeOptimizationLevel["not a number"], "AbortTriggered"],
+    "AbortTriggered",
+    {FunKit`FunKit::invalidArguments},
+    TestID -> "FSetCodeOptimizationLevel with non-integer should abort"
+]];
+
+AppendTo[tests, TestCreate[
+    CheckAbort[FunKit`FSetCodeOptimizationLevel[5], "AbortTriggered"],
+    "AbortTriggered",
+    {FunKit`FunKit::invalidArguments},
+    TestID -> "FSetCodeOptimizationLevel with out-of-range value should abort"
+]];
+
+AppendTo[tests, TestCreate[
+    CheckAbort[FunKit`FSetCodeOptimizationLevel[-1], "AbortTriggered"],
+    "AbortTriggered",
+    {FunKit`FunKit::invalidArguments},
+    TestID -> "FSetCodeOptimizationLevel with negative value should abort"
+]];
+
+AppendTo[tests, TestCreate[
+    (FunKit`FSetCodeOptimizationLevel[0]; True),
+    True,
+    TestID -> "FSetCodeOptimizationLevel with 0 should succeed"
+]];
+
+AppendTo[tests, TestCreate[
+    (FunKit`FSetCodeOptimizationLevel[1]; True),
+    True,
+    TestID -> "FSetCodeOptimizationLevel with 1 should succeed"
+]];
+
+AppendTo[tests, TestCreate[
+    (FunKit`FSetCodeOptimizationLevel[2]; True),
+    True,
+    TestID -> "FSetCodeOptimizationLevel with 2 should succeed"
+]];
+
+(**********************************************************************************
+    COEN: FSetCodeChunkSize validation
+**********************************************************************************)
+
+AppendTo[tests, TestCreate[
+    CheckAbort[FunKit`FSetCodeChunkSize["not a number"], "AbortTriggered"],
+    "AbortTriggered",
+    {FunKit`FunKit::invalidArguments},
+    TestID -> "FSetCodeChunkSize with non-integer should abort"
+]];
+
+AppendTo[tests, TestCreate[
+    CheckAbort[FunKit`FSetCodeChunkSize[-5], "AbortTriggered"],
+    "AbortTriggered",
+    {FunKit`FunKit::invalidArguments},
+    TestID -> "FSetCodeChunkSize with negative value should abort"
+]];
+
+AppendTo[tests, TestCreate[
+    (FunKit`FSetCodeChunkSize[25]; True),
+    True,
+    TestID -> "FSetCodeChunkSize with valid integer should succeed"
+]];
+
+(* Reset to defaults *)
+FunKit`FSetCodeOptimizationLevel[2];
+FunKit`FSetCodeChunkSize[50];
+
+(**********************************************************************************
     COEN: CppForm basic test
 **********************************************************************************)
 

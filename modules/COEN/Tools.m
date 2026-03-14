@@ -57,6 +57,21 @@ hasNoOperators[str_String] :=
     StringFreeQ[str, ")"] && StringFreeQ[str, "("] && StringFreeQ[str, "["] && StringFreeQ[str, "]"] && StringFreeQ[str, "*"] && StringFreeQ[str, "/"] && StringFreeQ[str, "+"] && StringFreeQ[str, "-"] && StringFreeQ[str, "%"] && StringFreeQ[str, "&"]
 
 (**********************************************************************************
+    Parallel map with automatic fallback
+**********************************************************************************)
+
+(* Only use parallel evaluation when there are enough items to amortize overhead *)
+$codeParallelThreshold = 4;
+
+parallelSimplify[exprs_List] :=
+    If[Length[exprs] >= $codeParallelThreshold && Length[Kernels[]] > 0,
+        FunKitDebug[2, "Parallelizing FullSimplify over ", Length[exprs], " expressions on ", Length[Kernels[]], " kernels"];
+        ParallelMap[FullSimplify, exprs, DistributedContexts -> Automatic]
+        ,
+        Map[FullSimplify, exprs]
+    ];
+
+(**********************************************************************************
     Code generation settings and tools
 **********************************************************************************)
 
@@ -66,6 +81,16 @@ $codeOptimizeInterps = {a_Symbol[__] /; Not @ MatchQ[a, Times | Plus | Power | R
 
 $availableRegisters = 32;
 
+$codeOptimizationLevel = 2;
+
+$codeUseAccumulator = True;
+
+$codeMaxChunkSize = 50;
+
+$codeHoistReciprocals = True;
+
+$codeFactorTerms = True;
+
 FSetRegisterSize[n_Integer?Positive] :=
     Module[{},
         $availableRegisters = n;
@@ -74,5 +99,27 @@ FSetRegisterSize[n_Integer?Positive] :=
 FSetRegisterSize[___] :=
     (
         Message[FunKit::invalidArguments, FSetRegisterSize];
+        Abort[]
+    );
+
+FSetCodeOptimizationLevel[n_Integer] /; 0 <= n <= 2 :=
+    Module[{},
+        $codeOptimizationLevel = n;
+    ];
+
+FSetCodeOptimizationLevel[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetCodeOptimizationLevel];
+        Abort[]
+    );
+
+FSetCodeChunkSize[n_Integer?Positive] :=
+    Module[{},
+        $codeMaxChunkSize = n;
+    ];
+
+FSetCodeChunkSize[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetCodeChunkSize];
         Abort[]
     );

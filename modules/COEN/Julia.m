@@ -45,7 +45,10 @@ JuliaCode[equation_] :=
         replacements = Table[replacementObj[[i]] -> replacementNames[[i]], {i, 1, Length[replacementObj]}];
         definitions =
             If[Length[replacementObj] > 0,
-                StringJoin[Table[ToString[replacementNames[[i]]] <> " = " <> JuliaForm[FullSimplify @ replacementObj[[i]]] <> "\n", {i, 1, Length[replacementObj]}]] <> "\n"
+                Module[{simplified},
+                    simplified = parallelSimplify[replacementObj];
+                    StringJoin[Table[ToString[replacementNames[[i]]] <> " = " <> JuliaForm[simplified[[i]]] <> "\n", {i, 1, Length[replacementObj]}]] <> "\n"
+                ]
                 ,
                 ""
             ];

@@ -20,7 +20,7 @@ CppForm[expr_] :=
     Internal`InheritedBlock[
         {processedExpr, nest, $MinPrecision = $CppPrecision, $MaxPrecision = $CppPrecision, CExpression}
         ,
-        processedExpr = N[expr];
+        processedExpr = N[expr /. Power[E, x_] :> cppExp[x]];
         nest := GenerateCode[CExpression[#]]&;
         (*associativity*)
         CExpression /: GenerateCode[CExpression[Times[a__, Plus[b_, c__], d__]]] := "(" <> nest[Times[a]] <> ") * (" <> nest[Plus[b, c]] <> ") * (" <> nest[Times[d]] <> ")";
@@ -59,6 +59,8 @@ CppForm[expr_] :=
         CExpression /: GenerateCode[CExpression[Sign[v_]]] := "sign(" <> nest[v] <> ")";
         (*Powers and such*)
         CExpression /: GenerateCode[CExpression[Sqrt[arg_]]] := "sqrt(" <> nest[arg] <> ")";
+        CExpression /: GenerateCode[CExpression[cppExp[a_]]] := "exp(" <> nest[a] <> ")";
+        CExpression /: GenerateCode[CExpression[Exp[a_]]] := "exp(" <> nest[a] <> ")";
         If[$CppPowr,
             CExpression /: GenerateCode[CExpression[Power[a_, b_Integer]]] := "powr<" <> ToString[b] <> ">(" <> nest[a] <> ")";
             CExpression /: GenerateCode[CExpression[Power[a_, b_ /; Element[b + 1/2, Integers]]]] :=
@@ -71,13 +73,10 @@ CppForm[expr_] :=
             CExpression /: GenerateCode[CExpression[Power[a_, b_Integer]]] := "pow(" <> nest[a] <> ", " <> ToString[b] <> ")";
         ];
         CExpression /: GenerateCode[CExpression[Power[a_, b_]]] := "pow(" <> nest[a] <> "," <> nest[b] <> ")";
-        CExpression /: GenerateCode[CExpression[Power[E, b_]]] := "exp(" <> nest[b] <> ")";
-        CExpression /: GenerateCode[CExpression[Power[E, b_Integer]]] := "exp(" <> nest[b] <> ")";
-        CExpression /: GenerateCode[CExpression[Exp[a_]]] := "exp(" <> nest[a] <> ")";
-        CExpression /: GenerateCode[CExpression[Exp[a_] - 1]] := "expm1(" <> nest[a] <> ")";
-        CExpression /: GenerateCode[CExpression[1 - Exp[a_]]] := "-expm1(" <> nest[a] <> ")";
-        CExpression /: GenerateCode[CExpression[Plus[Exp[a_], -1, c__]]] := "expm1(" <> nest[a] <> ") + " <> nest[Plus[c]];
-        CExpression /: GenerateCode[CExpression[Plus[-Exp[a_], 1, c__]]] := "(-expm1(" <> nest[a] <> ")) + " <> nest[Plus[c]];
+        CExpression /: GenerateCode[CExpression[cppExp[a_] - 1]] := "expm1(" <> nest[a] <> ")";
+        CExpression /: GenerateCode[CExpression[1 - cppExp[a_]]] := "-expm1(" <> nest[a] <> ")";
+        CExpression /: GenerateCode[CExpression[Plus[cppExp[a_], -1, c__]]] := "expm1(" <> nest[a] <> ") + " <> nest[Plus[c]];
+        CExpression /: GenerateCode[CExpression[Plus[-cppExp[a_], 1, c__]]] := "(-expm1(" <> nest[a] <> ")) + " <> nest[Plus[c]];
         CExpression /: GenerateCode[CExpression[Log[a_]]] := "log(" <> nest[a] <> ")";
         (*trigonometric*)
         CExpression /: GenerateCode[CExpression[Sin[a_]]] := "sin(" <> nest[a] <> ")";
@@ -233,43 +232,33 @@ CppCodeFORM[expr_] :=
 (* ::Input::Initialization:: *)
 
 CppCode[equation_] :=
-    Module[{optList, interpObj, replacementObj, replacementNames, replacements, replacementsFS, definitions, returnStatement},
-        optList = $codeOptimizeFunctions;
-        interpObj = Flatten @ Map[Cases[equation, #, Infinity]&, optList];
-        replacementObj = Select[Counts[interpObj], # > 1&];
-        (*We weigh function calls (potentially fetching global memory)*)
-        (*much stronger to make sure these are preferentially cached.*)
-        replacementObj =
-            AssociationMap[
-                If[MatchQ[#[[1]], $codeOptimizeInterps[[1]]],
-                    #[[1]] -> #[[2]] * 1000
-                    ,
-                    #[[1]] -> #[[2]]
-                ]&
-                ,
-                replacementObj
-            ];
-        replacementObj = TakeLargest[replacementObj, Min[$availableRegisters, Length[replacementObj]]];
-        replacementObj = Keys[replacementObj];
-        replacementNames = Table["_repl" <> ToString[i], {i, 1, Length[replacementObj]}];
-        replacements = Table[replacementObj[[i]] -> replacementNames[[i]], {i, 1, Length[replacementObj]}];
-        replacementsFS = Table[FullSimplify[replacementObj[[i]]] -> replacementNames[[i]], {i, 1, Length[replacementObj]}];
-        FunKitDebug[2, "Replacements: ", replacements];
-        FunKitDebug[2, "ReplacementsFS: ", replacementsFS];
-        definitions =
-            If[Length[replacementObj] > 0,
-                StringJoin[Table["const auto " <> ToString[replacementNames[[i]]] <> " = " <> CppForm[FullSimplify @ replacementObj[[i]] //. Reverse[replacements[[ ;; i - 1]]] //. Reverse[replacementsFS[[ ;; i - 1]]]] <> ";\n", {i, 1, Length[replacementObj]}]] <> "\n"
-                ,
-                ""
-            ];
-        definitions = StringReplace[definitions, Map["\"" <> # <> "\"" -> #&, replacementNames]];
-        FunKitDebug[2, "Definitions: ", definitions];
-        replacements = Reverse[replacements];
-        replacementsFS = Reverse[replacementsFS];
-        returnStatement = " return " <> CppForm[equation //. replacements //. replacementsFS] <> ";";
-        FunKitDebug[2, "returnStatement: ", returnStatement];
-        returnStatement = StringReplace[returnStatement, Map["\"" <> # <> "\"" -> #&, replacementNames]];
-        definitions <> returnStatement
+    Module[{optimized, varNames, definitions, returnStatement},
+        optimized = optimizeExpression[equation];
+        varNames = getAllVarNames[optimized];
+        If[optimized["UseAccumulator"],
+            (* Accumulator pattern: scoped chunks *)
+            definitions = formatDefinitions[optimized["Definitions"]];
+            definitions = stripQuotedNames[definitions, varNames];
+            Module[{chunks, chunksCode},
+                chunks = optimized["Chunks"];
+                chunksCode = "auto _acc = NumberType(0);\n";
+                chunksCode = chunksCode <> StringJoin @ Table[
+                    "{\n  _acc += " <> CppForm[chunks[[i]]] <> ";\n}\n",
+                    {i, 1, Length[chunks]}
+                ];
+                chunksCode = stripQuotedNames[chunksCode, varNames];
+                definitions <> chunksCode <> " return _acc;"
+            ]
+            ,
+            (* Standard path: definitions + return *)
+            definitions = formatDefinitions[optimized["Definitions"]];
+            definitions = stripQuotedNames[definitions, varNames];
+            returnStatement = formatReturnStatement[optimized["Expr"]];
+            returnStatement = stripQuotedNames[returnStatement, varNames];
+            FunKitDebug[2, "Definitions: ", definitions];
+            FunKitDebug[2, "returnStatement: ", returnStatement];
+            definitions <> returnStatement
+        ]
     ];
 
 (* ::Subsection:: *)

@@ -89,3 +89,116 @@ expected = ToString[NumberForm[expr /. a -> 1.5, 10]];
 AppendTo[tests, TestCreate[exec2 =!= $Failed, True, TestID -> "Verify compilation of C++ function with arithmetic operations"]];
 
 AppendTo[tests, TestCreate[output2, expected, TestID -> "Verify return value of C++ function with arithmetic operations"]];
+
+(**********************************************************************************
+    Optimization level 0 (legacy) produces valid C++ code
+**********************************************************************************)
+
+Block[{FunKit`Private`$codeOptimizationLevel = 0},
+    funBody3 = MakeCppFunction[expr, "Name" -> "fun0", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+];
+
+exec3 = CreateExecutable["
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+
+" <> powrCode <> "
+" <> funBody3 <> "
+
+int main () {
+  std::cout << std::setprecision (10) << fun0 (1.5) << std::endl;
+}
+", "FunKitCppTest3", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
+
+output3 = Import["!" <> QuoteFile[exec3], "Text"];
+
+AppendTo[tests, TestCreate[exec3 =!= $Failed, True, TestID -> "Verify compilation at optimization level 0"]];
+
+AppendTo[tests, TestCreate[output3, expected, TestID -> "Verify numerical agreement at optimization level 0"]];
+
+(**********************************************************************************
+    Optimization level 1 produces valid C++ code
+**********************************************************************************)
+
+Block[{FunKit`Private`$codeOptimizationLevel = 1},
+    funBody4 = MakeCppFunction[expr, "Name" -> "fun1", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+];
+
+exec4 = CreateExecutable["
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+
+" <> powrCode <> "
+" <> funBody4 <> "
+
+int main () {
+  std::cout << std::setprecision (10) << fun1 (1.5) << std::endl;
+}
+", "FunKitCppTest4", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
+
+output4 = Import["!" <> QuoteFile[exec4], "Text"];
+
+AppendTo[tests, TestCreate[exec4 =!= $Failed, True, TestID -> "Verify compilation at optimization level 1"]];
+
+AppendTo[tests, TestCreate[output4, expected, TestID -> "Verify numerical agreement at optimization level 1"]];
+
+(**********************************************************************************
+    Optimization level 2 (default) produces valid C++ code
+**********************************************************************************)
+
+Block[{FunKit`Private`$codeOptimizationLevel = 2},
+    funBody5 = MakeCppFunction[expr, "Name" -> "fun2", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+];
+
+exec5 = CreateExecutable["
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+
+" <> powrCode <> "
+" <> funBody5 <> "
+
+int main () {
+  std::cout << std::setprecision (10) << fun2 (1.5) << std::endl;
+}
+", "FunKitCppTest5", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
+
+output5 = Import["!" <> QuoteFile[exec5], "Text"];
+
+AppendTo[tests, TestCreate[exec5 =!= $Failed, True, TestID -> "Verify compilation at optimization level 2"]];
+
+AppendTo[tests, TestCreate[output5, expected, TestID -> "Verify numerical agreement at optimization level 2"]];
+
+(**********************************************************************************
+    Large expression with accumulator pattern compiles correctly
+**********************************************************************************)
+
+largeExpr = Sum[Sin[a + i] * Cos[a - i] / (1 + i * a), {i, 1, 80}];
+
+Block[{FunKit`Private`$codeOptimizationLevel = 2, FunKit`Private`$codeMaxChunkSize = 10, FunKit`Private`$availableRegisters = 8},
+    funBody6 = MakeCppFunction[largeExpr, "Name" -> "funLarge", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+];
+
+exec6 = CreateExecutable["
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+using NumberType = double;
+
+" <> powrCode <> "
+" <> funBody6 <> "
+
+int main () {
+  std::cout << std::setprecision (10) << funLarge (1.5) << std::endl;
+}
+", "FunKitCppTest6", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
+
+output6 = Import["!" <> QuoteFile[exec6], "Text"];
+
+expectedLarge = ToString[NumberForm[largeExpr /. a -> 1.5, 10]];
+
+AppendTo[tests, TestCreate[exec6 =!= $Failed, True, TestID -> "Verify compilation of large expression with accumulator"]];
+
+AppendTo[tests, TestCreate[output6, expectedLarge, TestID -> "Verify numerical agreement of large expression with accumulator"]];
