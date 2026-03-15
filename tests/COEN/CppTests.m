@@ -159,7 +159,7 @@ auto fma(auto a, auto b, auto c) { return std::fma(a, b, c); }
 
 largeExpr = Sum[Sin[a + i] * Cos[a - i] / (1 + i * a), {i, 1, 80}];
 
-Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxChunkSize = 10, FunKit`Private`$availableRegisters = 8, FunKit`Private`$codeMaxKernelTerms = 10000},
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$availableRegisters = 8, FunKit`Private`$codeMaxKernelTerms = 200},
     funBody6 = MakeCppFunction[largeExpr, "Name" -> "funLarge", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
 ];
 
@@ -182,9 +182,9 @@ output6 = Import["!" <> QuoteFile[exec6], "Text"];
 
 expectedLarge = ToString[NumberForm[largeExpr /. a -> 1.5, 10]];
 
-AppendTo[tests, TestCreate[exec6 =!= $Failed, True, TestID -> "Verify compilation of large expression with accumulator"]];
+AppendTo[tests, TestCreate[exec6 =!= $Failed, True, TestID -> "Verify compilation of large expression with sub-kernels"]];
 
-AppendTo[tests, TestCreate[output6, expectedLarge, TestID -> "Verify numerical agreement of large expression with accumulator"]];
+AppendTo[tests, TestCreate[output6, expectedLarge, TestID -> "Verify numerical agreement of large expression with sub-kernels"]];
 
 (**********************************************************************************
     FMA-enabled optimization produces valid C++ code

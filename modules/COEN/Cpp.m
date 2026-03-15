@@ -285,30 +285,14 @@ CppCode[equation_] :=
                 Return[declLine <> sharedCode <> "_T _acc{};\n" <> StringJoin[subCode] <> "return _acc;"]
             ]
         ];
-        If[optimized["UseAccumulator"],
-            (* Accumulator pattern: scoped chunks *)
-            definitions = formatDefinitions[optimized["Definitions"]];
-            definitions = stripQuotedNames[definitions, varNames];
-            Module[{chunks, chunksCode},
-                chunks = optimized["Chunks"];
-                chunksCode = "auto _acc = NumberType(0);\n";
-                chunksCode = chunksCode <> StringJoin @ Table[
-                    "{\n  _acc += " <> CppForm[chunks[[i]]] <> ";\n}\n",
-                    {i, 1, Length[chunks]}
-                ];
-                chunksCode = stripQuotedNames[chunksCode, varNames];
-                definitions <> chunksCode <> " return _acc;"
-            ]
-            ,
-            (* Standard path: definitions + return *)
-            definitions = formatDefinitions[optimized["Definitions"]];
-            definitions = stripQuotedNames[definitions, varNames];
-            returnStatement = formatReturnStatement[optimized["Expr"]];
-            returnStatement = stripQuotedNames[returnStatement, varNames];
-            FunKitDebug[2, "Definitions: ", definitions];
-            FunKitDebug[2, "returnStatement: ", returnStatement];
-            definitions <> returnStatement
-        ]
+        (* Standard path: definitions + return *)
+        definitions = formatDefinitions[optimized["Definitions"]];
+        definitions = stripQuotedNames[definitions, varNames];
+        returnStatement = formatReturnStatement[optimized["Expr"]];
+        returnStatement = stripQuotedNames[returnStatement, varNames];
+        FunKitDebug[2, "Definitions: ", definitions];
+        FunKitDebug[2, "returnStatement: ", returnStatement];
+        definitions <> returnStatement
     ];
 
 (* ::Subsection:: *)

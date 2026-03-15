@@ -83,10 +83,6 @@ $availableRegisters = 32;
 
 $codeOptimize = True;
 
-$codeUseAccumulator = True;
-
-$codeMaxChunkSize = 50;
-
 $codeFactorTerms = True;
 
 $codeFastMath = False;
@@ -150,13 +146,3 @@ FSetCodePrecision[___] :=
         Abort[]
     );
 
-FSetCodeChunkSize[n_Integer?Positive] :=
-    Module[{},
-        $codeMaxChunkSize = n;
-    ];
-
-FSetCodeChunkSize[___] :=
-    (
-        Message[FunKit::invalidArguments, FSetCodeChunkSize];
-        Abort[]
-    );

@@ -186,35 +186,6 @@ algebraicFactor[expr_] :=
     ];
 
 (**********************************************************************************
-    Register-Pressure Splitting (Accumulator Pattern)
-    If the final expression has too many terms, split into scoped chunks.
-**********************************************************************************)
-
-splitForRegisters[definitions_, finalExpr_] :=
-    Module[{terms, numTerms, chunkSize, chunks},
-        If[Not @ $codeUseAccumulator,
-            Return[<|"UseAccumulator" -> False, "Definitions" -> definitions, "Expr" -> finalExpr|>]
-        ];
-        (* Only split if finalExpr is a Plus with many terms *)
-        If[Head[finalExpr] =!= Plus,
-            Return[<|"UseAccumulator" -> False, "Definitions" -> definitions, "Expr" -> finalExpr|>]
-        ];
-        terms = List @@ finalExpr;
-        numTerms = Length[terms];
-        chunkSize = $codeMaxChunkSize;
-        If[numTerms <= chunkSize,
-            Return[<|"UseAccumulator" -> False, "Definitions" -> definitions, "Expr" -> finalExpr|>]
-        ];
-        (* Partition into chunks *)
-        chunks = Partition[terms, UpTo[chunkSize]];
-        <|
-            "UseAccumulator" -> True,
-            "Definitions" -> definitions,
-            "Chunks" -> Map[Plus @@ #&, chunks]
-        |>
-    ];
-
-(**********************************************************************************
     FMA Pattern Restructuring
     Restructure a*b + c patterns into explicit fma(a, b, c) calls.
     GPU FMA units execute this as a single instruction with better precision.
@@ -497,13 +468,9 @@ splitIntoSubKernels[allDefs_, finalExpr_] :=
         FunKitDebug[2, "Sub-kernel check: ", numTerms, " terms, LeafCount ", exprComplexity,
                     ", ", Length[allDefs], " defs, total weight ", totalWeight,
                     " vs threshold ", chunkSize];
-        If[totalWeight <= chunkSize && numTerms <= chunkSize,
-            (* Below threshold — fall back to standard accumulator *)
-            Return[splitForRegisters[allDefs, finalExpr]]
-        ];
-        If[numTerms <= 1,
-            (* Cannot split a single term — fall back *)
-            Return[splitForRegisters[allDefs, finalExpr]]
+        If[(totalWeight <= chunkSize && numTerms <= chunkSize) || numTerms <= 1,
+            (* Below threshold or single term — no split needed *)
+            Return[<|"UseSubKernels" -> False, "Definitions" -> allDefs, "Expr" -> finalExpr|>]
         ];
         (* Determine per-chunk size: aim for chunks where each chunk's
            LeafCount stays under the budget *)
@@ -556,7 +523,6 @@ splitIntoSubKernels[allDefs_, finalExpr_] :=
         ];
         <|
             "UseSubKernels" -> True,
-            "UseAccumulator" -> False,
             "SharedDefinitions" -> sharedDefs,
             "SubKernels" -> subKernels
         |>
@@ -578,7 +544,7 @@ optimizeExpression[equation_] :=
 
         (* If optimization is disabled, return raw expression with no passes *)
         If[!TrueQ[$codeOptimize],
-            Return[<|"Definitions" -> {}, "Expr" -> equation, "UseAccumulator" -> False, "UseSubKernels" -> False|>]
+            Return[<|"Definitions" -> {}, "Expr" -> equation, "UseSubKernels" -> False|>]
         ];
 
         expr = equation;
@@ -622,7 +588,6 @@ optimizeExpression[equation_] :=
             FunKitDebug[2, "Multi-kernel optimization complete: ", Length[subKernels], " sub-kernels"];
             <|
                 "UseSubKernels" -> True,
-                "UseAccumulator" -> False,
                 "SharedDefinitions" -> sharedDefs,
                 "SubKernels" -> subKernels
             |>

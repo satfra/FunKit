@@ -125,33 +125,6 @@ AppendTo[tests, TestCreate[
 FunKit`FSetCodeOptimization[True];
 
 (**********************************************************************************
-    COEN: FSetCodeChunkSize validation
-**********************************************************************************)
-
-AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`FSetCodeChunkSize["not a number"], "AbortTriggered"],
-    "AbortTriggered",
-    {FunKit`FunKit::invalidArguments},
-    TestID -> "FSetCodeChunkSize with non-integer should abort"
-]];
-
-AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`FSetCodeChunkSize[-5], "AbortTriggered"],
-    "AbortTriggered",
-    {FunKit`FunKit::invalidArguments},
-    TestID -> "FSetCodeChunkSize with negative value should abort"
-]];
-
-AppendTo[tests, TestCreate[
-    (FunKit`FSetCodeChunkSize[25]; True),
-    True,
-    TestID -> "FSetCodeChunkSize with valid integer should succeed"
-]];
-
-(* Reset to default *)
-FunKit`FSetCodeChunkSize[50];
-
-(**********************************************************************************
     COEN: FSetFastMath validation
 **********************************************************************************)
 

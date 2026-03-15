@@ -91,11 +91,6 @@ The default value is 32, but varying $availableRegisters can help optimize perfo
 FSetCodeOptimization::usage = "FSetCodeOptimization[b]
 Enables (True, default) or disables (False) the C++ code optimization pipeline."
 
-FSetCodeChunkSize::usage = "FSetCodeChunkSize[n]
-Sets the maximum number of terms per accumulator chunk in the register-pressure splitting pass.
-Only relevant when optimization is enabled and $codeUseAccumulator is True.
-Default is 50."
-
 FSetFastMath::usage = "FSetFastMath[True/False]
 Enables CUDA fast-math intrinsics (__expf, __logf, etc.). Single precision only."
 
