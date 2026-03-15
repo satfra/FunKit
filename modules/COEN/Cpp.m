@@ -16,7 +16,9 @@ $CppPowr = True;
 
 $CppPrecision = 20;
 
-CppForm[expr_] :=
+Options[CppForm] = {"Format" -> False};
+
+CppForm[expr_, OptionsPattern[]] :=
     Internal`InheritedBlock[
         {processedExpr, nest, $MinPrecision = $CppPrecision, $MaxPrecision = $CppPrecision, CExpression}
         ,
@@ -114,7 +116,10 @@ CppForm[expr_] :=
             CExpression /: GenerateCode[CExpression[Cos[a_]]] := "__cosf(" <> nest[a] <> ")";
             CExpression /: GenerateCode[CExpression[Tan[a_]]] := "__tanf(" <> nest[a] <> ")";
         ];
-        Return[ToCCodeString[CExpression[processedExpr]]];
+        If[TrueQ[OptionValue["Format"]],
+            Return[FormatCppCode[ToCCodeString[CExpression[processedExpr]]]],
+            Return[ToCCodeString[CExpression[processedExpr]]]
+        ];
     ];
 
 clangFormatExists = Quiet[RunProcess[{"clang-format", "--help"}]] =!= $Failed;
@@ -161,12 +166,14 @@ WriteCodeToFile[fileName_String, expression_String] :=
         ]
     ];
 
-FormatCppCode[expression_String] :=
+Options[FormatCppCode] = {"Format" -> True};
+
+FormatCppCode[expression_String, OptionsPattern[]] :=
     Module[{tmpfileName1, tmpfileName2, output},
         tmpfileName1 = "/tmp/in_" <> makeTemporaryFileName[];
         tmpfileName2 = "/tmp/out_" <> makeTemporaryFileName[];
         Export[tmpfileName1, expression, "Text"];
-        If[clangFormatExists,
+        If[clangFormatExists && TrueQ[OptionValue["Format"]],
             (*RunProcess[$SystemShell, All, "rm /tmp/.clang-format"];*)
             CreateClangFormat["/tmp/"];
             RunProcess[$SystemShell, All, "clang-format " <> tmpfileName1 <> " > " <> tmpfileName2];
@@ -249,16 +256,21 @@ CppCode[equation_] :=
         varNames = getAllVarNames[optimized];
         (* Sub-kernel pattern (level 3) *)
         If[TrueQ[optimized["UseSubKernels"]],
-            Module[{subKernels, sharedDefs, sharedCode, subCode, allNames},
+            Module[{subKernels, sharedDefs, sharedCode, allNames, subCode, declLine, rawExprCode},
                 sharedDefs = optimized["SharedDefinitions"];
                 subKernels = optimized["SubKernels"];
                 allNames = Join[
                     sharedDefs[[All, 1]],
                     Flatten @ Map[#["Definitions"][[All, 1]]&, subKernels]
                 ];
+                (* Type deduction from original unoptimized expression *)
+                rawExprCode = CppForm[equation, "Format" -> False];
+                declLine = "// clang-format off\nusing _T = decltype(" <> rawExprCode <> ");\n// clang-format on\n";
+                (* Shared definitions *)
                 sharedCode = formatDefinitions[sharedDefs];
                 sharedCode = stripQuotedNames[sharedCode, allNames];
-                subCode = StringJoin @ Table[
+                (* Scoped accumulation with per-subkernel local defs *)
+                subCode = Table[
                     Module[{localDefs, termsCode},
                         localDefs = formatDefinitions[subKernels[[i]]["Definitions"]];
                         localDefs = stripQuotedNames[localDefs, allNames];
@@ -270,7 +282,7 @@ CppCode[equation_] :=
                     ],
                     {i, Length[subKernels]}
                 ];
-                Return["auto _acc = NumberType(0);\n" <> sharedCode <> subCode <> " return _acc;"]
+                Return[declLine <> sharedCode <> "_T _acc{};\n" <> StringJoin[subCode] <> "return _acc;"]
             ]
         ];
         If[optimized["UseAccumulator"],

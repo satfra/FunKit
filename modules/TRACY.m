@@ -10,8 +10,8 @@
 
 (* ::Input::Initialization:: *)
 
-FormSimplify::usage = "FormSimplify[expr]
-FormSimplify[expr, preReplRules, postReplRules]
+FFormSimplify::usage = "FFormSimplify[expr]
+FFormSimplify[expr, preReplRules, postReplRules]
 Simplifies expressions using FORM's output optimization (O4) algorithms.
 The first form uses default replacement rules for momentum expansion.
 The second form allows specifying custom FORM preRepl and postRepl rules.
@@ -20,44 +20,44 @@ Essential for handling large expressions that benefit from FORM's optimization c
 
 FSetAlwaysExpandLorentzTensors::usage = "";
 
-IterativelySum::usage = "IterativelySum[list]
-IterativelySum[list, finalSize]
+FIterativelySum::usage = "FIterativelySum[list]
+FIterativelySum[list, finalSize]
 Efficiently sums large lists of expressions by breaking them into subsets.
 The first form repeatedly sums and simplifies until only a single expression remains.
 The second form returns a list of specified finalSize with equally-sized terms.
 Uses parallel processing and incremental simplification for optimal performance.
 Crucial for managing memory and computation time in large symbolic calculations.";
 
-FormMomentumExpansion::usage = "FormMomentumExpansion[]
-FormMomentumExpansion[momenta...]
+FMakeFormMomentumExpansion::usage = "FMakeFormMomentumExpansion[]
+FMakeFormMomentumExpansion[momenta...]
 Creates a FORM rule to expand out any scalar products in expressions.
 The optional momenta arguments specify which momenta to expand.
-Can be passed as a postRepl or preRepl rule to FormTrace or FormSimplify.
+Can be passed as a postRepl or preRepl rule to FormTrace or FFormSimplify.
 Essential for converting momentum-space expressions into expanded form for integration.";
 
-FiniteTFormMomentumExpansion::usage = "FiniteTFormMomentumExpansion[]  
-FiniteTFormMomentumExpansion[momenta...]
+FMakeFiniteTFormMomentumExpansion::usage = "FMakeFiniteTFormMomentumExpansion[]
+FMakeFiniteTFormMomentumExpansion[momenta...]
 Creates a FORM rule to expand scalar products into spatial and temporal parts.
 The optional momenta arguments specify which momenta to expand.
 Separates d-dimensional momenta into (d-1)-dimensional spatial parts and time components.
-Can be passed as a postRepl or preRepl rule to FormTrace or FormSimplify.
+Can be passed as a postRepl or preRepl rule to FormTrace or FFormSimplify.
 Useful for finite-temperature field theory calculations.";
 
-MakeP0Rule::usage = "MakeP0Rule[{p1, p2, ...}, {proj1, proj2, ...}]
+FMakeP0Rule::usage = "FMakeP0Rule[{p1, p2, ...}, {proj1, proj2, ...}]
 Creates a replacement rule to project temporal components of momentum expressions.
 The first argument is a list of momenta {p1, p2, ...}.
 The second argument is a list of projections {proj1, proj2, ...} for the temporal components.
 Sets vec[pi,0] to the value of proji for finite-temperature field theory calculations.
 Essential for evaluating expressions at specific temporal momentum projections.";
 
-MakeP0FormRule::usage = "MakeP0FormRule[{p1, p2, ...}, {proj1, proj2, ...}]
+FMakeP0FormRule::usage = "FMakeP0FormRule[{p1, p2, ...}, {proj1, proj2, ...}]
 Creates a FORM rule to project temporal components of momentum expressions.
 The first argument is a list of momenta {p1, p2, ...}.
 The second argument is a list of projections {proj1, proj2, ...} for the temporal components.
 Sets vec[pi,0] to the value of proji for finite-temperature field theory calculations.
 Essential for evaluating expressions at specific temporal momentum projections.";
 
-MakeSPFormRule::usage = "MakeSPFormRule[{l1, l2, ...}, p, {p1, p2, ...}]
+FMakeSPFormRule::usage = "FMakeSPFormRule[{l1, l2, ...}, p, {p1, p2, ...}]
 Creates a FORM rule for symmetric point momentum configuration.
 The first argument is a list of loop momenta {l1, l2, ...}.
 The second argument p is the average momentum scale.
@@ -65,7 +65,7 @@ The third argument is a list of external leg momenta {p1, p2, ...}.
 Projects all momenta to a symmetric configuration with average momentum p.
 Crucial for evaluating loop integrals at the symmetric point for RG calculations.";
 
-MakeSPFiniteTFormRule::usage = "MakeSPFiniteTFormRule[{l1, l2, ...}, p, {p1, p2, ...}]
+FMakeSPFiniteTFormRule::usage = "FMakeSPFiniteTFormRule[{l1, l2, ...}, p, {p1, p2, ...}]
 Creates a FORM rule for (d-1)-dimensional symmetric point configuration.
 The first argument is a list of loop momenta {l1, l2, ...}.
 The second argument p is the average spatial momentum scale.
@@ -73,15 +73,15 @@ The third argument is a list of external leg momenta {p1, p2, ...}.
 Projects momenta to spatial symmetric point configuration for finite-temperature calculations.
 Separates temporal and spatial components for thermal field theory applications.";
 
-ClearTraceCache::usage = "ClearTraceCache[]
-ClearTraceCache[subdirectory]
+FClearTraceCache::usage = "FClearTraceCache[]
+FClearTraceCache[subdirectory]
 Removes cached trace files from the trace cache directory.
 The first form removes all files in the main trace cache (usually /tmp/TraceCache/).
 The second form removes files from a specific subdirectory within the cache.
 Use this to free up disk space or force recomputation of previously traced expressions.
 Essential for cache management in long-running calculations.";
 
-FSetCacheDirectory::usage = "SetCacheDirectory[folder]
+FSetCacheDirectory::usage = "FSetCacheDirectory[folder]
 FSetCacheDirectory[]
 Changes the directory where traced expressions are cached.
 The first form sets the cache directory to the specified folder path.
@@ -89,7 +89,7 @@ The second form resets the cache directory to the default /tmp/TraceCache/.
 The cache directory stores intermediate results to avoid recomputation.
 Per default, the cache directory is set to /tmp/TraceCache/.";
 
-DiagramSimplify::usage = "DiagramSimplify[expr]
+FDiagramSimplify::usage = "FDiagramSimplify[expr]
 Simplifies diagrammatic expressions by collecting terms and optimizing their structure.
 Uses advanced algorithms to identify common subexpressions and factor them efficiently.
 Particularly effective for expressions with many coupling constants and similar terms.

@@ -34,28 +34,28 @@ AppendTo[tests, TestCreate[
 ]];
 
 (**********************************************************************************
-    TRACY: IterativelySum catch-all (E9)
+    TRACY: FIterativelySum catch-all (E9)
 **********************************************************************************)
 
 AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`IterativelySum["not a list"], "AbortTriggered"],
+    CheckAbort[FunKit`FIterativelySum["not a list"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
-    TestID -> "E9: IterativelySum with non-list should abort"
+    TestID -> "E9: FIterativelySum with non-list should abort"
 ]];
 
 AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`IterativelySum[42], "AbortTriggered"],
+    CheckAbort[FunKit`FIterativelySum[42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
-    TestID -> "E9: IterativelySum with integer should abort"
+    TestID -> "E9: FIterativelySum with integer should abort"
 ]];
 
 AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`IterativelySum[{1, 2}, "not an integer"], "AbortTriggered"],
+    CheckAbort[FunKit`FIterativelySum[{1, 2}, "not an integer"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
-    TestID -> "E9: IterativelySum with non-integer finalSize should abort"
+    TestID -> "E9: FIterativelySum with non-integer finalSize should abort"
 ]];
 
 (**********************************************************************************
@@ -77,44 +77,44 @@ AppendTo[tests, TestCreate[
 ]];
 
 (**********************************************************************************
-    TRACY: ClearTraceCache path sanitization (H7)
+    TRACY: FClearTraceCache path sanitization (H7)
 **********************************************************************************)
 
 AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`ClearTraceCache["../../etc"], "AbortTriggered"],
+    CheckAbort[FunKit`FClearTraceCache["../../etc"], "AbortTriggered"],
     "AbortTriggered",
-    {FunKit`ClearTraceCache::invalidPath},
-    TestID -> "H7: ClearTraceCache with path traversal should abort"
+    {FunKit`FClearTraceCache::invalidPath},
+    TestID -> "H7: FClearTraceCache with path traversal should abort"
 ]];
 
 AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`ClearTraceCache["/absolute/path"], "AbortTriggered"],
+    CheckAbort[FunKit`FClearTraceCache["/absolute/path"], "AbortTriggered"],
     "AbortTriggered",
-    {FunKit`ClearTraceCache::invalidPath},
-    TestID -> "H7: ClearTraceCache with absolute path should abort"
+    {FunKit`FClearTraceCache::invalidPath},
+    TestID -> "H7: FClearTraceCache with absolute path should abort"
 ]];
 
 AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`ClearTraceCache["foo/../bar"], "AbortTriggered"],
+    CheckAbort[FunKit`FClearTraceCache["foo/../bar"], "AbortTriggered"],
     "AbortTriggered",
-    {FunKit`ClearTraceCache::invalidPath},
-    TestID -> "H7: ClearTraceCache with embedded .. should abort"
+    {FunKit`FClearTraceCache::invalidPath},
+    TestID -> "H7: FClearTraceCache with embedded .. should abort"
 ]];
 
 (**********************************************************************************
-    TRACY: FormMomentumExpansion stub (H1)
+    TRACY: FMakeFormMomentumExpansion stub (H1)
 **********************************************************************************)
 
 AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`FormMomentumExpansion[q1, q2], "AbortTriggered"],
+    CheckAbort[FunKit`FMakeFormMomentumExpansion[q1, q2], "AbortTriggered"],
     "AbortTriggered",
-    {FunKit`FormMomentumExpansion::notImplemented},
-    TestID -> "H1: FormMomentumExpansion with args should abort (not implemented)"
+    {FunKit`FMakeFormMomentumExpansion::notImplemented},
+    TestID -> "H1: FMakeFormMomentumExpansion with args should abort (not implemented)"
 ]];
 
 (* Zero-arg call should succeed (initialization) *)
 AppendTo[tests, TestCreate[
-    (FunKit`FormMomentumExpansion[]; True),
+    (FunKit`FMakeFormMomentumExpansion[]; True),
     True,
-    TestID -> "H1: FormMomentumExpansion[] should succeed as initialization"
+    TestID -> "H1: FMakeFormMomentumExpansion[] should succeed as initialization"
 ]];

@@ -67,7 +67,7 @@ RGInvGeneralizedFlowEquation :=
     DSEs
 **********************************************************************************)
 
-MakeDSE[setup_, field_] :=
+FMakeDSE[setup_, field_] :=
     Module[{classAct, dS},
         AssertFSetup[setup];
         AssertDerivativeList[setup, {field}];

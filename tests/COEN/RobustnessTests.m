@@ -92,47 +92,37 @@ AppendTo[tests, TestCreate[
 ]];
 
 (**********************************************************************************
-    COEN: FSetCodeOptimizationLevel validation
+    COEN: FSetCodeOptimization validation
 **********************************************************************************)
 
 AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`FSetCodeOptimizationLevel["not a number"], "AbortTriggered"],
+    CheckAbort[FunKit`FSetCodeOptimization["not a boolean"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
-    TestID -> "FSetCodeOptimizationLevel with non-integer should abort"
+    TestID -> "FSetCodeOptimization with non-boolean should abort"
 ]];
 
 AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`FSetCodeOptimizationLevel[5], "AbortTriggered"],
+    CheckAbort[FunKit`FSetCodeOptimization[42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
-    TestID -> "FSetCodeOptimizationLevel with out-of-range value should abort"
+    TestID -> "FSetCodeOptimization with integer should abort"
 ]];
 
 AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`FSetCodeOptimizationLevel[-1], "AbortTriggered"],
-    "AbortTriggered",
-    {FunKit`FunKit::invalidArguments},
-    TestID -> "FSetCodeOptimizationLevel with negative value should abort"
-]];
-
-AppendTo[tests, TestCreate[
-    (FunKit`FSetCodeOptimizationLevel[0]; True),
+    (FunKit`FSetCodeOptimization[True]; True),
     True,
-    TestID -> "FSetCodeOptimizationLevel with 0 should succeed"
+    TestID -> "FSetCodeOptimization with True should succeed"
 ]];
 
 AppendTo[tests, TestCreate[
-    (FunKit`FSetCodeOptimizationLevel[1]; True),
+    (FunKit`FSetCodeOptimization[False]; True),
     True,
-    TestID -> "FSetCodeOptimizationLevel with 1 should succeed"
+    TestID -> "FSetCodeOptimization with False should succeed"
 ]];
 
-AppendTo[tests, TestCreate[
-    (FunKit`FSetCodeOptimizationLevel[2]; True),
-    True,
-    TestID -> "FSetCodeOptimizationLevel with 2 should succeed"
-]];
+(* Reset to default *)
+FunKit`FSetCodeOptimization[True];
 
 (**********************************************************************************
     COEN: FSetCodeChunkSize validation
@@ -158,35 +148,8 @@ AppendTo[tests, TestCreate[
     TestID -> "FSetCodeChunkSize with valid integer should succeed"
 ]];
 
-(* Reset to defaults *)
-FunKit`FSetCodeOptimizationLevel[2];
+(* Reset to default *)
 FunKit`FSetCodeChunkSize[50];
-
-(**********************************************************************************
-    COEN: FSetGPUTarget validation
-**********************************************************************************)
-
-AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`FSetGPUTarget["invalid"], "AbortTriggered"],
-    "AbortTriggered",
-    {FunKit`FunKit::invalidArguments},
-    TestID -> "FSetGPUTarget with non-boolean should abort"
-]];
-
-AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`FSetGPUTarget[42], "AbortTriggered"],
-    "AbortTriggered",
-    {FunKit`FunKit::invalidArguments},
-    TestID -> "FSetGPUTarget with integer should abort"
-]];
-
-AppendTo[tests, TestCreate[
-    (FunKit`FSetGPUTarget[True]; True),
-    True,
-    TestID -> "FSetGPUTarget with True should succeed"
-]];
-
-FunKit`FSetGPUTarget[False];
 
 (**********************************************************************************
     COEN: FSetFastMath validation
@@ -269,18 +232,6 @@ AppendTo[tests, TestCreate[
     True,
     TestID -> "FSetCodePrecision with double should succeed"
 ]];
-
-(**********************************************************************************
-    COEN: FSetCodeOptimizationLevel level 3 validation
-**********************************************************************************)
-
-AppendTo[tests, TestCreate[
-    (FunKit`FSetCodeOptimizationLevel[3]; True),
-    True,
-    TestID -> "FSetCodeOptimizationLevel with 3 should succeed"
-]];
-
-FunKit`FSetCodeOptimizationLevel[2];
 
 (**********************************************************************************
     COEN: CppForm basic test

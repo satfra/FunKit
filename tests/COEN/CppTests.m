@@ -91,85 +91,67 @@ AppendTo[tests, TestCreate[exec2 =!= $Failed, True, TestID -> "Verify compilatio
 AppendTo[tests, TestCreate[output2, expected, TestID -> "Verify return value of C++ function with arithmetic operations"]];
 
 (**********************************************************************************
-    Optimization level 0 (legacy) produces valid C++ code
+    Optimization enabled (True) produces valid C++ code
 **********************************************************************************)
 
-Block[{FunKit`Private`$codeOptimizationLevel = 0},
-    funBody3 = MakeCppFunction[expr, "Name" -> "fun0", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+Block[{FunKit`Private`$codeOptimize = True},
+    funBodyOpt = MakeCppFunction[expr, "Name" -> "funOpt", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
 ];
 
-exec3 = CreateExecutable["
+execOpt = CreateExecutable["
 #include <iostream>
 #include <iomanip>
 #include <cmath>
 
 " <> powrCode <> "
-" <> funBody3 <> "
+" <> funBodyOpt <> "
 
 int main () {
-  std::cout << std::setprecision (10) << fun0 (1.5) << std::endl;
+  std::cout << std::setprecision (10) << funOpt (1.5) << std::endl;
 }
-", "FunKitCppTest3", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
+", "FunKitCppTestOpt", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
 
-output3 = Import["!" <> QuoteFile[exec3], "Text"];
+outputOpt = Import["!" <> QuoteFile[execOpt], "Text"];
 
-AppendTo[tests, TestCreate[exec3 =!= $Failed, True, TestID -> "Verify compilation at optimization level 0"]];
+AppendTo[tests, TestCreate[execOpt =!= $Failed, True, TestID -> "Verify compilation with optimization enabled"]];
 
-AppendTo[tests, TestCreate[output3, expected, TestID -> "Verify numerical agreement at optimization level 0"]];
+AppendTo[tests, TestCreate[outputOpt, expected, TestID -> "Verify numerical agreement with optimization enabled"]];
 
 (**********************************************************************************
-    Optimization level 1 produces valid C++ code
+    Optimization disabled (False) produces valid C++ code
 **********************************************************************************)
 
-Block[{FunKit`Private`$codeOptimizationLevel = 1},
-    funBody4 = MakeCppFunction[expr, "Name" -> "fun1", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+Block[{FunKit`Private`$codeOptimize = False},
+    funBodyNoOpt = MakeCppFunction[expr, "Name" -> "funNoOpt", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
 ];
 
-exec4 = CreateExecutable["
+execNoOpt = CreateExecutable["
 #include <iostream>
 #include <iomanip>
 #include <cmath>
 
 " <> powrCode <> "
-" <> funBody4 <> "
+" <> funBodyNoOpt <> "
 
 int main () {
-  std::cout << std::setprecision (10) << fun1 (1.5) << std::endl;
+  std::cout << std::setprecision (10) << funNoOpt (1.5) << std::endl;
 }
-", "FunKitCppTest4", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
+", "FunKitCppTestNoOpt", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
 
-output4 = Import["!" <> QuoteFile[exec4], "Text"];
+outputNoOpt = Import["!" <> QuoteFile[execNoOpt], "Text"];
 
-AppendTo[tests, TestCreate[exec4 =!= $Failed, True, TestID -> "Verify compilation at optimization level 1"]];
+AppendTo[tests, TestCreate[execNoOpt =!= $Failed, True, TestID -> "Verify compilation with optimization disabled"]];
 
-AppendTo[tests, TestCreate[output4, expected, TestID -> "Verify numerical agreement at optimization level 1"]];
+AppendTo[tests, TestCreate[outputNoOpt, expected, TestID -> "Verify numerical agreement with optimization disabled"]];
 
 (**********************************************************************************
-    Optimization level 2 (default) produces valid C++ code
+    FMA helper (needed by all tests below since all passes now run)
 **********************************************************************************)
 
-Block[{FunKit`Private`$codeOptimizationLevel = 2},
-    funBody5 = MakeCppFunction[expr, "Name" -> "fun2", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
-];
-
-exec5 = CreateExecutable["
-#include <iostream>
-#include <iomanip>
+fmaCode = "
 #include <cmath>
-
-" <> powrCode <> "
-" <> funBody5 <> "
-
-int main () {
-  std::cout << std::setprecision (10) << fun2 (1.5) << std::endl;
-}
-", "FunKitCppTest5", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
-
-output5 = Import["!" <> QuoteFile[exec5], "Text"];
-
-AppendTo[tests, TestCreate[exec5 =!= $Failed, True, TestID -> "Verify compilation at optimization level 2"]];
-
-AppendTo[tests, TestCreate[output5, expected, TestID -> "Verify numerical agreement at optimization level 2"]];
+auto fma(auto a, auto b, auto c) { return std::fma(a, b, c); }
+";
 
 (**********************************************************************************
     Large expression with accumulator pattern compiles correctly
@@ -177,7 +159,7 @@ AppendTo[tests, TestCreate[output5, expected, TestID -> "Verify numerical agreem
 
 largeExpr = Sum[Sin[a + i] * Cos[a - i] / (1 + i * a), {i, 1, 80}];
 
-Block[{FunKit`Private`$codeOptimizationLevel = 2, FunKit`Private`$codeMaxChunkSize = 10, FunKit`Private`$availableRegisters = 8},
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxChunkSize = 10, FunKit`Private`$availableRegisters = 8, FunKit`Private`$codeMaxKernelTerms = 10000},
     funBody6 = MakeCppFunction[largeExpr, "Name" -> "funLarge", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
 ];
 
@@ -187,6 +169,7 @@ exec6 = CreateExecutable["
 #include <cmath>
 using NumberType = double;
 
+" <> fmaCode <> "
 " <> powrCode <> "
 " <> funBody6 <> "
 
@@ -204,16 +187,11 @@ AppendTo[tests, TestCreate[exec6 =!= $Failed, True, TestID -> "Verify compilatio
 AppendTo[tests, TestCreate[output6, expectedLarge, TestID -> "Verify numerical agreement of large expression with accumulator"]];
 
 (**********************************************************************************
-    Optimization level 3 produces valid C++ code
+    FMA-enabled optimization produces valid C++ code
 **********************************************************************************)
 
-fmaCode = "
-#include <cmath>
-auto fma(auto a, auto b, auto c) { return std::fma(a, b, c); }
-";
-
-Block[{FunKit`Private`$codeOptimizationLevel = 3, FunKit`Private`$codeGPURegisterBudget = 32},
-    funBody7 = MakeCppFunction[expr, "Name" -> "fun3", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeGPURegisterBudget = 32},
+    funBody7 = MakeCppFunction[expr, "Name" -> "funFMA", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
 ];
 
 exec7 = CreateExecutable["
@@ -226,31 +204,31 @@ exec7 = CreateExecutable["
 " <> funBody7 <> "
 
 int main () {
-  std::cout << std::setprecision (10) << fun3 (1.5) << std::endl;
+  std::cout << std::setprecision (10) << funFMA (1.5) << std::endl;
 }
 ", "FunKitCppTest7", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
 
 output7 = Import["!" <> QuoteFile[exec7], "Text"];
 
-AppendTo[tests, TestCreate[exec7 =!= $Failed, True, TestID -> "Verify compilation at optimization level 3"]];
+AppendTo[tests, TestCreate[exec7 =!= $Failed, True, TestID -> "Verify compilation with FMA optimization"]];
 
-AppendTo[tests, TestCreate[output7, expected, TestID -> "Verify numerical agreement at optimization level 3"]];
+AppendTo[tests, TestCreate[output7, expected, TestID -> "Verify numerical agreement with FMA optimization"]];
 
 (**********************************************************************************
     FMA detection: verify fma() appears in output
 **********************************************************************************)
 
-Block[{FunKit`Private`$codeOptimizationLevel = 3, FunKit`Private`$codeFMARestructure = True, FunKit`Private`$codeGPURegisterBudget = 32},
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFMARestructure = True, FunKit`Private`$codeGPURegisterBudget = 32},
     fmaTestCode = CppCode[a * b + c * d + e];
 ];
 
-AppendTo[tests, TestCreate[StringContainsQ[fmaTestCode, "fma("], True, TestID -> "Verify FMA detection in level 3 output"]];
+AppendTo[tests, TestCreate[StringContainsQ[fmaTestCode, "fma("], True, TestID -> "Verify FMA detection in optimized output"]];
 
 (**********************************************************************************
     Fast-math intrinsics emission
 **********************************************************************************)
 
-Block[{FunKit`Private`$codeOptimizationLevel = 3, FunKit`Private`$codeFastMath = True, FunKit`Private`$codePrecision = "single", FunKit`Private`$codeGPURegisterBudget = 32},
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFastMath = True, FunKit`Private`$codePrecision = "single", FunKit`Private`$codeGPURegisterBudget = 32},
     fastMathCode = CppCode[Exp[x] + Log[x]];
 ];
 
@@ -258,7 +236,7 @@ AppendTo[tests, TestCreate[StringContainsQ[fastMathCode, "__expf("], True, TestI
 AppendTo[tests, TestCreate[StringContainsQ[fastMathCode, "__logf("], True, TestID -> "Verify __logf in fast-math output"]];
 
 (* Fast-math should NOT emit intrinsics when precision is double *)
-Block[{FunKit`Private`$codeOptimizationLevel = 3, FunKit`Private`$codeFastMath = True, FunKit`Private`$codePrecision = "double", FunKit`Private`$codeGPURegisterBudget = 32},
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFastMath = True, FunKit`Private`$codePrecision = "double", FunKit`Private`$codeGPURegisterBudget = 32},
     noFastMathCode = CppCode[Exp[x] + Log[x]];
 ];
 
@@ -270,7 +248,7 @@ AppendTo[tests, TestCreate[StringFreeQ[noFastMathCode, "__expf("], True, TestID 
 
 largeExprSplit = Sum[Sin[a + i] * Cos[a - i] / (1 + i * a), {i, 1, 600}];
 
-Block[{FunKit`Private`$codeOptimizationLevel = 3, FunKit`Private`$codeMaxKernelTerms = 200, FunKit`Private`$codeGPURegisterBudget = 64},
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms = 200, FunKit`Private`$codeGPURegisterBudget = 64},
     splitCode = CppCode[largeExprSplit];
 ];
 
@@ -281,7 +259,7 @@ AppendTo[tests, TestCreate[StringContainsQ[splitCode, "// subkernel 2"], True, T
     Transcendental hoisting
 **********************************************************************************)
 
-Block[{FunKit`Private`$codeOptimizationLevel = 3, FunKit`Private`$codeGPURegisterBudget = 32},
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeGPURegisterBudget = 32},
     tranCode = CppCode[Exp[a + b * c] + 2 * Exp[a + b * c]];
 ];
 

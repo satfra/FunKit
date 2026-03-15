@@ -67,14 +67,18 @@ Generates a Fortran function definition based on specified options.
 The second form additionally generates Fortran code for the given expression.
 See Options[MakeFortranFunction] for available settings.";
 
-CppForm::usage = "CppForm[expr]
-Converts a Mathematica expression into its C++ code representation.";
+CppForm::usage = "CppForm[expr, opts]
+Converts a Mathematica expression into its C++ code representation.
+Options:
+  \"Format\" -> False (default) — if True, run clang-format on the result via FormatCppCode.";
 
 JuliaForm::usage = "JuliaForm[expr]
 Converts a Mathematica expression into its Julia code representation.";
 
-FormatCppCode::usage = "FormatCppCode[codeString]
-Uses clangd, if available on the system, to automatically format a given string of C++ code.";
+FormatCppCode::usage = "FormatCppCode[codeString, opts]
+Uses clang-format, if available on the system, to automatically format a given string of C++ code.
+Options:
+  \"Format\" -> True (default) — if False, return the string unchanged without running clang-format.";
 
 MakeParameterString::usage = "MakeParameterString[param]
 Generates the parameter string for a single parameter, either specified by an Association with keys 'Name', 'Type', 'Const', 'Reference' or by a string giving its name.";
@@ -84,21 +88,13 @@ Sets the number of available registers for optimization in C++ code generation.
 This is in particular important for calculations on the GPU, where the number of registers is very limited.
 The default value is 32, but varying $availableRegisters can help optimize performance."
 
-FSetCodeOptimizationLevel::usage = "FSetCodeOptimizationLevel[n]
-Sets the optimization level for C++ code generation.
-Level 0: legacy behavior (simple weighted frequency CSE).
-Level 1: interpolator hoisting + reciprocal hoisting + CSE.
-Level 2: full pipeline including algebraic factoring and register-pressure splitting.
-Level 3: GPU-specific passes (FMA restructuring, transcendental hoisting, sub-kernel splitting).
-Default is 2."
+FSetCodeOptimization::usage = "FSetCodeOptimization[b]
+Enables (True, default) or disables (False) the C++ code optimization pipeline."
 
 FSetCodeChunkSize::usage = "FSetCodeChunkSize[n]
 Sets the maximum number of terms per accumulator chunk in the register-pressure splitting pass.
-Only relevant when $codeOptimizationLevel >= 2 and $codeUseAccumulator is True.
+Only relevant when optimization is enabled and $codeUseAccumulator is True.
 Default is 50."
-
-FSetGPUTarget::usage = "FSetGPUTarget[True/False]
-Enables GPU-specific code emission."
 
 FSetFastMath::usage = "FSetFastMath[True/False]
 Enables CUDA fast-math intrinsics (__expf, __logf, etc.). Single precision only."

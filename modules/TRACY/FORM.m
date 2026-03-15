@@ -90,7 +90,7 @@ endargument;
 
 (* ::Input::Initialization:: *)
 
-FiniteTFormMomentumExpansion[momenta___] :=
+FMakeFiniteTFormMomentumExpansion[momenta___] :=
     Module[{Defs, code},
         RemoveFromExtraVars /@ {momenta};
         code = StringTemplate["
@@ -112,7 +112,7 @@ id FTxsp(p1?momFT,p2?momFT)^-1 = (FTxsps(p1,p2) + FTxvec(p1,0)*FTxvec(p2,0))^-1;
 
 (* ::Input::Initialization:: *)
 
-MakeP0FormRule[{momenta__}, {projections__}] :=
+FMakeP0FormRule[{momenta__}, {projections__}] :=
     Module[{momentaList, projectionsList, code},
         RemoveFromExtraVars /@ {momenta};
         momentaList = {momenta};
@@ -144,7 +144,7 @@ id `mom`(0)^-1 = (`proj`)^-1;", <|"mom" -> momentaList[[i]], "proj" -> projectio
         Return[{code}];
     ];
 
-MakeP0Rule[{momenta__}, {projections__}] :=
+FMakeP0Rule[{momenta__}, {projections__}] :=
     Thread[Map[Global`vec[#, 0]&, {momenta}] -> {projections}];
 
 (* ::Subsubsection:: *)
@@ -153,7 +153,7 @@ MakeP0Rule[{momenta__}, {projections__}] :=
 
 (* ::Input::Initialization:: *)
 
-MakeSPFormRule[{loopMomenta__}, p_, {momenta__}] :=
+FMakeSPFormRule[{loopMomenta__}, p_, {momenta__}] :=
     Module[{momentaList, loopMomentaList, Defs, nPt, nLoops, nPtId, nPtCrossId, nPtqId, SPFormRule, repRules, depth = 8, i, j},
         RemoveFromExtraVars /@ {momenta};
         momentaList = {momenta};
@@ -187,7 +187,7 @@ id FTxsp(p1?exMom,l1?loopMom) = (sqrt(FTxsp(p,p))*sqrt(FTxsp(l1,l1))*cos(p1,l1))
         Return[{SPFormRule}];
     ];
 
-MakeSPFiniteTFormRule[{loopMomenta__}, p_, {momenta__}] :=
+FMakeSPFiniteTFormRule[{loopMomenta__}, p_, {momenta__}] :=
     Module[{momentaList, loopMomentaList, Defs, nPt, nLoops, nPtId, nPtCrossId, nPtqId, SPFormRule, repRules, depth = 8, i, j},
         RemoveFromExtraVars /@ {momenta};
         momentaList = {momenta};

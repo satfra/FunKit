@@ -49,7 +49,7 @@ flowA4 = Import[$FunKitDirectory <> "/tests/boilerplate/FlowA4.m"];
 
 Do[
     Do[
-        Block[{FunKit`Private`$codeOptimizationLevel = lvl},
+        Block[{FunKit`Private`$codeOptimize = lvl},
             {timing, body} = AbsoluteTiming[
                 MakeCppFunction[flowA4[[elem]],
                     "Name" -> "flow_" <> ToString[elem] <> "_lvl" <> ToString[lvl],
@@ -60,11 +60,11 @@ Do[
             AppendTo[tests, TestCreate[
                 StringQ[body],
                 True,
-                TestID -> "FlowA4[" <> ToString[elem] <> "] opt level " <> ToString[lvl] <> " generates valid code (took " <> ToString[NumberForm[timing, 3]] <> "s)"
+                TestID -> "FlowA4[" <> ToString[elem] <> "] optimize=" <> ToString[lvl] <> " generates valid code (took " <> ToString[NumberForm[timing, 3]] <> "s)"
             ]];
         ];
         ,
-        {lvl, {0, 1, 2}}
+        {lvl, {True, False}}
     ];
     ,
     {elem, 1, Length[flowA4]}
@@ -130,9 +130,9 @@ If[execCompile =!= $Failed,
 **********************************************************************************)
 
 Do[
-    Block[{FunKit`Private`$codeOptimizationLevel = lvl},
+    Block[{FunKit`Private`$codeOptimize = lvl},
         funBodyLvl = MakeCppFunction[flowA4[[1]],
-            "Name" -> "flowA4_lvl" <> ToString[lvl],
+            "Name" -> "flowA4_opt" <> ToString[lvl],
             "Body" -> "",
             "Parameters" -> {"l1", "p", "k", "cosl1p1", "cosl1p2", "cosl1p3"}
         ];
@@ -145,18 +145,18 @@ Do[
 " <> funBodyLvl <> "
 
 int main () {
-  std::cout << std::setprecision (12) << flowA4_lvl" <> ToString[lvl] <> " (2.5, 1.0, 3.0, 0.2, 0.3, 0.4) << std::endl;
+  std::cout << std::setprecision (12) << flowA4_opt" <> ToString[lvl] <> " (2.5, 1.0, 3.0, 0.2, 0.3, 0.4) << std::endl;
 }
-", "FunKitFlowA4Lvl" <> ToString[lvl], "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
+", "FunKitFlowA4Opt" <> ToString[lvl], "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
     If[execLvl =!= $Failed,
         outputLvl = Import["!" <> QuoteFile[execLvl], "Text"];
         numericOutputLvl = Quiet @ Read[StringToStream[outputLvl], Number];
         AppendTo[tests, TestCreate[
             NumberQ[numericOutputLvl] && Abs[numericOutputLvl - numericOutputCompile] < 1*^-8,
             True,
-            TestID -> "FlowA4[1] opt level " <> ToString[lvl] <> " matches default output"
+            TestID -> "FlowA4[1] optimize=" <> ToString[lvl] <> " matches default output"
         ]];
     ];
     ,
-    {lvl, {0, 1}}
+    {lvl, {False}}
 ];

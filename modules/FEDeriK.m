@@ -65,7 +65,7 @@ The Wetterich equation for the functional renormalization group: \[PartialD]_t \
 Returns an FEx representing the right-hand side of the Wetterich equation with AnyField placeholders.
 This is a predefined master equation that can be used with FTakeDerivatives to derive flow equations.";
 
-MakeDSE::usage = "MakeDSE[setup, field]
+FMakeDSE::usage = "FMakeDSE[setup, field]
 Constructs the Dyson-Schwinger equation for the specified field.
 Takes the functional derivative of the classical action with respect to the field and applies the substitution \[CurlyPhi] \[RightArrow] \[CapitalPhi] + G^{ab} \[Delta]/\[Delta]\[CapitalPhi]^b.
 Returns the DSE with all derivative operators resolved.";

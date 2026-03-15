@@ -81,7 +81,7 @@ $codeOptimizeInterps = {a_Symbol[__] /; Not @ MatchQ[a, Times | Plus | Power | R
 
 $availableRegisters = 32;
 
-$codeOptimizationLevel = 2;
+$codeOptimize = True;
 
 $codeUseAccumulator = True;
 
@@ -90,8 +90,6 @@ $codeMaxChunkSize = 50;
 $codeHoistReciprocals = True;
 
 $codeFactorTerms = True;
-
-$codeGPUTarget = False;
 
 $codeFastMath = False;
 
@@ -114,26 +112,12 @@ FSetRegisterSize[___] :=
         Abort[]
     );
 
-FSetCodeOptimizationLevel[n_Integer] /; 0 <= n <= 3 :=
-    Module[{},
-        $codeOptimizationLevel = n;
-        If[n === 3, $codeGPUTarget = True];
-    ];
+FSetCodeOptimization[b_?BooleanQ] :=
+    Set[$codeOptimize, b];
 
-FSetCodeOptimizationLevel[___] :=
+FSetCodeOptimization[___] :=
     (
-        Message[FunKit::invalidArguments, FSetCodeOptimizationLevel];
-        Abort[]
-    );
-
-FSetGPUTarget[b_?BooleanQ] :=
-    Module[{},
-        $codeGPUTarget = b;
-    ];
-
-FSetGPUTarget[___] :=
-    (
-        Message[FunKit::invalidArguments, FSetGPUTarget];
+        Message[FunKit::invalidArguments, FSetCodeOptimization];
         Abort[]
     );
 

@@ -19,18 +19,18 @@ FSetCacheDirectory[] :=
 
 FSetCacheDirectory[];
 
-ClearTraceCache[] :=
+FClearTraceCache[] :=
     (
         DeleteDirectory[$TraceCacheDir, DeleteContents -> True];
         CreateDirectory[$TraceCacheDir]
     )
 
-ClearTraceCache::invalidPath = "The subdirectory path \"`1`\" is invalid. It must not contain \"..\" or start with \"/\".";
+FClearTraceCache::invalidPath = "The subdirectory path \"`1`\" is invalid. It must not contain \"..\" or start with \"/\".";
 
-ClearTraceCache[str_String] :=
+FClearTraceCache[str_String] :=
     Module[{},
         If[StringContainsQ[str, ".."] || StringMatchQ[str, "/" ~~ ___],
-            Message[ClearTraceCache::invalidPath, str];
+            Message[FClearTraceCache::invalidPath, str];
             Abort[]
         ];
         DeleteDirectory[$TraceCacheDir <> str, DeleteContents -> True]

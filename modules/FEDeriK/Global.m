@@ -59,9 +59,9 @@ MakeClassicalAction[] /; Head[$GlobalSetup] =!= Symbol :=
 MakeClassicalAction[] :=
     (Message[FunKit::noGlobalSetup]; Abort[]);
 
-MakeDSE[field_] /; Head[$GlobalSetup] =!= Symbol :=
-    MakeDSE[$GlobalSetup, field];
-MakeDSE[field_] :=
+FMakeDSE[field_] /; Head[$GlobalSetup] =!= Symbol :=
+    FMakeDSE[$GlobalSetup, field];
+FMakeDSE[field_] :=
     (Message[FunKit::noGlobalSetup]; Abort[]);
 
 FResolveDerivatives[expr_] /; Head[$GlobalSetup] =!= Symbol :=

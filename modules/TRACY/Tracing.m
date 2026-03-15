@@ -93,20 +93,20 @@ $StandardQuickSimplify = Quiet @ Simplify[#, TimeConstraint -> 0.1]&;
 
 $StandardSimplify = Simplify[#]&;
 
-IterativelySum[expr_List] :=
+FIterativelySum[expr_List] :=
     Module[{returnValue},
         returnValue = expr;
         If[Length[returnValue] == 1,
             Return[returnValue]
         ];
-        While[Length[returnValue] > 1, returnValue = ParallelMap[$StandardQuickSimplify @ FormSimplify[Total[#]]&, Partition[returnValue, UpTo[4]]]];
+        While[Length[returnValue] > 1, returnValue = ParallelMap[$StandardQuickSimplify @ FFormSimplify[Total[#]]&, Partition[returnValue, UpTo[4]]]];
         Return[$StandardQuickSimplify[returnValue[[1]]]];
     ]
 
-IterativelySum[expr_List, finalSize_Integer /; finalSize >= 0] :=
+FIterativelySum[expr_List, finalSize_Integer /; finalSize >= 0] :=
     Module[{processLists, returnValue, i},
         If[finalSize == 0,
-            Return[IterativelySum[expr][[1]]];
+            Return[FIterativelySum[expr][[1]]];
         ];
         processLists = expr;
         If[Length[processLists] == finalSize,
@@ -114,13 +114,13 @@ IterativelySum[expr_List, finalSize_Integer /; finalSize >= 0] :=
         ];
         processLists = Sort[processLists, (ByteCount[#1] > ByteCount[#2])&];
         processLists = Table[Downsample[processLists, finalSize, i], {i, 1, finalSize}];
-        returnValue = Map[IterativelySum[#]&, processLists];
+        returnValue = Map[FIterativelySum[#]&, processLists];
         Return[Flatten[returnValue]]
     ];
 
-IterativelySum[___] :=
+FIterativelySum[___] :=
     (
-        Message[FunKit::invalidArguments, IterativelySum];
+        Message[FunKit::invalidArguments, FIterativelySum];
         Abort[]
     );
 
@@ -140,10 +140,10 @@ findCouplings[expr_] :=
         Return @ symbols
     ];
 
-DiagramSimplify[expr_, mSimplify_ : (Quiet @ Simplify[Simplify[#, Trig -> False, TimeConstraint -> 0.01], Trig -> False, TimeConstraint -> 0.1]&)] :=
+FDiagramSimplify[expr_, mSimplify_ : (Quiet @ Simplify[Simplify[#, Trig -> False, TimeConstraint -> 0.01], Trig -> False, TimeConstraint -> 0.1]&)] :=
     Module[{collected, couplings},
         couplings = findCouplings[expr];
-        FunKitDebug[2, "DiagramSimplify: Found the following couplings in the given expression: ", couplings];
+        FunKitDebug[2, "FDiagramSimplify: Found the following couplings in the given expression: ", couplings];
         collected = Collect[expr, Map[#[__]&, couplings]];
         If[Head[collected] === Plus,
             collected = List @@ collected
@@ -155,28 +155,28 @@ DiagramSimplify[expr_, mSimplify_ : (Quiet @ Simplify[Simplify[#, Trig -> False,
             ,
             collected = {mSimplify[collected[[1]]]}
         ];
-        FunKitDebug[2, "DiagramSimplify: Finished"];
+        FunKitDebug[2, "FDiagramSimplify: Finished"];
         Return[Plus @@ collected]
     ];
 
-FormMomentumExpansion::notImplemented = "FormMomentumExpansion is not yet implemented. Use FiniteTFormMomentumExpansion for finite-temperature calculations.";
+FMakeFormMomentumExpansion::notImplemented = "FMakeFormMomentumExpansion is not yet implemented. Use FMakeFiniteTFormMomentumExpansion for finite-temperature calculations.";
 
-FormMomentumExpansion[] :=
+FMakeFormMomentumExpansion[] :=
     Module[{},
         $standardFORMmomentumRules = {};
     ];
 
-FormMomentumExpansion[___] :=
+FMakeFormMomentumExpansion[___] :=
     (
-        Message[FormMomentumExpansion::notImplemented];
+        Message[FMakeFormMomentumExpansion::notImplemented];
         Abort[]
     );
 
-$standardFORMmomentumRules = {}; FormMomentumExpansion[];
+$standardFORMmomentumRules = {}; FMakeFormMomentumExpansion[];
 
-ClearAll[FormSimplify]
+ClearAll[FFormSimplify]
 
-FormSimplify[obj_, preReplRules_ : {}, postReplRules_ : {}, bracket_ : {}] :=
+FFormSimplify[obj_, preReplRules_ : {}, postReplRules_ : {}, bracket_ : {}] :=
     Module[{file, origVars, tmpfileName, import, repl, expr, newSymbols, momenta, momRule, ret},
         file = makeHashFile[{obj, preReplRules, postReplRules, bracket}];
         If[FileExistsQ[file],
@@ -195,12 +195,12 @@ FormSimplify[obj_, preReplRules_ : {}, postReplRules_ : {}, bracket_ : {}] :=
                 ,
                 {}
             ];
-        FunKitDebug[3, "FormSimplify: Adding Extra Vars ", newSymbols];
+        FunKitDebug[3, "FFormSimplify: Adding Extra Vars ", newSymbols];
         FormTracer`AddExtraVars @@ newSymbols;
         tmpfileName = "/tmp/FS_" <> makeTemporaryFileName[];
         FormTracer`FormTrace[Rationalize[expr /. repl[[1]]], Join[{scallDef}, momRule, preReplRules], postReplRules, {tmpfileName, "O4,saIter=10000,saMinT=10,saMaxT=10000", "fortran90"}, bracket];
         ret = ImportAndSimplifyFORM[tmpfileName];
-        FunKitDebug[2, "FormSimplify: FORM finished"];
+        FunKitDebug[2, "FFormSimplify: FORM finished"];
         FormTracer`DefineExtraVars[origVars];
         RunProcess[$SystemShell, All, "rm " <> tmpfileName];
         ret = (ret) /. repl[[2]] // Rationalize;
