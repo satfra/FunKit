@@ -2,16 +2,17 @@
     C++ Code Generation Optimization Pipeline
 
     Multi-pass optimization for numerical expressions.
-    Passes:
+
+    GLOBAL passes (run once on the full expression):
       1. Interpolator call hoisting
-      2. Reciprocal hoisting (division -> multiplication)
-      3. Power chain combination
-      4. DAG-based common subexpression elimination
+      2. Early splitting (decides single kernel vs sub-kernels)
+
+    PER-KERNEL passes (run independently per sub-kernel, or once if no split):
+      3. DAG-based common subexpression elimination
+      4. Power chain combination
       5. Algebraic factoring
-      6. Register-pressure splitting (accumulator pattern)
-      7. Transcendental hoisting
-      8. Multi-kernel expression splitting
-      9. FMA pattern restructuring
+      6. Transcendental hoisting
+      7. FMA pattern restructuring
 **********************************************************************************)
 
 (**********************************************************************************
@@ -40,41 +41,7 @@ hoistInterpolators[expr_] :=
     ];
 
 (**********************************************************************************
-    Pass 2: Reciprocal Hoisting
-    Find Power[expr, n] where n < 0 and expr is non-trivial.
-    Emit _inv_N = powr<-1>(base) once, rewrite Power[base, -k] -> Power[_inv_N, k].
-**********************************************************************************)
-
-hoistReciprocals[expr_] :=
-    Module[{negativePowers, bases, uniqueBases, names, rules, newExpr},
-        If[Not @ $codeHoistReciprocals,
-            Return[<|"Expr" -> expr, "Definitions" -> {}, "Count" -> 0|>]
-        ];
-        negativePowers = Cases[expr, Power[base_, n_Integer] /; n < 0 && Not @ NumericQ[base], Infinity];
-        bases = DeleteDuplicates[#[[1]]& /@ negativePowers];
-        (* Only hoist non-trivial bases *)
-        uniqueBases = Select[bases, Not @ AtomQ[#]&];
-        If[Length[uniqueBases] === 0,
-            Return[<|"Expr" -> expr, "Definitions" -> {}, "Count" -> 0|>]
-        ];
-        names = Table["_inv" <> ToString[i], {i, 1, Length[uniqueBases]}];
-        (* Replace Power[base, n] (n<0) with Power["_invN", -n] *)
-        rules = Table[
-            With[{base = uniqueBases[[idx]], name = names[[idx]]},
-                Power[base, n_Integer] /; n < 0 :> Power[name, -n]
-            ],
-            {idx, 1, Length[uniqueBases]}
-        ];
-        newExpr = expr //. rules;
-        <|
-            "Expr" -> newExpr,
-            "Definitions" -> Table[{names[[i]], Power[uniqueBases[[i]], -1]}, {i, 1, Length[uniqueBases]}],
-            "Count" -> Length[uniqueBases]
-        |>
-    ];
-
-(**********************************************************************************
-    Pass 3: Power Chain Combination
+    Power Chain Combination
     Within each Times term, combine Power[x, a] * Power[x, b] -> Power[x, a+b].
     Also treats bare factors x as Power[x, 1].
 **********************************************************************************)
@@ -98,12 +65,12 @@ combinePowerChains[expr_] :=
     expr /. t_Times :> combinePowersInProduct[t];
 
 (**********************************************************************************
-    Pass 4: DAG-Based Common Subexpression Elimination
+    DAG-Based Common Subexpression Elimination
     Uses Experimental`OptimizeExpression with fallback to weighted frequency CSE.
 **********************************************************************************)
 
 dagCSE[expr_, remainingRegisters_Integer] :=
-    Module[{result, vars, assignments, finalExpr, cleanExpr, stringRules, reverseStringRules, stringNames},
+    Module[{result, assignments, finalExpr, cleanExpr, stringRules, reverseStringRules, stringNames},
         If[remainingRegisters <= 0,
             Return[<|"Expr" -> expr, "Definitions" -> {}|>]
         ];
@@ -125,40 +92,48 @@ dagCSE[expr_, remainingRegisters_Integer] :=
             $Failed
         ];
         If[result =!= $Failed && Head[result] === Experimental`OptimizedExpression,
-            Module[{block, setExprs, body, allAssignments, kept, dropped, inlineRules,
+            Module[{heldBlock, numParts, allAssignments, kept, dropped, inlineRules,
                     cseNames, symbolToString},
-                block = result[[1]];
-                If[Head[block] === Block,
-                    vars = block[[1]];
-                    body = block[[2]];
-                    If[Head[body] === CompoundExpression,
-                        setExprs = Most[List @@ body];
-                        finalExpr = Last[List @@ body];
-                        allAssignments = Cases[setExprs, HoldPattern[Set[var_, val_]] :> {var, val}];
-                        (* Limit to remaining register budget *)
-                        If[Length[allAssignments] > remainingRegisters,
-                            kept = Take[allAssignments, remainingRegisters];
-                            dropped = Drop[allAssignments, remainingRegisters];
-                            inlineRules = Map[#[[1]] -> #[[2]]&, dropped];
-                            finalExpr = finalExpr //. inlineRules;
-                            kept = Map[{#[[1]], #[[2]] //. inlineRules}&, kept];
-                            allAssignments = kept;
-                        ];
-                        (* Rename optimizer symbols to string names "_cseN" *)
-                        cseNames = Table["_cse" <> ToString[idx], {idx, 1, Length[allAssignments]}];
-                        symbolToString = Table[allAssignments[[idx, 1]] -> cseNames[[idx]], {idx, 1, Length[allAssignments]}];
-                        finalExpr = finalExpr //. symbolToString //. reverseStringRules;
-                        assignments = Table[
-                            {cseNames[[idx]], allAssignments[[idx, 2]] //. symbolToString //. reverseStringRules},
-                            {idx, 1, Length[allAssignments]}
-                        ];
-                        Return[<|"Expr" -> finalExpr, "Definitions" -> assignments|>]
-                        ,
-                        Return[<|"Expr" -> body //. reverseStringRules, "Definitions" -> {}|>]
+                (* Extract with Hold to prevent Block from evaluating *)
+                heldBlock = Extract[result, {1}, Hold];
+                If[MatchQ[heldBlock, Hold[Block[_, _CompoundExpression]]],
+                    (* Count CompoundExpression parts without evaluating them.
+                       Replace wraps the matched sequence in Hold, then Length
+                       counts Hold's arguments — all without triggering evaluation. *)
+                    numParts = Replace[heldBlock,
+                        Hold[Block[_, CompoundExpression[args___]]] :> Length[Hold[args]]
                     ];
+                    (* Extract Set expressions (all but last in CompoundExpression).
+                       Extract with Hold wrapper prevents each Set from evaluating. *)
+                    allAssignments = Table[
+                        Extract[heldBlock, {1, 2, i}, Hold] /. Hold[Set[var_, val_]] :> {var, val},
+                        {i, 1, numParts - 1}
+                    ];
+                    (* Extract final expression via Hold then release — the symbolic
+                       expression doesn't have side effects, so ReleaseHold is safe *)
+                    finalExpr = ReleaseHold @ Extract[heldBlock, {1, 2, numParts}, Hold];
+                    (* Limit to remaining register budget *)
+                    If[Length[allAssignments] > remainingRegisters,
+                        kept = Take[allAssignments, remainingRegisters];
+                        dropped = Drop[allAssignments, remainingRegisters];
+                        inlineRules = Map[#[[1]] -> #[[2]]&, dropped];
+                        finalExpr = finalExpr //. inlineRules;
+                        kept = Map[{#[[1]], #[[2]] //. inlineRules}&, kept];
+                        allAssignments = kept;
+                    ];
+                    (* Rename optimizer symbols to string names "_cseN" *)
+                    cseNames = Table["_cse" <> ToString[idx], {idx, 1, Length[allAssignments]}];
+                    symbolToString = Table[allAssignments[[idx, 1]] -> cseNames[[idx]], {idx, 1, Length[allAssignments]}];
+                    finalExpr = finalExpr //. symbolToString //. reverseStringRules;
+                    assignments = Table[
+                        {cseNames[[idx]], allAssignments[[idx, 2]] //. symbolToString //. reverseStringRules},
+                        {idx, 1, Length[allAssignments]}
+                    ];
+                    Return[<|"Expr" -> finalExpr, "Definitions" -> assignments|>]
                     ,
-                    Return[<|"Expr" -> block //. reverseStringRules, "Definitions" -> {}|>]
-                ];
+                    (* Not the expected structure — try fallback *)
+                    fallbackCSE[expr, remainingRegisters]
+                ]
             ]
             ,
             (* Fallback: weighted frequency CSE (enhanced version of current algorithm) *)
@@ -190,7 +165,7 @@ fallbackCSE[expr_, maxVars_Integer] :=
     ];
 
 (**********************************************************************************
-    Pass 5: Algebraic Factoring
+    Algebraic Factoring
     Apply FactorTerms to group additive terms by common multiplicative factors.
 **********************************************************************************)
 
@@ -211,7 +186,7 @@ algebraicFactor[expr_] :=
     ];
 
 (**********************************************************************************
-    Pass 6: Register-Pressure Splitting (Accumulator Pattern)
+    Register-Pressure Splitting (Accumulator Pattern)
     If the final expression has too many terms, split into scoped chunks.
 **********************************************************************************)
 
@@ -240,7 +215,7 @@ splitForRegisters[definitions_, finalExpr_] :=
     ];
 
 (**********************************************************************************
-    Pass 7: FMA Pattern Restructuring
+    FMA Pattern Restructuring
     Restructure a*b + c patterns into explicit fma(a, b, c) calls.
     GPU FMA units execute this as a single instruction with better precision.
 **********************************************************************************)
@@ -282,13 +257,17 @@ fmaRestructure[expr_] :=
     ];
 
 (**********************************************************************************
-    Pass 8: Transcendental Hoisting
+    Transcendental Hoisting
     Hoist expensive transcendental calls to temporaries.
     On GPU, these cost 20-100 cycles vs 4 for multiply.
+    Accepts maxVars parameter to limit number of hoisted variables.
 **********************************************************************************)
 
-hoistTranscendentals[expr_] :=
+hoistTranscendentals[expr_, maxVars_Integer] :=
     Module[{transcCalls, uniqueCalls, names, rules, newExpr, expBases, expPairs, extraDefs},
+        If[maxVars <= 0,
+            Return[<|"Expr" -> expr, "Definitions" -> {}, "Count" -> 0|>]
+        ];
         (* Find all transcendental calls with non-trivial arguments.
            Note: Exp[x] evaluates to Power[E, x] in Mathematica, so we must match that form too. *)
         transcCalls = Join[
@@ -317,6 +296,13 @@ hoistTranscendentals[expr_] :=
         uniqueCalls = Select[uniqueCalls,
             Not[MatchQ[#, (Exp | cppExp)[a_] /; MemberQ[expPairs, -a]] || MatchQ[#, Power[E, a_] /; MemberQ[expPairs, -a]]]&
         ];
+        (* Sort by frequency (descending) and limit to maxVars *)
+        If[Length[uniqueCalls] > maxVars,
+            Module[{freqs},
+                freqs = Map[Count[expr, #, Infinity]&, uniqueCalls];
+                uniqueCalls = Take[uniqueCalls[[Ordering[freqs, All, GreaterEqual]]], maxVars];
+            ];
+        ];
         names = Table["_tran" <> ToString[i], {i, 1, Length[uniqueCalls]}];
         rules = Thread[uniqueCalls -> names];
         newExpr = expr //. rules;
@@ -340,10 +326,14 @@ hoistTranscendentals[expr_] :=
         |>
     ];
 
+(* Backward-compatible no-limit version *)
+hoistTranscendentals[expr_] := hoistTranscendentals[expr, Infinity];
+
 (**********************************************************************************
-    Pass 9: Multi-Kernel Expression Splitting
-    When expressions exceed $codeMaxKernelTerms, split into multiple sub-kernels.
-    Each sub-kernel gets only the CSE definitions it actually references.
+    Early Splitting
+    Decides whether to split into sub-kernels BEFORE running per-kernel optimization.
+    Only receives interpDefs as global defs; splits the raw expression into chunks.
+    Partitions interps into shared (referenced by 2+ kernels) and local (1 kernel).
 **********************************************************************************)
 
 (* Extract the summation core from an expression.
@@ -374,15 +364,133 @@ extractSummationCore[expr_] :=
         {1, {expr}}
     ];
 
+earlySplit[interpDefs_, expr_] :=
+    Module[{prefactor, terms, numTerms, exprComplexity, totalWeight, chunkSize,
+            chunks, subKernelData, interpNames, interpsByName},
+        (* Extract the summation core, handling Times[prefactor, Plus[...]] *)
+        {prefactor, terms} = extractSummationCore[expr];
+        numTerms = Length[terms];
+        exprComplexity = Total[LeafCount /@ terms];
+        totalWeight = Length[interpDefs] + exprComplexity;
+        chunkSize = $codeMaxKernelTerms;
+        FunKitDebug[2, "Early split check: ", numTerms, " terms, LeafCount ", exprComplexity,
+                    ", ", Length[interpDefs], " interp defs, total weight ", totalWeight,
+                    " vs threshold ", chunkSize];
+        (* Below threshold or cannot split — single kernel *)
+        If[(totalWeight <= chunkSize && numTerms <= chunkSize) || numTerms <= 1,
+            Return[<|"Split" -> False, "Expr" -> expr, "SharedDefs" -> interpDefs|>]
+        ];
+        (* Determine per-chunk size *)
+        Module[{targetChunks},
+            targetChunks = Max[2, Ceiling[totalWeight / chunkSize]];
+            chunkSize = Ceiling[numTerms / targetChunks];
+        ];
+        chunks = Partition[terms, UpTo[chunkSize]];
+        (* Build chunk expressions with prefactor *)
+        chunks = Map[
+            If[prefactor =!= 1, prefactor * Plus @@ #, Plus @@ #]&,
+            chunks
+        ];
+        (* Partition interp defs: shared (used by 2+ chunks) vs local (1 chunk) *)
+        interpNames = #[[1]]& /@ interpDefs;
+        interpsByName = Association @ Table[interpDefs[[i, 1]] -> interpDefs[[i]], {i, Length[interpDefs]}];
+        Module[{chunkRefs, useCounts, sharedNames, sharedDefs},
+            (* Find which interp names each chunk references *)
+            chunkRefs = Map[
+                Intersection[interpNames, DeleteDuplicates @ Cases[#, _String, Infinity]]&,
+                chunks
+            ];
+            (* Count how many chunks reference each interp *)
+            useCounts = Counts[Flatten[chunkRefs]];
+            sharedNames = Keys @ Select[useCounts, # > 1&];
+            sharedDefs = Select[interpDefs, MemberQ[sharedNames, #[[1]]]&];
+            (* Build sub-kernel data with local interps *)
+            subKernelData = Table[
+                Module[{localInterpNames, localInterps},
+                    localInterpNames = Select[chunkRefs[[i]], Not @ MemberQ[sharedNames, #]&];
+                    localInterps = Select[interpDefs, MemberQ[localInterpNames, #[[1]]]&];
+                    <|"Expr" -> chunks[[i]], "InterpDefs" -> localInterps|>
+                ],
+                {i, Length[chunks]}
+            ];
+            <|"Split" -> True, "SharedDefs" -> sharedDefs, "SubKernels" -> subKernelData|>
+        ]
+    ];
+
+(**********************************************************************************
+    Per-Kernel Optimization
+    Runs CSE, power chains, factoring, transcendental hoisting, and FMA
+    independently for a single sub-kernel expression with its own register budget.
+**********************************************************************************)
+
+optimizeSubKernel[expr_, sharedDefCount_Integer] :=
+    Module[{e, perKernelBudget, cseResult, cseDefs, remainingBudget, tranResult, allDefs},
+        perKernelBudget = Max[0, $availableRegisters - sharedDefCount];
+        FunKitDebug[2, "  Per-kernel budget: ", perKernelBudget,
+                    " (registers=", $availableRegisters, ", shared=", sharedDefCount, ")"];
+        e = expr;
+
+        (* CSE with per-kernel budget *)
+        cseResult = dagCSE[e, perKernelBudget];
+        e = cseResult["Expr"];
+        cseDefs = cseResult["Definitions"];
+        FunKitDebug[2, "  CSE found ", Length[cseDefs], " subexpressions"];
+
+        (* Power chain combination on expr and CSE definition RHS values *)
+        e = combinePowerChains[e];
+        If[Length[cseDefs] > 0,
+            cseDefs = Map[{#[[1]], combinePowerChains[#[[2]]]}&, cseDefs];
+        ];
+
+        (* Algebraic factoring *)
+        If[Length[cseDefs] > 0,
+            Module[{allExprsToFactor, factoredExprs},
+                allExprsToFactor = Prepend[cseDefs[[All, 2]], e];
+                factoredExprs =
+                    If[Length[allExprsToFactor] >= $codeParallelThreshold && Length[Kernels[]] > 0,
+                        ParallelMap[algebraicFactor, allExprsToFactor, DistributedContexts -> Automatic]
+                        ,
+                        Map[algebraicFactor, allExprsToFactor]
+                    ];
+                e = factoredExprs[[1]];
+                cseDefs = Table[
+                    {cseDefs[[idx, 1]], factoredExprs[[idx + 1]]},
+                    {idx, 1, Length[cseDefs]}
+                ];
+            ];
+            ,
+            e = algebraicFactor[e];
+        ];
+
+        (* Transcendental hoisting with remaining budget *)
+        remainingBudget = Max[0, perKernelBudget - Length[cseDefs]];
+        tranResult = hoistTranscendentals[e, remainingBudget];
+        e = tranResult["Expr"];
+        FunKitDebug[2, "  Transcendental hoisting: ", tranResult["Count"],
+                    " (budget was ", remainingBudget, ")"];
+
+        (* FMA restructuring *)
+        e = fmaRestructure[e];
+        allDefs = Join[cseDefs, tranResult["Definitions"]];
+        If[Length[allDefs] > 0,
+            allDefs = Map[{#[[1]], fmaRestructure[#[[2]]]}&, allDefs];
+        ];
+
+        <|"Expr" -> e, "Definitions" -> allDefs|>
+    ];
+
+(**********************************************************************************
+    Legacy Sub-Kernel Splitting (post-optimization)
+    Used by the single-kernel path to split into sub-kernels after optimization,
+    when the combined defs + expression exceed $codeMaxKernelTerms.
+**********************************************************************************)
+
 splitIntoSubKernels[allDefs_, finalExpr_] :=
     Module[{terms, numTerms, chunkSize, chunks, subKernels, sharedDefs,
             defNames, defsByName, prefactor, exprComplexity, totalWeight},
         (* Extract the summation core, handling Times[prefactor, Plus[...]] *)
         {prefactor, terms} = extractSummationCore[finalExpr];
         numTerms = Length[terms];
-        (* Use LeafCount as the complexity measure — this correctly captures
-           expressions with few top-level terms but deep nesting (common in QFT).
-           A term with LeafCount 100 generates ~100 C++ operations. *)
         exprComplexity = Total[LeafCount /@ terms];
         totalWeight = Length[allDefs] + exprComplexity;
         chunkSize = $codeMaxKernelTerms;
@@ -456,12 +564,15 @@ splitIntoSubKernels[allDefs_, finalExpr_] :=
 
 (**********************************************************************************
     Pipeline Orchestrator
-    Runs all passes in sequence and returns an Association with optimization results.
+    Runs all passes and returns an Association with optimization results.
+
+    GLOBAL: interpolator hoisting → early split decision
+    PER-KERNEL: CSE → power chains → factoring → transcendentals → FMA
 **********************************************************************************)
 
 optimizeExpression[equation_] :=
-    Module[{expr, interpResult, invResult, interpCount, invCount, remainingRegs,
-            cseResult, allDefs, splitResult, gpuRegs, tranResult},
+    Module[{expr, interpResult, interpCount, splitResult,
+            sharedDefs, subKernels, result, allDefs},
 
         FunKitDebug[1, "Starting optimization pipeline (optimize = ", $codeOptimize, ")"];
 
@@ -472,86 +583,60 @@ optimizeExpression[equation_] :=
 
         expr = equation;
 
-        (* Pass 1: Interpolator hoisting *)
+        (* === GLOBAL PASSES === *)
+
+        (* Pass 1: Interpolator hoisting — extract global memory reads *)
         interpResult = hoistInterpolators[expr];
         expr = interpResult["Expr"];
         interpCount = interpResult["Count"];
-        FunKitDebug[2, "Pass 1: Hoisted ", interpCount, " interpolator calls"];
+        FunKitDebug[2, "Hoisted ", interpCount, " interpolator calls"];
 
-        (* Pass 2: Reciprocal hoisting *)
-        invResult = hoistReciprocals[expr];
-        expr = invResult["Expr"];
-        invCount = invResult["Count"];
-        FunKitDebug[2, "Pass 2: Hoisted ", invCount, " reciprocals"];
+        (* Pass 2: Early split decision *)
+        splitResult = earlySplit[interpResult["Definitions"], expr];
+        FunKitDebug[2, "Early split: ", splitResult["Split"]];
 
-        (* Pass 3: Power chain combination *)
-        expr = combinePowerChains[expr];
-        FunKitDebug[2, "Pass 3: Combined power chains"];
+        (* === PER-KERNEL PASSES === *)
 
-        remainingRegs = $availableRegisters - interpCount - invCount;
-
-        (* Pass 4: CSE *)
-        cseResult = dagCSE[expr, remainingRegs];
-        expr = cseResult["Expr"];
-        FunKitDebug[2, "Pass 4: CSE found ", Length[cseResult["Definitions"]], " subexpressions"];
-
-        (* Pass 5: Algebraic factoring *)
-        If[Length[cseResult["Definitions"]] > 0,
-            (* Factor the final expression and all CSE definitions in parallel *)
-            Module[{allExprsToFactor, factoredExprs, cseDefs = cseResult["Definitions"]},
-                allExprsToFactor = Prepend[cseDefs[[All, 2]], expr];
-                factoredExprs =
-                    If[Length[allExprsToFactor] >= $codeParallelThreshold && Length[Kernels[]] > 0,
-                        ParallelMap[algebraicFactor, allExprsToFactor, DistributedContexts -> Automatic]
-                        ,
-                        Map[algebraicFactor, allExprsToFactor]
+        If[TrueQ[splitResult["Split"]],
+            (* Multi-kernel path: optimize each sub-kernel independently *)
+            sharedDefs = splitResult["SharedDefs"];
+            subKernels = Table[
+                Module[{kernelResult, localInterpDefs, totalShared},
+                    localInterpDefs = splitResult["SubKernels"][[i]]["InterpDefs"];
+                    totalShared = Length[sharedDefs] + Length[localInterpDefs];
+                    FunKitDebug[2, "Optimizing sub-kernel ", i, " of ", Length[splitResult["SubKernels"]],
+                                " (shared=", Length[sharedDefs], ", localInterps=", Length[localInterpDefs], ")"];
+                    kernelResult = optimizeSubKernel[
+                        splitResult["SubKernels"][[i]]["Expr"],
+                        totalShared
                     ];
-                expr = factoredExprs[[1]];
-                cseResult["Definitions"] = Table[
-                    {cseDefs[[idx, 1]], factoredExprs[[idx + 1]]},
-                    {idx, 1, Length[cseDefs]}
-                ];
+                    <|"Terms" -> kernelResult["Expr"],
+                      "Definitions" -> Join[localInterpDefs, kernelResult["Definitions"]]|>
+                ],
+                {i, Length[splitResult["SubKernels"]]}
             ];
+            (* Apply FMA to shared definitions *)
+            If[Length[sharedDefs] > 0,
+                sharedDefs = Map[{#[[1]], fmaRestructure[#[[2]]]}&, sharedDefs];
+            ];
+            FunKitDebug[2, "Multi-kernel optimization complete: ", Length[subKernels], " sub-kernels"];
+            <|
+                "UseSubKernels" -> True,
+                "UseAccumulator" -> False,
+                "SharedDefinitions" -> sharedDefs,
+                "SubKernels" -> subKernels
+            |>
             ,
-            expr = algebraicFactor[expr];
-        ];
-        FunKitDebug[2, "Pass 5: Applied algebraic factoring"];
+            (* Single-kernel path: optimize the whole expression *)
+            result = optimizeSubKernel[expr, interpCount];
+            allDefs = Join[interpResult["Definitions"], result["Definitions"]];
+            FunKitDebug[2, "Single-kernel optimization complete: ", Length[allDefs], " total defs"];
 
-        (* Collect all definitions *)
-        allDefs = Join[interpResult["Definitions"], invResult["Definitions"], cseResult["Definitions"]];
-
-        (* Pass 7: Transcendental hoisting *)
-        gpuRegs = $codeGPURegisterBudget - interpCount - invCount;
-        tranResult = hoistTranscendentals[expr];
-        expr = tranResult["Expr"];
-        gpuRegs -= tranResult["Count"];
-        allDefs = Join[allDefs, tranResult["Definitions"]];
-        FunKitDebug[2, "Pass 7: Hoisted ", tranResult["Count"], " transcendentals"];
-
-        (* Pass 8: Multi-kernel splitting *)
-        splitResult = splitIntoSubKernels[allDefs, expr];
-        FunKitDebug[2, "Pass 8: SubKernels = ", TrueQ[splitResult["UseSubKernels"]]];
-
-        (* Pass 9: FMA restructuring *)
-        If[TrueQ[splitResult["UseSubKernels"]],
-            splitResult["SharedDefinitions"] = Map[{#[[1]], fmaRestructure[#[[2]]]}&, splitResult["SharedDefinitions"]];
-            splitResult["SubKernels"] = Map[
-                <|"Terms" -> fmaRestructure[#["Terms"]],
-                  "Definitions" -> Map[{#[[1]], fmaRestructure[#[[2]]]}&, #["Definitions"]]|>&,
-                splitResult["SubKernels"]
-            ];
-            ,
-            If[TrueQ[splitResult["UseAccumulator"]],
-                splitResult["Definitions"] = Map[{#[[1]], fmaRestructure[#[[2]]]}&, splitResult["Definitions"]];
-                splitResult["Chunks"] = Map[fmaRestructure, splitResult["Chunks"]];
-                ,
-                splitResult["Definitions"] = Map[{#[[1]], fmaRestructure[#[[2]]]}&, splitResult["Definitions"]];
-                splitResult["Expr"] = fmaRestructure[splitResult["Expr"]];
-            ];
-        ];
-        FunKitDebug[2, "Pass 9: Applied FMA restructuring"];
-
-        splitResult
+            (* Try splitting for registers if expression is large *)
+            splitResult = splitIntoSubKernels[allDefs, result["Expr"]];
+            FunKitDebug[2, "Post-optimization split: SubKernels=", TrueQ[splitResult["UseSubKernels"]]];
+            splitResult
+        ]
     ];
 
 (**********************************************************************************

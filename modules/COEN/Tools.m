@@ -87,8 +87,6 @@ $codeUseAccumulator = True;
 
 $codeMaxChunkSize = 50;
 
-$codeHoistReciprocals = True;
-
 $codeFactorTerms = True;
 
 $codeFastMath = False;
@@ -98,8 +96,6 @@ $codePrecision = "double";
 $codeMaxKernelTerms = 500;
 
 $codeFMARestructure = True;
-
-$codeGPURegisterBudget = 64;
 
 FSetRegisterSize[n_Integer?Positive] :=
     Module[{},

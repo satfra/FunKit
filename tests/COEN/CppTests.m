@@ -190,7 +190,7 @@ AppendTo[tests, TestCreate[output6, expectedLarge, TestID -> "Verify numerical a
     FMA-enabled optimization produces valid C++ code
 **********************************************************************************)
 
-Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeGPURegisterBudget = 32},
+Block[{FunKit`Private`$codeOptimize = True},
     funBody7 = MakeCppFunction[expr, "Name" -> "funFMA", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
 ];
 
@@ -218,7 +218,7 @@ AppendTo[tests, TestCreate[output7, expected, TestID -> "Verify numerical agreem
     FMA detection: verify fma() appears in output
 **********************************************************************************)
 
-Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFMARestructure = True, FunKit`Private`$codeGPURegisterBudget = 32},
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFMARestructure = True},
     fmaTestCode = CppCode[a * b + c * d + e];
 ];
 
@@ -228,7 +228,7 @@ AppendTo[tests, TestCreate[StringContainsQ[fmaTestCode, "fma("], True, TestID ->
     Fast-math intrinsics emission
 **********************************************************************************)
 
-Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFastMath = True, FunKit`Private`$codePrecision = "single", FunKit`Private`$codeGPURegisterBudget = 32},
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFastMath = True, FunKit`Private`$codePrecision = "single"},
     fastMathCode = CppCode[Exp[x] + Log[x]];
 ];
 
@@ -236,7 +236,7 @@ AppendTo[tests, TestCreate[StringContainsQ[fastMathCode, "__expf("], True, TestI
 AppendTo[tests, TestCreate[StringContainsQ[fastMathCode, "__logf("], True, TestID -> "Verify __logf in fast-math output"]];
 
 (* Fast-math should NOT emit intrinsics when precision is double *)
-Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFastMath = True, FunKit`Private`$codePrecision = "double", FunKit`Private`$codeGPURegisterBudget = 32},
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFastMath = True, FunKit`Private`$codePrecision = "double"},
     noFastMathCode = CppCode[Exp[x] + Log[x]];
 ];
 
@@ -248,7 +248,7 @@ AppendTo[tests, TestCreate[StringFreeQ[noFastMathCode, "__expf("], True, TestID 
 
 largeExprSplit = Sum[Sin[a + i] * Cos[a - i] / (1 + i * a), {i, 1, 600}];
 
-Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms = 200, FunKit`Private`$codeGPURegisterBudget = 64},
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms = 200},
     splitCode = CppCode[largeExprSplit];
 ];
 
@@ -259,7 +259,7 @@ AppendTo[tests, TestCreate[StringContainsQ[splitCode, "// subkernel 2"], True, T
     Transcendental hoisting
 **********************************************************************************)
 
-Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeGPURegisterBudget = 32},
+Block[{FunKit`Private`$codeOptimize = True},
     tranCode = CppCode[Exp[a + b * c] + 2 * Exp[a + b * c]];
 ];
 
