@@ -24,6 +24,18 @@ CppForm[expr_, OptionsPattern[]] :=
         ,
         processedExpr = N[expr /. Power[E, x_] :> cppExp[x]];
         nest := GenerateCode[CExpression[#]]&;
+        (*powr*)
+        If[$CppPowr,
+            CExpression /: GenerateCode[CExpression[Power[a_, b_Integer]]] := "powr<" <> ToString[b] <> ">(" <> nest[a] <> ")";
+            CExpression /: GenerateCode[CExpression[Power[a_, b_ /; Element[b + 1/2, Integers]]]] :=
+                If[b === 1/2,
+                    "sqrt(" <> nest[a] <> ")"
+                    ,
+                    "sqrt(powr<" <> ToString[2 b] <> ">(" <> nest[a] <> "))"
+                ];
+            ,
+            CExpression /: GenerateCode[CExpression[Power[a_, b_Integer]]] := "pow(" <> nest[a] <> ", " <> ToString[b] <> ")";
+        ];
         (*FMA*)
         CExpression /: GenerateCode[CExpression[fmaGroup[a_, b_, c_]]] := "fma(" <> nest[a] <> ", " <> nest[b] <> ", " <> nest[c] <> ")";
         (*associativity*)
@@ -32,9 +44,11 @@ CppForm[expr_, OptionsPattern[]] :=
         (*recursion for + and * *)
         CExpression /: GenerateCode[CExpression[Plus[a_, b__]]] := nest[a] <> " + " <> nest[Plus[b]];
         CExpression /: GenerateCode[CExpression[Times[a_, b__]]] := "(" <> nest[a] <> ") * (" <> nest[Times[b]] <> ")";
-        CExpression /: GenerateCode[CExpression[Times[-1, b_, a__]]] /; Head[b] =!= Plus := "(-(" <> nest[b] <> "))";
+        CExpression /: GenerateCode[CExpression[Times[-1, b_, a__]]] /; Head[b] =!= Plus := "(-(" <> nest[Times[b, a]] <> "))";
         (*functions*)
         CExpression /: GenerateCode[CExpression[a_[args___]]] := nest[a] <> "(" <> StringJoin @ StringRiffle[nest /@ {args}, ", "] <> ")";
+        (*string placeholders — CSE variable names are Mathematica strings; output as bare identifiers*)
+        CExpression /: GenerateCode[CExpression[a_String]] := a;
         (*number conversion*)
         CExpression /: GenerateCode[CExpression[I]] := "complex<double>(0,1)";
         CExpression /: GenerateCode[CExpression[a_Real]] :=
@@ -56,6 +70,7 @@ CppForm[expr_, OptionsPattern[]] :=
             ];
         CExpression /: GenerateCode[CExpression[Rational[a_, b_]]] := nest[N[a / b, $CppPrecision]];
         CExpression /: GenerateCode[CExpression[Complex[r_, i_]]] := "complex<double>(" <> nest[r] <> "," <> nest[i] <> ")";
+        CExpression /: GenerateCode[CExpression[a_Integer]] := ToString[a] <> ".";
         CExpression /: GenerateCode[CExpression[a_]] /; NumericQ[a] && Not @ IntegerQ[a] := nest[N[a, $CppPrecision]];
         CExpression /: GenerateCode[CExpression[Re[v_]]] := "real(" <> nest[v] <> ")";
         CExpression /: GenerateCode[CExpression[Im[v_]]] := "imag(" <> nest[v] <> ")";
@@ -65,17 +80,6 @@ CppForm[expr_, OptionsPattern[]] :=
         CExpression /: GenerateCode[CExpression[Sqrt[arg_]]] := "sqrt(" <> nest[arg] <> ")";
         CExpression /: GenerateCode[CExpression[cppExp[a_]]] := "exp(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[Exp[a_]]] := "exp(" <> nest[a] <> ")";
-        If[$CppPowr,
-            CExpression /: GenerateCode[CExpression[Power[a_, b_Integer]]] := "powr<" <> ToString[b] <> ">(" <> nest[a] <> ")";
-            CExpression /: GenerateCode[CExpression[Power[a_, b_ /; Element[b + 1/2, Integers]]]] :=
-                If[b === 1/2,
-                    "sqrt(" <> nest[a] <> ")"
-                    ,
-                    "sqrt(powr<" <> nest[2 b] <> ">(" <> nest[a] <> "))"
-                ];
-            ,
-            CExpression /: GenerateCode[CExpression[Power[a_, b_Integer]]] := "pow(" <> nest[a] <> ", " <> ToString[b] <> ")";
-        ];
         CExpression /: GenerateCode[CExpression[Power[a_, b_]]] := "pow(" <> nest[a] <> "," <> nest[b] <> ")";
         CExpression /: GenerateCode[CExpression[cppExp[a_] - 1]] := "expm1(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[1 - cppExp[a_]]] := "-expm1(" <> nest[a] <> ")";
@@ -103,9 +107,9 @@ CppForm[expr_, OptionsPattern[]] :=
         (*min, max, abs*)
         CExpression /: GenerateCode[CExpression[Abs[a_]]] := "abs(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[Min[a_, b_]]] := "min(" <> nest[a] <> "," <> nest[b] <> ")";
-        CExpression /: GenerateCode[CExpression[Min[a_, b_, c__]]] := "min({" <> nest[a] <> "," <> nest[b] <> StringRiffle[Map[nest, {c}], ","] "})";
+        CExpression /: GenerateCode[CExpression[Min[a_, b_, c__]]] := "min({" <> nest[a] <> "," <> nest[b] <> "," <> StringRiffle[Map[nest, {c}], ","] <> "})";
         CExpression /: GenerateCode[CExpression[Max[a_, b_]]] := "max(" <> nest[a] <> "," <> nest[b] <> ")";
-        CExpression /: GenerateCode[CExpression[Max[a_, b_, c__]]] := "max({" <> nest[a] <> "," <> nest[b] <> StringRiffle[Map[nest, {c}], ","] "})";
+        CExpression /: GenerateCode[CExpression[Max[a_, b_, c__]]] := "max({" <> nest[a] <> "," <> nest[b] <> "," <> StringRiffle[Map[nest, {c}], ","] <> "})";
         (*fast-math intrinsics — single precision only, must come AFTER standard rules to override*)
         If[$codeFastMath && $codePrecision === "single",
             CExpression /: GenerateCode[CExpression[cppExp[a_]]] := "__expf(" <> nest[a] <> ")";
@@ -415,16 +419,22 @@ MakeCppFunction[OptionsPattern[]] :=
                 StringRiffle[Pick[Table[makeCppTemplateParameter[idx], {idx, 1, Length[parameters]}], Table[KeyFreeQ[parameters[[idx]], "Type"] || parameters[[idx]]["Type"] === "template", {idx, 1, Length[parameters]}]], ", "]
             ];
         functionTemplates =
-            If[OptionValue["Templates"] === {},
-                    ""
-                    ,
+            Module[{explicitTemplates, paramTemplates = functionTemplates},
+                explicitTemplates = If[OptionValue["Templates"] === {},
+                    "",
                     "typename " <> StringRiffle[OptionValue["Templates"], ", typename "]
-                ] <>
-                If[functionTemplates =!= "",
-                    ", " <> functionTemplates
-                    ,
-                    ""
                 ];
+                Which[
+                    explicitTemplates =!= "" && paramTemplates =!= "",
+                        explicitTemplates <> ", " <> paramTemplates,
+                    explicitTemplates =!= "",
+                        explicitTemplates,
+                    paramTemplates =!= "",
+                        paramTemplates,
+                    True,
+                        ""
+                ]
+            ];
         functionTemplates =
             If[functionTemplates === "",
                 ""
