@@ -149,12 +149,16 @@ WriteCodeToFile::unchanged = "File `1` unchanged.";
 WriteCodeToFile::exported = "Exported to `1`.";
 
 WriteCodeToFile[fileName_String, expression_String] :=
-    Module[{tmpfileName},
+    Module[{tmpfileName, preprocessed},
         tmpfileName = fileName <> ".tmpcode";
-        Export[tmpfileName, expression, "Text"];
         If[clangFormatExists,
+            preprocessed = wrapLargeStatementsForClangFormat[expression];
+            Export[tmpfileName, preprocessed, "Text"];
             CreateClangFormat[];
             RunProcess[$SystemShell, All, "clang-format " <> tmpfileName <> " > " <> tmpfileName <> "_formatted && mv " <> tmpfileName <> "_formatted " <> tmpfileName];
+            Export[tmpfileName, fixClangFormatOffIndentation[Import[tmpfileName, "Text"]], "Text"];
+            ,
+            Export[tmpfileName, expression, "Text"];
         ];
         If[FileExistsQ[fileName],
             If[Import[fileName, "Text"] == Import[tmpfileName, "Text"],
@@ -170,23 +174,83 @@ WriteCodeToFile[fileName_String, expression_String] :=
         ]
     ];
 
+wrapLargeStatementsForClangFormat[code_String] :=
+    Module[{parts, n, trailingSemi},
+        parts = StringSplit[code, ";"];
+        (* StringSplit drops a trailing empty string when code ends with ";",
+           so track whether the original code ended with ";" to restore it *)
+        trailingSemi = StringTake[code, -1] === ";";
+        n = Length[parts];
+        StringJoin @ MapIndexed[
+            Function[{stmt, idx},
+                Module[{s},
+                    (* Re-attach ";" to every part, plus the last if original ended with ";" *)
+                    s = If[idx[[1]] < n || trailingSemi, stmt <> ";", stmt];
+                    (* Skip wrapping if this part already contains clang-format directives *)
+                    If[StringLength[s] > $codeFormatStatementLimit &&
+                            StringFreeQ[s, "// clang-format"],
+                        "// clang-format off\n" <> s <> "\n// clang-format on"
+                        ,
+                        s
+                    ]
+                ]
+            ],
+            parts
+        ]
+    ];
+
+fixClangFormatOffIndentation[code_String] :=
+    Module[{lines, i, indent, inOff, result},
+        lines = StringSplit[code, "\n"];
+        result = {};
+        inOff = False;
+        indent = "";
+        Do[
+            Which[
+                StringStartsQ[lines[[i]], "// clang-format off"],
+                    (* Determine indent from the previous non-empty formatted line *)
+                    indent = First[StringCases[
+                        SelectFirst[Reverse @ result, StringLength[#] > 0 &, ""],
+                        RegularExpression["^(\\s*)"] :> "$1"
+                    ], ""];
+                    inOff = True;
+                    AppendTo[result, indent <> "// clang-format off"],
+                StringStartsQ[lines[[i]], "// clang-format on"],
+                    inOff = False;
+                    AppendTo[result, indent <> "// clang-format on"],
+                inOff,
+                    (* Re-indent: strip existing leading whitespace, apply detected indent *)
+                    AppendTo[result, indent <> StringReplace[lines[[i]], RegularExpression["^\\s+"] -> ""]],
+                True,
+                    AppendTo[result, lines[[i]]]
+            ],
+            {i, 1, Length[lines]}
+        ];
+        StringRiffle[result, "\n"]
+    ];
+
 Options[FormatCppCode] = {"Format" -> True};
 
 FormatCppCode[expression_String, OptionsPattern[]] :=
-    Module[{tmpfileName1, tmpfileName2, output},
+    Module[{tmpfileName1, tmpfileName2, preprocessed, output},
         tmpfileName1 = "/tmp/in_" <> makeTemporaryFileName[];
         tmpfileName2 = "/tmp/out_" <> makeTemporaryFileName[];
-        Export[tmpfileName1, expression, "Text"];
         If[clangFormatExists && TrueQ[OptionValue["Format"]],
+            preprocessed = wrapLargeStatementsForClangFormat[expression];
+            Export[tmpfileName1, preprocessed, "Text"];
             (*RunProcess[$SystemShell, All, "rm /tmp/.clang-format"];*)
             CreateClangFormat["/tmp/"];
             RunProcess[$SystemShell, All, "clang-format " <> tmpfileName1 <> " > " <> tmpfileName2];
+            ,
+            Export[tmpfileName1, expression, "Text"];
         ];
         If[FileExistsQ[tmpfileName2],
             output = Import[tmpfileName2, "Text"];
+            output = fixClangFormatOffIndentation[output];
             RunProcess[$SystemShell, All, "rm " <> tmpfileName1 <> " " <> tmpfileName2];
             Return[output];
         ];
+        RunProcess[$SystemShell, All, "rm " <> tmpfileName1];
         Return[expression]
     ];
 

@@ -91,6 +91,10 @@ $codePrecision = "double";
 
 $codeMaxKernelTerms = 500;
 
+(* Max character length of a single C++ statement (from ; to ;) before
+   clang-format is disabled for that statement to avoid OOM. *)
+$codeFormatStatementLimit = 1000;
+
 $codeFMARestructure = True;
 
 FSetRegisterSize[n_Integer?Positive] :=
