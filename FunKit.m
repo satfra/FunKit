@@ -20,7 +20,7 @@
 
 
 (* ::Input::Initialization:: *)
-If[($AllowInternet&&$NetworkConnected)&&$FrontEnd=!=Null,
+If[($AllowInternet&&$NetworkConnected)&&$FrontEnd=!=Null&&$Notebooks===True,
 Module[{FCurPacletAddr,FCurPaclet,FCurVersion,
 FInstalledPaclet,FInstalledVersion},
 
@@ -46,12 +46,18 @@ Print["Consider updating the FunKit package for bugfixes and new features!"];
 
 
 (* ::Input::Initialization:: *)
-If[$FrontEnd===Null,Unprotect[Style];
+(*Hide styling if we are in a CLI context.*)
+If[$FrontEnd===Null||$Notebooks===False,
+Unprotect[Style];
 Unprotect[StyleBox];
+Unprotect[Print];
 Style[expr_,opts___]:=expr;
 StyleBox[expr_,opts___]:=expr;
+Print[expr__]:=Write[$Output,StringJoin[ToString[#,OutputForm]&/@{expr}]];
+Protect[Print];
+Protect[StyleBox];
 Protect[Style];
-Protect[StyleBox];];
+];
 
 
 (* ::Input::Initialization:: *)

@@ -582,6 +582,8 @@ FTex[setup_, expr_Association] /; isLoopAssociation @ expr :=
 
 (*For direct printing*)
 
+FPrint[_, expr_] /; ($FrontEnd === Null || TrueQ[$Notebooks === False]) := expr;
+
 FPrint[setup_, expr_] :=
     (
         Print[FTex[setup, expr] // MaTeX`MaTeX];
