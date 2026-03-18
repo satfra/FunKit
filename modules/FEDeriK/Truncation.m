@@ -31,22 +31,8 @@ truncationPass[setup_, expr_FTerm] :=
     ];
 
 truncationPass[setup_, expr_] :=
-    Module[
-        {ret = expr, i}
-        ,
-        (*Get rid of any truncated ordered functions*)
-        ret =
-            ret /.
-                Map[
-                    #[f_, i_] /; FreeQ[f, AnyField] :>
-                        If[FreeQ[Sort /@ setup["Truncation"][#], Sort @ f],
-                            0
-                            ,
-                            #[f, i]
-                        ]&
-                    ,
-                    Intersection[Keys[setup["Truncation"]], $indexedObjects]
-                ];
+    Module[{ret = expr},
+        ret = ret /. truncationList[setup];
         Return[ret];
     ];
 
@@ -72,23 +58,18 @@ indices::objectNotFound = "Could not find the expected number of objects contain
 (*inside an object, find all occurences of idx and replace the fields at the respective positions with field.*)
 
 insertFields[obj_, idx_, field_Symbol] :=
-    Module[{ret = obj, positions},
+    Module[{positions},
         positions = Flatten[Position[makePosIdx /@ obj[[2]], makePosIdx @ idx]];
-        Do[ret[[1, positions[[i]]]] = field;, {i, 1, Length[positions]}];
-        Return[ret];
+        ReplacePart[obj, Thread[{1, #}& /@ positions -> field]]
     ];
 
 (*Like insertFields, but only replaces positions where the current field is AnyField.*)
 
 insertFieldsIfAnyField[obj_, idx_, field_Symbol] :=
-    Module[{ret = obj, positions},
+    Module[{positions, anyPositions},
         positions = Flatten[Position[makePosIdx /@ obj[[2]], makePosIdx @ idx]];
-        Do[
-            If[ret[[1, positions[[i]]]] === AnyField,
-                ret[[1, positions[[i]]]] = field;
-            ];
-        , {i, 1, Length[positions]}];
-        Return[ret];
+        anyPositions = Select[positions, obj[[1, #]] === AnyField&];
+        ReplacePart[obj, Thread[{1, #}& /@ anyPositions -> field]]
     ];
 
 LTrunc[setup_, {}] :=

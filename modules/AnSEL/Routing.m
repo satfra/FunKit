@@ -124,11 +124,12 @@ FRoute[setup_, expr_FTerm] :=
             indStruct[[1]] = loopMomentum[indStruct[[1]], IsGrassmann[setup, assocField]];
             (* replace all occurences of the superindex with the fitting index structure. *)
             (* We want to keep the index sign in the momenta, but remove it from the group indices *)
-            ret = ret /. closedIndices[[idx]] -> indStruct;
-            objects = objects /. closedIndices[[idx]] -> indStruct;
-            If[Length[indStruct] > 1,
-                ret = ret /. (-indStruct[[2]]) -> indStruct[[2]];
-                objects = objects /. (-indStruct[[2]]) -> indStruct[[2]];
+            Module[{rules = {closedIndices[[idx]] -> indStruct}},
+                If[Length[indStruct] > 1,
+                    AppendTo[rules, (-indStruct[[2]]) -> indStruct[[2]]];
+                ];
+                ret = ret /. rules;
+                objects = objects /. rules;
             ];
             ,
             {idx, 1, Length[closedIndices]}
@@ -173,10 +174,10 @@ Momentum conservation is already enforced here, i.e. \!\(
             ];
             (*Wrap the momenta in externalMomentum[...]*)
             (*Do the replacements*)
-            ret = ret /. (-openIndices[[idx]]) -> indStruct;
-            ret = ret /. (openIndices[[idx]]) -> indStruct;
-            objects = objects /. (-openIndices[[idx]]) -> indStruct;
-            objects = objects /. openIndices[[idx]] -> indStruct;
+            Module[{rules = {(-openIndices[[idx]]) -> indStruct, openIndices[[idx]] -> indStruct}},
+                ret = ret /. rules;
+                objects = objects /. rules;
+            ];
             (*This is information for the user, which we will return.    *)
             externalIndices[[idx]] = openIndices[[idx]] -> indStruct;
             ,

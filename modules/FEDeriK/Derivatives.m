@@ -8,7 +8,7 @@ Error in `1`";
 FResolveFDOp[setup_, expr_FEx] :=
     Module[{},
         AssertFSetup[setup];
-        Return[FEx @@ ParallelMap[FResolveFDOp[setup, #]&, List @@ expr]];
+        Return[FEx @@ Catenate[List @@@ BalancedMap[FResolveFDOp[setup, #]&, List @@ expr]]];
     ];
 
 FResolveFDOp[setup_, term_FTerm] :=
@@ -22,7 +22,7 @@ FResolveFDOp[setup_, term_FTerm] :=
         ];
         (*If no derivatives are present, do nothing*)
         If[FreeQ[rTerm, FDOp[__]],
-            Return[rTerm]
+            Return[FEx[rTerm]]
         ];
         FDOpPos = Length[rTerm] - FirstPosition[Reverse @ (List @@ rTerm), FDOp[_]][[1]] + 1;
         termsNoFDOp = FTerm[rTerm[[1 ;; FDOpPos - 1]], rTerm[[FDOpPos + 1 ;; ]]];
@@ -99,7 +99,7 @@ FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
             ,
             FunKitDebug[1, "Doing derivative pass ", i + 1];
             ret = BalancedMap[FResolveFDOp[setup, #]&, ret];
-            ret = (FEx /@ ret) /. FEx -> List // Flatten;
+            ret = Catenate[List @@@ ret];
             (*If AnSEL has been loaded, use FSimplify to reduce redundant terms*)
             If[ModuleLoaded[AnSEL] && $AutoSimplify === True && Length[ret] < 32,
                 ret = List @@ FunKit`FSimplify[setup, FEx @@ ret, "Symmetries" -> symmetries];
