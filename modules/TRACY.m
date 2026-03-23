@@ -96,6 +96,10 @@ Particularly effective for expressions with many coupling constants and similar 
 Integrates with FORM's optimization capabilities when available for maximum efficiency.
 Essential for making large diagrammatic calculations computationally manageable.";
 
+cos::usage = "cos[x,y]
+Defines a symbolic cosine function (orderless, i.e. cos[x,y] == cos[y,x]).
+Used in FORM rules for projecting to symmetric point configurations where the angle between momenta is relevant.";
+
 (* ::Section:: *)
 
 (*Begin Private*)

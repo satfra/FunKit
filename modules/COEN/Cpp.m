@@ -39,12 +39,15 @@ CppForm[expr_, OptionsPattern[]] :=
         (*FMA*)
         CExpression /: GenerateCode[CExpression[fmaGroup[a_, b_, c_]]] := "fma(" <> nest[a] <> ", " <> nest[b] <> ", " <> nest[c] <> ")";
         (*associativity*)
-        CExpression /: GenerateCode[CExpression[Times[a__, Plus[b_, c__], d__]]] := "(" <> nest[Times[a]] <> ") * (" <> nest[Plus[b, c]] <> ") * (" <> nest[Times[d]] <> ")";
-        CExpression /: GenerateCode[CExpression[Times[Plus[b_, c__], d__]]] := "(" <> nest[Plus[b, c]] <> ") * (" <> nest[Times[d]] <> ")";
+        CExpression /: GenerateCode[CExpression[Times[a__, Plus[b_, c__], d__]]] := nest[Times[a]] <> " * (" <> nest[Plus[b, c]] <> ") * " <> nest[Times[d]];
+        CExpression /: GenerateCode[CExpression[Times[Plus[b_, c__], d__]]] := "(" <> nest[Plus[b, c]] <> ") * " <> nest[Times[d]];
         (*recursion for + and * *)
-        CExpression /: GenerateCode[CExpression[Plus[a_, b__]]] := nest[a] <> " + " <> nest[Plus[b]];
-        CExpression /: GenerateCode[CExpression[Times[a_, b__]]] := "(" <> nest[a] <> ") * (" <> nest[Times[b]] <> ")";
-        CExpression /: GenerateCode[CExpression[Times[-1, b_, a__]]] /; Head[b] =!= Plus := "(-(" <> nest[Times[b, a]] <> "))";
+        CExpression /: GenerateCode[CExpression[Plus[a_, b__]]] :=
+            With[{lhs = nest[a], rhs = nest[Plus[b]]},
+                If[StringStartsQ[rhs, "-"], lhs <> " - " <> StringDrop[rhs, 1], lhs <> " + " <> rhs]
+            ];
+        CExpression /: GenerateCode[CExpression[Times[r_Real /; r == -1, a__]]] := "-" <> nest[Times[a]];
+        CExpression /: GenerateCode[CExpression[Times[a_, b__]]] := nest[a] <> " * " <> nest[Times[b]];
         (*functions*)
         CExpression /: GenerateCode[CExpression[a_[args___]]] := nest[a] <> "(" <> StringJoin @ StringRiffle[nest /@ {args}, ", "] <> ")";
         (*string placeholders — CSE variable names are Mathematica strings; output as bare identifiers*)
@@ -121,7 +124,8 @@ CppForm[expr_, OptionsPattern[]] :=
             CExpression /: GenerateCode[CExpression[Tan[a_]]] := "__tanf(" <> nest[a] <> ")";
         ];
         If[TrueQ[OptionValue["Format"]],
-            Return[FormatCppCode[ToCCodeString[CExpression[processedExpr]]]],
+            Return[FormatCppCode[ToCCodeString[CExpression[processedExpr]]]]
+            ,
             Return[ToCCodeString[CExpression[processedExpr]]]
         ];
     ];
@@ -130,17 +134,19 @@ clangFormatExists = Quiet[RunProcess[{"clang-format", "--help"}]] =!= $Failed;
 
 CreateClangFormat[path_:"./"] :=
     If[Not @ FileExistsQ[path <> ".clang-format"],
-        Export[path <> "/.clang-format",                                                                                                                                                                                                             "BasedOnStyle: LLVM
+        Export[path <> "/.clang-format", "BasedOnStyle: LLVM
 UseTab: Never
 IndentWidth: 2
 TabWidth: 2
 BreakBeforeBraces: Linux
 AllowShortIfStatementsOnASingleLine: true
 IndentCaseLabels: false
-ColumnLimit: 120
+ColumnLimit: 140
 AccessModifierOffset: -2
 NamespaceIndentation: All
 AllowShortEnumsOnASingleLine: true
+ContinuationIndentWidth: 2
+AlignOperands: DontAlign
 ", "Text"]
     ];
 
@@ -154,8 +160,8 @@ WriteCodeToFile[fileName_String, expression_String] :=
         If[clangFormatExists,
             preprocessed = wrapLargeStatementsForClangFormat[expression];
             Export[tmpfileName, preprocessed, "Text"];
-            CreateClangFormat[];
-            RunProcess[$SystemShell, All, "clang-format " <> tmpfileName <> " > " <> tmpfileName <> "_formatted && mv " <> tmpfileName <> "_formatted " <> tmpfileName];
+            CreateClangFormat["/tmp/"];
+            RunProcess[$SystemShell, All, "clang-format -style=file:/tmp/.clang-format " <> tmpfileName <> " > " <> tmpfileName <> "_formatted && mv " <> tmpfileName <> "_formatted " <> tmpfileName];
             Export[tmpfileName, fixClangFormatOffIndentation[Import[tmpfileName, "Text"]], "Text"];
             ,
             Export[tmpfileName, expression, "Text"];
@@ -177,26 +183,34 @@ WriteCodeToFile[fileName_String, expression_String] :=
 wrapLargeStatementsForClangFormat[code_String] :=
     Module[{parts, n, trailingSemi},
         parts = StringSplit[code, ";"];
-        (* StringSplit drops a trailing empty string when code ends with ";",
-           so track whether the original code ended with ";" to restore it *)
+(* StringSplit drops a trailing empty string when code ends with ";",
+   so track whether the original code ended with ";" to restore it *)
         trailingSemi = StringTake[code, -1] === ";";
         n = Length[parts];
-        StringJoin @ MapIndexed[
-            Function[{stmt, idx},
-                Module[{s},
-                    (* Re-attach ";" to every part, plus the last if original ended with ";" *)
-                    s = If[idx[[1]] < n || trailingSemi, stmt <> ";", stmt];
-                    (* Skip wrapping if this part already contains clang-format directives *)
-                    If[StringLength[s] > $codeFormatStatementLimit &&
-                            StringFreeQ[s, "// clang-format"],
-                        "// clang-format off\n" <> s <> "\n// clang-format on"
+        StringJoin @
+            MapIndexed[
+                Function[{stmt, idx},
+                    Module[
+                        {s}
                         ,
-                        s
+                        (* Re-attach ";" to every part, plus the last if original ended with ";" *)
+                        s =
+                            If[idx[[1]] < n || trailingSemi,
+                                stmt <> ";"
+                                ,
+                                stmt
+                            ];
+                        (* Skip wrapping if this part already contains clang-format directives *)
+                        If[StringLength[s] > $codeFormatStatementLimit && StringFreeQ[s, "// clang-format"],
+                            "// clang-format off\n" <> s <> "\n// clang-format on"
+                            ,
+                            s
+                        ]
                     ]
                 ]
-            ],
-            parts
-        ]
+                ,
+                parts
+            ]
     ];
 
 fixClangFormatOffIndentation[code_String] :=
@@ -208,22 +222,21 @@ fixClangFormatOffIndentation[code_String] :=
         Do[
             Which[
                 StringStartsQ[lines[[i]], "// clang-format off"],
-                    (* Determine indent from the previous non-empty formatted line *)
-                    indent = First[StringCases[
-                        SelectFirst[Reverse @ result, StringLength[#] > 0 &, ""],
-                        RegularExpression["^(\\s*)"] :> "$1"
-                    ], ""];
+                    (* Determine indent from the previous non-empty formatted line *)indent = First[StringCases[SelectFirst[Reverse @ result, StringLength[#] > 0&, ""], RegularExpression["^(\\s*)"] :> "$1"], ""];
                     inOff = True;
-                    AppendTo[result, indent <> "// clang-format off"],
+                    AppendTo[result, indent <> "// clang-format off"]
+                ,
                 StringStartsQ[lines[[i]], "// clang-format on"],
                     inOff = False;
-                    AppendTo[result, indent <> "// clang-format on"],
+                    AppendTo[result, indent <> "// clang-format on"]
+                ,
                 inOff,
-                    (* Re-indent: strip existing leading whitespace, apply detected indent *)
-                    AppendTo[result, indent <> StringReplace[lines[[i]], RegularExpression["^\\s+"] -> ""]],
+                    (* Re-indent: strip existing leading whitespace, apply detected indent *)AppendTo[result, indent <> StringReplace[lines[[i]], RegularExpression["^\\s+"] -> ""]]
+                ,
                 True,
                     AppendTo[result, lines[[i]]]
-            ],
+            ]
+            ,
             {i, 1, Length[lines]}
         ];
         StringRiffle[result, "\n"]
@@ -240,7 +253,7 @@ FormatCppCode[expression_String, OptionsPattern[]] :=
             Export[tmpfileName1, preprocessed, "Text"];
             (*RunProcess[$SystemShell, All, "rm /tmp/.clang-format"];*)
             CreateClangFormat["/tmp/"];
-            RunProcess[$SystemShell, All, "clang-format " <> tmpfileName1 <> " > " <> tmpfileName2];
+            RunProcess[$SystemShell, All, "clang-format -style=file:/tmp/.clang-format " <> tmpfileName1 <> " > " <> tmpfileName2];
             ,
             Export[tmpfileName1, expression, "Text"];
         ];
@@ -327,10 +340,7 @@ CppCode[equation_] :=
             Module[{subKernels, sharedDefs, sharedCode, allNames, subCode, declLine, rawExprCode},
                 sharedDefs = optimized["SharedDefinitions"];
                 subKernels = optimized["SubKernels"];
-                allNames = Join[
-                    sharedDefs[[All, 1]],
-                    Flatten @ Map[#["Definitions"][[All, 1]]&, subKernels]
-                ];
+                allNames = Join[sharedDefs[[All, 1]], Flatten @ Map[#["Definitions"][[All, 1]]&, subKernels]];
                 (* Type deduction from original unoptimized expression *)
                 rawExprCode = CppForm[equation, "Format" -> False];
                 declLine = "// clang-format off\nusing _T = decltype(" <> rawExprCode <> ");\n// clang-format on\n";
@@ -338,18 +348,18 @@ CppCode[equation_] :=
                 sharedCode = formatDefinitions[sharedDefs];
                 sharedCode = stripQuotedNames[sharedCode, allNames];
                 (* Scoped accumulation with per-subkernel local defs *)
-                subCode = Table[
-                    Module[{localDefs, termsCode},
-                        localDefs = formatDefinitions[subKernels[[i]]["Definitions"]];
-                        localDefs = stripQuotedNames[localDefs, allNames];
-                        termsCode = CppForm[subKernels[[i]]["Terms"]];
-                        termsCode = stripQuotedNames[termsCode, allNames];
-                        "{ // subkernel " <> ToString[i] <> "\n" <>
-                        localDefs <>
-                        "_acc += " <> termsCode <> ";\n}\n"
-                    ],
-                    {i, Length[subKernels]}
-                ];
+                subCode =
+                    Table[
+                        Module[{localDefs, termsCode},
+                            localDefs = formatDefinitions[subKernels[[i]]["Definitions"]];
+                            localDefs = stripQuotedNames[localDefs, allNames];
+                            termsCode = CppForm[subKernels[[i]]["Terms"]];
+                            termsCode = stripQuotedNames[termsCode, allNames];
+                            "{ // subkernel " <> ToString[i] <> "\n" <> localDefs <> "_acc += " <> termsCode <> ";\n}\n"
+                        ]
+                        ,
+                        {i, Length[subKernels]}
+                    ];
                 Return[declLine <> sharedCode <> "_T _acc{};\n" <> StringJoin[subCode] <> "return _acc;"]
             ]
         ];
@@ -360,7 +370,7 @@ CppCode[equation_] :=
         returnStatement = stripQuotedNames[returnStatement, varNames];
         FunKitDebug[2, "Definitions: ", definitions];
         FunKitDebug[2, "returnStatement: ", returnStatement];
-        definitions <> returnStatement
+        definitions <> "\n" <> returnStatement
     ];
 
 (* ::Subsection:: *)
@@ -484,17 +494,22 @@ MakeCppFunction[OptionsPattern[]] :=
             ];
         functionTemplates =
             Module[{explicitTemplates, paramTemplates = functionTemplates},
-                explicitTemplates = If[OptionValue["Templates"] === {},
-                    "",
-                    "typename " <> StringRiffle[OptionValue["Templates"], ", typename "]
-                ];
+                explicitTemplates =
+                    If[OptionValue["Templates"] === {},
+                        ""
+                        ,
+                        "typename " <> StringRiffle[OptionValue["Templates"], ", typename "]
+                    ];
                 Which[
                     explicitTemplates =!= "" && paramTemplates =!= "",
-                        explicitTemplates <> ", " <> paramTemplates,
+                        explicitTemplates <> ", " <> paramTemplates
+                    ,
                     explicitTemplates =!= "",
-                        explicitTemplates,
+                        explicitTemplates
+                    ,
                     paramTemplates =!= "",
-                        paramTemplates,
+                        paramTemplates
+                    ,
                     True,
                         ""
                 ]

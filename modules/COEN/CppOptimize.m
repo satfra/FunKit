@@ -33,36 +33,51 @@ hoistInterpolators[expr_] :=
         names = Table["_interp" <> ToString[i], {i, 1, Length[uniqueCalls]}];
         rules = Thread[uniqueCalls -> names];
         newExpr = expr //. rules;
-        <|
-            "Expr" -> newExpr,
-            "Definitions" -> Table[{names[[i]], uniqueCalls[[i]]}, {i, 1, Length[uniqueCalls]}],
-            "Count" -> Length[uniqueCalls]
-        |>
+        <|"Expr" -> newExpr, "Definitions" -> Table[{names[[i]], uniqueCalls[[i]]}, {i, 1, Length[uniqueCalls]}], "Count" -> Length[uniqueCalls]|>
     ];
 
 (**********************************************************************************
-    Power Chain Combination
-    Within each Times term, combine Power[x, a] * Power[x, b] -> Power[x, a+b].
-    Also treats bare factors x as Power[x, 1].
+    Power Basis Normalization
+    After CSE, rewrite Power[base, m] in terms of an already-hoisted Power[base, n]
+    temporary when m is a nonzero integer multiple of n.  This prevents independent
+    hoisting of e.g. powr<2>(l1) and powr<-4>(l1) when the latter is just
+    powr<-2>(_cse1).
 **********************************************************************************)
 
-toPowerPair[Power[x_, n_]] := {x, n};
-toPowerPair[x_] := {x, 1};
-
-combinePowersInProduct[t_Times] :=
-    Module[{factors, asPowers, grouped},
-        factors = List @@ t;
-        asPowers = toPowerPair /@ factors;
-        grouped = GroupBy[asPowers, First -> Last, Total];
-        (* Short-circuit if no bases appear more than once *)
-        If[Length[grouped] === Length[factors], Return[t]];
-        Times @@ KeyValueMap[Power, grouped]
+normalizePowerBases[expr_, defs_] :=
+    Module[
+        {powerDefs, grouped, rules, newExpr, newDefs}
+        ,
+        (* Collect CSE defs that are pure integer powers of a non-string base *)
+        powerDefs = Cases[defs, {name_, Power[base_ /; Not[StringQ[base]], n_Integer] /; Abs[n] > 1} :> {name, base, n}];
+        If[Length[powerDefs] === 0,
+            Return[{expr, defs}]
+        ];
+        (* Group by base: base -> list of {name, exponent} *)
+        grouped = GroupBy[powerDefs, #[[2]]& -> ({#[[1]], #[[3]]}&)];
+(* For each base build a rule: Power[base, m] -> Power[repName, m/repN]
+   Representative = entry with smallest Abs[n]; tie broken by positive exponent first *)
+        rules =
+            Flatten @
+                KeyValueMap[
+                    Function[{base, entries},
+                        Module[{rep, repName, repN},
+                            rep = First @ SortBy[entries, {Abs[#[[2]]]&, -Sign[#[[2]]]&}];
+                            repName = rep[[1]];
+                            repN = rep[[2]];
+                            (* Inject concrete base, repN, repName so the rule matches literally *)
+                            With[{b = base, n = repN, r = repName},
+                                HoldPattern[Power[b, m_Integer]] /; m =!= n && Divisible[m, n] :> Power[r, m / n]
+                            ]
+                        ]
+                    ]
+                    ,
+                    grouped
+                ];
+        newExpr = expr //. rules;
+        newDefs = Map[{#[[1]], #[[2]] //. rules}&, defs];
+        {newExpr, newDefs}
     ];
-
-combinePowersInProduct[x_] := x;
-
-combinePowerChains[expr_] :=
-    expr /. t_Times :> combinePowersInProduct[t];
 
 (**********************************************************************************
     DAG-Based Common Subexpression Elimination
@@ -74,8 +89,8 @@ dagCSE[expr_, remainingRegisters_Integer] :=
         If[remainingRegisters <= 0,
             Return[<|"Expr" -> expr, "Definitions" -> {}|>]
         ];
-        (* Collect all string placeholders in the expression and temporarily replace
-           them with clean symbols so Experimental`OptimizeExpression can work properly *)
+(* Collect all string placeholders in the expression and temporarily replace
+   them with clean symbols so Experimental`OptimizeExpression can work properly *)
         stringNames = DeleteDuplicates @ Cases[expr, _String, Infinity];
         If[Length[stringNames] > 0,
             stringRules = Table[stringNames[[idx]] -> Symbol["placeholder" <> ToString[idx]], {idx, 1, Length[stringNames]}];
@@ -86,31 +101,40 @@ dagCSE[expr_, remainingRegisters_Integer] :=
             reverseStringRules = {};
         ];
         (* Try Experimental`OptimizeExpression with timeout *)
-        result = Quiet @ TimeConstrained[
-            Experimental`OptimizeExpression[cleanExpr],
-            120,
-            $Failed
-        ];
+        result = Quiet @ TimeConstrained[Experimental`OptimizeExpression[cleanExpr], 120, $Failed];
         If[result =!= $Failed && Head[result] === Experimental`OptimizedExpression,
-            Module[{heldBlock, numParts, allAssignments, kept, dropped, inlineRules,
-                    cseNames, symbolToString},
+            Module[
+                {heldBlock, numParts, allAssignments, kept, dropped, inlineRules, cseNames, symbolToString}
+                ,
                 (* Extract with Hold to prevent Block from evaluating *)
                 heldBlock = Extract[result, {1}, Hold];
-                If[MatchQ[heldBlock, Hold[Block[_, _CompoundExpression]]],
-                    (* Count CompoundExpression parts without evaluating them.
-                       Replace wraps the matched sequence in Hold, then Length
-                       counts Hold's arguments — all without triggering evaluation. *)
-                    numParts = Replace[heldBlock,
-                        Hold[Block[_, CompoundExpression[args___]]] :> Length[Hold[args]]
-                    ];
-                    (* Extract Set expressions (all but last in CompoundExpression).
-                       Extract with Hold wrapper prevents each Set from evaluating. *)
-                    allAssignments = Table[
-                        Extract[heldBlock, {1, 2, i}, Hold] /. Hold[Set[var_, val_]] :> {var, val},
-                        {i, 1, numParts - 1}
-                    ];
-                    (* Extract final expression via Hold then release — the symbolic
-                       expression doesn't have side effects, so ReleaseHold is safe *)
+                If[MatchQ[
+                    heldBlock
+                    ,
+                    Hold[
+                        Block[_,
+                            _CompoundExpression
+                        ]
+                    ]
+                ],
+(* Count CompoundExpression parts without evaluating them.
+   Replace wraps the matched sequence in Hold, then Length
+   counts Hold's arguments — all without triggering evaluation. *)
+                    numParts =
+                        Replace[
+                            heldBlock
+                            ,
+                            Hold[
+                                    Block[_,
+                                        CompoundExpression[args___]
+                                    ]
+                                ] :> Length[Hold[args]]
+                        ];
+(* Extract Set expressions (all but last in CompoundExpression).
+   Extract with Hold wrapper prevents each Set from evaluating. *)
+                    allAssignments = Table[Extract[heldBlock, {1, 2, i}, Hold] /. Hold[Set[var_, val_]] :> {var, val}, {i, 1, numParts - 1}];
+(* Extract final expression via Hold then release — the symbolic
+   expression doesn't have side effects, so ReleaseHold is safe *)
                     finalExpr = ReleaseHold @ Extract[heldBlock, {1, 2, numParts}, Hold];
                     (* Limit to remaining register budget *)
                     If[Length[allAssignments] > remainingRegisters,
@@ -125,10 +149,7 @@ dagCSE[expr_, remainingRegisters_Integer] :=
                     cseNames = Table["_cse" <> ToString[idx], {idx, 1, Length[allAssignments]}];
                     symbolToString = Table[allAssignments[[idx, 1]] -> cseNames[[idx]], {idx, 1, Length[allAssignments]}];
                     finalExpr = finalExpr //. symbolToString //. reverseStringRules;
-                    assignments = Table[
-                        {cseNames[[idx]], allAssignments[[idx, 2]] //. symbolToString //. reverseStringRules},
-                        {idx, 1, Length[allAssignments]}
-                    ];
+                    assignments = Table[{cseNames[[idx]], allAssignments[[idx, 2]] //. symbolToString //. reverseStringRules}, {idx, 1, Length[allAssignments]}];
                     Return[<|"Expr" -> finalExpr, "Definitions" -> assignments|>]
                     ,
                     (* Not the expected structure — try fallback *)
@@ -157,10 +178,7 @@ fallbackCSE[expr_, maxVars_Integer] :=
         (* Parallelize FullSimplify across CSE candidates *)
         rulesFS = Thread[parallelSimplify[replacementKeys] -> names];
         newExpr = expr //. Reverse[rules] //. Reverse[rulesFS];
-        definitions = Table[
-            {names[[i]], replacementKeys[[i]] //. Reverse[rules[[ ;; i - 1]]] //. Reverse[rulesFS[[ ;; i - 1]]]},
-            {i, 1, Length[replacementKeys]}
-        ];
+        definitions = Table[{names[[i]], replacementKeys[[i]] //. Reverse[rules[[ ;; i - 1]]] //. Reverse[rulesFS[[ ;; i - 1]]]}, {i, 1, Length[replacementKeys]}];
         <|"Expr" -> newExpr, "Definitions" -> definitions|>
     ];
 
@@ -178,7 +196,9 @@ algebraicFactor[expr_] :=
         Do[
             prev = result;
             result = FactorTerms[result];
-            If[result === prev, Break[]];
+            If[result === prev,
+                Break[]
+            ];
             ,
             {3}
         ];
@@ -191,8 +211,12 @@ algebraicFactor[expr_] :=
     GPU FMA units execute this as a single instruction with better precision.
 **********************************************************************************)
 
-buildFMAChain[{}] := 0;
-buildFMAChain[{x_}] := x;
+buildFMAChain[{}] :=
+    0;
+
+buildFMAChain[{x_}] :=
+    x;
+
 buildFMAChain[terms_List] :=
     Module[{mulTerms, nonMulTerms, result},
         mulTerms = Select[terms, MatchQ[#, _Times]&];
@@ -214,7 +238,8 @@ buildFMAChain[terms_List] :=
                 a = First[factors];
                 b = Times @@ Rest[factors];
                 result = fmaGroup[a, b, result];
-            ],
+            ]
+            ,
             {i, Length[mulTerms], 1, -1}
         ];
         result
@@ -239,34 +264,27 @@ hoistTranscendentals[expr_, maxVars_Integer] :=
         If[maxVars <= 0,
             Return[<|"Expr" -> expr, "Definitions" -> {}, "Count" -> 0|>]
         ];
-        (* Find all transcendental calls with non-trivial arguments.
-           Note: Exp[x] evaluates to Power[E, x] in Mathematica, so we must match that form too. *)
-        transcCalls = Join[
-            Cases[expr, (h : Exp | cppExp | Log | Sin | Cos | Tan | Sqrt | Tanh | Sinh | Cosh)[a_] /; !AtomQ[a], Infinity],
-            Cases[expr, Power[E, a_] /; !AtomQ[a], Infinity]
-        ];
+(* Find all transcendental calls with non-trivial arguments.
+   Note: Exp[x] evaluates to Power[E, x] in Mathematica, so we must match that form too. *)
+        transcCalls = Join[Cases[expr, (h : Exp | cppExp | Log | Sin | Cos | Tan | Sqrt | Tanh | Sinh | Cosh)[a_] /; !AtomQ[a], Infinity], Cases[expr, Power[E, a_] /; !AtomQ[a], Infinity]];
         uniqueCalls = DeleteDuplicates[transcCalls];
         If[Length[uniqueCalls] === 0,
             Return[<|"Expr" -> expr, "Definitions" -> {}, "Count" -> 0|>]
         ];
         (* Detect Exp[x] / Exp[-x] pairs for reciprocal reuse *)
-        expBases = Join[
-            Cases[uniqueCalls, (Exp | cppExp)[a_] :> a],
-            Cases[uniqueCalls, Power[E, a_] :> a]
-        ];
+        expBases = Join[Cases[uniqueCalls, (Exp | cppExp)[a_] :> a], Cases[uniqueCalls, Power[E, a_] :> a]];
         expPairs = {};
         extraDefs = {};
         Do[
             If[MemberQ[expBases, -base],
                 (* Both Exp[x] and Exp[-x] exist — we'll hoist Exp[x] and derive Exp[-x] via reciprocal *)
                 AppendTo[expPairs, base];
-            ],
+            ]
+            ,
             {base, expBases}
         ];
         (* Remove Exp[-x] from uniqueCalls if Exp[x] exists, to avoid double-hoisting *)
-        uniqueCalls = Select[uniqueCalls,
-            Not[MatchQ[#, (Exp | cppExp)[a_] /; MemberQ[expPairs, -a]] || MatchQ[#, Power[E, a_] /; MemberQ[expPairs, -a]]]&
-        ];
+        uniqueCalls = Select[uniqueCalls, Not[MatchQ[#, (Exp | cppExp)[a_] /; MemberQ[expPairs, -a]] || MatchQ[#, Power[E, a_] /; MemberQ[expPairs, -a]]]&];
         (* Sort by frequency (descending) and limit to maxVars *)
         If[Length[uniqueCalls] > maxVars,
             Module[{freqs},
@@ -287,18 +305,17 @@ hoistTranscendentals[expr_, maxVars_Integer] :=
                     negRule = negCall -> Power[posName, -1];
                     newExpr = newExpr //. negRule;
                 ];
-            ],
+            ]
+            ,
             {base, DeleteDuplicates[expPairs]}
         ];
-        <|
-            "Expr" -> newExpr,
-            "Definitions" -> Table[{names[[i]], uniqueCalls[[i]]}, {i, 1, Length[uniqueCalls]}],
-            "Count" -> Length[uniqueCalls]
-        |>
+        <|"Expr" -> newExpr, "Definitions" -> Table[{names[[i]], uniqueCalls[[i]]}, {i, 1, Length[uniqueCalls]}], "Count" -> Length[uniqueCalls]|>
     ];
 
 (* Backward-compatible no-limit version *)
-hoistTranscendentals[expr_] := hoistTranscendentals[expr, Infinity];
+
+hoistTranscendentals[expr_] :=
+    hoistTranscendentals[expr, Infinity];
 
 (**********************************************************************************
     Early Splitting
@@ -312,8 +329,11 @@ hoistTranscendentals[expr_] := hoistTranscendentals[expr, Infinity];
    If expr = Plus[terms...], returns {1, {term1, term2, ...}}.
    When multiple Plus factors exist in a Times, selects the largest by LeafCount.
    Otherwise returns {1, {expr}} (single-term, no splitting possible). *)
+
 extractSummationCore[expr_] :=
-    Module[{innerPlus, prefactors},
+    Module[
+        {innerPlus, prefactors}
+        ,
         (* Direct Plus at top level *)
         If[Head[expr] === Plus,
             Return[{1, List @@ expr}]
@@ -336,17 +356,16 @@ extractSummationCore[expr_] :=
     ];
 
 earlySplit[interpDefs_, expr_] :=
-    Module[{prefactor, terms, numTerms, exprComplexity, totalWeight, chunkSize,
-            chunks, subKernelData, interpNames, interpsByName},
+    Module[
+        {prefactor, terms, numTerms, exprComplexity, totalWeight, chunkSize, chunks, subKernelData, interpNames, interpsByName}
+        ,
         (* Extract the summation core, handling Times[prefactor, Plus[...]] *)
         {prefactor, terms} = extractSummationCore[expr];
         numTerms = Length[terms];
         exprComplexity = Total[LeafCount /@ terms];
         totalWeight = Length[interpDefs] + exprComplexity;
         chunkSize = $codeMaxKernelTerms;
-        FunKitDebug[2, "Early split check: ", numTerms, " terms, LeafCount ", exprComplexity,
-                    ", ", Length[interpDefs], " interp defs, total weight ", totalWeight,
-                    " vs threshold ", chunkSize];
+        FunKitDebug[2, "Early split check: ", numTerms, " terms, LeafCount ", exprComplexity, ", ", Length[interpDefs], " interp defs, total weight ", totalWeight, " vs threshold ", chunkSize];
         (* Below threshold or cannot split — single kernel *)
         If[(totalWeight <= chunkSize && numTerms <= chunkSize) || numTerms <= 1,
             Return[<|"Split" -> False, "Expr" -> expr, "SharedDefs" -> interpDefs|>]
@@ -358,32 +377,39 @@ earlySplit[interpDefs_, expr_] :=
         ];
         chunks = Partition[terms, UpTo[chunkSize]];
         (* Build chunk expressions with prefactor *)
-        chunks = Map[
-            If[prefactor =!= 1, prefactor * Plus @@ #, Plus @@ #]&,
-            chunks
-        ];
+        chunks =
+            Map[
+                If[prefactor =!= 1,
+                    prefactor * Plus @@ #
+                    ,
+                    Plus @@ #
+                ]&
+                ,
+                chunks
+            ];
         (* Partition interp defs: shared (used by 2+ chunks) vs local (1 chunk) *)
         interpNames = #[[1]]& /@ interpDefs;
         interpsByName = Association @ Table[interpDefs[[i, 1]] -> interpDefs[[i]], {i, Length[interpDefs]}];
-        Module[{chunkRefs, useCounts, sharedNames, sharedDefs},
+        Module[
+            {chunkRefs, useCounts, sharedNames, sharedDefs}
+            ,
             (* Find which interp names each chunk references *)
-            chunkRefs = Map[
-                Intersection[interpNames, DeleteDuplicates @ Cases[#, _String, Infinity]]&,
-                chunks
-            ];
+            chunkRefs = Map[Intersection[interpNames, DeleteDuplicates @ Cases[#, _String, Infinity]]&, chunks];
             (* Count how many chunks reference each interp *)
             useCounts = Counts[Flatten[chunkRefs]];
             sharedNames = Keys @ Select[useCounts, # > 1&];
             sharedDefs = Select[interpDefs, MemberQ[sharedNames, #[[1]]]&];
             (* Build sub-kernel data with local interps *)
-            subKernelData = Table[
-                Module[{localInterpNames, localInterps},
-                    localInterpNames = Select[chunkRefs[[i]], Not @ MemberQ[sharedNames, #]&];
-                    localInterps = Select[interpDefs, MemberQ[localInterpNames, #[[1]]]&];
-                    <|"Expr" -> chunks[[i]], "InterpDefs" -> localInterps|>
-                ],
-                {i, Length[chunks]}
-            ];
+            subKernelData =
+                Table[
+                    Module[{localInterpNames, localInterps},
+                        localInterpNames = Select[chunkRefs[[i]], Not @ MemberQ[sharedNames, #]&];
+                        localInterps = Select[interpDefs, MemberQ[localInterpNames, #[[1]]]&];
+                        <|"Expr" -> chunks[[i]], "InterpDefs" -> localInterps|>
+                    ]
+                    ,
+                    {i, Length[chunks]}
+                ];
             <|"Split" -> True, "SharedDefs" -> sharedDefs, "SubKernels" -> subKernelData|>
         ]
     ];
@@ -397,22 +423,17 @@ earlySplit[interpDefs_, expr_] :=
 optimizeSubKernel[expr_, sharedDefCount_Integer] :=
     Module[{e, perKernelBudget, cseResult, cseDefs, remainingBudget, tranResult, allDefs},
         perKernelBudget = Max[0, $availableRegisters - sharedDefCount];
-        FunKitDebug[2, "  Per-kernel budget: ", perKernelBudget,
-                    " (registers=", $availableRegisters, ", shared=", sharedDefCount, ")"];
+        FunKitDebug[2, "  Per-kernel budget: ", perKernelBudget, " (registers=", $availableRegisters, ", shared=", sharedDefCount, ")"];
         e = expr;
-
         (* CSE with per-kernel budget *)
         cseResult = dagCSE[e, perKernelBudget];
         e = cseResult["Expr"];
         cseDefs = cseResult["Definitions"];
         FunKitDebug[2, "  CSE found ", Length[cseDefs], " subexpressions"];
-
-        (* Power chain combination on expr and CSE definition RHS values *)
-        e = combinePowerChains[e];
-        If[Length[cseDefs] > 0,
-            cseDefs = Map[{#[[1]], combinePowerChains[#[[2]]]}&, cseDefs];
-        ];
-
+(* Normalize power bases: rewrite Power[base, m] using an already-hoisted
+   Power[base, n] temporary when m is a nonzero integer multiple of n *)
+        {e, cseDefs} = normalizePowerBases[e, cseDefs];
+        FunKitDebug[2, "  Power basis normalization done"];
         (* Algebraic factoring *)
         If[Length[cseDefs] > 0,
             Module[{allExprsToFactor, factoredExprs},
@@ -424,29 +445,22 @@ optimizeSubKernel[expr_, sharedDefCount_Integer] :=
                         Map[algebraicFactor, allExprsToFactor]
                     ];
                 e = factoredExprs[[1]];
-                cseDefs = Table[
-                    {cseDefs[[idx, 1]], factoredExprs[[idx + 1]]},
-                    {idx, 1, Length[cseDefs]}
-                ];
+                cseDefs = Table[{cseDefs[[idx, 1]], factoredExprs[[idx + 1]]}, {idx, 1, Length[cseDefs]}];
             ];
             ,
             e = algebraicFactor[e];
         ];
-
         (* Transcendental hoisting with remaining budget *)
         remainingBudget = Max[0, perKernelBudget - Length[cseDefs]];
         tranResult = hoistTranscendentals[e, remainingBudget];
         e = tranResult["Expr"];
-        FunKitDebug[2, "  Transcendental hoisting: ", tranResult["Count"],
-                    " (budget was ", remainingBudget, ")"];
-
+        FunKitDebug[2, "  Transcendental hoisting: ", tranResult["Count"], " (budget was ", remainingBudget, ")"];
         (* FMA restructuring *)
         e = fmaRestructure[e];
         allDefs = Join[cseDefs, tranResult["Definitions"]];
         If[Length[allDefs] > 0,
             allDefs = Map[{#[[1]], fmaRestructure[#[[2]]]}&, allDefs];
         ];
-
         <|"Expr" -> e, "Definitions" -> allDefs|>
     ];
 
@@ -457,23 +471,22 @@ optimizeSubKernel[expr_, sharedDefCount_Integer] :=
 **********************************************************************************)
 
 splitIntoSubKernels[allDefs_, finalExpr_] :=
-    Module[{terms, numTerms, chunkSize, chunks, subKernels, sharedDefs,
-            defNames, defsByName, prefactor, exprComplexity, totalWeight},
+    Module[
+        {terms, numTerms, chunkSize, chunks, subKernels, sharedDefs, defNames, defsByName, prefactor, exprComplexity, totalWeight}
+        ,
         (* Extract the summation core, handling Times[prefactor, Plus[...]] *)
         {prefactor, terms} = extractSummationCore[finalExpr];
         numTerms = Length[terms];
         exprComplexity = Total[LeafCount /@ terms];
         totalWeight = Length[allDefs] + exprComplexity;
         chunkSize = $codeMaxKernelTerms;
-        FunKitDebug[2, "Sub-kernel check: ", numTerms, " terms, LeafCount ", exprComplexity,
-                    ", ", Length[allDefs], " defs, total weight ", totalWeight,
-                    " vs threshold ", chunkSize];
+        FunKitDebug[2, "Sub-kernel check: ", numTerms, " terms, LeafCount ", exprComplexity, ", ", Length[allDefs], " defs, total weight ", totalWeight, " vs threshold ", chunkSize];
         If[(totalWeight <= chunkSize && numTerms <= chunkSize) || numTerms <= 1,
             (* Below threshold or single term — no split needed *)
             Return[<|"UseSubKernels" -> False, "Definitions" -> allDefs, "Expr" -> finalExpr|>]
         ];
-        (* Determine per-chunk size: aim for chunks where each chunk's
-           LeafCount stays under the budget *)
+(* Determine per-chunk size: aim for chunks where each chunk's
+   LeafCount stays under the budget *)
         Module[{targetChunks},
             targetChunks = Max[2, Ceiling[totalWeight / chunkSize]];
             chunkSize = Ceiling[numTerms / targetChunks];
@@ -484,30 +497,30 @@ splitIntoSubKernels[allDefs_, finalExpr_] :=
         defNames = #[[1]]& /@ allDefs;
         defsByName = Association @ Table[allDefs[[i, 1]] -> allDefs[[i]], {i, Length[allDefs]}];
         (* For each chunk, find which definitions it references *)
-        subKernels = Table[
-            Module[{chunkExpr, referencedNames, relevantDefs},
-                chunkExpr = Plus @@ chunk;
-                (* Multiply by prefactor if present *)
-                If[prefactor =!= 1,
-                    chunkExpr = prefactor * chunkExpr;
-                ];
-                referencedNames = Intersection[defNames, DeleteDuplicates @ Cases[chunkExpr, _String, Infinity]];
-                (* Also include definitions referenced by other definitions (transitive) *)
-                Module[{prevLen = 0},
-                    While[Length[referencedNames] =!= prevLen,
-                        prevLen = Length[referencedNames];
-                        referencedNames = DeleteDuplicates @ Join[
-                            referencedNames,
-                            Intersection[defNames,
-                                Flatten @ Map[Cases[defsByName[#][[2]], _String, Infinity]&, referencedNames]]
+        subKernels =
+            Table[
+                Module[{chunkExpr, referencedNames, relevantDefs},
+                    chunkExpr = Plus @@ chunk;
+                    (* Multiply by prefactor if present *)
+                    If[prefactor =!= 1,
+                        chunkExpr = prefactor * chunkExpr;
+                    ];
+                    referencedNames = Intersection[defNames, DeleteDuplicates @ Cases[chunkExpr, _String, Infinity]];
+                    (* Also include definitions referenced by other definitions (transitive) *)
+                    Module[{prevLen = 0},
+                        While[
+                            Length[referencedNames] =!= prevLen
+                            ,
+                            prevLen = Length[referencedNames];
+                            referencedNames = DeleteDuplicates @ Join[referencedNames, Intersection[defNames, Flatten @ Map[Cases[defsByName[#][[2]], _String, Infinity]&, referencedNames]]];
                         ];
                     ];
-                ];
-                relevantDefs = Select[allDefs, MemberQ[referencedNames, #[[1]]]&];
-                <|"Terms" -> chunkExpr, "Definitions" -> relevantDefs|>
-            ],
-            {chunk, chunks}
-        ];
+                    relevantDefs = Select[allDefs, MemberQ[referencedNames, #[[1]]]&];
+                    <|"Terms" -> chunkExpr, "Definitions" -> relevantDefs|>
+                ]
+                ,
+                {chunk, chunks}
+            ];
         (* Find definitions used by multiple sub-kernels — these are "shared" *)
         Module[{allUsed, useCounts, sharedNames},
             allUsed = Flatten @ Map[#["Definitions"][[All, 1]]&, subKernels];
@@ -515,17 +528,9 @@ splitIntoSubKernels[allDefs_, finalExpr_] :=
             sharedNames = Keys @ Select[useCounts, # > 1&];
             sharedDefs = Select[allDefs, MemberQ[sharedNames, #[[1]]]&];
             (* Remove shared defs from per-kernel defs *)
-            subKernels = Map[
-                <|"Terms" -> #["Terms"],
-                  "Definitions" -> Select[#["Definitions"], Not @ MemberQ[sharedNames, #[[1]]]&]|>&,
-                subKernels
-            ];
+            subKernels = Map[<|"Terms" -> #["Terms"], "Definitions" -> Select[#["Definitions"], Not @ MemberQ[sharedNames, #[[1]]]&]|>&, subKernels];
         ];
-        <|
-            "UseSubKernels" -> True,
-            "SharedDefinitions" -> sharedDefs,
-            "SubKernels" -> subKernels
-        |>
+        <|"UseSubKernels" -> True, "SharedDefinitions" -> sharedDefs, "SubKernels" -> subKernels|>
     ];
 
 (**********************************************************************************
@@ -537,66 +542,49 @@ splitIntoSubKernels[allDefs_, finalExpr_] :=
 **********************************************************************************)
 
 optimizeExpression[equation_] :=
-    Module[{expr, interpResult, interpCount, splitResult,
-            sharedDefs, subKernels, result, allDefs},
-
+    Module[{expr, interpResult, interpCount, splitResult, sharedDefs, subKernels, result, allDefs},
         FunKitDebug[1, "Starting optimization pipeline (optimize = ", $codeOptimize, ")"];
-
         (* If optimization is disabled, return raw expression with no passes *)
         If[!TrueQ[$codeOptimize],
             Return[<|"Definitions" -> {}, "Expr" -> equation, "UseSubKernels" -> False|>]
         ];
-
         expr = equation;
-
         (* === GLOBAL PASSES === *)
-
         (* Pass 1: Interpolator hoisting — extract global memory reads *)
         interpResult = hoistInterpolators[expr];
         expr = interpResult["Expr"];
         interpCount = interpResult["Count"];
         FunKitDebug[2, "Hoisted ", interpCount, " interpolator calls"];
-
         (* Pass 2: Early split decision *)
         splitResult = earlySplit[interpResult["Definitions"], expr];
         FunKitDebug[2, "Early split: ", splitResult["Split"]];
-
         (* === PER-KERNEL PASSES === *)
-
         If[TrueQ[splitResult["Split"]],
             (* Multi-kernel path: optimize each sub-kernel independently *)
             sharedDefs = splitResult["SharedDefs"];
-            subKernels = Table[
-                Module[{kernelResult, localInterpDefs, totalShared},
-                    localInterpDefs = splitResult["SubKernels"][[i]]["InterpDefs"];
-                    totalShared = Length[sharedDefs] + Length[localInterpDefs];
-                    FunKitDebug[2, "Optimizing sub-kernel ", i, " of ", Length[splitResult["SubKernels"]],
-                                " (shared=", Length[sharedDefs], ", localInterps=", Length[localInterpDefs], ")"];
-                    kernelResult = optimizeSubKernel[
-                        splitResult["SubKernels"][[i]]["Expr"],
-                        totalShared
-                    ];
-                    <|"Terms" -> kernelResult["Expr"],
-                      "Definitions" -> Join[localInterpDefs, kernelResult["Definitions"]]|>
-                ],
-                {i, Length[splitResult["SubKernels"]]}
-            ];
+            subKernels =
+                Table[
+                    Module[{kernelResult, localInterpDefs, totalShared},
+                        localInterpDefs = splitResult["SubKernels"][[i]]["InterpDefs"];
+                        totalShared = Length[sharedDefs] + Length[localInterpDefs];
+                        FunKitDebug[2, "Optimizing sub-kernel ", i, " of ", Length[splitResult["SubKernels"]], " (shared=", Length[sharedDefs], ", localInterps=", Length[localInterpDefs], ")"];
+                        kernelResult = optimizeSubKernel[splitResult["SubKernels"][[i]]["Expr"], totalShared];
+                        <|"Terms" -> kernelResult["Expr"], "Definitions" -> Join[localInterpDefs, kernelResult["Definitions"]]|>
+                    ]
+                    ,
+                    {i, Length[splitResult["SubKernels"]]}
+                ];
             (* Apply FMA to shared definitions *)
             If[Length[sharedDefs] > 0,
                 sharedDefs = Map[{#[[1]], fmaRestructure[#[[2]]]}&, sharedDefs];
             ];
             FunKitDebug[2, "Multi-kernel optimization complete: ", Length[subKernels], " sub-kernels"];
-            <|
-                "UseSubKernels" -> True,
-                "SharedDefinitions" -> sharedDefs,
-                "SubKernels" -> subKernels
-            |>
+            <|"UseSubKernels" -> True, "SharedDefinitions" -> sharedDefs, "SubKernels" -> subKernels|>
             ,
             (* Single-kernel path: optimize the whole expression *)
             result = optimizeSubKernel[expr, interpCount];
             allDefs = Join[interpResult["Definitions"], result["Definitions"]];
             FunKitDebug[2, "Single-kernel optimization complete: ", Length[allDefs], " total defs"];
-
             (* Try splitting for registers if expression is large *)
             splitResult = splitIntoSubKernels[allDefs, result["Expr"]];
             FunKitDebug[2, "Post-optimization split: SubKernels=", TrueQ[splitResult["UseSubKernels"]]];
@@ -610,28 +598,24 @@ optimizeExpression[equation_] :=
 
 formatDefinitions[defs_] :=
     Module[{simplifiedExprs, result = ""},
-        If[Length[defs] === 0, Return[""]];
+        If[Length[defs] === 0,
+            Return[""]
+        ];
         (* FullSimplify is the dominant cost — parallelize it across definitions *)
         simplifiedExprs = parallelSimplify[defs[[All, 2]]];
-        result = StringJoin @ Table[
-            "const auto " <> defs[[i, 1]] <> " = " <> CppForm[simplifiedExprs[[i]]] <> ";\n",
-            {i, 1, Length[defs]}
-        ];
+        result = StringJoin @ Table["const auto " <> defs[[i, 1]] <> " = " <> CppForm[simplifiedExprs[[i]]] <> ";\n", {i, 1, Length[defs]}];
         result <> "\n"
     ];
 
 formatReturnStatement[expr_] :=
-    " return " <> CppForm[expr] <> ";";
+    "  return " <> CppForm[expr] <> ";";
 
 stripQuotedNames[code_String, names_List] :=
     StringReplace[code, Map["\"" <> # <> "\"" -> #&, names]];
 
 getAllVarNames[optimized_] :=
     If[TrueQ[optimized["UseSubKernels"]],
-        Join[
-            Map[#[[1]]&, optimized["SharedDefinitions"]],
-            Flatten @ Map[Map[#[[1]]&, #["Definitions"]]&, optimized["SubKernels"]]
-        ]
+        Join[Map[#[[1]]&, optimized["SharedDefinitions"]], Flatten @ Map[Map[#[[1]]&, #["Definitions"]]&, optimized["SubKernels"]]]
         ,
         Map[#[[1]]&, optimized["Definitions"]]
     ];

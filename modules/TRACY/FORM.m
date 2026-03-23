@@ -10,6 +10,10 @@
 
 (* ::Input::Initialization:: *)
 
+SetAttributes[cos, Orderless];
+
+SetAttributes[Evaluate[Head @ Global`TBInsertOutputNaming[Global`TBsp[p1, p2]]], Orderless];
+
 GetFTSynonym::notSymbol = "The value \"`1`\" is not a symbol.";
 
 GetFTSynonym::synonymNotFound = "Could not find a FormTracer synonym for the symbol `1`.";

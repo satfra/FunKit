@@ -8,14 +8,19 @@
 
 JuliaForm[expr_] :=
     Module[{Fstr},
-        Fstr = ToString[FortranForm[expr //. {E^x_ :> Global`tmp$$exp[x]}]];
-        StringReplace[Fstr, 
-        {a_ ~~ "(i)" -> a ~~ "[i]", a_ ~~ "(-1 + i)" -> a ~~ "[i-1]", a_ ~~ "(1 + i)" -> a ~~ "[i+1]", "**" -> "^", ".*" -> "*", ".+" -> "+", "Pi" -> "\[Pi]", 
+        Fstr = ToString[FortranForm[expr //. {
+            E^x_ :> Global`tmp$$exp[x],
+            Complex[re_, im_] :> Global`tmp$$complex[re, im],
+            fmaGroup[a_, b_, c_] :> Global`tmp$$fma[a, b, c]
+        }]];
+        StringReplace[Fstr,
+        {a_ ~~ "(i)" -> a ~~ "[i]", a_ ~~ "(-1 + i)" -> a ~~ "[i-1]", a_ ~~ "(1 + i)" -> a ~~ "[i+1]", "**" -> "^", ".*" -> "*", ".+" -> "+", "Pi" -> "\[Pi]",
         "Sqrt" -> "sqrt",
-        "Log" -> "log", "Exp" -> "exp", "tmp$$exp" -> "exp",
+        "Log" -> "log", "Exp" -> "exp", "tmp$$exp" -> "exp", "tmp$$complex" -> "complex",
+        "tmp$$fma" -> "fma",
         "Sin" -> "sin", "Cos" -> "cos", "Tan" -> "tan", "Cot" -> "cot",
         "ArcSin" -> "asin", "ArcCos" -> "acos", "ArcTan" -> "atan", "ArcCot" -> "acot",
-        "Sinh" -> "sinh", "Cosh" -> "cosh",  "Tanh" -> "tanh", "Coth" -> "coth", 
+        "Sinh" -> "sinh", "Cosh" -> "cosh",  "Tanh" -> "tanh", "Coth" -> "coth",
         "ArcSinh" -> "asinh", "ArcCosh" -> "acosh", "ArcTanh" -> "atanh", "ArcCoth" -> "acoth"
         }]
     ];
@@ -37,23 +42,56 @@ IndentCode[code_String, level_Integer] :=
 (* ::Input::Initialization:: *)
 
 JuliaCode[equation_] :=
-    Module[{optList, interpObj, replacementObj, replacementNames, replacements, definitions, returnStatement},
-        optList = $codeOptimizeFunctions;
-        interpObj = Flatten @ Map[Cases[equation, #, Infinity]&, optList];
-        replacementObj = Keys @ Select[Counts[interpObj], # > 1&];
-        replacementNames = Table["_repl" <> ToString[i], {i, 1, Length[replacementObj]}];
-        replacements = Table[replacementObj[[i]] -> replacementNames[[i]], {i, 1, Length[replacementObj]}];
-        definitions =
-            If[Length[replacementObj] > 0,
-                Module[{simplified},
-                    simplified = parallelSimplify[replacementObj];
-                    StringJoin[Table[ToString[replacementNames[[i]]] <> " = " <> JuliaForm[simplified[[i]]] <> "\n", {i, 1, Length[replacementObj]}]] <> "\n"
+    Module[{optimized, varNames, juliaFormatDefs, definitions, returnStatement},
+        optimized = optimizeExpression[equation];
+        varNames = getAllVarNames[optimized];
+        juliaFormatDefs = Function[{defs},
+            If[Length[defs] === 0, "",
+                Module[{simplifiedExprs},
+                    simplifiedExprs = parallelSimplify[defs[[All, 2]]];
+                    StringJoin @ Table[
+                        defs[[i, 1]] <> " = " <> JuliaForm[simplifiedExprs[[i]]] <> "\n",
+                        {i, 1, Length[defs]}
+                    ] <> "\n"
                 ]
-                ,
-                ""
-            ];
-        returnStatement = "return " <> JuliaForm[equation //. replacements];
-        returnStatement = StringReplace[returnStatement, Map["\"" <> # <> "\"" -> #&, replacementNames]];
+            ]
+        ];
+        (* Sub-kernel pattern *)
+        If[TrueQ[optimized["UseSubKernels"]],
+            Module[{subKernels, sharedDefs, sharedCode, allNames, subCode},
+                sharedDefs = optimized["SharedDefinitions"];
+                subKernels = optimized["SubKernels"];
+                allNames = Join[
+                    sharedDefs[[All, 1]],
+                    Flatten @ Map[#["Definitions"][[All, 1]]&, subKernels]
+                ];
+                sharedCode = juliaFormatDefs[sharedDefs];
+                sharedCode = stripQuotedNames[sharedCode, allNames];
+                subCode = Table[
+                    Module[{localDefs, termsCode},
+                        localDefs = juliaFormatDefs[subKernels[[i]]["Definitions"]];
+                        localDefs = stripQuotedNames[localDefs, allNames];
+                        termsCode = JuliaForm[subKernels[[i]]["Terms"]];
+                        termsCode = stripQuotedNames[termsCode, allNames];
+                        "# subkernel " <> ToString[i] <> "\n" <>
+                        localDefs <>
+                        "_result" <> ToString[i] <> " = " <> termsCode <> "\n"
+                    ],
+                    {i, Length[subKernels]}
+                ];
+                Return[
+                    sharedCode <> StringJoin[subCode] <>
+                    "return " <> StringRiffle[Table["_result" <> ToString[i], {i, Length[subKernels]}], " + "]
+                ]
+            ]
+        ];
+        (* Standard path: definitions + return *)
+        definitions = juliaFormatDefs[optimized["Definitions"]];
+        definitions = stripQuotedNames[definitions, varNames];
+        returnStatement = "return " <> JuliaForm[optimized["Expr"]];
+        returnStatement = stripQuotedNames[returnStatement, varNames];
+        FunKitDebug[2, "Definitions: ", definitions];
+        FunKitDebug[2, "returnStatement: ", returnStatement];
         definitions <> returnStatement
     ];
 

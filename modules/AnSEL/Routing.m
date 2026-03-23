@@ -126,10 +126,10 @@ FRoute[setup_, expr_FTerm] :=
             (* We want to keep the index sign in the momenta, but remove it from the group indices *)
             Module[{rules = {closedIndices[[idx]] -> indStruct}},
                 If[Length[indStruct] > 1,
-                    AppendTo[rules, (-indStruct[[2]]) -> indStruct[[2]]];
+                    rules = Join[rules, Thread[-(makePosIdx /@ indStruct[[2]]) -> (makePosIdx /@ indStruct[[2]])]];
                 ];
-                ret = ret /. rules;
-                objects = objects /. rules;
+                ret = ret /. rules /. rules;
+                objects = objects /. rules /. rules;
             ];
             ,
             {idx, 1, Length[closedIndices]}
@@ -143,8 +143,7 @@ Momentum conservation is already enforced here, i.e. \!\(
 \*SubscriptBox[\(p\), \(n\)]\(.\)\)\)\)*)
         externalIndices = Table[{}, {idx, 1, Length[openIndices]}];
         Do[
-            (*see above*)
-            subObj = Select[objects, MemberQ[#, openIndices[[idx]], Infinity]&];
+            (*see above*)subObj = Select[objects, MemberQ[#, openIndices[[idx]], Infinity]&];
             If[Length[subObj] === 0,
                 Message[FRoute::noObjectForIndex, openIndices[[idx]]];
                 Abort[]

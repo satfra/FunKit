@@ -1246,7 +1246,7 @@ Cell[BoxData[
        RowBox[{
         RowBox[{"FTakeDerivatives", "[", 
          RowBox[{
-          RowBox[{"MakeDSE", "[", 
+          RowBox[{"FMakeDSE", "[", 
            RowBox[{"Setup", ",", 
             RowBox[{"\[Phi]", "[", "i1", "]"}]}], "]"}], ",", 
           RowBox[{"{", 
@@ -5158,7 +5158,7 @@ Cell[BoxData[{
        RowBox[{
         RowBox[{"FTakeDerivatives", "[", 
          RowBox[{
-          RowBox[{"MakeDSE", "[", 
+          RowBox[{"FMakeDSE", "[", 
            RowBox[{"Setup", ",", 
             RowBox[{"\[Phi]", "[", "i1", "]"}]}], "]"}], ",", 
           RowBox[{"{", 
@@ -20956,7 +20956,7 @@ Cell[BoxData[{
     RowBox[{
      RowBox[{"FTakeDerivatives", "[", 
       RowBox[{
-       RowBox[{"MakeDSE", "[", 
+       RowBox[{"FMakeDSE", "[", 
         RowBox[{"Setup", ",", 
          RowBox[{"\[Phi]", "[", "i1", "]"}]}], "]"}], ",", 
        RowBox[{"{", 
