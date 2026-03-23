@@ -20,11 +20,12 @@ FResolveFDOp[setup_, term_FTerm] :=
             Message[FResolveFDOp::nested, term];
             Abort[]
         ];
-        (*If no derivatives are present, do nothing*)
-        If[FreeQ[rTerm, FDOp[__]],
+        (*Find rightmost FDOp; if none present, return immediately*)
+        FDOpPos = FirstPosition[Reverse @ (List @@ rTerm), _FDOp, Missing["NotFound"], {1}];
+        If[MissingQ[FDOpPos],
             Return[FEx[rTerm]]
         ];
-        FDOpPos = Length[rTerm] - FirstPosition[Reverse @ (List @@ rTerm), FDOp[_]][[1]] + 1;
+        FDOpPos = Length[rTerm] - FDOpPos[[1]] + 1;
         termsNoFDOp = FTerm[rTerm[[1 ;; FDOpPos - 1]], rTerm[[FDOpPos + 1 ;; ]]];
         (*If the derivative operator is trailing, it acts on nothing and the term is zero.*)
         If[FDOpPos >= Length[rTerm],

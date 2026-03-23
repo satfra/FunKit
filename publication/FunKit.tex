@@ -22,6 +22,7 @@
 \usepackage{slashed}
 \usepackage{tensor}
 \usepackage[most]{tcolorbox}
+\DeclareMathAlphabet{\mathbbold}{U}{bbold}{m}{n}
 
 \usepackage{pifont}
 \newcommand{\xmark}{\ding{55}}
@@ -212,6 +213,7 @@
 \newcommand{\xAct}{\texttt{xAct}\xspace}
 
 \definecolor{pastelblue}{rgb}{0.4,0.5,0.9}
+\definecolor{pastelgreen}{rgb}{0.4,0.9,0.5}
 
 %%%%%%%%%%%%% Graphic paths %%%%%%%%%%%%%
 \graphicspath{{./figures/}}
@@ -422,7 +424,7 @@ We also provide several example notebooks where the derivation of certain theori
 		colframe=pastelblue,
 		fonttitle=\bfseries]
 		\small
-		\begin{tabular}{p{5.4cm} p{10.0cm}}
+		\begin{tabular}{p{6.0cm} p{9.5cm}}
 			\toprule
 			\textbf{Notebook (repo path)} & \textbf{Description} \\
 			\midrule
@@ -691,8 +693,8 @@ FEx[FTerm[-PhiDot[\{AnyField\},\{a\}],GammaN[\{AnyField\},\{-a\}]],
 In the above, we have first informed \FunKit about a user-defined correlation function, \mathem{\mmaDef{PhiDot}} $\equiv \dot{\Phi}$, and instructed to never change the position of the last index (i.e. the superindex specifying $\Phi$ itself).
 Furthermore, we have already used \mathem{\mmaDef{FDOp}}, which represents a functional derivative operator, and nested \mathem{\mmaDef{FEx}} and \mathem{\mmaDef{FTerm}}. As visible from the output, \FunKit automatically expanded this into three \mathem{\mmaDef{FTerm}} expressions.
 
-Note that \FEDeriK knows by default the correlation function \mathem{\mmaDef{Phidot}}, which is precisely defined this way, but for demonstration purposes we have re-defined it here as \mathem{\mmaDef{PhiDot}}.
-\FEDeriK will now automatically treat \mathem{\mmaDef{PhiDot}} as a field-dependent function, and take into account derivatives thereof.
+Note that \FunKit knows by default the correlation function \mathem{\mmaDef{Phidot}}, which is precisely defined this way, but for demonstration purposes we have re-defined it here as \mathem{\mmaDef{PhiDot}}.
+\FunKit will now automatically treat \mathem{\mmaDef{PhiDot}} as a field-dependent function, and take into account derivatives thereof.
 
 \mathem{\mmaDef{FEx}} and \mathem{\mmaDef{FTerm}} have some internal rules to automatically move numeric values to the first factor in any \mathem{\mmaDef{FTerm}} and expand any appearance of sums to the enclosing \mathem{\mmaDef{FEx}}. This behaviour can be seen, e.g. in
 %
@@ -806,8 +808,8 @@ Also, useful for deriving purely abstract expressions without explicit fields, \
 %%%%%%%%%%%%%%%%%%%%
 \subsubsection{Source terms}
 
-Source terms are treated as non‑dynamical external fields in \FunKit: they are not expanded in truncation operations, but otherwise participate normally in all other operations.
-This is convenient for derivations that involve external sources, for example the modified Slavnov–Taylor identities (mSTIs) in gauge theories, where sources appear but should not be promoted to dynamical degrees of freedom.
+Source terms are treated as non‑dynamical external fields in \FunKit: they are not expanded in truncation operations, but otherwise participate normally in all other operations. Furthermore, they are always reordered to be right-most position when appearing in derivatives of correlators.
+This is convenient for derivations that involve external sources, for example the Slavnov–Taylor identities (STIs) in gauge theories, where sources appear but should not be promoted to dynamical degrees of freedom.
 An example Yang–Mills setup with explicit source entries is:
 %
 \begin{mmaCell}{Input}
@@ -819,6 +821,7 @@ fieldsYMmSTI = <|
  |>;
 \end{mmaCell}
 %
+Note that Grassmann sources do not need to be paired with anti-fields.
 We provide the full calculation of the mSTI for the gluon-two-point function as an example in the notebook \texttt{examples/mSTI-Yang-Mills.nb}.
 
 
@@ -891,6 +894,53 @@ This yields precisely the same output as when using \mathem{\mmaDef{FTakeDerivat
 It is recommended to always use \mathem{\mmaDef{FTakeDerivatives}} to perform functional derivatives, as this is the least manual way, and additional simplification hints are automatically generated, such as symmetry properties of the derivatives.
 
 
+
+\begin{tcolorbox}[title=Algorithm details: Derivatives,
+	title filled=false,
+	colback=pastelgreen!5!white,
+	colframe=pastelgreen!73!black,
+	fonttitle=\bfseries]
+	
+	\mathem{\mmaDef{FTakeDerivatives}} performs the following steps:
+	%
+	\begin{enumerate}
+		\item The derivative list is used to construct a symmetry list that encodes all permutations of the open superindices that give the same result. This is automatically annotated to the result later.
+		\item Starting with the right-most field in the derivative list, \mathem{\mmaDef{FDOp}}s are attached to the left of each \mathem{\mmaDef{FTerm}} in the given expression.
+		\item The expression is given to \mathem{\mmaDef{FResolveDerivatives}}, which recursively invokes \mathem{\mmaDef{FResolveSingleFDOp}}:
+		\begin{enumerate}
+			\item Identify the right-most \mathem{\mmaDef{FDOp}} in the given \mathem{\mmaDef{FTerm}}.
+			\item Realise the product rule: If there are $n$ factors in the given \mathem{\mmaDef{FTerm}} following the position of the \mathem{\mmaDef{FDOp}}, construct $n$ new terms $T_1,\ldots,T_n$. In the term $F_i$, the \mathem{\mmaDef{FDOp}} has been commuted with $i-1$ terms that follow, attaching the resulting sign from commutation to $F_i$.
+			\item If \mathem{\mmaDef{FSetAutoSimplify}} is toggled on (default) and the number of generated terms is large, use \mathem{\mmaDef{FSimplify}} to reduce the result.
+			\item If any of the $F_i$ contain another \mathem{\mmaDef{FDOp}}, start from (a) with this term.
+		\end{enumerate}
+		\item Collect all new \mathem{\mmaDef{FTerm}} in a \mathem{\mmaDef{FEx}}.
+		\item If \mathem{\mmaDef{FSetAutoSimplify}} is toggled on (default), use \mathem{\mmaDef{FSimplify}} to reduce the result.
+	\end{enumerate}
+	%
+	If the number and size of the expressions is large, \mathem{\mmaDef{FResolveDerivatives}} automatically chooses to dispatch \mathem{\mmaDef{FResolveSingleFDOp}} in parallel over the given terms.
+	
+\end{tcolorbox}
+
+
+\begin{tcolorbox}[title=Algorithm details: Diagram simplification,
+	title filled=false,
+	colback=pastelgreen!5!white,
+	colframe=pastelgreen!73!black,
+	fonttitle=\bfseries]
+
+	With \mathem{\mmaDef{FSimplify}} we introduce an algorithm for the simplification of large sums of diagrams. \mathem{\mmaDef{FSimplify}} can detect identical diagrams and performs the following steps to find all matches and sum them:
+	%
+	\begin{enumerate}
+		\item All Diagrams with exactly the same content of objects and the same set of open indices are grouped together.
+		\item Each group is then processed in parallel: Pairs of diagrams are sequentially built and compared.
+		\item The comparison of two diagrams is performed by traversing the graphs of both at the same time and checking for identity.
+		\item If symmetries of open indices are provided, all permutations (with possible prefactors, e.g. minus signs for fermionic permutations) are also explored.
+		\item If the graphs are identical, they are merged. When merging, the second diagram is prepended with a factor containing all signs needed to give it precisely the same index ordering and structure as the first diagram.
+	\end{enumerate}
+
+\end{tcolorbox}
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Truncating the output}
 
@@ -907,7 +957,7 @@ truncation = <|
  |>;
 \end{mmaCell}
 %
-The truncation for \mathem{\mmaDef{Field}} is left empty and \FEDeriK will set all field values to zero when truncating. If a finite expectation value of $A$ were expected, as in finite-temperature Yang-Mills theory, one would change this to \mathem{\mmaDef{Field} -> {{A}}}. In that case, only explicit ghost and anti-ghost fields are set to zero.
+The truncation for \mathem{\mmaDef{Field}} is left empty and \FunKit will set all field values to zero when truncating. If a finite expectation value of $A$ were expected, as in finite-temperature Yang-Mills theory, one would change this to \mathem{\mmaDef{Field} -> {{A}}}. In that case, only explicit ghost and anti-ghost fields are set to zero.
 
 Next, we modify the setup as
 %
@@ -922,7 +972,6 @@ Next, we modify the setup as
 %
 In the above, we have additionally told \FunKit how to render anti-ghosts when translating them to \LaTeX\, code.
 
-\newpage
 We can now easily truncate the above expression:
 %
 \begin{mmaCell}{Input}
@@ -942,6 +991,18 @@ We can now easily truncate the above expression:
 \end{equation*}
 %
 
+
+\begin{tcolorbox}[title=Algorithm details: Truncation,
+	title filled=false,
+	colback=pastelgreen!5!white,
+	colframe=pastelgreen!73!black,
+	fonttitle=\bfseries]
+	
+	TODO
+	
+\end{tcolorbox}
+
+%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Routing momenta and group indices}
 
 Finally, the superfield indices have to be turned into explicit group indices, and the momenta occurring in diagrams need to be routed, including thus appearing loop momenta.
@@ -1029,6 +1090,25 @@ The respective keys are:
 \end{itemize}
 
 In the above example, we also see that the command \mathem{\mmaDef{FPrint}} can be inserted during a chain of operations, as it only prints the \LaTeX\xspace output and then returns its argument unchanged.
+
+
+\begin{tcolorbox}[title=Algorithm details: Routing,
+	title filled=false,
+	colback=pastelgreen!5!white,
+	colframe=pastelgreen!73!black,
+	fonttitle=\bfseries]
+	
+	\mathem{\mmaDef{FRoute}} works by performing the following steps:
+	%
+	\begin{enumerate}
+		\item Every open superindex is replaced by a unique set of explicit indices and momenta.
+		\item All closed indices are replaced by explicit indices. Closed group indices are automatically contracted, but every superindex pair is assigned a unique loop momentum.
+		\item Starting with vertices that have open indices, we iterate over all vertices. Momentum conservation is invoked to replace a loop momentum. The routing is performed such that fermionic momenta are correctly routed through fermionic legs (which is relevant for finite-temperature calculations).
+	\end{enumerate}
+	%
+	Diagrams are then grouped by the number of remaining loop momenta, which naturally gives the number of loops within each diagram.
+	
+\end{tcolorbox}
 
 
 %%%%%%%%%%%%%%%%%%%%
@@ -1156,7 +1236,7 @@ diagRules = \mmaDef{FMakeDiagrammaticRules}[];
 %
 The result of \mathem{\mmaDef{FMakeDiagrammaticRules}[]} is a replacement table that inserts all tensors in the specified basis for a given object, here the propagator. Each tensor is multiplied with a momentum-dependent \mathem{\mmaDef{dressing}} that can be later parametrised by the user. In the above output, for example, \FunKit uses the dressing of the inverse propagator in the diagrammatic rule for the propagator.
 
-Note also that the default \FormTracer aliases for group and momentum tensors are used, if one does not specify them otherwise, e.g. \mathem{\mmaDef{sp}[p,q]} represents a scalar product $p\cdot q$, \mathem{\mmaDef{deltaAdjCol}[c2,c1]} stands in for a $\mathbb{1}$ in adjoint colour space, etc. For a full list of all names \FormTracer knows, call \mathem{\mmaDef{ShowFormTracerDefinitions}[]}, which prints a full table thereof. Note that even after tracing momentum products like \mathem{\mmaDef{sp}[p,q]} will be present in the output, which need to be explicitly parametrised by the user before further processing.
+Note also that the default \FormTracer aliases for group and momentum tensors are used, if one does not specify them otherwise, e.g. \mathem{\mmaDef{sp}[p,q]} represents a scalar product $p\cdot q$, \mathem{\mmaDef{deltaAdjCol}[c2,c1]} stands in for a $\mathbbold{1}$ in adjoint colour space, etc. For a full list of all names \FormTracer knows, call \mathem{\mmaDef{ShowFormTracerDefinitions}[]}, which prints a full table thereof. Note that even after tracing momentum products like \mathem{\mmaDef{sp}[p,q]} will be present in the output, which need to be explicitly parametrised by the user before further processing.
 
 With this, one can directly obtain the explicit expressions for diagrams. For example, the 0-loop term of the gluon propagator DSE can be calculated as
 %
@@ -1193,6 +1273,22 @@ DSEAAResult1L = \mmaDef{FormTrace}[
 %
 Here, \mathem{\mmaDef{FormTrace}} delegates to the \FormTracer package, which sends the expression to \texttt{FORM}, which efficiently performs all momentum and group algebra contractions. The result is either a scalar expression, or a list of scalar expressions for each diagram. We explain some of the optimisations \FunKit introduces to this process in \Cref{app:algo_tracing}.
 Similarly, the above calculation can be also performed for all other diagrams appearing in the DSEs of the Yang-Mills system.
+
+
+\begin{tcolorbox}[title=Algorithm details: Tracing,
+	title filled=false,
+	colback=pastelgreen!5!white,
+	colframe=pastelgreen!73!black,
+	fonttitle=\bfseries]
+	
+	To the end of efficient tracing of large expressions using \FormTracer and \texttt{FORM}, we automatically optimize the process in two directions:
+	%
+	\begin{itemize}
+		\item When giving multiple \mathem{\mmaDef{FTerm}} to \mathem{\mmaDef{FormTrace}} the terms are all traced separately in parallel.
+		\item We make use of \texttt{FORM}s output optimisation. Although it is not available when outputting in the Mathematica format, we internally output the result as \textit{Fortran90} code, while using \texttt{FORM}s \texttt{O1} optimisation. This output is then parsed back to Mathematica code, and simplified in small chunks. The result is an efficient simplification of the very large expressions usually produced by \texttt{FORM}.
+	\end{itemize}
+	
+\end{tcolorbox}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1414,6 +1510,7 @@ After routing and tracing, we obtain the flow equation as
 	\{\mmaFrac{4 GInv[1,lf1] GInv[2,lf1] (3 lambda[1] - 4(lambda[2] + lambda[3])) Rdot[lf1] sp[lf1,lf1]}{\mmaSup{(\mmaSup{GInv[1,lf1]}{2} - \mmaSup{GInv[2,lf1]}{2} sp[lf1,lf1])}{2}}\}
 \end{mmaCell}
 %
+Note here that we had to swap the fermion and anti-fermion in the projector in order to correctly route the Dirac tensor indices. One should be mindful of the thus arising additional minus.
 
 In the same way, we can derive the flow of the first tensor structure of the four-fermion basis:
 %
@@ -1439,7 +1536,8 @@ Flow4FTraced/.\mmaDef{parametrization4F}//\mmaDef{Simplify}
 \{(8 Rdot[lf1] (4 GInv[1,lf1] GInv[1,lf1-p2-p3] GInv[2,lf1] (5 lambda[1]^2-12 lambda[1] (lambda[2]+lambda[3])+8 (3 lambda[2]^2-2 lambda[2] lambda[3]+3 lambda[3]^2)) sp[lf1,lf1]
   + GInv[2,lf1-p2-p3] (7 lambda[1]^2+32 lambda[3] (lambda[2]+lambda[3])-4 lambda[1] (3 lambda[2]+7 lambda[3])) (GInv[1,lf1]^2+GInv[2,lf1]^2 sp[lf1,lf1]) (sp[lf1,lf1]-sp[lf1,p2]-sp[lf1,p3])))/((GInv[1,lf1]^2-GInv[2,lf1]^2 sp[lf1,lf1])^2 (-GInv[1,lf1-p2-p3]^2+GInv[2,lf1-p2-p3]^2 (sp[lf1,lf1]-2 sp[lf1,p2]-2 sp[lf1,p3]+sp[p2,p2]+2 sp[p2,p3]+sp[p3,p3]))),(8 Rdot[lf1] (GInv[1,lf1] GInv[1,-lf1+p1+p3] GInv[2,lf1] (lambda[1]^2+16 (lambda[2]-lambda[3])^2) sp[lf1,lf1]-4 GInv[2,-lf1+p1+p3] lambda[1] (lambda[2]-lambda[3]) (GInv[1,lf1]^2+GInv[2,lf1]^2 sp[lf1,lf1]) (sp[lf1,lf1]-sp[lf1,p1]-sp[lf1,p3])))/((GInv[1,lf1]^2-GInv[2,lf1]^2 sp[lf1,lf1])^2 (-GInv[1,-lf1+p1+p3]^2+GInv[2,-lf1+p1+p3]^2 (sp[lf1,lf1]-2 sp[lf1,p1]-2 sp[lf1,p3]+sp[p1,p1]+2 sp[p1,p3]+sp[p3,p3])))\}
 \end{mmaCell}
-
+%
+Just like in the two-point example above, we had to swap fermion and anti-fermion indices for a consistent chain of Dirac indices.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Equation and Diagram output}
@@ -1649,6 +1747,17 @@ One can turn off usage of \cpp{powr} by setting
 \begin{mmaCell}{Input}
 \mmaDef{UseCppPowr}[\mmaDef{False}];
 \end{mmaCell}
+
+
+\begin{tcolorbox}[title=Algorithm details: Code generation,
+	title filled=false,
+	colback=pastelgreen!5!white,
+	colframe=pastelgreen!73!black,
+	fonttitle=\bfseries]
+	
+	TODO
+	
+\end{tcolorbox}
 
 
 %%%%%%%%%%%%%%%%%%%%

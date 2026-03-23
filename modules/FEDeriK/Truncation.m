@@ -98,14 +98,19 @@ LTrunc[setup_, expr_FTerm] :=
         If[FreeQ[ret, AnyField, Infinity],
             Return[truncationPass[setup, FTerm@@ret] /. undoFields]
         ];
-        (*Get all closed indices*)
-        closedIndices = GetClosedSuperIndices[setup, FTerm @@ (ret /. FTerm[__] :> ignore)];
+        (*Single call: extract objects and closed indices in one traversal*)
+        Module[{sentinelExpr, rawObjects, rawIndices, counts},
+            sentinelExpr = FTerm @@ (ret /. FTerm[__] :> ignore);
+            {rawObjects, rawIndices} = ExtractObjectsAndIndices[setup, sentinelExpr];
+            rawIndices = Select[rawIndices, Head[#] =!= List&];
+            counts = Map[Count[rawObjects, #, {1, 5}]&, rawIndices];
+            closedIndices = Pick[rawIndices, Map[Mod[#, 2] === 0&, counts]];
+            allObj = rawObjects /. doFields;
+        ];
         (*Abort if there is nothing to do*)
         If[Length[closedIndices] === 0,
             Return[truncationPass[setup, FTerm@@ret] /. undoFields]
         ];
-        (*We have to update these global quantities after each iteration*)
-        allObj = ExtractObjectsWithIndex[setup, FTerm @@ (ret /. FTerm[__] :> ignore)] /. doFields;
         FunKitDebug[3, "  Searching for the first object that needs expansion..."];
         (*Next, try to find the first factor that needs to be expanded*)
         notFoundCuri = True;

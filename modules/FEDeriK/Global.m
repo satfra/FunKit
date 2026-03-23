@@ -101,19 +101,19 @@ $userOrderedObjects = {};
 $userObjects = {};
 
 $CorrelationFunctions :=
-    Join[{Propagator, GammaN}, $userCorrelationFunctions];
+    $CorrelationFunctions = Join[{Propagator, GammaN}, $userCorrelationFunctions];
 
 $OrderedObjects :=
-    Join[$CorrelationFunctions, {R, Rdot, S}, $userOrderedObjects];
+    $OrderedObjects = Join[$CorrelationFunctions, {R, Rdot, S}, $userOrderedObjects];
 
 $indexedObjects :=
-    Join[$OrderedObjects, {\[Gamma], Field}, $userIndexedObjects];
+    $indexedObjects = Join[$OrderedObjects, {\[Gamma], Field}, $userIndexedObjects];
 
 $allObjects :=
-    Join[$indexedObjects, {FMinus, SymmetryFactor}, $userObjects];
+    $allObjects = Join[$indexedObjects, {FMinus, SymmetryFactor}, $userObjects];
 
 $nonCommutingObjects :=
-    Join[$CorrelationFunctions, {FDOp, Field}];
+    $nonCommutingObjects = Join[$CorrelationFunctions, {FDOp, Field}];
 
 $MaxDerivativeIterations = 500;
 
@@ -134,6 +134,7 @@ FAddObject[name_Symbol] :=
     Module[{},
         AppendTo[$userObjects, name];
         $userObjects = DeleteDuplicates[$userObjects];
+        $allObjects := $allObjects = Join[$indexedObjects, {FMinus, SymmetryFactor}, $userObjects];
         Protect @@ $allObjects;
     ];
 
@@ -147,6 +148,8 @@ FAddIndexedObject[name_Symbol] :=
     Module[{},
         AppendTo[$userIndexedObjects, name];
         $userIndexedObjects = DeleteDuplicates[$userIndexedObjects];
+        $indexedObjects := $indexedObjects = Join[$OrderedObjects, {\[Gamma], Field}, $userIndexedObjects];
+        $allObjects := $allObjects = Join[$indexedObjects, {FMinus, SymmetryFactor}, $userObjects];
         Protect @@ $allObjects;
     ];
 
@@ -160,6 +163,9 @@ FAddOrderedObject[name_Symbol] :=
     Module[{},
         AppendTo[$userOrderedObjects, name];
         $userOrderedObjects = DeleteDuplicates[$userOrderedObjects];
+        $OrderedObjects := $OrderedObjects = Join[$CorrelationFunctions, {R, Rdot, S}, $userOrderedObjects];
+        $indexedObjects := $indexedObjects = Join[$OrderedObjects, {\[Gamma], Field}, $userIndexedObjects];
+        $allObjects := $allObjects = Join[$indexedObjects, {FMinus, SymmetryFactor}, $userObjects];
         Protect @@ $allObjects;
     ];
 
@@ -173,6 +179,11 @@ FAddCorrelationFunction[name_Symbol] :=
     Module[{},
         AppendTo[$userCorrelationFunctions, name];
         $userCorrelationFunctions = DeleteDuplicates[$userCorrelationFunctions];
+        $CorrelationFunctions := $CorrelationFunctions = Join[{Propagator, GammaN}, $userCorrelationFunctions];
+        $OrderedObjects := $OrderedObjects = Join[$CorrelationFunctions, {R, Rdot, S}, $userOrderedObjects];
+        $indexedObjects := $indexedObjects = Join[$OrderedObjects, {\[Gamma], Field}, $userIndexedObjects];
+        $allObjects := $allObjects = Join[$indexedObjects, {FMinus, SymmetryFactor}, $userObjects];
+        $nonCommutingObjects := $nonCommutingObjects = Join[$CorrelationFunctions, {FDOp, Field}];
         Protect @@ $allObjects;
     ];
 

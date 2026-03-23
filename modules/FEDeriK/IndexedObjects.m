@@ -283,9 +283,12 @@ ExtractObjectsWithIndex[setup_Association, expr_FEx] :=
     ];
 
 ExtractObjectsAndIndices[setup_, expr_FTerm] :=
-    Module[{idxO, idxF},
-        idxO = Cases[expr, Alternatives @@ (Map[Blank[#]&, $indexedObjects]), {1, 2}];
-        idxF = Cases[expr, Alternatives @@ (Map[Blank[#]&, Join[GetAllFields[setup], {AnyField}]]), {1, 2}];
+    Module[{all, idxO, idxF, iObjs, allFields},
+        iObjs = $indexedObjects;
+        allFields = Join[GetAllFields[setup], {AnyField}];
+        all = Cases[expr, Alternatives @@ Map[Blank[#]&, Join[iObjs, allFields]], {1, 2}];
+        idxO = Select[all, MemberQ[iObjs, Head[#]]&];
+        idxF = Select[all, MemberQ[allFields, Head[#]]&];
         Return[{Join[idxO, idxF], makePosIdx /@ Join[idxF[[All, 1]], Join @@ idxO[[All, 2]]] // DeleteDuplicates}]
     ];
 
