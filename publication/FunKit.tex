@@ -341,7 +341,7 @@ With \FunKit, we aim to build on these packages and provide a convenient all-in-
 As an example, consider how one would derive the flow equation for the two-point function in a scalar~theory:
 %
 \begin{enumerate}
-	\setlength\itemsep{0.1ex}
+	\setlength\itemsep{0.05ex}
 	\item Write down all fields used and the vertex truncation of the theory.
 	\item Take two derivatives with respect to two scalar fields of the Wetterich equation.
 	\item Discard any diagrams that include vertices not in the truncation.
@@ -351,17 +351,19 @@ As an example, consider how one would derive the flow equation for the two-point
 With \FunKit, these steps translate to certain calls to \FunKit's functions that do this for you:
 %
 \begin{enumerate}
-	\setlength\itemsep{0.1ex}
+	\setlength\itemsep{0.05ex}
 	\item Define a \textit{setup} that specifies your field space and truncation.
 	\item Use the function \mathem{\mmaDef{FTakeDerivatives}} to take derivatives w.r.t. two fields.
 	\item Use \mathem{\mmaDef{FTruncate}} to discard any diagrams that include vertices not in the truncation.
 	\item Use \mathem{\mmaDef{FRoute}} to route all momenta in the expression and group them by loop order.
-	\item[(5.)] Visualize the result using \mathem{\mmaDef{FPrint}} and \mathem{\mmaDef{FPlot}}.
+	\item[(5.)] Create diagrammatic rules and trace group tensors with \mathem{\mmaDef{FMakeDiagrammaticRules}} and \mathem{\mmaDef{FormTrace}}.
+	\item[(6.)] Output the result as fully optimised Julia or C++ code.
 \end{enumerate}
 %
-Explicitly, the code to do that, and the output it produces, reads:
+This workflow is also shown in \Cref{fig:workflow} and precisely corresponds to these six steps. Explicitly, to perform the first four steps for the two-point function in a scalar theory one has to call the following with \FunKit:
 %
 \begin{mmaCell}{Input}
+\mmaDef{Get}["FunKit`"]
 \mmaDef{FSetGlobalSetup}[<|"FieldSpace" -> <|"Commuting" -> \{Phi[p]\}|>,
                   "Truncation" -> <|\mmaDef{GammaN} -> \{\{Phi,Phi,Phi\}, \{Phi,Phi,Phi,Phi\}\},
                                     \mmaDef{Propagator} -> \{\{Phi,Phi\}\},
@@ -382,10 +384,10 @@ Explicitly, the code to do that, and the output it produces, reads:
 }
 \end{equation*}
 %
-This follows already the overall workflow of \FunKit, as described in the following sections and shown in \Cref{fig:workflow}.
+This showcases already the overall workflow of \FunKit, as described in the following sections and shown in \Cref{fig:workflow}.
 
 The current work is structured in the following way:
-The first \Cref{sec:FEDeriK_rules} introduces the notation used throughout the paper. On a first read, or for readers already acquainted with the superindex formalism, one may only skim or skip the section and only use it for later reference.
+The first \Cref{sec:Notation} introduces the notation used throughout the paper. On a first read, or for readers already acquainted with the superindex formalism, one may only skim or skip the section and only use it for later reference.
 Then, we introduce the basic syntax for describing functional expressions in \Cref{sec:FEDeriK} and explain how to specify a theory, truncation and how to momentum- and index-route diagrams.
 In \Cref{sec:TRACY}, the specification of tensor bases and diagrammatic expressions is explained. Therein, we also show how to trace the resulting diagrams.
 Finally, \Cref{sec:COEN} briefly shows how to generate computer code in different languages from these equations.
@@ -443,7 +445,7 @@ We also provide several example notebooks where the derivation of certain theori
 
 %%%%%%%%%%%%%%%%%%%%
 \section{Preliminaries \& Notation}
-\label{sec:FEDeriK_rules}
+\label{sec:Notation}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -457,15 +459,14 @@ The information about the kind of field, as well as its momentum and group indic
 The index $a$ in this example contains, for example, the information that the field is a gluon. Then, $a$ also contains a momentum $p$, as well as group indices for the Lorentz ($\mu$) and adjoint colour group ($c$), i.e. $$a = (A,p, (\mu, c)).$$
 Similarly, any other object can also be labelled using multi-indices. For example, a general 1PI n-point function can be written as $\Gamma_{a_1a_2\ldots a_n}$. Partially restoring the fields, this becomes $\Gamma_{A^{\tilde{a}_1}A^{\tilde{a}_2}\ldots A^{\tilde{a}_n}}$ for an n-point function between only $A$-fields.
 
-An Einstein summation convention is adopted throughout this work, i.e. a sum is performed over any index pair where one index is raised and one lowered. As an example, in $\Gamma_{ab}G^{bd}$ a sum is performed over the superindex $b$. This implies a sum over all field types, all associated group indices, and an integration over all momenta that occur. For example, if we have a theory with gluons and ghosts $\bar{c}$, $c$, the resulting index expansion looks like
+An Einstein summation convention is adopted throughout this work, i.e. a sum is performed over any index pair where one index is raised and one lowered. As an example, in $\Gamma_{ab}G^{bd}$ a sum is performed over the superindex~$b$. This implies a sum over all field types, all associated group indices, and an integration over all momenta that occur. So, given a theory with gluons and ghosts $\bar{c}$, $c$, the resulting index expansion looks like
 %
 \begin{align*}
 	\Gamma_{ab}G^{bd} = \sum_{\mu e}\int_p\Gamma_{a\,A^a_{\mu e}(p)}G^{A^a_{\mu e}(p)\,d} + \sum_{e}\int_p\Gamma_{a\,c^e(p)}G^{c^e(p)\,d} + \sum_{e}\int_p\Gamma_{a\,\bar{c}^e(p)}G^{\bar{c}^e(p)\,d}\,.
 \end{align*}
 %
-It is clear that this notation greatly shortens the presentation.
-
-Next, for the treatment of Grassmann-valued fields, we introduce a field metric, see also \cite{Pawlowski:2005xe, Braun:2025gvq},
+It is clear that this notation greatly shortens the presentation.\\
+One important aspect, which the superindex notation must take into account, are the anti-commutation properties of Grassmann-number valued fields: when exchanging Grassmann indices, a minus should be produced. This can be realised by introducing a field metric, see also \cite{Pawlowski:2005xe, Braun:2025gvq},
 %
 \begin{equation}\label{eq:metric}
 	\gamma_{ab} = \gamma^{ab} = \begin{cases}
@@ -480,7 +481,7 @@ Next, for the treatment of Grassmann-valued fields, we introduce a field metric,
 	\end{cases}
 \end{equation}
 %
-For the purpose of the metric, we group together fermions and anti-fermions for the first case. Explicitly, if $\psi$, $\bar{\psi}$ are a fermion and its anti-fermion, we have
+For the purpose of the metric, we group together fermions and anti-fermions for the first case. Explicitly, if $\psi$, $\bar{\psi}$ are, respectively, a fermion and its anti-fermion, we have
 %
 \begin{align}
 	\gamma^{\psi\psi} = 0\,,\quad
@@ -519,14 +520,14 @@ where we have also introduced a shorthand for fermionic minus signs,
 %
 We briefly note that, as a consequence, $\gamma^{a}_{\phantom{a}c}\gamma^{c}_{\phantom{c}d} = \delta^{ad}$.
 
-Any field derivative in \FunKit can be directly expressed using the metric, with the full set of rules being
+With the metric in hand, any field derivative can be directly expressed using the metric, and one easily derives that
 %
 \begin{align}
-	\frac{\delta \Phi^b}{\delta \Phi^a} &= \gamma_a^{\phantom{a}b}
+	\frac{\delta \Phi^b}{\delta \Phi^a} = \gamma_a^{\phantom{a}b}
 	\,,\qquad
 	\frac{\delta \Phi_b}{\delta \Phi^a} = \gamma_{ab}
-	\,,\notag\\[1ex]
-	\frac{\delta \Phi^b}{\delta \Phi_a} &= \gamma^{ab}
+	\,,\qquad
+	\frac{\delta \Phi^b}{\delta \Phi_a} = \gamma^{ab}
 	\,,\qquad
 	\frac{\delta \Phi_b}{\delta \Phi_a} = \gamma^{a}_{\phantom{a}b}
 	\,.
@@ -536,7 +537,7 @@ Similarly, for any correlation function $F$, e.g. the 1PI effective action $F=\G
 %
 \begin{align}
 	\frac{\delta }{\delta \Phi^a} F_{bc\ldots} = F_{abc\ldots}
-	\,,\notag\\[1ex]
+	\,,\qquad
 	\frac{\delta }{\delta \Phi_a} F_{bc\ldots} = F^{a}_{\phantom{a}bc\ldots}
 	\,.
 \end{align}
@@ -610,7 +611,7 @@ In the following sections, all expressions used above will be introduced as symb
 \subsubsection{Syntax}
 \label{sec:FEDeriK_syntax}
 
-We use the Wetterich equation \cite{Wetterich:1992yh} as a first example how to write down a functional equation in \FunKit. It is given by
+We use the Wetterich equation \cite{Wetterich:1992yh} as a first example how to write down a functional equation in \FunKit. It~reads
 %
 \begin{equation}
 	\partial_t\Gamma=\frac{1}{2}G^{ab}\partial_tR_{ab}\,,
@@ -997,9 +998,18 @@ We can now easily truncate the above expression:
 	colback=pastelgreen!5!white,
 	colframe=pastelgreen!73!black,
 	fonttitle=\bfseries]
-	
-	TODO
-	
+
+	\mathem{\mmaDef{FTruncate}} performs the following steps:
+	%
+	\begin{itemize}
+		\item If no undetermined fields \mathem{\mmaDef{AnyField}} are present, apply the truncation table directly and return the result. This zeros all objects whose field content is not listed in the setup's key \mathem{"Truncation"}.
+		\item \textbf{Closed-index expansion:} For each contracted index pair, identify the two objects sharing it. If either carries \mathem{AnyField}, replace it with a sum of every non-source field in the setup, producing one branch per assignment. Apply the truncation table after each substitution to prune branches not in the truncation. Recurse until all undetermined \mathem{\mmaDef{AnyField}} are eliminated.
+		\item \textbf{Post-processing:} Contract residual metric factors, fix index positions, and reorder fields into canonical form.
+		\item If the corresponding flag is set, invoke \mathem{\mmaDef{FSimplify}} to merge identical surviving diagrams.
+	\end{itemize}
+	%
+	The dispatch table used for the truncation is memoised, so repeated lookups are $\mathcal{O}(1)$.
+
 \end{tcolorbox}
 
 %%%%%%%%%%%%%%%%%%%%%%
@@ -1036,11 +1046,11 @@ As an example, we consider here the DSE for the gluon two-point function. In gen
 	\,,
 \end{align}
 %
-and it can be readily obtained in \FunKit by using the \mathem{\mmaDef{MakeDSE}[...]}, providing a setup and a field that is inserted for the superindex $c$.
+and it can be readily obtained in \FunKit by using the \mathem{\mmaDef{FMakeDSE}[...]}, providing a setup and a field that is inserted for the superindex $c$.
 To obtain an equation for the gluon two-point function, we choose $c = A^a_{\mu}$ and take a further functional derivative with respect to $A$ (note that we don't provide a setup, as a global one has been specified before): 
 
 \begin{mmaCell}{Input}
-gluonDSE = \mmaDef{FTakeDerivatives}[\mmaDef{MakeDSE}[A[i1]], \{A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute};
+gluonDSE = \mmaDef{FTakeDerivatives}[\mmaDef{FMakeDSE}[A[i1]], \{A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute};
 {gluonDSE}["0-Loop"]//\mmaDef{FPrint}
 {gluonDSE}["1-Loop"]["LoopMomenta"]
 {gluonDSE}["1-Loop"]["ExternalIndices"]
@@ -1241,7 +1251,7 @@ Note also that the default \FormTracer aliases for group and momentum tensors ar
 With this, one can directly obtain the explicit expressions for diagrams. For example, the 0-loop term of the gluon propagator DSE can be calculated as
 %
 \begin{mmaCell}{Input}
-DSEAA = \mmaDef{FTakeDerivatives}[\mmaDef{MakeDSE}[A[i1]], \{A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute};
+DSEAA = \mmaDef{FTakeDerivatives}[\mmaDef{FMakeDSE}[A[i1]], \{A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute};
 DSEAA["0-Loop"]["Expression"]
 DSEAA["0-Loop"]["Expression"]/.\mmaDef{diagRules}
 \end{mmaCell}
@@ -1297,7 +1307,7 @@ Similarly, the above calculation can be also performed for all other diagrams ap
 \FunKit provides a few more tools to simplify certain tracing tasks. As an example, let us consider the DSE of the  ghost-gluon interaction, which we obtain as
 %
 \begin{mmaCell}{Input}
-DSEAcbc = \mmaDef{FTakeDerivatives}[\mmaDef{MakeDSE}[A[i1]], \{cb[i2],c[i3]\}]//\mmaDef{FTruncate}//\mmaDef{FPlot}//\mmaDef{FRoute};
+DSEAcbc = \mmaDef{FTakeDerivatives}[\mmaDef{FMakeDSE}[A[i1]], \{cb[i2],c[i3]\}]//\mmaDef{FTruncate}//\mmaDef{FPlot}//\mmaDef{FRoute};
 \end{mmaCell}
 \vspace{-3.0ex}
 \begin{equation*}
@@ -1560,7 +1570,7 @@ We further assume that the field $A$ may have a finite expectation value, and th
 We can now directly derive the gluon one-point DSE and show the rendered \LaTeX\xspace output using
 
 \begin{mmaCell}{Input}
-\mmaDef{MakeDSE}[A[x]]//\mmaDef{FTruncate}//\mmaDef{FRoute}//\mmaDef{FPrint};
+\mmaDef{FMakeDSE}[A[x]]//\mmaDef{FTruncate}//\mmaDef{FRoute}//\mmaDef{FPrint};
 \end{mmaCell}
 %
 \vspace{-3.5ex}
@@ -1582,7 +1592,7 @@ We can now directly derive the gluon one-point DSE and show the rendered \LaTeX\
 Note that the \mathem{\mmaDef{FPrint}} command accepts output at any stage of the derivation. For example, one can show the output directly after truncation as
 %
 \begin{mmaCell}{Input}
-\mmaDef{MakeDSE}[A[x]]//\mmaDef{FTruncate}//\mmaDef{FPrint};
+\mmaDef{FMakeDSE}[A[x]]//\mmaDef{FTruncate}//\mmaDef{FPrint};
 \end{mmaCell}
 \vspace{-2.0ex}
 \begin{equation*}
@@ -1605,7 +1615,7 @@ The typesetting code for the above equation can be also read out using the \math
 For convenience, we also give the possibility to plot diagrams directly inside Mathematica. This can be done using the \mathem{\mmaDef{FPlot}} command, e.g. in the above example, as
 %
 \begin{mmaCell}{Input}
-\mmaDef{MakeDSE}[A[x]]//\mmaDef{FTruncate}//\mmaDef{FPlot};
+\mmaDef{FMakeDSE}[A[x]]//\mmaDef{FTruncate}//\mmaDef{FPlot};
 \end{mmaCell}
 \vspace{-3.0ex}
 \begin{equation*}
@@ -1634,6 +1644,7 @@ parameterizations=\{
 	
 	\mmaDef{dressing}[S,\{A,A,A\},1,\{p1_,p2_,p3_\}]:>gS,
 	\mmaDef{dressing}[S,\{A,A,A,A\},1,\{p1_,p2_,p3_,p4_\}]:>gS^2,
+	\mmaDef{dressing}[S,\{A,cb,c\},1,\{p1_,p2_,p3_\}]:>gS,
 	
 	\mmaDef{dressing}[GammaN,\{A,A,A\},1,\{p1_,p2_,p3_\}]:>ZA3[Sqrt[(sp[p1,p1]+sp[p2,p2]+sp[p3,p3])/3]],
 	\mmaDef{dressing}[GammaN,\{A,cb,c\},1,\{p1_,p2_,p3_\}]:>ZAcbc[Sqrt[(sp[p1,p1]+sp[p2,p2]+sp[p3,p3])/3]],
@@ -1658,64 +1669,115 @@ In particular, we have parametrised all \mathem{\mmaDef{dressing}} functions and
 %
 \begin{mmaCell}{Output}
 function DSE_kernel_AA_1Loop(l1, cos, p, Nc, gS, ZA, Zc, ZA3, ZAcbc, ZA4)
-	cospl1 = cos
-	_repl1 = ZA(sqrt(l1^2))
-	_repl2 = l1^(-4)
-	_repl3 = p^(-2)
-	_repl4 = cospl1^2
-	_repl5 = l1^2
-	_repl6 = p^2
-	_repl7 = l1^4
-	_repl8 = p^4
-	return (_repl2*_repl3*(-_repl4 + 7*_repl5*_repl6)*gS^2*Nc)/(3*_repl1) + (2*_repl2*_repl3*(_repl4*(7*_repl5*_repl6 + 3*_repl7 + 3*_repl8) - _repl5*_repl6*(8*_repl5*_repl6 + 3*_repl7 + 3*_repl8) - 6*_repl5*_repl6*(_repl5 + _repl6)*cospl1 + 6*(_repl5 + _repl6)*cospl1^3 + cospl1^4)*gS*Nc*ZA3(sqrt(0.6666666666666666)*sqrt(_repl5 + _repl6 + cospl1)))/(3*_repl1*(_repl5 + _repl6 + 2*cospl1)^2*ZA(sqrt(_repl5 + _repl6 + 2*cospl1))) + (_repl3*(_repl4 - _repl5*_repl6)*Nc*dressing(S,List(A,cb,c),1,List(p1,-l1 - p1,l1))*ZAcbc(sqrt(0.6666666666666666)*sqrt(_repl5 + _repl6 + cospl1)))/(3*(_repl5 + _repl6 + 2*cospl1)*l1^2*Zc(sqrt(_repl5))*Zc(sqrt(_repl5 + _repl6 + 2*cospl1)))
+  cospl1 = cos
+  _interp1 = ZA(sqrt(l1^2))
+  _interp2 = ZA(sqrt(2*cospl1 + l1^2 + p^2))
+  _interp3 = ZA3(sqrt(0.6666666666666666)*sqrt(cospl1 + l1^2 + p^2))
+  _interp4 = ZAcbc(sqrt(0.6666666666666666)*sqrt(cospl1 + l1^2 + p^2))
+  _interp5 = Zc(sqrt(l1^2))
+  _interp6 = Zc(sqrt(2*cospl1 + l1^2 + p^2))
+  _cse1 = l1^2
+  _cse2 = p^2
+  _cse3 = 1/_cse2
+  _cse4 = cospl1^2
+  _cse5 = _cse1^(-2)
+  _cse6 = 2*cospl1
+  _cse7 = _cse1 + _cse2 + _cse6
+  _cse8 = _cse1 + _cse2
+  _cse9 = 7*_cse1*_cse2
+  _cse10 = _cse1^2
+  _cse11 = 3*_cse10
+  _cse12 = _cse2^2
+  _cse13 = 3*_cse12
+  _cse14 = 1/_interp1
+  return fma(-2,(_cse1*_cse11*_cse14*_cse2*_cse3*_cse5*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(-2,(_cse1*_cse13*_cse14*_cse2*_cse3*_cse5*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(-16,(_cse1^2*_cse14*_cse2^2*_cse3*_cse5*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(2,(_cse11*_cse14*_cse3*_cse4*_cse5*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(2,(_cse13*_cse14*_cse3*_cse4*_cse5*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(2,(_cse14*_cse3*_cse4^2*_cse5*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(2,(_cse14*_cse3*_cse4*_cse5*_cse9*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(-1,(_cse2*_cse3*_interp4*gS*Nc)/(_cse7*_interp5*_interp6),fma(1/_cse1,(_cse3*_cse4*_interp4*gS*Nc)/(_cse7*_interp5*_interp6),fma(-12,(_cse1*_cse14*_cse2*_cse3*_cse5*_cse8*_interp3*cospl1*gS*Nc)/(_cse7^2*_interp2),fma(12,(_cse14*_cse3*_cse5*_cse8*_interp3*cospl1^3*gS*Nc)/(_cse7^2*_interp2),fma(-1,_cse14*_cse3*_cse4*_cse5*gS^2*Nc,fma(_cse14,_cse3*_cse5*_cse9*gS^2*Nc,0)))))))))))))/3.
 end
 \end{mmaCell}
 %
 This code can then be copied into an existing Julia code and called by integration routines and iterators to solve the system of DSEs.
 
 Similarly, C++ code can be generated using the function \mathem{\mmaDef{MakeCppFunction}}. However, this function permits some more in-depth configuration of the types of parameters and the return type. Without specifying any of these, \cpp{auto} is simply used and deducing types is left to the compiler. Note that the code thus generated requires at least the C++20 standard.
+Furthermore, we add \cpp{using namespace std;} manually at the start of the function body. This makes sure that all mathematical operations are defined (additionally the \cpp{"cmath"} header should be included). However, a user may define these functions differently, e.g. using \cpp{cuda::std} or manually.
 %
 \begin{mmaCell}{Input}
 \mmaDef{MakeCppFunction}[
 \mmaDef{Total}@\mmaDef{DSEAAResult1L}//\mmaDef{parametrize},
     "Parameters" -> \{"l1", "cos", "p", "Nc", "gS", "ZA", "Zc", "ZA3", "ZAcbc", "ZA4"\},
     "Name" -> "DSE_kernel_AA_1Loop",
-    "Body" -> "const auto &cospl1 = cos;"
+    "Body" -> "using namespace std; const auto &cospl1 = cos;"
  ]
 \end{mmaCell}
 %
 \begin{mmaCell}{Output}
-auto DSE_kernel_AA_1Loop(const auto &l1, const auto &cos, const auto &p, const auto &Nc, const auto &gS, const auto &ZA,
-                         const auto &Zc, const auto &ZA3, const auto &ZAcbc, const auto &ZA4)
+auto DSE_kernel_AA_1Loop(const auto &l1, const auto &cos, const auto &p, const auto &Nc, const auto &gS, const auto &ZA, const auto &Zc,
+                         const auto &ZA3, const auto &ZAcbc, const auto &ZA4)
 \{
+  using namespace std;
   const auto &cospl1 = cos;
-  const auto _repl1 = ZA(sqrt(powr<2>(l1)));
-  const auto _repl2 = powr<2>(l1);
-  const auto _repl3 = powr<2>(p);
-  const auto _repl4 = powr<-2>(p);
-  const auto _repl5 = powr<2>(cospl1);
-  const auto _repl6 = powr<4>(l1);
-  const auto _repl7 = powr<4>(p);
-  const auto _repl8 = powr<-4>(l1);
-  return (0.3333333333333333) * ((7.) * ((_repl2) * (_repl3)) + (-1.) * (_repl5)) *
-	  ((powr<-1>(_repl1)) * ((_repl4) * ((_repl8) * ((powr<2>(gS)) * (Nc))))) +
-	  (0.6666666666666666) *
-	  (((7.) * ((_repl2) * (_repl3)) + (3.) * (_repl6) + (3.) * (_repl7)) * (_repl5) +
-	  (-1.) * ((8.) * ((_repl2) * (_repl3)) + (3.) * (_repl6) + (3.) * (_repl7)) * ((_repl2) * (_repl3)) +
-	  (-6.) * (_repl2 + _repl3) * ((_repl2) * ((_repl3) * (cospl1))) +
-	  (6.) * (_repl2 + _repl3) * (powr<3>(cospl1)) + powr<4>(cospl1)) *
-	  ((powr<-1>(_repl1)) *
-	  ((_repl4) *
-	  ((_repl8) * ((powr<-2>(_repl2 + _repl3 + (2.) * (cospl1))) *
-	  ((gS) * ((Nc) * ((powr<-1>(ZA(sqrt(_repl2 + _repl3 + (2.) * (cospl1))))) *
-	  (ZA3((0.816496580927726) * (sqrt(_repl2 + _repl3 + cospl1))))))))))) +
-	  (0.3333333333333333) * ((-1.) * ((_repl2) * (_repl3)) + _repl5) *
-	  ((_repl4) *
-	  ((powr<-1>(_repl2 + _repl3 + (2.) * (cospl1))) *
-	  ((powr<-2>(l1)) * ((Nc) * ((dressing(S, List(A, cb, c), 1., List(p1, (-1.) * (l1) + (-1.) * (p1), l1))) *
-	  ((ZAcbc((0.816496580927726) * (sqrt(_repl2 + _repl3 + cospl1)))) *
-	  ((powr<-1>(Zc(sqrt(_repl2)))) *
-	  (powr<-1>(Zc(sqrt(_repl2 + _repl3 + (2.) * (cospl1))))))))))));
+  const auto _interp1 = ZA(sqrt(powr<2>(l1)));
+  const auto _interp2 = ZA(sqrt(2. * cospl1 + powr<2>(l1) + powr<2>(p)));
+  const auto _interp3 = ZA3(0.816496580927726 * sqrt(cospl1 + powr<2>(l1) + powr<2>(p)));
+  const auto _interp4 = ZAcbc(0.816496580927726 * sqrt(cospl1 + powr<2>(l1) + powr<2>(p)));
+  const auto _interp5 = Zc(sqrt(powr<2>(l1)));
+  const auto _interp6 = Zc(sqrt(2. * cospl1 + powr<2>(l1) + powr<2>(p)));
+  const auto _cse1 = powr<2>(l1);
+  const auto _cse2 = powr<2>(p);
+  const auto _cse3 = powr<-1>(_cse2);
+  const auto _cse4 = powr<2>(cospl1);
+  const auto _cse5 = powr<-2>(_cse1);
+  const auto _cse6 = 2. * cospl1;
+  const auto _cse7 = _cse1 + _cse2 + _cse6;
+  const auto _cse8 = _cse1 + _cse2;
+  const auto _cse9 = 7. * _cse1 * _cse2;
+  const auto _cse10 = powr<2>(_cse1);
+  const auto _cse11 = 3. * _cse10;
+  const auto _cse12 = powr<2>(_cse2);
+  const auto _cse13 = 3. * _cse12;
+  const auto _cse14 = powr<-1>(_interp1); // clang-format off
+
+  return 0.3333333333333333 *
+    fma(-2.,
+      _cse1 * _cse11 * _cse14 * _cse2 * _cse3 * _cse5 * powr<-2>(_cse7) * powr<-1>(_interp2) *
+          _interp3 * gS * Nc,
+      fma(-2.,
+          _cse1 * _cse13 * _cse14 * _cse2 * _cse3 * _cse5 * powr<-2>(_cse7) * powr<-1>(_interp2) 
+          * _interp3 * gS * Nc,
+          fma(-16.,
+              powr<2>(_cse1) * _cse14 * powr<2>(_cse2) * _cse3 * _cse5 * powr<-2>(_cse7) *
+                  powr<-1>(_interp2) * _interp3 * gS * Nc,
+              fma(2.,
+                  _cse11 * _cse14 * _cse3 * _cse4 * _cse5 * powr<-2>(_cse7) * powr<-1>(_interp2) 
+                  * _interp3 * gS * Nc,
+                  fma(2.,
+                      _cse13 * _cse14 * _cse3 * _cse4 * _cse5 * powr<-2>(_cse7) *
+                          powr<-1>(_interp2) * _interp3 * gS * Nc,
+                      fma(2.,
+                          _cse14 * _cse3 * powr<2>(_cse4) * _cse5 * powr<-2>(_cse7) *
+                              powr<-1>(_interp2) * _interp3 * gS * Nc,
+                          fma(2.,
+                              _cse14 * _cse3 * _cse4 * _cse5 * powr<-2>(_cse7) * _cse9 *
+                                  powr<-1>(_interp2) * _interp3 * gS * Nc,
+                              fma(-1.,
+                                  _cse2 * _cse3 * powr<-1>(_cse7) * _interp4 *
+                                      powr<-1>(_interp5) * powr<-1>(_interp6) * gS * Nc,
+                                  fma(powr<-1>(_cse1),
+                                      _cse3 * _cse4 * powr<-1>(_cse7) * _interp4 *
+                                          powr<-1>(_interp5) * powr<-1>(_interp6) * gS * Nc,
+                                      fma(-12.,
+                                          _cse1 * _cse14 * _cse2 * _cse3 * _cse5 *
+                                              powr<-2>(_cse7) * _cse8 * powr<-1>(_interp2) *
+                                              _interp3 * cospl1 * gS * Nc,
+                                          fma(12.,
+                                              _cse14 * _cse3 * _cse5 * powr<-2>(_cse7) * _cse8 *
+                                                  powr<-1>(_interp2) * _interp3 *
+                                                  powr<3>(cospl1) * gS * Nc,
+                                              fma(-1.,
+                                                  _cse14 * _cse3 * _cse4 * _cse5 * powr<2>(gS) *
+                                                      Nc,
+                                                  fma(_cse14,
+                                                      _cse3 * _cse5 * _cse9 * powr<2>(gS) * Nc,
+                                                      0.)))))))))))));
+ //lang-format on
 \}
 \end{mmaCell}
 %
@@ -1754,9 +1816,19 @@ One can turn off usage of \cpp{powr} by setting
 	colback=pastelgreen!5!white,
 	colframe=pastelgreen!73!black,
 	fonttitle=\bfseries]
-	
-	TODO
-	
+
+	Both the Julia and C++ outputs of \FunKit process expressions through the following pipeline:
+	%
+	\begin{enumerate}
+		\item \textbf{Interpolator hoisting (global):} Extract all calls matching patterns that could be interpolator or function calls and assign them to temporaries, eliminating redundant global-memory reads.
+		\item \textbf{Split decision (global):} If the total weighted complexity exceeds a threshold, partition the expression into sub-kernels; shared interpolators are kept in a common scope.
+		\item \textbf{Common subexpression elimination (per kernel):} We identify common sub-expressions and assign each to a \cpp{_cseN} temporary.
+		\item \textbf{Algebraic factoring (per kernel):} Apply \mathem{FactorTerms} (up to three passes) to group additive terms sharing common factors.
+		\item \textbf{Transcendental hoisting (per kernel):} Hoist expensive calls (e.g. \cpp{Exp}, \cpp{Log}, \cpp{Sin}, \cpp{Cos}, \cpp{Sqrt}, \ldots) to temporaries; if both \cpp{Exp[x]} and \cpp{Exp[-x]} appear, compute one and derive the other via reciprocal.
+		\item \textbf{FMA restructuring (per kernel):} Detect \cpp{a*b + c} patterns and rewrite them as fused multiply-add groups, enabling single-instruction FMA execution.
+		\item \textbf{Code formatting:} Emit temporaries as \cpp{const auto _cseN = <expr>;} and the final value as a \cpp{return} statement; \mathem{CppForm} handles Mathematica-to-C++ translation, using \cpp{powr<N>} for integer powers. Sub-kernels are wrapped in separate scopes that accumulate into a shared result variable.
+	\end{enumerate}
+
 \end{tcolorbox}
 
 
@@ -2069,7 +2141,7 @@ fonttitle=\bfseries]
 	\mathem{\mmaDef{MakeClassicalAction}[setup]} & 
 	\small Constructs the classical action from the setup's truncation table for the object \mathem{\mmaDef{S}}.
 	\\[3ex]
-	\mathem{\mmaDef{MakeDSE}[setup, field]} & 
+	\mathem{\mmaDef{FMakeDSE}[setup, field]} & 
 	\small Constructs the Dyson-Schwinger equation $\Gamma_{b} = \left\langle \frac{\delta S[\phi]}{\delta \phi^b} \right\rangle_{\phi^a = \Phi^a + G^{ab}\frac{\delta}{\delta\Phi^b}}$.
 	\\[3ex]
 	\mathem{\mmaDef{WetterichEquation}} & 
