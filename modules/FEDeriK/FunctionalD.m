@@ -38,7 +38,7 @@ SymmetricDerivative[fields1_, ind1_, fields2_, ind2_] :=
             Abort[];
         ];
         perms = Permutations[Range[Length[fields2]]];
-        ret = Table[Times @@ Table[\[Gamma][{fields1[[idx]], fields2[[perms[[pidx, idx]]]]}, {ind1[[idx]], -ind2[[perms[[pidx, idx]]]]}], {idx, 1, Length[perms[[pidx]]]}], {pidx, 1, Length[perms]}];
+        ret = Table[Times @@ Table[makeObj[\[Gamma], {fields1[[idx]], fields2[[perms[[pidx, idx]]]]}, {ind1[[idx]], -ind2[[perms[[pidx, idx]]]]}], {idx, 1, Length[perms[[pidx]]]}], {pidx, 1, Length[perms]}];
         Return[SymmetryFactor[fields2, ind2] * Total[ret]];
     ];
 
@@ -58,27 +58,36 @@ FunctionalD[setup_, expr_, v : (f_[_] | {f_[_], _Integer}).., OptionsPattern[]] 
             {rule, $userRules}
         ];
         (*Rule for normal functional derivatives*)
-        f /: D[f[x_], f[y_], NonConstants -> nonConst] := \[Gamma][{f, f}, {-y, x}];
+        f /: D[f[x_], f[y_], NonConstants -> nonConst] := makeObj[\[Gamma], {f, f}, {-y, x}];
         (*Rule for normal functional derivatives, but AnyField*)
-        f /: D[AnyField[x_], f[y_], NonConstants -> nonConst] := \[Gamma][{f, AnyField}, {-y, x}];
+        f /: D[AnyField[x_], f[y_], NonConstants -> nonConst] := makeObj[\[Gamma], {f, AnyField}, {-y, x}];
         (*Rule for taking derivatives with AnyField*)
         If[f === AnyField,
-            Map[(f /: D[#[x_], f[y_], NonConstants -> nonConst] := \[Gamma][{f, #}, {-y, x}])&, GetAllFields[setup]];
+            Map[(f /: D[#[x_], f[y_], NonConstants -> nonConst] := makeObj[\[Gamma], {f, #}, {-y, x}])&, GetAllFields[setup]];
         ];
         (*Ignore fields without indices. These are usually tags*)
         f /: D[f, f[y_], NonConstants -> nonConst] := 0;
         (*\[Delta][#,y]&;*)
         (*Derivative rules for Correlation functions*)
-        Map[(f /: D[#[{a__}, {b__}], f[if_], NonConstants -> nonConst] := #[{f, a}, {-if, b}])&, $CorrelationFunctions];
+        Map[(With[{h = #},
+            f /: D[obj_h, f[if_], NonConstants -> nonConst] :=
+                makeObj[h, Prepend[getFields[obj], f], Prepend[getIndices[obj], -if]]
+        ])&, $CorrelationFunctions];
         (*Special derivative rule for Propagator*)
-        f /: D[Propagator[{b_, a_}, {ib_, ia_}], f[if_], NonConstants -> nonConst] :=
-            Module[{ic, id, ie, ig},
-                ic = Symbol @ SymbolName @ Unique["i"];
-                id = Symbol @ SymbolName @ Unique["i"];
-                ie = Symbol @ SymbolName @ Unique["i"];
-                ig = Symbol @ SymbolName @ Unique["i"];
-                FTerm[((-1) FMinus[{a, a}, {id, id}] FMinus[{f, b}, {if, ib}]), Propagator[{b, AnyField}, {ib, ic}], GammaN[{AnyField, f, AnyField}, {-ic, -if, -id}], Propagator[{AnyField, a}, {id, ia}]]
-            ];
+        With[{propPat = PrototypeObjectPattern[Propagator]},
+            f /: D[prop : propPat, f[if_], NonConstants -> nonConst] :=
+                Module[{b, a, ib, ia, ic, id, ie, ig},
+                    b  = getField[prop, 1];
+                    a  = getField[prop, 2];
+                    ib = getIndex[prop, 1];
+                    ia = getIndex[prop, 2];
+                    ic = Symbol @ SymbolName @ Unique["i"];
+                    id = Symbol @ SymbolName @ Unique["i"];
+                    ie = Symbol @ SymbolName @ Unique["i"];
+                    ig = Symbol @ SymbolName @ Unique["i"];
+                    FTerm[((-1) makeObj[FMinus, {a, a}, {id, id}] makeObj[FMinus, {f, b}, {if, ib}]), makeObj[Propagator, {b, AnyField}, {ib, ic}], makeObj[GammaN, {AnyField, f, AnyField}, {-ic, -if, -id}], makeObj[Propagator, {AnyField, a}, {id, ia}]]
+                ]
+        ];
         (*No derivatives of FTerm, FEx*)
         f /: D[FTerm[a___], f[y_], NonConstants -> nonConst] := FTerm[FDOp[f[y]], a];
         f /: D[FEx[a___], f[y_], NonConstants -> nonConst] :=
@@ -130,7 +139,7 @@ FunctionalD[setup_, expr_, v : (f_[_] | {f_[_], _Integer}).., OptionsPattern[]] 
         D[expr, v, NonConstants -> nonConst]
     ];
 
-FunctionalD[setup_, expr_, v : (f_[_List, _List] | {f_[_List, _List], _Integer}).., OptionsPattern[]] :=
+FunctionalD[setup_, expr_, v : (f_[_, _] | {f_[_, _], _Integer}).., OptionsPattern[]] :=
     Internal`InheritedBlock[
         {f, nonConst, rule}
         ,

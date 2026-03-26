@@ -104,10 +104,7 @@ GetFieldPairs[setup_] :=
     GetFieldPairs[setup] = Map[{Head[#[[1]]], Head[#[[2]]]}&, Select[Join[Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "Commuting", {}]], Head[#] === List&]];
 
 GetSingleFields[setup_] :=
-    GetSingleFields[setup] = Join[
-        Map[Head[#]&, Select[Join[Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "Commuting", {}]], Head[#] =!= List&]],
-        GetAllSourceFields[setup]
-    ];
+    GetSingleFields[setup] = Join[Map[Head[#]&, Select[Join[Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "Commuting", {}]], Head[#] =!= List&]], GetAllSourceFields[setup]];
 
 GetAllFields[setup_] :=
     GetAllFields[setup] = Join[Flatten @ GetFieldPairs[setup], Map[Head[#]&, Select[Join[Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "Commuting", {}]], Head[#] =!= List&]], GetAllSourceFields[setup]];
@@ -117,20 +114,16 @@ GetAllFields[setup_] :=
 **********************************************************************************)
 
 GetCSourceFields[setup_] :=
-    GetCSourceFields[setup] =
-        Map[Head, Lookup[setup["FieldSpace"], "CommutingSource", {}]];
+    GetCSourceFields[setup] = Map[Head, Lookup[setup["FieldSpace"], "CommutingSource", {}]];
 
 GetGrassmannSourceFields[setup_] :=
-    GetGrassmannSourceFields[setup] =
-        Map[Head, Lookup[setup["FieldSpace"], "GrassmannSource", {}]];
+    GetGrassmannSourceFields[setup] = Map[Head, Lookup[setup["FieldSpace"], "GrassmannSource", {}]];
 
 GetAllSourceFields[setup_] :=
-    GetAllSourceFields[setup] =
-        Join[GetCSourceFields[setup], GetGrassmannSourceFields[setup]];
+    GetAllSourceFields[setup] = Join[GetCSourceFields[setup], GetGrassmannSourceFields[setup]];
 
 GetNonSourceFields[setup_] :=
-    GetNonSourceFields[setup] =
-        Join[Flatten @ GetFieldPairs[setup], Map[Head[#]&, Select[Join[Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "Commuting", {}]], Head[#] =!= List&]]];
+    GetNonSourceFields[setup] = Join[Flatten @ GetFieldPairs[setup], Map[Head[#]&, Select[Join[Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "Commuting", {}]], Head[#] =!= List&]]];
 
 (**********************************************************************************
     Getting single field properties
@@ -273,8 +266,15 @@ GetAllSuperIndices[setup_Association, expr_FEx] :=
 **********************************************************************************)
 
 ExtractObjectsWithIndex[setup_Association, expr_FTerm] :=
-    Module[{},
-        Return @ Cases[expr, Alternatives @@ (Map[Blank[#]&, {AnyField} \[Union] $indexedObjects \[Union] GetAllFields[setup]]), {1, 2}];
+    Module[{allFields, iObjs, all, depth1Fields},
+        allFields = {AnyField} \[Union] GetAllFields[setup];
+        iObjs = $indexedObjects;
+        all = Cases[expr, Alternatives @@ Map[Blank[#]&, Join[iObjs, allFields]], {1, 2}];
+(* In NotationB, field[index] pairs embedded inside indexed objects appear at depth 2.
+   Filter: keep indexed objects from any depth, but field applications from depth 1 only.
+   MemberQ on the depth-1 set preserves appearance order from the original Cases. *)
+        depth1Fields = Cases[expr, Alternatives @@ Map[Blank[#]&, allFields], {1}];
+        Return @ Select[all, MemberQ[iObjs, Head[#]] || MemberQ[depth1Fields, #]&];
     ];
 
 ExtractObjectsWithIndex[setup_Association, expr_FEx] :=
@@ -283,13 +283,16 @@ ExtractObjectsWithIndex[setup_Association, expr_FEx] :=
     ];
 
 ExtractObjectsAndIndices[setup_, expr_FTerm] :=
-    Module[{all, idxO, idxF, iObjs, allFields},
+    Module[{all, idxO, idxF, iObjs, allFields, depth1Fields},
         iObjs = $indexedObjects;
         allFields = Join[GetAllFields[setup], {AnyField}];
         all = Cases[expr, Alternatives @@ Map[Blank[#]&, Join[iObjs, allFields]], {1, 2}];
+(* In NotationB, field[index] pairs embedded inside indexed objects appear at depth 2.
+   Keep indexed objects from any depth, but field applications only from depth 1. *)
+        depth1Fields = Cases[expr, Alternatives @@ Map[Blank[#]&, allFields], {1}];
         idxO = Select[all, MemberQ[iObjs, Head[#]]&];
-        idxF = Select[all, MemberQ[allFields, Head[#]]&];
-        Return[{Join[idxO, idxF], makePosIdx /@ Join[idxF[[All, 1]], Join @@ idxO[[All, 2]]] // DeleteDuplicates}]
+        idxF = Select[all, MemberQ[allFields, Head[#]] && MemberQ[depth1Fields, #]&];
+        Return[{Join[idxO, idxF], makePosIdx /@ Join[idxF[[All, 1]], Join @@ (getIndices /@ idxO)] // DeleteDuplicates}]
     ];
 
 ExtractObjectsAndIndices[setup_Association, expr_FEx] :=
@@ -389,20 +392,25 @@ FSetSymmetricObject[obj_, {f__}, {i__Integer}] :=
     ];
 
 FSetSymmetricObject[_, {}] :=
-    (Message[FSetSymmetricObject::emptyFields]; Abort[]);
+    (
+        Message[FSetSymmetricObject::emptyFields];
+        Abort[]
+    );
 
 (* Expanding / Shortening between Field[{f}, {i...}] and f[i...] *)
 
 replFields[setup_] :=
-    replFields[setup] =
-        Dispatch @
-            Module[{allFields},
-                allFields = Join[GetAllFields[setup], {AnyField}];
-                Join[Thread[(#[a_]& /@ allFields) :> Evaluate[(Field[{#}, {a}]& /@ allFields)]], Thread[(#[a_, b_List]& /@ allFields) :> Evaluate[(Field[{#}, {{a, b}}]& /@ allFields)]]]
-            ];
+    Dispatch @
+        Module[{allFields, repl},
+            allFields = Join[GetAllFields[setup], {AnyField}];
+            repl = Join[Thread[(#[a__]& /@ allFields) :> Evaluate[(makeObj[Field, {#}, {a}]& /@ allFields)]]];
+            Select[repl, Not @ (((Head @ #[[1]])[None] /. #) === (Head @ #[[1]])[None])&]
+        ];
 
 unreplFields[setup_] :=
-    Module[{allFields},
-        allFields = Join[GetAllFields[setup], {AnyField}];
-        unreplFields[setup] = Dispatch @ Thread[(Field[{#}, {a_}]& /@ allFields) :> Evaluate[(#[a]& /@ allFields)]]
-    ];
+    Dispatch @
+        Module[{allFields, repl},
+            allFields = Join[GetAllFields[setup], {AnyField}];
+            repl = Thread[(makeObj[Field, {#}, {a__}]& /@ allFields) :> Evaluate[(#[a]& /@ allFields)]];
+            Select[repl, Head @ #[[1]] =!= Head @ #[[2]]&]
+        ];

@@ -25,7 +25,10 @@ Module[{FCurPacletAddr,FCurPaclet,FCurVersion,
 FInstalledPaclet,FInstalledVersion},
 
 FCurPacletAddr="https://github.com/satfra/FunKit/raw/refs/heads/main/PacletInfo.m";
-FCurPaclet=(List@@Import[FCurPacletAddr])[[1]];
+FCurPaclet=Import[FCurPacletAddr];
+
+If[FCurPaclet=!=$Failed,
+FCurPaclet=(List@@FCurPaclet)[[1]];
 FCurVersion=FCurPaclet["Version"];
 
 FInstalledPaclet=(List@@Import[FileNameJoin[{$UserBaseDirectory,"Applications","FunKit","PacletInfo.m"}]])[[1]];
@@ -43,6 +46,25 @@ Print["Consider updating the FunKit package for bugfixes and new features!"];
 ];
 ];
 ];
+];
+
+
+(* ::Input::Initialization:: *)
+Unprotect[$FUNKITDIR]
+$FUNKITDIR=SelectFirst[
+Join[
+{
+FileNameJoin[{$UserBaseDirectory,"Applications","FunKit"}],
+FileNameJoin[{$BaseDirectory,"Applications","FunKit"}],
+FileNameJoin[{$InstallationDirectory,"AddOns","Applications","FunKit"}],
+FileNameJoin[{$InstallationDirectory,"AddOns","Packages","FunKit"}],
+FileNameJoin[{$InstallationDirectory,"AddOns","ExtraPackages","FunKit"}]
+},
+Select[$Path,StringContainsQ[#,"FunKit"]&]
+],
+DirectoryQ[#]&
+]<>"/";
+Protect[$FUNKITDIR]
 
 
 (* ::Input::Initialization:: *)
@@ -96,7 +118,7 @@ StyleBox[\"TensorBases\",\nFontWeight->\"Bold\"]\) to run."];Abort[];
 ];
 ];
 
-Block[{Print},Needs["TensorBases`"]];
+Block[{(*Print*)},Get["TensorBases`"]];
 PrintTemporary["\!\(\*
 StyleBox[\"TensorBases\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
@@ -104,9 +126,12 @@ StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic
 
 
 (* ::Input::Initialization:: *)
-If[Length@PacletFind["MaTeX"]===0&&($AllowInternet&&$NetworkConnected),
-ResourceFunction["MaTeXInstall"][]
-]
+If[Length@PacletFind["MaTeX"]===0,
+If[$AllowInternet&&$NetworkConnected,
+ResourceFunction["MaTeXInstall"][],
+PacletInstall[$FUNKITDIR<>"/dependencies/MaTeX-1.7.10.paclet"]
+];
+];
 Get["MaTeX`"]
 PrintTemporary["\!\(\*
 StyleBox[\"MaTeX\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
@@ -115,19 +140,7 @@ StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic
 
 
 (* ::Input::Initialization:: *)
-Get[SelectFirst[
-Join[
-{
-FileNameJoin[{$UserBaseDirectory,"Applications","FunKit"}],
-FileNameJoin[{$BaseDirectory,"Applications","FunKit"}],
-FileNameJoin[{$InstallationDirectory,"AddOns","Applications","FunKit"}],
-FileNameJoin[{$InstallationDirectory,"AddOns","Packages","FunKit"}],
-FileNameJoin[{$InstallationDirectory,"AddOns","ExtraPackages","FunKit"}]
-},
-Select[$Path,StringContainsQ[#,"FunKit"]&]
-],
-DirectoryQ[#]&
-]<>"/"<>"/utils/MathematicaTeXUtilities.m"]
+Get[$FUNKITDIR<>"/utils/MathematicaTeXUtilities.m"]
 
 
 (* ::Input::Initialization:: *)
@@ -306,13 +319,13 @@ StyleBox[\"FInfo\",\nFontColor->RGBColor[1, 0.5, 0]]\)[\"FEDeriK\"]."]
 
 
 (* ::Input::Initialization:: *)
-framedPrint[fpr_]:=Internal`InheritedBlock[{Print},
+$framedPrint[fpr_]:=Internal`InheritedBlock[{Print},
 Unprotect@Print;
 Print=Echo[Framed[#]]&;
 Protect@Print;
 ReleaseHold[fpr]
 ];
-SetAttributes[framedPrint,HoldAll];
+SetAttributes[$framedPrint,HoldAll];
 
 
 (* ::Input::Initialization:: *)
@@ -356,13 +369,13 @@ Any indexed object must be comprised of two lists: the first one gives the field
 To see a list of all indexed objects known to \!\(\*
 StyleBox[\"FEDeriK\",\nFontWeight->\"Bold\"]\), one can call \!\(\*
 StyleBox[\"ShowIndexedObjects\",\nFontColor->RGBColor[1, 0.5, 0]]\)[], which outputs "];
-framedPrint@ShowIndexedObjects[];
+$framedPrint@ShowIndexedObjects[];
 Print["in the current case. One can register custom indexed objects with \!\(\*
 StyleBox[\"FEDeriK\",\nFontWeight->\"Bold\"]\) by using \!\(\*
 StyleBox[\"AddIndexedObject\",\nFontColor->RGBColor[1, 0.5, 0]]\)[_Symbol]. 
 A subset of the indexed objects are correlation functions, and \!\(\*
 StyleBox[\"ShowCorrelationFunctions\",\nFontColor->RGBColor[1, 0.5, 0]]\)[] outputs "];
-framedPrint@ShowCorrelationFunctions[];
+$framedPrint@ShowCorrelationFunctions[];
 Print["These are special indexed objects, which are always hit by functional derivatives. 
 As an example, take the generalised flow equation ",MaTeX`MaTeX["\\partial_t \\Gamma = -\\dot\\Phi^a\\Gamma_a + \\frac{1}{2}G^{ac}\\Bigg(\\gamma_c^{\\phantom{c}b}\\partial_t  + 2 \\frac{\\delta\\dot{\\Phi}^b}{\\delta\\Phi^c}\\Bigg){R}_{ab}"],
 "First, we add a new correlation function using \!\(\*
@@ -421,5 +434,29 @@ EndPackage[];
 
 
 (* ::Input::Initialization:: *)
-DistributeDefinitions["FunKit`"];
-DistributeDefinitions["FunKit`Private`"];
+(* Note that we do NOT just call
+DistributeDefinitions["FunKit`"]
+DistributeDefinitions["FunKit`Private`"]
+As this takes a LOT of time - in the following we only distribute precisely the things that are actually used (bringing down the distribution time by a factor of 10)
+*)
+
+
+(* ::Input::Initialization:: *)
+DistributeDefinitions[
+"FunKit`FTerm",
+"FunKit`FFormSimplify",
+"FunKit`FunKitDebug",
+"FunKit`Private`SafeReplaceTrace",
+"FunKit`Private`GetAllCustomSymbols",
+"FunKit`Private`ImportAndSimplifyFORM",
+"FunKit`Private`scallDef",
+"FunKit`Private`$AlwaysExpandLorentzTensors",
+"FunKit`Private`makeTemporaryFileName",
+"FunKit`Private`$DefaultTimeConstraint",
+"FunKit`Private`$StandardQuickSimplify",
+"FunKit`Private`makeHashFile",
+"FunKit`Private`NormalizeIndices",
+"FunKit`Private`$TraceCacheDir",
+"FunKit`Private`$standardFORMmomentumRules",
+"FunKit`Private`GetAllMomenta"
+];

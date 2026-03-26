@@ -9,11 +9,11 @@ truncationList[setup_] :=
     truncationList[setup] =
         Dispatch @
             Map[
-                #[f_, i_] /; FreeQ[f, AnyField] :>
-                    If[FreeQ[Sort /@ setup["Truncation"][#], Sort @ f],
+                obj : #[__] /; FreeQ[obj, AnyField, Infinity] :>
+                    If[FreeQ[Sort /@ setup["Truncation"][#], Sort @ getFields[obj]],
                         0
                         ,
-                        #[f, i]
+                        obj
                     ]&
                 ,
                 Intersection[Keys[setup["Truncation"]], $indexedObjects]
@@ -59,17 +59,17 @@ indices::objectNotFound = "Could not find the expected number of objects contain
 
 insertFields[obj_, idx_, field_Symbol] :=
     Module[{positions},
-        positions = Flatten[Position[makePosIdx /@ obj[[2]], makePosIdx @ idx]];
-        ReplacePart[obj, Thread[{1, #}& /@ positions -> field]]
+        positions = Flatten[Position[makePosIdx /@ getIndices[obj], makePosIdx @ idx]];
+        Fold[setField[#1, #2, field]&, obj, positions]
     ];
 
 (*Like insertFields, but only replaces positions where the current field is AnyField.*)
 
 insertFieldsIfAnyField[obj_, idx_, field_Symbol] :=
     Module[{positions, anyPositions},
-        positions = Flatten[Position[makePosIdx /@ obj[[2]], makePosIdx @ idx]];
-        anyPositions = Select[positions, obj[[1, #]] === AnyField&];
-        ReplacePart[obj, Thread[{1, #}& /@ anyPositions -> field]]
+        positions = Flatten[Position[makePosIdx /@ getIndices[obj], makePosIdx @ idx]];
+        anyPositions = Select[positions, getField[obj, #] === AnyField&];
+        Fold[setField[#1, #2, field]&, obj, anyPositions]
     ];
 
 LTrunc[setup_, {}] :=
@@ -123,20 +123,20 @@ LTrunc[setup_, expr_FTerm] :=
             Return[truncationPass[setup, FTerm@@ret] /. undoFields]
             ];
             idx = closedIndices[[curi]];
-            subObj = Select[allObj, MemberQ[#[[2]], idx, {1, 3}]&];
+            subObj = Select[allObj, MemberQ[getIndices[#], idx, {1, 3}]&];
             If[Length[subObj] < 2,
                 Message[indices::objectNotFound, idx, expr, Length[subObj], 2];
                 Abort[];
             ];
             idxOccur =
                 {
-                    If[MemberQ[subObj[[1]], -idx, {2}],
+                    If[MemberQ[getIndices[subObj[[1]]], -idx],
                         -idx
                         ,
                         idx
                     ]
                     ,
-                    If[MemberQ[subObj[[2]], -idx, {2}],
+                    If[MemberQ[getIndices[subObj[[2]]], -idx],
                         -idx
                         ,
                         idx
@@ -146,14 +146,14 @@ LTrunc[setup_, expr_FTerm] :=
                 Message[indices::inconsistentContractions, idx, expr];
                 Abort[]
             ];
-            idxPos = {FirstPosition[subObj[[1, 2]], idxOccur[[1]]][[1]], FirstPosition[subObj[[2, 2]], idxOccur[[2]]][[1]]};
-            If[subObj[[1, 1, idxPos[[1]]]] =!= AnyField && subObj[[2, 1, idxPos[[2]]]] =!= AnyField,
+            idxPos = {FirstPosition[getIndices[subObj[[1]]], idxOccur[[1]]][[1]], FirstPosition[getIndices[subObj[[2]]], idxOccur[[2]]][[1]]};
+            If[getField[subObj[[1]], idxPos[[1]]] =!= AnyField && getField[subObj[[2]], idxPos[[2]]] =!= AnyField,
                 curi++;
                 Continue[]
             ];
             notFoundCuri = False;
         ];
-        If[subObj[[1, 1, idxPos[[1]]]] === AnyField && subObj[[2, 1, idxPos[[2]]]] === AnyField,
+        If[getField[subObj[[1]], idxPos[[1]]] === AnyField && getField[subObj[[2]], idxPos[[2]]] === AnyField,
             (*Now replace all the fields:*)
             ret =
                 FEx @@
@@ -162,11 +162,11 @@ LTrunc[setup_, expr_FTerm] :=
                             {s1 = subObj[[1]], s2 = subObj[[2]], idx1, idx2, field1, field2, localRet}
                             ,
                             (*Pick the indices associated to where we want to insert a given field:*)
-                            idx1 = s1[[2, idxPos[[1]]]];
-                            idx2 = s2[[2, idxPos[[2]]]];
+                            idx1 = getIndex[s1, idxPos[[1]]];
+                            idx2 = getIndex[s2, idxPos[[2]]];
                             FunKitDebug[3, "Replacing the index ", makePosIdx[idx1], " by field ", #];
                             (*And find all index-looking objects and put in a replacement of the field at the right position.*)
-                            localRet = ret /. {obj_[{fs__}, {ids__}] /; (MemberQ[makePosIdx /@ {ids}, idx1] || MemberQ[makePosIdx /@ {ids}, idx2]) :> insertFields[insertFields[obj[{fs}, {ids}], idx2, #], idx1, #]};
+                            localRet = ret /. {obj_?indexedObjectQ /; (MemberQ[makePosIdx /@ getIndices[obj], idx1] || MemberQ[makePosIdx /@ getIndices[obj], idx2]) :> insertFields[insertFields[obj, idx2, #], idx1, #]};
                             truncationPass[setup, FTerm @@ localRet]
                         ]&
                         ,
@@ -178,17 +178,17 @@ LTrunc[setup_, expr_FTerm] :=
            Expand AnyField over all fields (like the both-AnyField case),
            but only replace positions where the field is currently AnyField. *)
         Module[{anyIdx},
-            If[subObj[[1, 1, idxPos[[1]]]] === AnyField,
-                anyIdx = subObj[[1, 2, idxPos[[1]]]];
+            If[getField[subObj[[1]], idxPos[[1]]] === AnyField,
+                anyIdx = getIndex[subObj[[1]], idxPos[[1]]];
                 ,
-                anyIdx = subObj[[2, 2, idxPos[[2]]]];
+                anyIdx = getIndex[subObj[[2]], idxPos[[2]]];
             ];
             ret =
                 FEx @@
                     Map[
                         Module[{localRet},
                             FunKitDebug[3, "Replacing AnyField at index ", makePosIdx[anyIdx], " with field ", #];
-                            localRet = ret /. {obj_[{fs__}, {ids__}] /; MemberQ[makePosIdx /@ {ids}, makePosIdx @ anyIdx] :> insertFieldsIfAnyField[obj[{fs}, {ids}], anyIdx, #]};
+                            localRet = ret /. {obj_?indexedObjectQ /; MemberQ[makePosIdx /@ getIndices[obj], makePosIdx @ anyIdx] :> insertFieldsIfAnyField[obj, anyIdx, #]};
                             truncationPass[setup, FTerm @@ localRet]
                         ]&
                         ,
@@ -226,20 +226,20 @@ OTrunc[setup_, expr_FTerm] :=
         (*Next, find all factors that needs to be expanded*)
         For[curi = 1, curi <= Length[openIndices], curi++,
             idx = openIndices[[curi]];
-            subObj = Select[allObj, MemberQ[#[[2]], idx, {1, 3}]&];
+            subObj = Select[allObj, MemberQ[getIndices[#], idx, {1, 3}]&];
             If[Length[subObj] < 1,
                 Message[indices::objectNotFound, idx, expr, Length[subObj], 1];
                 Abort[];
             ];
             idxOccur =
-                If[MemberQ[subObj[[1]], -idx, {2}],
+                If[MemberQ[getIndices[subObj[[1]]], -idx],
                     -idx
                     ,
                     idx
                 ];
-            idxPos = FirstPosition[subObj[[1, 2]], idxOccur][[1]];
+            idxPos = FirstPosition[getIndices[subObj[[1]]], idxOccur][[1]];
             (*If there's no AnyField, continue*)
-            If[subObj[[1, 1, idxPos]] =!= AnyField,
+            If[getField[subObj[[1]], idxPos] =!= AnyField,
                 Continue[]
             ];
             (*Otherwise, directly expand*)
@@ -247,9 +247,9 @@ OTrunc[setup_, expr_FTerm] :=
                 FEx @@
                     Map[
                         Module[{s1 = subObj[[1]], t},
-                            s1[[1, idxPos]] = #;
+                            s1 = setField[s1, idxPos, #];
                             s1 = truncationPass[setup, s1];
-                            t = ret /. {subObj[[1]] :> s1, FMinus[{a_, a_}, {s1[[2, idxPos]], s1[[2, idxPos]]}] :> FMinus[{#, #}, {s1[[2, idxPos]], s1[[2, idxPos]]}], FMinus[{a_, b_}, {s1[[2, idxPos]], ib_}] :> FMinus[{#, b}, {s1[[2, idxPos]], ib}], FMinus[{a_, b_}, {ia_, s1[[2, idxPos]]}] :> FMinus[{a, #}, {ia, s1[[2, idxPos]]}]};
+                            t = ret /. {subObj[[1]] :> s1, FMinus[{a_, a_}, {getIndex[s1, idxPos], getIndex[s1, idxPos]}] :> FMinus[{#, #}, {getIndex[s1, idxPos], getIndex[s1, idxPos]}], FMinus[{a_, b_}, {getIndex[s1, idxPos], ib_}] :> FMinus[{#, b}, {getIndex[s1, idxPos], ib}], FMinus[{a_, b_}, {ia_, getIndex[s1, idxPos]}] :> FMinus[{a, #}, {ia, getIndex[s1, idxPos]}]};
                             ReduceIndices[setup, t]
                         ]&
                         ,

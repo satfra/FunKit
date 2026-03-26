@@ -32,7 +32,7 @@ WetterichEquation :=
     Module[{a, b},
         a = Symbol @ SymbolName @ Unique["a"];
         b = Symbol @ SymbolName @ Unique["b"];
-        FEx[FTerm[1/2, Propagator[{AnyField, AnyField}, {a, b}], Rdot[{AnyField, AnyField}, {-a, -b}]]]
+        FEx[FTerm[1/2, makeObj[Propagator, {AnyField, AnyField}, {a, b}], makeObj[Rdot, {AnyField, AnyField}, {-a, -b}]]]
     ];
 
 (**********************************************************************************
@@ -50,7 +50,7 @@ GeneralizedFlowEquation :=
         a = Symbol @ SymbolName @ Unique["a"];
         b = Symbol @ SymbolName @ Unique["b"];
         c = Symbol @ SymbolName @ Unique["c"];
-        FEx[FTerm[-1, Phidot[{AnyField}, {a}], GammaN[{AnyField}, {-a}]], FTerm[1/2, Propagator[{AnyField, AnyField}, {a, b}], Rdot[{AnyField, AnyField}, {-a, -b}]], FTerm[Propagator[{AnyField, AnyField}, {a, c}], Phidot[{AnyField, AnyField}, {-c, b}], R[{AnyField, AnyField}, {-a, -b}]]]
+        FEx[FTerm[-1, makeObj[Phidot, {AnyField}, {a}], makeObj[GammaN, {AnyField}, {-a}]], FTerm[1/2, makeObj[Propagator, {AnyField, AnyField}, {a, b}], makeObj[Rdot, {AnyField, AnyField}, {-a, -b}]], FTerm[makeObj[Propagator, {AnyField, AnyField}, {a, c}], makeObj[Phidot, {AnyField, AnyField}, {-c, b}], makeObj[R, {AnyField, AnyField}, {-a, -b}]]]
     ];
 
 (* ::Input::Initialization:: *)
@@ -60,7 +60,7 @@ RGInvGeneralizedFlowEquation :=
         a = Symbol @ SymbolName @ Unique["a"];
         b = Symbol @ SymbolName @ Unique["b"];
         c = Symbol @ SymbolName @ Unique["c"];
-        FEx[FTerm[-1, Phidot[{AnyField}, {a}], GammaN[{AnyField}, {-a}]], FTerm[1/2, Propagator[{AnyField, AnyField}, {a, b}], Rdot[{AnyField, AnyField}, {-a, -b}]]]
+        FEx[FTerm[-1, makeObj[Phidot, {AnyField}, {a}], makeObj[GammaN, {AnyField}, {-a}]], FTerm[1/2, makeObj[Propagator, {AnyField, AnyField}, {a, b}], makeObj[Rdot, {AnyField, AnyField}, {-a, -b}]]]
     ];
 
 (**********************************************************************************
@@ -88,7 +88,7 @@ FMakeDSE[setup_, field_] :=
                         #[id_] :>
                             Module[{i},
                                 i = Symbol @ SymbolName @ Unique["i"];
-                                FEx[FTerm[#[id]], FTerm[Propagator[{#, AnyField}, {id, i}], FDOp[AnyField[i]]]]
+                                FEx[FTerm[#[id]], FTerm[makeObj[Propagator, {#, AnyField}, {id, i}], FDOp[AnyField[i]]]]
                             ]&
                         ,
                         GetAllFields[setup]

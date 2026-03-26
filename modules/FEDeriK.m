@@ -227,6 +227,16 @@ FTruncateOpenIndices::usage = "FTruncateOpenIndices[setup, expr]
 Truncates open indices in the given expression according to the truncation tables specified in the setup.
 This means explicitly that a sum is taken over all possible fields for every single open index in the expression.";
 
+FSetNotationA::usage = "FSetNotationA[]
+Activates the default two-list object notation: obj[{field1, field2, ...}, {index1, index2, ...}].
+This is the standard FunKit notation and is active by default at load time.
+Call FSetNotationB[] to switch to the field[index] notation, and FSetNotationA[] to switch back.";
+
+FSetNotationB::usage = "FSetNotationB[]
+Activates the field[index] object notation: obj[field1[index1], field2[index2], ...].
+In this notation each argument to a correlation function directly pairs its field with its index.
+Call FSetNotationA[] to restore the default two-list notation.";
+
 (* ::Section:: *)
 
 (* Begin Private *)

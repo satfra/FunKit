@@ -7,13 +7,13 @@ MakeEdgeRule[setup_, obj_] :=
         {}
         ,
         (*Depending on the type of fields involved, get a directed or undirected edge*)
-        If[IsAntiGrassmannField[setup, obj[[1, 1]]] && IsGrassmannField[setup, obj[[1, 2]]],
-            Return[makePosIdx @ obj[[2, 1]] -> makePosIdx @ obj[[2, 2]]]
+        If[IsAntiGrassmannField[setup, getField[obj, 1]] && IsGrassmannField[setup, getField[obj, 2]],
+            Return[makePosIdx @ getIndex[obj, 1] -> makePosIdx @ getIndex[obj, 2]]
         ];
-        If[IsGrassmannField[setup, obj[[1, 1]]] && IsAntiGrassmannField[setup, obj[[1, 2]]],
-            Return[makePosIdx @ obj[[2, 2]] -> makePosIdx @ obj[[2, 1]]]
+        If[IsGrassmannField[setup, getField[obj, 1]] && IsAntiGrassmannField[setup, getField[obj, 2]],
+            Return[makePosIdx @ getIndex[obj, 2] -> makePosIdx @ getIndex[obj, 1]]
         ];
-        Return[makePosIdx @ obj[[2, 1]] <-> makePosIdx @ obj[[2, 2]]];
+        Return[makePosIdx @ getIndex[obj, 1] <-> makePosIdx @ getIndex[obj, 2]];
     ];
 
 crosscircle[r_] :=
@@ -113,25 +113,25 @@ GetDiagram[setup_, expr_FTerm] :=
                 Select[allObj, Head[#] === Field&] /.
                     Field[{f_}, {i_}] :>
                         Module[{oi},
-                            {Propagator[{f, GetPartnerField[setup, f]}, {oi, i}], Field[{f}, {oi}]}
+                            {makeObj[Propagator, {f, GetPartnerField[setup, f]}, {oi, i}], Field[{f}, {oi}]}
                         ]
             ];
         allObj = Select[allObj, Head[#] =!= Field&];
         (*prepare vertices*)
-        vertices = Select[allObj, MemberQ[PossibleVertices, Head[#]] && (FreeQ[PossibleEdges, Head[#]] || Length[#[[2]]] =!= 2)&];
+        vertices = Select[allObj, MemberQ[PossibleVertices, Head[#]] && (FreeQ[PossibleEdges, Head[#]] || Length[getIndices[#]] =!= 2)&];
         vertexReplacements =
             Flatten @
                 Module[{v},
                     Map[
                         (
                             v = Unique["v"];
-                            Map[(makePosIdx[#] -> v)&, #[[2]]]
+                            Map[(makePosIdx[#] -> v)&, getIndices[#]]
                         )&
                         ,
                         vertices
                     ]
                 ];
-        vertices = Map[Head[#] @@ ((makePosIdx /@ #[[2]] /. vertexReplacements) // DeleteDuplicates)&, vertices];
+        vertices = Map[Head[#] @@ ((makePosIdx /@ getIndices[#] /. vertexReplacements) // DeleteDuplicates)&, vertices];
         (*Edge case: we have a vertex twice!*)
         (*first, extract all vertex names*)
         doubledVertices = Select[vertices, Length[#] > 1&];
@@ -148,21 +148,21 @@ GetDiagram[setup_, expr_FTerm] :=
         doubledEdges = Map[Style[#, Thick, Black]&, doubledEdges];
         (*Props and vertices for attached fields*)
         fieldVertices = Select[fieldObj, (Head[#] === Field)&];
-        fieldVertices = Map[Head[#] @@ ((makePosIdx /@ #[[2]] /. vertexReplacements) // DeleteDuplicates)&, fieldVertices];
+        fieldVertices = Map[Head[#] @@ ((makePosIdx /@ getIndices[#] /. vertexReplacements) // DeleteDuplicates)&, fieldVertices];
         fieldEdges = Select[fieldObj, (Head[#] =!= Field)&];
-        fieldEdgeFields = Table[SelectFirst[fieldEdges[[idx, 1]], MemberQ[Styles, #, Infinity]&], {idx, 1, Length[fieldEdges]}];
+        fieldEdgeFields = Table[SelectFirst[getFields[fieldEdges[[idx]]], MemberQ[Styles, #, Infinity]&], {idx, 1, Length[fieldEdges]}];
         fieldEdges = Map[MakeEdgeRule[setup, #]&, fieldEdges /. vertexReplacements];
         fieldEdges = Table[Style[fieldEdges[[idx]], ##]& @@ Flatten @ {fieldEdgeFields[[idx]] /. Styles}, {idx, 1, Length[fieldEdges]}];
         (*prepare edges*)
-        edges = Select[allObj, MemberQ[PossibleEdges, Head[#]] && Length[#[[2]]] === 2&];
-        edgeFields = Table[SelectFirst[edges[[idx, 1]], MemberQ[Styles, #, Infinity]&], {idx, 1, Length[edges]}];
+        edges = Select[allObj, MemberQ[PossibleEdges, Head[#]] && Length[getIndices[#]] === 2&];
+        edgeFields = Table[SelectFirst[getFields[edges[[idx]]], MemberQ[Styles, #, Infinity]&], {idx, 1, Length[edges]}];
         edges = Map[MakeEdgeRule[setup, #]&, edges /. vertexReplacements];
         edges = Table[Style[edges[[idx]], ##]& @@ Flatten @ {edgeFields[[idx]] /. Styles}, {idx, 1, Length[edges]}];
         (*Add additional vertices for external indices*)
         externalVertices = GetOpenSuperIndices[setup, diag];
         externalFields = Table[
             Module[{found},
-                found = SelectFirst[allObj, MemberQ[makePosIdx /@ #[[2]], externalVertices[[idx]]]&];
+                found = SelectFirst[allObj, MemberQ[makePosIdx /@ getIndices[#], externalVertices[[idx]]]&];
                 If[MissingQ[found],
                     Message[FPlot::noExternalField, externalVertices[[idx]]];
                     Abort[]
@@ -172,9 +172,9 @@ GetDiagram[setup_, expr_FTerm] :=
             ,
             {idx, 1, Length[externalVertices]}
         ];
-        externalFields = Table[externalFields[[idx, 1, FirstPosition[makePosIdx /@ externalFields[[idx, 2]], externalVertices[[idx]]][[1]]]], {idx, 1, Length[externalVertices]}];
+        externalFields = Table[getField[externalFields[[idx]], FirstPosition[makePosIdx /@ getIndices[externalFields[[idx]]], externalVertices[[idx]]][[1]]], {idx, 1, Length[externalVertices]}];
         externalVertices = Unique /@ externalVertices;
-        externalEdges = Table[MakeEdgeRule[setup, Propagator[{GetPartnerField[setup, externalFields[[idx]]], externalFields[[idx]]}, {externalVertices[[idx]], GetOpenSuperIndices[setup, diag][[idx]] /. vertexReplacements}]], {idx, 1, Length[externalVertices]}];
+        externalEdges = Table[MakeEdgeRule[setup, makeObj[Propagator, {GetPartnerField[setup, externalFields[[idx]]], externalFields[[idx]]}, {externalVertices[[idx]], GetOpenSuperIndices[setup, diag][[idx]] /. vertexReplacements}]], {idx, 1, Length[externalVertices]}];
         externalEdges = Table[Style[externalEdges[[idx]], ##]& @@ Flatten @ {externalFields[[idx]] /. Styles}, {idx, 1, Length[externalEdges]}];
         (*get the prefactor*)
         prefactor = FTerm[Times @@ (diag /. doFields /. Map[Blank[#] -> 1&, Join[{Field}, $indexedObjects]])];

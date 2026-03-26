@@ -72,7 +72,7 @@ ReduceIndices[setup_, term_FTerm] :=
         (*We have to exclude a particular case here: if we have two gammas, contracted with each other, and one open index each, we cannot replace both!*)
         (*First, find all Gammas that have an overlap of one closed index:*)
         gPairs = Subsets[casesGamma, {2}];
-        gPairs = Select[gPairs, Length[DeleteDuplicates[makePosIdx /@ Join[#[[2, 2]], #[[1, 2]]]]] == 3&];
+        gPairs = Select[gPairs, Length[DeleteDuplicates[makePosIdx /@ Join[getIndices[#[[2]]], getIndices[#[[1]]]]]] == 3&];
         (*Now, see which of these have a closed index in common:*)
         closed = Map[getIndices, gPairs, {2}];
         closed = Map[List @@ #&, Map[MemberQ[closedSIndices, makePosIdx[#]]&, closed, {3}]];

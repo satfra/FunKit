@@ -72,7 +72,7 @@ which yields the output
 
 For the same theory, we can also derive the Dyson-Schwinger equation for the same two-point function:
 ```Mathematica
-FTakeDerivatives[MakeDSE[Phi[i1]], {Phi[i2]}]//FTruncate//FPrint;
+FTakeDerivatives[FMakeDSE[Phi[i1]], {Phi[i2]}]//FTruncate//FPrint;
 ```
 which gives
 ```math
@@ -93,7 +93,7 @@ If you wish to wish to remove the remaining fields (i.e. go to the symmetric reg
 ```
 to the truncation definition above.
 
-You can of course define arbitrary master equations besides the pre-defined `WetterichEquation` and `MakeDSE` ones (among others), see the documentation for details.
+You can of course define arbitrary master equations besides the pre-defined `WetterichEquation` and `FMakeDSE` ones (among others), see the documentation for details.
 
 ## Examples
 

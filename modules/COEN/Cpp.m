@@ -6,10 +6,10 @@ ClearAll[CExpression]
 
 Get["SymbolicC`"]
 
-UseCppPowr[True] :=
+FUseCppPowr[True] :=
     Set[$CppPowr, True];
 
-UseCppPowr[False] :=
+FUseCppPowr[False] :=
     Set[$CppPowr, False];
 
 $CppPowr = True;
@@ -44,7 +44,11 @@ CppForm[expr_, OptionsPattern[]] :=
         (*recursion for + and * *)
         CExpression /: GenerateCode[CExpression[Plus[a_, b__]]] :=
             With[{lhs = nest[a], rhs = nest[Plus[b]]},
-                If[StringStartsQ[rhs, "-"], lhs <> " - " <> StringDrop[rhs, 1], lhs <> " + " <> rhs]
+                If[StringStartsQ[rhs, "-"],
+                    lhs <> " - " <> StringDrop[rhs, 1]
+                    ,
+                    lhs <> " + " <> rhs
+                ]
             ];
         CExpression /: GenerateCode[CExpression[Times[r_Real /; r == -1, a__]]] := "-" <> nest[Times[a]];
         CExpression /: GenerateCode[CExpression[Times[a_, b__]]] := nest[a] <> " * " <> nest[Times[b]];

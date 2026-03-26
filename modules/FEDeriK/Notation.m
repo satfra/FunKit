@@ -360,25 +360,16 @@ AssertFEx[expr_] :=
     FMinus
 **********************************************************************************)
 
-Unprotect[FMinus];
+Derivative[__][FMinus][__] :=
+    0;
 
-(*Grassmann minus signs do not care about index positioning. We force them always up*)
+Derivative[__][\[Gamma]][__] :=
+    0;
 
-FMinus[{a_, b_}, {Times[-1, ia_], ib_}] :=
-    FMinus[{a, b}, {ia, ib}]
+Derivative[__][SymmetryFactor][__] :=
+    0;
 
-FMinus[{a_, b_}, {ia_, Times[-1, ib_]}] :=
-    FMinus[{a, b}, {ia, ib}]
-
-(* Powers are simple *)
-
-FMinus /: Power[FMinus[{a_, b_}, {ia_, ib_}], n_Integer] /; EvenQ[n] :=
-    1
-
-FMinus /: Power[FMinus[{a_, b_}, {ia_, ib_}], n_Integer] /; OddQ[n] :=
-    FMinus[{a, b}, {ia, ib}]
-
-Protect[FMinus];
+(* FMinus rules are installed by FSetNotationA[]/FSetNotationB[] below *)
 
 (**********************************************************************************
     FDOp
@@ -426,23 +417,63 @@ Protect[FDOp];
     Utility definitions
 **********************************************************************************)
 
-getFields[obj_] :=
-    obj[[1]];
+FSetNotationA[] :=
+    Block[{$Context = "FunKit`Private`", $ContextPath = Prepend[$ContextPath, "FunKit`Private`"]},
+        getFields[obj_] := obj[[1]];
+        getField[obj_, pos_] := obj[[1, pos]];
+        getIndices[obj_] := obj[[2]];
+        getIndex[obj_, pos_] := obj[[2, pos]];
+        getIdxSign[obj_, pos_] := -2 * Boole[isNeg[getIndex[obj, pos]]] + 1;
+        makeObj[kind_Symbol, fieldList_List, indexList_List] := kind[fieldList, indexList];
+        setField[obj_, pos_Integer, field_] := ReplacePart[obj, {1, pos} -> field];
+        ObjectQ[expr_] := MatchQ[expr, _Symbol[_List, _List]] && MemberQ[$OrderedObjects, Head[expr]];
+        PrototypeObjectPattern[head_Symbol] := head @@ ConstantArray[Blank[], Length[makeObj[head, {}, {}]]];
+        indexedObjectQ[expr_] := MemberQ[$OrderedObjects, Head[expr]] || Head[expr] === FMinus;
+        (*FMinus rules: two-list notation*)
+        Unprotect[FMinus];
+        DownValues[FMinus] = {};
+        UpValues[FMinus] = {};
+        FMinus[{a_, b_}, {Times[-1, ia_], ib_}] := FMinus[{a, b}, {ia, ib}];
+        FMinus[{a_, b_}, {ia_, Times[-1, ib_]}] := FMinus[{a, b}, {ia, ib}];
+        FMinus /: Power[FMinus[{a_, b_}, {ia_, ib_}], n_Integer] /; EvenQ[n] := 1;
+        FMinus /: Power[FMinus[{a_, b_}, {ia_, ib_}], n_Integer] /; OddQ[n] := FMinus[{a, b}, {ia, ib}];
+        Protect[FMinus];
+        (*Field[...] exists for NotationA*)
+        Unprotect[Field];
+        Field[expr_] =.;
+        Protect[Field];
+    ];
 
-getField[obj_, pos_] :=
-    obj[[1, pos]];
+FSetNotationB[] :=
+    Block[{$Context = "FunKit`Private`", $ContextPath = Prepend[$ContextPath, "FunKit`Private`"]},
+        getFields[obj_] := Head /@ (List @@ obj);
+        getField[obj_, pos_] := Head[obj[[pos]]];
+        getIndices[obj_] := First /@ (List @@ obj);
+        getIndex[obj_, pos_] := First[obj[[pos]]];
+        getIdxSign[obj_, pos_] := -2 * Boole[isNeg[getIndex[obj, pos]]] + 1;
+        makeObj[kind_Symbol, fieldList_List, indexList_List] := kind @@ MapThread[Construct, {fieldList, indexList}];
+        With[{getIndex$ = getIndex},
+            setField[obj_, pos_Integer, field_] := ReplacePart[obj, pos -> field[getIndex$[obj, pos]]];
+        ];
+        ObjectQ[expr_] := MemberQ[$OrderedObjects, Head[expr]] && Length[expr] > 0 && AllTrue[List @@ expr, MatchQ[#, _[_]]&];
+        PrototypeObjectPattern[head_Symbol] := head[__];
+        indexedObjectQ[expr_] := MemberQ[$OrderedObjects, Head[expr]] || Head[expr] === FMinus;
+        (*FMinus rules: field[index] notation*)
+        Unprotect[FMinus];
+        DownValues[FMinus] = {};
+        UpValues[FMinus] = {};
+        FMinus[a_[Times[-1, ia_]], b_[ib_]] := FMinus[a[ia], b[ib]];
+        FMinus[a_[ia_], b_[Times[-1, ib_]]] := FMinus[a[ia], b[ib]];
+        FMinus /: Power[FMinus[a_[ia_], b_[ib_]], n_Integer] /; EvenQ[n] := 1;
+        FMinus /: Power[FMinus[a_[ia_], b_[ib_]], n_Integer] /; OddQ[n] := FMinus[a[ia], b[ib]];
+(*In NotationB, fields appear as heads inside FMinus arguments (e.g. FMinus[Phi[i1], ...]).
+  D sees these as non-constant dependencies and applies the chain rule, producing spurious
+  Derivative[1,0][FMinus][...] terms. FMinus is a sign factor and must not be differentiated.*)
+        Protect[FMinus];
+        (*Field[...] does not exist for NotationB*)
+        Unprotect[Field];
+        Field[expr_] := expr;
+        Protect[Field];
+    ];
 
-getIndices[obj_] :=
-    obj[[2]];
-
-getIndex[obj_, pos_] :=
-    obj[[2, pos]];
-
-getIdxSign[obj_, pos_] :=
-    -2 * Boole[isNeg[getIndex[obj, pos]]] + 1;
-
-makeObj[kind_Symbol, fieldList_List, indexList_List] :=
-    kind[fieldList, indexList];
-
-ObjectQ[expr_] :=
-    MatchQ[expr, _Symbol[_List, _List]] && MemberQ[$OrderedObjects, Head[expr]];
+FSetNotationA[];

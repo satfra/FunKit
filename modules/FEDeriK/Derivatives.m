@@ -51,7 +51,7 @@ FResolveFDOp[setup_, term_FTerm] :=
             obj = Select[obj, MemberQ[$nonCommutingObjects, Head[#]] || MatchQ[#, _Symbol[_]]&];
             obj = obj /. doFields;
             (*Commuting the next derivative past the objects in the current part*)
-            cTerm = cTerm * Times @@ Map[FMinus[{Head[dF], #[[1]]}, {dF[[1]], #[[2]]}]&, Transpose[{Flatten[obj[[All, 1]]], Flatten[obj[[All, 2]]]}]];
+            cTerm = cTerm * Times @@ Map[makeObj[FMinus, {Head[dF], #[[1]]}, {dF[[1]], #[[2]]}]&, Transpose[{Flatten[getFields /@ obj], Flatten[getIndices /@ obj]}]];
             ,
             {idx, 1, nPost}
         ];

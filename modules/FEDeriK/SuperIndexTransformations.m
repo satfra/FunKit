@@ -21,7 +21,15 @@ GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
         (*Get all objects and bring them in standard form*)
         doFields = replFields[setup];
         undoFields = unreplFields[setup];
-        allObj = ExtractObjectsWithIndex[setup, term] /. doFields /. a_[f_, i_] /; MemberQ[$allObjects, a] :> a[Transpose[{f, i}]];
+        (* Zip indexed objects notation-agnostically via getFields/getIndices.
+           Filter to indexedObjectQ first to avoid double-extracting NotationB embedded
+           field[index] pairs that appear at depth 2 inside indexed objects. *)
+        Module[{allObjRaw = ExtractObjectsWithIndex[setup, term]},
+            allObj = Select[allObjRaw, indexedObjectQ] /.
+                (obj_?indexedObjectQ) :> (Head[obj])[Transpose[{getFields[obj], getIndices[obj]}]];
+            (* Free field applications (e.g. background fields) are processed separately *)
+            allObj = Join[allObj, Select[allObjRaw, Not[indexedObjectQ[#]]&] /. doFields];
+        ];
         (*We find all positions where indices are given explicitly*)
         indexPosToChange = Map[Join[Position[#[[1]], {_Symbol | Times[-1, _Symbol], _List}, {1}], Position[#[[1]], {_Symbol | Times[-1, _Symbol]}, {1}]]&, allObj];
         indexPosToChange = Map[Flatten, indexPosToChange];
@@ -103,16 +111,16 @@ GetSuperIndexTermTransformations[setup_, eq_] :=
         replBackward = {Join @@ repl[[All, 2, 1]], Join @@ repl[[All, 2, 2]], Join @@ repl[[All, 2, 3]]};
         forwardFunction[expr_] :=
             Module[{ret},
-                ret = expr /. doFields /. a_[f_, i_] /; MemberQ[$allObjects, a] :> a[Transpose[{f, i}]];
+                ret = expr /. (obj_?indexedObjectQ) :> (Head[obj])[Transpose[{getFields[obj], getIndices[obj]}]] /. doFields;
                 ret = ret /. replForward[[1]] /. replForward[[3]] /. replForward[[2]];
-                ret = ret /. a_[l_List] /; MemberQ[$allObjects, a] :> a @@ Transpose[l] /. undoFields;
+                ret = ret /. a_[l_List] /; MemberQ[$allObjects, a] :> makeObj[a, l[[All, 1]], l[[All, 2]]] /. undoFields;
                 Return[ret];
             ];
         backwardFunction[expr_] :=
             Module[{ret},
-                ret = expr /. doFields /. a_[f_, i_] /; MemberQ[$allObjects, a] :> a[Transpose[{f, i}]];
+                ret = expr /. (obj_?indexedObjectQ) :> (Head[obj])[Transpose[{getFields[obj], getIndices[obj]}]] /. doFields;
                 ret = ret /. replBackward[[2]] /. replBackward[[3]] /. replBackward[[1]];
-                ret = ret /. a_[l_List] /; MemberQ[$allObjects, a] :> a @@ Transpose[l] /. undoFields;
+                ret = ret /. a_[l_List] /; MemberQ[$allObjects, a] :> makeObj[a, l[[All, 1]], l[[All, 2]]] /. undoFields;
                 Return[ret];
             ];
         Return[{forwardFunction, backwardFunction}];

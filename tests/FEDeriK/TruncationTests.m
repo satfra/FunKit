@@ -122,3 +122,125 @@ AppendTo[
 AppendTo[tests, TestCreate[FunKit`Private`GetNonSourceFields[ySetup], FunKit`Private`GetAllFields[ySetup], TestID -> "Backward compat: GetNonSourceFields equals GetAllFields without sources"]];
 
 AppendTo[tests, TestCreate[FunKit`Private`GetAllSourceFields[ySetup], {}, TestID -> "Backward compat: GetAllSourceFields empty for setup without source keys"]];
+
+(**********************************************************************************
+    Basic scalar FTruncate (closed indices)
+**********************************************************************************)
+
+scalarSetup = GetFunKitSetupScalar[];
+
+(* A propagator term present in the truncation table must survive truncation. *)
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{expr, result},
+            expr = FEx[FTerm[1/2, Propagator[{Phi, Phi}, {i1, i2}], Rdot[{Phi, Phi}, {-i2, -i1}]]];
+            result = FTruncate[scalarSetup, expr];
+            Not @ (result === FEx[])
+        ]
+        ,
+        True
+        ,
+        TestID -> "FTruncate basic: term in truncation table survives"
+    ]
+];
+
+(* A 5-point vertex is not in the scalar truncation table and must be zeroed. *)
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{expr, result},
+            expr = FEx[FTerm[GammaN[{Phi, Phi, Phi, Phi, Phi}, {-i1, -i2, -i3, -i4, -i5}]]];
+            result = FTruncate[scalarSetup, expr];
+            result === FEx[]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FTruncate basic: 5-point vertex not in table is zeroed"
+    ]
+];
+
+(* A contracted AnyField propagator (closed indices) must be expanded into concrete fields.
+   Bare open-index AnyField is not expanded by LTrunc — contraction is required. *)
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{expr, result},
+            (* Wetterich-like trace: contracted indices force AnyField expansion *)
+            expr = FEx[FTerm[1/2, Propagator[{AnyField, AnyField}, {i1, i2}], Rdot[{AnyField, AnyField}, {-i2, -i1}]]];
+            result = FTruncate[scalarSetup, expr];
+            FreeQ[result, AnyField, Infinity] && Not @ FreeQ[result, Phi, Infinity]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FTruncate basic: AnyField with contracted indices expands to Phi"
+    ]
+];
+
+(* FEx annotations are passed through FTruncate unchanged. *)
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{expr, result, annots},
+            expr = FEx[FTerm[Propagator[{Phi, Phi}, {i1, i2}]], "TestKey" -> "testval"];
+            result = FTruncate[scalarSetup, expr];
+            annots = FunKit`Private`SeparateFExAnnotations[result][[2]];
+            annots["TestKey"] === "testval"
+        ]
+        ,
+        True
+        ,
+        TestID -> "FTruncate basic: FEx annotations preserved"
+    ]
+];
+
+(**********************************************************************************
+    FTruncateOpenIndices
+**********************************************************************************)
+
+(* An AnyField 1-point function with an open index must be expanded to Phi. *)
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{expr, result},
+            expr = FEx[FTerm[GammaN[{AnyField}, {-i1}]]];
+            result = FTruncateOpenIndices[scalarSetup, expr];
+            FreeQ[result, AnyField, Infinity] && Not @ FreeQ[result, Phi, Infinity]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FTruncateOpenIndices: AnyField 1-point expands to Phi"
+    ]
+];
+
+(* A 2-point vertex with one concrete field and one AnyField (open index) expands the AnyField.
+   The resulting concrete vertex is in the truncation table and must survive. *)
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{expr, result},
+            expr = FEx[FTerm[GammaN[{Phi, AnyField}, {-i1, -i2}]]];
+            result = FTruncateOpenIndices[scalarSetup, expr];
+            FreeQ[result, AnyField, Infinity] && Not @ (result === FEx[])
+        ]
+        ,
+        True
+        ,
+        TestID -> "FTruncateOpenIndices: mixed Phi/AnyField 2-point expands AnyField"
+    ]
+];

@@ -182,12 +182,12 @@ IterateDiagram[setup_Association, allObj_, closedIndices_, openIndices_, curPos_
         FunKitDebug[4, "Inspecting: ", curPos];
         (*All indices except the one we entered with*)
         FunKitDebug[4, "Entry index: ", entryIdx];
-        otherIndices = DeleteCases[makePosIdx /@ curPos[[2]], entryIdx];
+        otherIndices = DeleteCases[makePosIdx /@ getIndices[curPos], entryIdx];
         otherIndices = Intersection[otherIndices, closedIndices];
         FunKitDebug[4, "Found outgoing indices: ", otherIndices];
         (*all objects containing the otherIndices*)
         followObjects = Table[
-            candidates = Select[DeleteCases[allObj, curPos], MemberQ[#[[2]], otherIndices[[i]], Infinity]&];
+            candidates = Select[DeleteCases[allObj, curPos], MemberQ[getIndices[#], otherIndices[[i]], Infinity]&];
             If[Length[candidates] === 0,
                 Message[IterateDiagram::noFollowObject, otherIndices[[i]]];
                 Abort[]
@@ -250,13 +250,13 @@ TermsEqualAndSum[
             {nextInd1, nextPos1} = IterateDiagram[setup, allObjt1, cidxt1, oidxt1, curPos1, curIdx1];
             {nextInd2, nextPos2} = IterateDiagram[setup, allObjt2, cidxt2, oidxt2, curPos2, curIdx2];
             (*If the (set of) next object(s) is different for 1 and 2, we can immediately abort.*)
-            If[Sort @ Map[Head[#][Sort[#[[1]]]]&, nextPos1] =!= Sort @ Map[Head[#][Sort[#[[1]]]]&, nextPos2],
+            If[Sort @ Map[Head[#][Sort[getFields[#]]]&, nextPos1] =!= Sort @ Map[Head[#][Sort[getFields[#]]]&, nextPos2],
                 FunKitDebug[3, "FAILURE ------------ Heads do not match: ", nextPos1, ", ", nextPos2];
                 Return[{False, allObjt2, t2, allIdxRepl}]
             ];
             (*Check if the external indices in the current object match *)
-            If[Intersection[oidxt1, makePosIdx /@ (curPos1[[2]])] =!= Intersection[oidxt2, makePosIdx /@ (curPos2[[2]])],
-                FunKitDebug[3, "FAILURE ------------ Current open indices disagree: ", Intersection[oidxt1, makePosIdx /@ (curPos1[[2]])], ", ", Intersection[oidxt2, makePosIdx /@ (curPos2[[2]])]];
+            If[Intersection[oidxt1, makePosIdx /@ getIndices[curPos1]] =!= Intersection[oidxt2, makePosIdx /@ getIndices[curPos2]],
+                FunKitDebug[3, "FAILURE ------------ Current open indices disagree: ", Intersection[oidxt1, makePosIdx /@ getIndices[curPos1]], ", ", Intersection[oidxt2, makePosIdx /@ getIndices[curPos2]]];
                 Return[{False, allObjt2, t2, allIdxRepl}]
             ];
             FunKitDebug[3, "Next objects along the chain: ", nextPos1, ", ", nextPos2];
@@ -342,8 +342,8 @@ TermsEqualAndSum[
             If[Length[nextInd1] > 1,
                 FunKitDebug[3, "-------- CASE 3: Index chain is branching."];
                 (*We need to build all possible combinations between the "next" indices and follow these separately, until one of them fits.*)
-                assocFields1 = curPos1[[1, FirstPosition[curPos1[[2]], #][[1]]]]& /@ nextInd1;
-                assocFields2 = curPos2[[1, FirstPosition[curPos2[[2]], #][[1]]]]& /@ nextInd2;
+                assocFields1 = getField[curPos1, FirstPosition[getIndices[curPos1], #][[1]]]& /@ nextInd1;
+                assocFields2 = getField[curPos2, FirstPosition[getIndices[curPos2], #][[1]]]& /@ nextInd2;
                 viableBranches = Map[Transpose[{Transpose @ {nextInd1, assocFields1, nextPos1}, #}]&, Permutations[Transpose @ {nextInd2, assocFields2, nextPos2}]];
                 viableBranches = Select[viableBranches, AllTrue[#, (#[[1, 2]] === #[[2, 2]])&]&];
                 FunKitDebug[4, "Viable Branches: ", viableBranches];
@@ -494,15 +494,15 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
         startt1 = startPoints[[2, 1]];
         (*starting indices can only be closed indices! We pick these out with the following 4 commands*)
         startt1fields = getFields[startt1];
-        cidxstartt1 = Map[MemberQ[cidxt1, makePosIdx @ #]&, startt1[[2]]];
+        cidxstartt1 = Map[MemberQ[cidxt1, makePosIdx @ #]&, getIndices[startt1]];
         startt1fields = Pick[startt1fields, cidxstartt1];
-        cidxstartt1 = makePosIdx /@ Pick[startt1[[2]], cidxstartt1];
+        cidxstartt1 = makePosIdx /@ Pick[getIndices[startt1], cidxstartt1];
         (*Sanity check*)
         If[Length[cidxstartt1] === 0,
             Return[False]
         ];
         FunKitDebug[3, "Comparing the terms \n  ", t1, "\n  ", t2];
-        If[Length[Intersection[startt1[[2]], cidxt1]] == 1,
+        If[Length[Intersection[getIndices[startt1], cidxt1]] == 1,
             (*If there are no other closed indices, the current index is outgoing and we should not mark it as entry*)
             curIdx1 = Null
             ,
@@ -513,12 +513,12 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
             startt2 = startPoints[[3, idx]];
             (*We need to identify all possible insertion points in t2 that fit the insertion in t1*)
             (*starting indices can only be 1. closed indices 2. have same field content as the starting point in t1. We pick these out with the following 2 commands*)
-            cidxstartt2 = Map[(MemberQ[cidxt2, #[[1]]] && #[[2]] === startt1fields[[1]])&, Transpose[{makePosIdx /@ startt2[[2]], startt2[[1]]}]];
-            cidxstartt2 = Pick[makePosIdx /@ startt2[[2]], cidxstartt2];
+            cidxstartt2 = Map[(MemberQ[cidxt2, #[[1]]] && #[[2]] === startt1fields[[1]])&, Transpose[{makePosIdx /@ getIndices[startt2], getFields[startt2]}]];
+            cidxstartt2 = Pick[makePosIdx /@ getIndices[startt2], cidxstartt2];
             (*Loop over all possible starting indices*)
             FunKitDebug[4, "We have: ", Length[cidxstartt2], " possible starting indices in t2."];
             For[jdx = 1, jdx <= Length[cidxstartt2], jdx++,
-                If[Length[Intersection[startt2[[2]], cidxt2]] == 1,
+                If[Length[Intersection[getIndices[startt2], cidxt2]] == 1,
                     (*If there are no other closed indices, the current index is outgoing and we should not mark it as entry*)
                     curIdx2 = Null
                     ,

@@ -77,9 +77,9 @@ FRoute[setup_, expr_FTerm] :=
         Do[
             subObj = objects[[idx]];
             (*find the closed index in the subObj*)
-            closedIndex = Cases[subObj[[2]], x_ /; MemberQ[closedIndices, x], Infinity];
+            closedIndex = Cases[getIndices[subObj], x_ /; MemberQ[closedIndices, x], Infinity];
             (*find the first object after with a shared closedIndex*)
-            nextObj = Select[objects[[idx + 1 ;; ]], ContainsAny[makePosIdx /@ #[[2]], closedIndex]&];
+            nextObj = Select[objects[[idx + 1 ;; ]], ContainsAny[makePosIdx /@ getIndices[#], closedIndex]&];
             If[Length[nextObj] === 0,
                 Continue[]
             ];
@@ -105,9 +105,9 @@ FRoute[setup_, expr_FTerm] :=
             subObj = subObj[[1]];
             (*The indexed object we currently modify. There are always two and we simply grab the first. *)
             (*The position of the current index inside the subObj*)
-            indPos = FirstPosition[subObj[[2]], closedIndices[[idx]]][[1]];
+            indPos = FirstPosition[getIndices[subObj], closedIndices[[idx]]][[1]];
             (*See what kind of field is associated with the index*)
-            assocField = subObj[[1, indPos]];
+            assocField = getField[subObj, indPos];
             (*Grab the index structure of this field from the setup and assign a new momentum variable*)
             indStruct =
                 Map[
@@ -149,8 +149,8 @@ Momentum conservation is already enforced here, i.e. \!\(
                 Abort[]
             ];
             subObj = subObj[[1]];
-            indPos = FirstPosition[subObj[[2]], openIndices[[idx]]][[1]];
-            assocField = subObj[[1, indPos]];
+            indPos = FirstPosition[getIndices[subObj], openIndices[[idx]]][[1]];
+            assocField = getField[subObj, indPos];
             indStruct =
                 Map[
                     If[MatchQ[#, _Symbol],
@@ -188,7 +188,7 @@ Momentum conservation is already enforced here, i.e. \!\(
         (*Now, we do the momentum routing. We iterate over all objects in subObj and fully resolve them.*)
         Do[
             subObj = objects[[idx]];
-            subMom = subObj[[2, All, 1]];
+            subMom = getIndices[subObj][[All, 1]];
             (*See if the object has any external (sub-)momenta*)
             subExtMom = Select[subMom, (ContainsAny[externalMomenta, makePosIdx /@ Flatten[{# /. Plus[a_, b__] :> List[a, b]}]])&];
             FunKitDebug[3, "  FRoute: routing the subObj ", subObj];
@@ -198,7 +198,7 @@ Momentum conservation is already enforced here, i.e. \!\(
             (*********************************************************************************)
             If[Total @ subMom === 0,
                 FunKitDebug[3, "      FRoute: Have only external momenta"];
-                If[Total @ subObj[[2, All, 1]] =!= 0,
+                If[Total @ getIndices[subObj][[All, 1]] =!= 0,
                     Message[FRoute::conservationFail, subObj, ret];
                     Abort[];
                 ];
@@ -209,7 +209,7 @@ Momentum conservation is already enforced here, i.e. \!\(
             (*********************************************************************************)
             If[Length[subExtMom] === 0,
                 (*If we have nothing to enforce, skip this object. This is the case for 1-Point functions*)
-                availMomenta = Total[subObj[[2, All, 1]]];
+                availMomenta = Total[getIndices[subObj][[All, 1]]];
                 availMomenta = makePosIdx /@ Flatten[{availMomenta //. {Plus[a_, b__] :> List[a, b], Times[a_loopMomentum, b__] :> List[a, b]}}];
                 availMomenta = Select[availMomenta, MatchQ[#, loopMomentum[__, _]]&];
                 FunKitDebug[5, "        available loop momenta =  ", availMomenta];
@@ -229,7 +229,7 @@ Momentum conservation is already enforced here, i.e. \!\(
                 ];
                 mom = mom[[1]];
                 (*Now create the replacement rule*)
-                momRepl = Solve[Total[subObj[[2, All, 1]]] == 0, mom][[1, 1]];
+                momRepl = Solve[Total[getIndices[subObj][[All, 1]]] == 0, mom][[1, 1]];
                 objects = objects /. momRepl;
                 ret = ret /. momRepl;
                 FunKitDebug[3, "      FRoute: routing a momentum as ", momRepl];
@@ -243,7 +243,7 @@ Momentum conservation is already enforced here, i.e. \!\(
                 flag = fermionicExtMomRouting[setup, subObj];
                 FunKitDebug[3, "        Are we routing a fermionic external momentum? ", flag];
                 (*If we have a fermionic external momentum, we need to route it correctly. In that case, try to find a fermionic loopMomentum*)
-                availMomenta = Total[subObj[[2, All, 1]]];
+                availMomenta = Total[getIndices[subObj][[All, 1]]];
                 availMomenta = makePosIdx /@ Flatten[{availMomenta //. {Plus[a_, b__] :> List[a, b], Times[a_loopMomentum, b__] :> List[a, b]}}];
                 availMomenta = Select[availMomenta, MatchQ[#, loopMomentum[__, _]]&];
                 FunKitDebug[5, "        available loop momenta =  ", availMomenta];
@@ -263,7 +263,7 @@ Momentum conservation is already enforced here, i.e. \!\(
                 ];
                 mom = mom[[1]];
                 (*now build the replacement rule*)
-                momRepl = Solve[Total[subObj[[2, All, 1]]] == 0, mom][[1, 1]];
+                momRepl = Solve[Total[getIndices[subObj][[All, 1]]] == 0, mom][[1, 1]];
                 (*if the given momentum is NOT a fermionic one, we will need to replace all the momenta on the right-hand-side with NOT fermionic ones*)
                 If[Not @ mom[[2]],
                     rightMomenta = Cases[momRepl[[2]], loopMomentum[__, True], Infinity] // DeleteDuplicates;
@@ -271,7 +271,7 @@ Momentum conservation is already enforced here, i.e. \!\(
                     subObj = subObj /. rightMomenta;
                     objects = objects /. rightMomenta;
                     ret = ret /. rightMomenta;
-                    momRepl = Solve[Total[subObj[[2, All, 1]]] == 0, mom][[1, 1]];
+                    momRepl = Solve[Total[getIndices[subObj][[All, 1]]] == 0, mom][[1, 1]];
                 ];
                 objects = objects /. momRepl;
                 ret = ret /. momRepl;
@@ -285,12 +285,12 @@ Momentum conservation is already enforced here, i.e. \!\(
         Do[
             subObj = objects[[idx]];
             (*Skip again Fields and such*)
-            If[Length[subObj[[2, All, 1]]] < 2,
+            If[Length[getIndices[subObj][[All, 1]]] < 2,
                 Continue[]
             ];
             (*Check the conservation of momentum at all vertices*)
-            If[Total[subObj[[2, All, 1]]] =!= 0,
-                Message[FRoute::momentaFailed, Total[subObj[[2, All, 1]]]];
+            If[Total[getIndices[subObj][[All, 1]]] =!= 0,
+                Message[FRoute::momentaFailed, Total[getIndices[subObj][[All, 1]]]];
                 Abort[]
             ];
             ,

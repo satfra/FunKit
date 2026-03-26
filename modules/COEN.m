@@ -24,10 +24,10 @@ Returns optimized C++ code using complex<double> for complex numbers.
 Handles mathematical functions, operators, and variable substitutions.
 Output is suitable for compilation in C++ numerical libraries.";
 
-UseCppPowr::usage = "UseCppPowr[True/False]
+FUseCppPowr::usage = "FUseCppPowr[True/False]
 Controls whether to use the 'powr' function for power operations in C++ code generation.
-UseCppPowr[True] enables the use of powr for better performance.
-UseCppPowr[False] uses standard power operations.
+FUseCppPowr[True] enables the use of powr for better performance.
+FUseCppPowr[False] uses standard power operations.
 Default behavior depends on the target C++ compiler and optimization needs.";
 
 CppCodeFORM::usage = "CppCodeFORM[expr]

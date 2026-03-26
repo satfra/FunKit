@@ -12,6 +12,9 @@
 
 SetAttributes[cos, Orderless];
 
+cos[p_, p_] :=
+    1;
+
 SetAttributes[Evaluate[Head @ Global`TBInsertOutputNaming[Global`TBsp[p1, p2]]], Orderless];
 
 GetFTSynonym::notSymbol = "The value \"`1`\" is not a symbol.";
