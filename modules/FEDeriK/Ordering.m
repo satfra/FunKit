@@ -135,42 +135,33 @@ indicesLess[i1_, i2_] :=
 OrderObject[setup_, expr_] :=
     expr;
 
-OrderObject[setup_, obj_[fields_List, indices_List] /; MemberQ[$OrderedObjects, obj]] :=
+OrderObject[setup_, obj_ /; ObjectQ[obj]] :=
     Module[
-        {i, curi, prefactor, pref, reverse, nfields = fields, nindices = indices}
+        {i, curi, prefactor = 1, pref, reverse, nfields, nindices}
         ,
+        nfields  = getFields[obj];
+        nindices = getIndices[obj];
         (*Do not order if there is an undetermined field!*)
-        If[MemberQ[nfields, AnyField] || FreeQ[$indexedObjects, obj],
-            Return[obj[nfields, nindices]]
+        If[MemberQ[nfields, AnyField] || FreeQ[$indexedObjects, Head[obj]],
+            Return[obj]
         ];
         (*The propagator gets a reverse ordering*)
-        reverse =
-            If[obj === Propagator,
-                True
-                ,
-                False
-            ];
-        pref =
-            If[reverse,
-                Identity
-                ,
-                Not
-            ];
-        prefactor = 1;
+        reverse = (Head[obj] === Propagator);
+        pref = If[reverse, Identity, Not];
         (*Always compare the ith field with all previous fields and put it in the right place. Iterate until one reaches the end of the array, then it is sorted.*)
-        For[i = 1, i <= Length[nfields] - $unorderedIndices[obj], i++,
+        For[i = 1, i <= Length[nfields] - $unorderedIndices[Head[obj]], i++,
             curi = i;
             (*Check if we should switch curi and curi-1*)
             While[
                 curi >= 2 && (pref @ FieldOrderLess[setup, nfields[[curi]], nfields[[curi - 1]]] || (nfields[[curi]] === nfields[[curi - 1]] && pref @ indicesLess[nindices[[curi]], nindices[[curi - 1]]]))
                 ,
-                nfields[[{curi, curi - 1}]] = nfields[[{curi - 1, curi}]];
+                nfields[[{curi, curi - 1}]]  = nfields[[{curi - 1, curi}]];
                 nindices[[{curi, curi - 1}]] = nindices[[{curi - 1, curi}]];
                 prefactor *= CommuteSign[setup, nfields[[curi]], nfields[[curi - 1]]];
                 curi--;
             ];
         ];
-        Return[prefactor * obj[nfields, nindices]];
+        Return[prefactor * makeObj[Head[obj], nfields, nindices]];
     ];
 
 GetOrder[setup_, fields_List, reverse_:False] /; BooleanQ[reverse] :=

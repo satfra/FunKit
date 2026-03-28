@@ -439,9 +439,11 @@ FSetNotationA[] :=
         FMinus /: Power[FMinus[{a_, b_}, {ia_, ib_}], n_Integer] /; OddQ[n] := FMinus[{a, b}, {ia, ib}];
         Protect[FMinus];
         (*Field[...] exists for NotationA*)
-        Unprotect[Field];
-        Field[expr_] =.;
-        Protect[Field];
+        If[MemberQ[DownValues[Field], Field[expr_] :> _],
+            Unprotect[Field];
+            Field[expr_] =.;
+            Protect[Field];
+        ];
     ];
 
 FSetNotationB[] :=

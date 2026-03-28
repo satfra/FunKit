@@ -146,14 +146,17 @@ FMakeSymmetryList[setup_, {fields___}, {indices___}] :=
 (*Get viable starting points for a comparison of two diagrams*)
 
 StartPoints[setup_, t1_FTerm, t2_FTerm] :=
-    Module[{obj1, obj2, count, desired, sList, match1, match2, cidx1, cidx2, doFields},
+    Module[{obj1, obj2, count, desired, sList, match1, match2, cidx1, cidx2, doFields, fieldKey},
         doFields = replFields[setup];
-        (*Get all sub-objects inside the terms*)
-        obj1 = Reverse @ Sort @ ExtractObjectsWithIndex[setup, t1] /. doFields;
-        obj2 = Reverse @ Sort @ ExtractObjectsWithIndex[setup, t2] /. doFields;
+        (*Get all sub-objects inside the terms. Apply replFields only to non-indexed objects
+          (standalone field applications) to avoid corrupting indexed-object structure in NotationB.*)
+        obj1 = Reverse @ Sort @ Map[If[indexedObjectQ[#], #, # /. doFields]&, ExtractObjectsWithIndex[setup, t1]];
+        obj2 = Reverse @ Sort @ Map[If[indexedObjectQ[#], #, # /. doFields]&, ExtractObjectsWithIndex[setup, t2]];
         FunKitDebug[4, "StartPoints: Comparing objects ", obj1, " and ", obj2];
+        (*Build a notation-agnostic field-content key for each object*)
+        fieldKey[obj_] := Head[obj] @@ Sort @ getFields[obj];
         (*If the objects (with field content) do not match, they are not identical.*)
-        If[Sort @ Map[Head[#][Sort @ #[[1]]]&, obj1] =!= Sort @ Map[Head[#][Sort @ #[[1]]]&, obj2],
+        If[Sort @ Map[fieldKey, obj1] =!= Sort @ Map[fieldKey, obj2],
             FunKitDebug[4, "Failed at object head check"];
             Return[{False, Null, Null}]
         ];
@@ -164,11 +167,11 @@ StartPoints[setup_, t1_FTerm, t2_FTerm] :=
             Return[{False, Null, Null}]
         ];
         (*Otherwise, we check which object is the "rarest"*)
-        sList = Map[Head[#][#[[1]]]&, obj1];
+        sList = Map[fieldKey, obj1];
         count = Counts[sList];
         desired = Keys[count][[PositionSmallest[Values[count]][[1]]]];
-        match1 = Select[obj1, (Head[#][#[[1]]] === desired)&];
-        match2 = Select[obj2, (Head[#][#[[1]]] === desired)&];
+        match1 = Select[obj1, (fieldKey[#] === desired)&];
+        match2 = Select[obj2, (fieldKey[#] === desired)&];
         (*return all possible starting points *)
         Return[{True, match1, match2}]
     ];
@@ -265,8 +268,8 @@ TermsEqualAndSum[
             If[Length[nextInd1] === 1,
                 FunKitDebug[3, "-------- CASE 1: Following the index chain."];
                 (*Check if the open indices aggree*)
-                If[Sort @ Intersection[oidxt1, makePosIdx /@ nextPos1[[1, 2]]] =!= Sort @ Intersection[oidxt2, makePosIdx /@ nextPos2[[1, 2]]],
-                    FunKitDebug[3, "FAILURE ------------ Next open indices disagree.", Sort @ Intersection[oidxt1, makePosIdx /@ nextPos1[[1, 2]]], ", ", Sort @ Intersection[oidxt2, makePosIdx /@ nextPos2[[1, 2]]]];
+                If[Sort @ Intersection[oidxt1, makePosIdx /@ getIndices[nextPos1[[1]]]] =!= Sort @ Intersection[oidxt2, makePosIdx /@ getIndices[nextPos2[[1]]]],
+                    FunKitDebug[3, "FAILURE ------------ Next open indices disagree.", Sort @ Intersection[oidxt1, makePosIdx /@ getIndices[nextPos1[[1]]]], ", ", Sort @ Intersection[oidxt2, makePosIdx /@ getIndices[nextPos2[[1]]]]];
                     Return[{False, allObjt2, t2, allIdxRepl}]
                 ];
                 (*replace the indices with the ones in curPos1*)
@@ -328,8 +331,8 @@ TermsEqualAndSum[
                 FunKitDebug[4, "-------- CASE 2: Finished an index chain in (", curPos1, ", ", curPos2, ")"];
                 (*We need to check if both expressions are with FDOps *)
                 If[Head @ curPos1 === Field,
-                    temp1 = Cases[t1, FDOp[curPos1[[1, 1]][curPos1[[2, 1]]]], Infinity];
-                    temp2 = Cases[t2, FDOp[curPos2[[1, 1]][curPos2[[2, 1]]]], Infinity];
+                    temp1 = Cases[t1, FDOp[getField[curPos1, 1][getIndex[curPos1, 1]]], Infinity];
+                    temp2 = Cases[t2, FDOp[getField[curPos2, 1][getIndex[curPos2, 1]]], Infinity];
                     If[Length[temp1] =!= Length[temp2],
                         FunKitDebug[3, "FAILURE ------------ Number of FDOps is different."];
                         Return[{False, allObjt2, t2, allIdxRepl}]
@@ -404,7 +407,7 @@ TermsEqualAndSum[
 
 RearrangeFields[setup_, t1_, t2_, equiv_] :=
     Module[
-        {ipos1, ipos2, idx, sign, newt2}
+        {ipos1, ipos2, idx, sign, newt2, nf1, ni1, nf2, ni2}
         ,
 (* Given two objects t1, t2, re-order the fields in the indexed object t2,
 so that the exit index equivalently fits the position in t1.
@@ -412,8 +415,10 @@ Returns both the sign and the reordered t2*)
         If[equiv[[1]] === Null || equiv[[2]] === Null,
             Return[{1, t2}]
         ];
-        ipos1 = FirstPosition[makePosIdx /@ t1[[2]], equiv[[1]]][[1]];
-        ipos2 = FirstPosition[makePosIdx /@ t2[[2]], equiv[[2]]][[1]];
+        nf1 = getFields[t1]; ni1 = getIndices[t1];
+        nf2 = getFields[t2]; ni2 = getIndices[t2];
+        ipos1 = FirstPosition[makePosIdx /@ ni1, equiv[[1]]][[1]];
+        ipos2 = FirstPosition[makePosIdx /@ ni2, equiv[[2]]][[1]];
         (*nothing to do:*)
         If[ipos1 === ipos2,
             Return[{1, t2}]
@@ -421,15 +426,15 @@ Returns both the sign and the reordered t2*)
         sign =
             If[ipos2 > ipos1,
                 (*commute pos2 backwards*)
-                Table[FMinus[{t2[[1, ipos2]], t2[[1, ipos2 - idx]]}, {t2[[2, ipos2]], t2[[2, ipos2 - idx]]}], {idx, 1, ipos2 - ipos1}]
+                Table[makeObj[FMinus, {nf2[[ipos2]], nf2[[ipos2 - idx]]}, {ni2[[ipos2]], ni2[[ipos2 - idx]]}], {idx, 1, ipos2 - ipos1}]
                 ,
                 (*commute pos2 forwards*)
-                Table[FMinus[{t2[[1, ipos2]], t2[[1, ipos2 + idx]]}, {t2[[2, ipos2]], t2[[2, ipos2 + idx]]}], {idx, 1, ipos1 - ipos2}]
+                Table[makeObj[FMinus, {nf2[[ipos2]], nf2[[ipos2 + idx]]}, {ni2[[ipos2]], ni2[[ipos2 + idx]]}], {idx, 1, ipos1 - ipos2}]
             ];
         (*Resolve the resulting FMinus, if possible*)
         sign = Times @@ ReduceIndices[setup, FTerm @@ sign];
         (*Replace the indices & fields in t2*)
-        newt2 = Head[t2][Insert[Delete[t2[[1]], ipos2], t2[[1, ipos2]], ipos1], Insert[Delete[t2[[2]], ipos2], t2[[2, ipos2]], ipos1]];
+        newt2 = makeObj[Head[t2], Insert[Delete[nf2, ipos2], nf2[[ipos2]], ipos1], Insert[Delete[ni2, ipos2], ni2[[ipos2]], ipos1]];
         FunKitDebug[4, "Given ", t1, ", rearranged ", t2, " to ", newt2, " with sign ", sign];
         Return[{sign, newt2}];
     ];
@@ -445,7 +450,12 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
         (*Start off by default-ordering t1 and t2*)
         t1 = FixIndices[setup, FOrderFields[setup, t1]];
         t2 = FixIndices[setup, FOrderFields[setup, t2]];
-        (*If[MemberQ[t1,AnyField,Infinity],Message[TermsEqualAndSum::undeterminedFields];Abort[]];*)
+        (*Skip comparison for intermediate terms that still contain unresolved AnyField placeholders.
+          SplitPrefactor and the diagram-walk logic are not designed for unresolved field content,
+          and would trigger First::normal warnings via getIndices on integer arguments.*)
+        If[!FreeQ[it1, AnyField] || !FreeQ[it2, AnyField],
+            Return[False]
+        ];
         (*Briefly check the trivial case*)
         FunKitDebug[4, "    TermsEqualAndSum: Comparing \n  ", t1, "\n   &\n  ", t2];
         If[it1 === it2,
@@ -485,9 +495,9 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
         ];
         FunKitDebug[4, "Collected StartPoints"];
         doFields = replFields[setup];
-        (*collect objects for both terms*)
-        allObjt1 = Select[ExtractObjectsWithIndex[setup, t1] /. doFields, FreeQ[FMinus[__]]];
-        allObjt2 = Select[ExtractObjectsWithIndex[setup, t2] /. doFields, FreeQ[FMinus[__]]];
+        (*collect objects for both terms; apply replFields only to non-indexed objects*)
+        allObjt1 = Select[Map[If[indexedObjectQ[#], #, # /. doFields]&, ExtractObjectsWithIndex[setup, t1]], FreeQ[FMinus[__]]];
+        allObjt2 = Select[Map[If[indexedObjectQ[#], #, # /. doFields]&, ExtractObjectsWithIndex[setup, t2]], FreeQ[FMinus[__]]];
         oidxt1 = GetOpenSuperIndices[setup, t1];
         oidxt2 = GetOpenSuperIndices[setup, t2];
         (*We pick the first candidate for t1 and iterate over all candidates for t2.*)
@@ -577,8 +587,9 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
 **********************************************************************************)
 
 FTermContent[setup_, term_FTerm] :=
-    Module[{},
-        Hash[Sort @ Map[Head[#][#[[1]]]&, FunKit`Private`ExtractObjectsWithIndex[setup, term] /. FunKit`Private`replFields[setup]], "SHA"]
+    Module[{objs},
+        objs = FunKit`Private`ExtractObjectsWithIndex[setup, term];
+        Hash[Sort @ Map[Head[#] @@ FunKit`Private`getFields[#]&, objs], "SHA"]
     ];
 
 (* Given an FEx, subdivide its FTerms into groups with identical content *)

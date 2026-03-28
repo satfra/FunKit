@@ -3,7 +3,7 @@ Options[FMakeDiagrammaticRules] = {"DerivePropagators" -> True};
 FMakeDiagrammaticRules::noFeynmanRules = "The setup does not contain a \"FeynmanRules\" key.";
 
 FMakeDiagrammaticRules[setup_, OptionsPattern[]] :=
-    Module[{ruleList, truncationList, idx, jdx, kdx, minusRule, object, fieldContent, rule, dress, minusOrig, minusBasis, subset = All, orderOrig, orderBasis, newBasisName, propMom, annotations},
+    Module[{ruleList, truncationList, idx, jdx, kdx, minusRule, object, fieldContent, rule, dress, minusOrig, minusBasis, subset = All, orderOrig, orderBasis, newBasisName, propMom, annotations, indSyms},
         AssertFSetup[setup];
         If[Not @ KeyExistsQ[setup, "FeynmanRules"],
             Message[FMakeDiagrammaticRules::noFeynmanRules];
@@ -67,7 +67,19 @@ FMakeDiagrammaticRules[setup_, OptionsPattern[]] :=
                         (Table[dressing[object, fieldContent, subset[[kdx]], $mom], {kdx, 1, Length[subset]}])
                     ];
                 rule = minusOrig * minusRule * minusBasis * dress . (Table[$tens[rule, subset[[kdx]], $ind], {kdx, 1, Length[subset]}]);
-                AppendTo[ruleList, OrderObject[setup, object[fieldContent, ind : (_List)]] :> (Evaluate @ rule) /. $tens -> TensorBases`TBGetVertex /. $mom :> ind$[[All, 1]] /. {$ind :> Flatten /@ ind$[[$order]], propMom :> ind$[[$order[[1]], 1]]} /. $order -> (Evaluate @ orderBasis)];
+                indSyms = Table[Unique["idx"], {Length[fieldContent]}];
+                With[{
+                    lhs = makeObj[object, fieldContent, Pattern[#, Blank[]] & /@ indSyms],
+                    indList = indSyms
+                },
+                    AppendTo[ruleList,
+                        lhs :> (Evaluate @ rule)
+                            /. $tens -> TensorBases`TBGetVertex
+                            /. $mom :> indList[[All, 1]]
+                            /. {$ind :> Flatten /@ indList[[$order]], propMom :> indList[[$order[[1]], 1]]}
+                            /. $order -> (Evaluate @ orderBasis)
+                    ];
+                ];
             ];
         ];
         Return[ruleList];
