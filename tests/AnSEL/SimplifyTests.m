@@ -752,3 +752,86 @@ AppendTo[
         TestID -> "FSimplify with symmetries: fermionic 4-point"
     ]
 ];
+
+(**********************************************************************************
+    Section 10: FSimplify — disconnected diagrams — 3 tests
+
+    Disconnected diagrams have multiple groups of objects with no shared
+    closed superindices. FSimplify's graph walk only visits one connected
+    component, so its results on disconnected input are unreliable.
+    These tests document this limitation.
+**********************************************************************************)
+
+(* Two identical disconnected diagrams (index-renamed) — FSimplify should
+   merge them to a single term with prefactor 2, but the walk may not
+   traverse the second component and thus may fail to recognise equality. *)
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{setup, t1, t2, result},
+            setup = GetFunKitSetupScalar[];
+            (* Two separate tadpole loops — no shared index between the two Propagator-GammaN pairs *)
+            t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], GammaN[{Phi, Phi}, {i1, i2}],
+                           Propagator[{Phi, Phi}, {i3, i4}], GammaN[{Phi, Phi}, {i3, i4}]];
+            t2 = FTerm[1, Propagator[{Phi, Phi}, {a1, a2}], GammaN[{Phi, Phi}, {a1, a2}],
+                           Propagator[{Phi, Phi}, {a3, a4}], GammaN[{Phi, Phi}, {a3, a4}]];
+            result = Quiet[FSimplify[setup, FEx[t1, t2]], FSimplify::disconnected];
+            (* Disconnected terms are skipped — both kept as-is *)
+            Length[result]
+        ]
+        ,
+        2
+        ,
+        TestID -> "FSimplify disconnected: two identical disconnected diagrams are skipped"
+    ]
+];
+
+(* A disconnected diagram and a connected diagram with the same object types
+   must NOT be merged — they have different topology. *)
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{setup, disconnected, connected, result},
+            setup = GetFunKitSetupScalar[];
+            (* Disconnected: two separate tadpole loops *)
+            disconnected = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], GammaN[{Phi, Phi}, {i1, i2}],
+                                    Propagator[{Phi, Phi}, {i3, i4}], GammaN[{Phi, Phi}, {i3, i4}]];
+            (* Connected: chain linking all four objects via shared indices *)
+            connected = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], GammaN[{Phi, Phi}, {i2, i3}],
+                                 Propagator[{Phi, Phi}, {i3, i4}], GammaN[{Phi, Phi}, {i4, i1}]];
+            result = Quiet[FSimplify[setup, FEx[disconnected, connected]], FSimplify::disconnected];
+            (* Disconnected term skipped, connected term simplified — both remain *)
+            Length[result]
+        ]
+        ,
+        2
+        ,
+        TestID -> "FSimplify disconnected: disconnected vs connected must not merge"
+    ]
+];
+
+(* Two disconnected diagrams that share one component but differ in the other.
+   These must NOT be merged. *)
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{setup, t1, t2, result},
+            setup = GetFunKitSetupScalar[];
+            (* Both share a Propagator-GammaN 2-point loop, but the second component differs *)
+            t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], GammaN[{Phi, Phi}, {i1, i2}],
+                           Propagator[{Phi, Phi}, {i3, i4}], GammaN[{Phi, Phi}, {i3, i4}]];
+            t2 = FTerm[1, Propagator[{Phi, Phi}, {a1, a2}], GammaN[{Phi, Phi}, {a1, a2}],
+                           GammaN[{Phi, Phi, Phi, Phi}, {a3, a4, a5, a6}], Propagator[{Phi, Phi}, {a3, a4}], Propagator[{Phi, Phi}, {a5, a6}]];
+            result = Quiet[FSimplify[setup, FEx[t1, t2]], FSimplify::disconnected];
+            (* Both disconnected terms skipped — both remain *)
+            Length[result]
+        ]
+        ,
+        2
+        ,
+        TestID -> "FSimplify disconnected: different second component must not merge"
+    ]
+];

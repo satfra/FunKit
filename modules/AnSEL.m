@@ -21,6 +21,13 @@ Generates a list of symmetries for functional expressions based on the provided 
 Each field fi should be a valid field symbol defined in the setup.
 Returns a list of symmetry rules that can be used in FSimplify to identify identical diagrams.";
 
+FDisconnectedQ::usage = "FDisconnectedQ[setup, expr]
+Checks whether a functional expression contains disconnected diagrams.
+For an FTerm, returns True if the indexed objects partition into two or more groups
+with no shared closed superindex between groups.
+For an FEx, returns True if any constituent FTerm is disconnected.
+Uses BFS on the index-connectivity graph for fast evaluation.";
+
 FRoute::usage = "FRoute[setup, expr]
 Routes indices and momenta in functional expressions, organizing terms by loop order.
 For FTerm expressions, returns an Association with keys \"Expression\", \"ExternalIndices\", and \"LoopMomenta\".
@@ -88,6 +95,10 @@ Get[$FunKitDirectory <> "modules/AnSEL/Global.m"];
 (* Routing *)
 
 Get[$FunKitDirectory <> "modules/AnSEL/Routing.m"];
+
+(* Disconnected diagram check *)
+
+Get[$FunKitDirectory <> "modules/AnSEL/Disconnected.m"];
 
 (* Simplification *)
 

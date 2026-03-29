@@ -682,12 +682,26 @@ FSimplifyNoSym[setup_, expr_] :=
         Return[res];
     ];
 
+FSimplify::disconnected = "The expression contains disconnected diagrams. These will be skipped during simplification.";
+
 Options[FSimplify] = {"Symmetries" -> {}};
 
 FSimplify[setup_, inexpr_FEx, OptionsPattern[]] :=
-    Module[{subGroups, res, expr, annotations, useParallel, symmetries},
+    Module[{subGroups, res, expr, annotations, useParallel, symmetries, connectedTerms, disconnectedTerms, connectedExpr},
         AssertFSetup[setup];
         {expr, annotations} = SeparateFExAnnotations[inexpr];
+        (* Guard: separate disconnected diagrams and skip them *)
+        disconnectedTerms = Select[expr, FDisconnectedQ[setup, #]&];
+        If[Length[disconnectedTerms] > 0,
+            Message[FSimplify::disconnected];
+            connectedTerms = Select[expr, !FDisconnectedQ[setup, #]&];
+            If[Length[connectedTerms] == 0,
+                Return[MergeFExAnnotations[FEx @@ expr, annotations]]
+            ];
+            connectedExpr = FEx @@ connectedTerms;
+            res = FSimplify[setup, MergeFExAnnotations[connectedExpr, annotations], (Sequence @@ Thread[Rule @@ {#, OptionValue[FSimplify, #]}]& @ Keys[Options[FSimplify]])];
+            Return[FEx @@ Join[List @@ res, disconnectedTerms]]
+        ];
         expr = FixIndices[setup, expr];
         expr = FOrderFields[setup, expr];
         symmetries =

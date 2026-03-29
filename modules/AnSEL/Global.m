@@ -3,6 +3,18 @@
     argument will use this setup automatically if called without setup.
 **********************************************************************************)
 
+FDisconnectedQ[expr_FTerm] /; Head[$GlobalSetup] =!= Symbol :=
+    FDisconnectedQ[$GlobalSetup, expr];
+
+FDisconnectedQ[expr_FEx] /; Head[$GlobalSetup] =!= Symbol :=
+    FDisconnectedQ[$GlobalSetup, expr];
+
+FDisconnectedQ[expr_FTerm] :=
+    (Message[FunKit::noGlobalSetup]; Abort[]);
+
+FDisconnectedQ[expr_FEx] :=
+    (Message[FunKit::noGlobalSetup]; Abort[]);
+
 FRoute[expr_FEx] /; Head[$GlobalSetup] =!= Symbol :=
     FRoute[$GlobalSetup, expr];
 
