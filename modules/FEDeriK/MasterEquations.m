@@ -1,4 +1,15 @@
 (**********************************************************************************
+    MasterEquations.m -- Master equation definitions (Wetterich, DSE, generalized)
+
+    Public API:
+      MakeClassicalAction        -- Constructs classical action from setup truncation
+      WetterichEquation          -- Returns the Wetterich flow equation
+      GeneralizedFlowEquation    -- Returns the generalized flow equation with Phidot
+      RGInvGeneralizedFlowEquation -- RG-invariant version of the generalized flow eq.
+      FMakeDSE                   -- Derives Dyson-Schwinger equation for a given field
+**********************************************************************************)
+
+(**********************************************************************************
     Classical Action
 **********************************************************************************)
 

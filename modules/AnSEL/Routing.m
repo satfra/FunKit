@@ -1,5 +1,21 @@
 (**********************************************************************************
-    IndexRouting
+    Routing.m -- Momentum and index routing through diagrams
+
+    Public API:
+      FRoute                     -- Routes momenta/indices through FTerm/FEx diagrams
+      FUnroute                   -- Reverses routing, restoring superindex form
+
+    Internal:
+      FieldSetupIndices          -- Gets the index structure of a field from setup
+                                    (used by FRoute)
+      fermionicExtMomRouting     -- Detects if external momentum routing is fermionic
+                                    (used by FRoute)
+      makeMomentaAlternatives    -- Creates bosonic/fermionic momentum alternatives
+                                    (used by FRoute for FEx)
+      isLoopAssociation          -- Tests if Association is a loop association
+                                    (used by FUnroute, DiANE/FPlot, DiANE/FPrint)
+      isRoutedAssociation        -- Tests if Association is a routed association
+                                    (used by FUnroute, DiANE/FPlot, DiANE/FPrint)
 **********************************************************************************)
 
 (*A convenience function to quickly obtain the index structure of a given field.*)

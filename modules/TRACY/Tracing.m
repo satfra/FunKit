@@ -1,10 +1,23 @@
-(*
-Notes: 
-- Don't use BalancedMap here, as we always want to parallelize over the entries.
-*)
-
 (**********************************************************************************
-     The actual FormTrace definitions
+    Tracing.m -- FormTrace definitions and diagram simplification
+
+    Public API:
+      FormTracer`FormTrace        -- UpValue overloads for FEx and FTerm tracing
+      FSetAlwaysExpandLorentzTensors -- Toggle automatic Lorentz tensor expansion
+      FIterativelySum            -- Iteratively sums and simplifies traced diagrams
+      FDiagramSimplify           -- Collects and simplifies traced diagram expressions
+      FMakeFormMomentumExpansion  -- Initializes FORM momentum expansion rules
+      FFormSimplify              -- Simplifies expressions via FORM with caching
+
+    Internal:
+      findCouplings              -- Extracts coupling functions from an expression
+                                    (used by FDiagramSimplify)
+
+    Variables:
+      $AlwaysExpandLorentzTensors -- Whether to auto-expand Lorentz tensors (default True)
+      $StandardQuickSimplify     -- Quick simplification function (TimeConstraint -> 0.1)
+      $StandardSimplify          -- Full simplification function
+      $standardFORMmomentumRules -- Current FORM momentum expansion rules
 **********************************************************************************)
 
 Unprotect[FEx, FTerm, FormTracer`FormTrace];

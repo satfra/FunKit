@@ -1,3 +1,11 @@
+(**********************************************************************************
+    FMakeDiagrammaticRules.m -- Generates diagrammatic Feynman rules from setup
+
+    Public API:
+      FMakeDiagrammaticRules     -- Converts Feynman rules in setup to diagrammatic
+                                    replacement rules with tensor bases and dressings
+**********************************************************************************)
+
 Options[FMakeDiagrammaticRules] = {"DerivePropagators" -> True};
 
 FMakeDiagrammaticRules::noFeynmanRules = "The setup does not contain a \"FeynmanRules\" key.";

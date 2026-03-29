@@ -1,6 +1,11 @@
 (**********************************************************************************
-    Global Setup: If $GlobalSetup is set, all functions that take a setup as first
-    argument will use this setup automatically if called without setup.
+    Global.m -- $GlobalSetup dispatch wrappers for DiRK
+
+    Provides setup-free overloads for:
+      FMakeDiagrammaticRules
+
+    Also clears and protects:
+      dressing, InverseProp
 **********************************************************************************)
 
 FMakeDiagrammaticRules[opts___?OptionQ] /; Head[$GlobalSetup] =!= Symbol :=

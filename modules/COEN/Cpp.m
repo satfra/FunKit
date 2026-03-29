@@ -1,4 +1,43 @@
-(*C++ formatting*)
+(**********************************************************************************
+    Cpp.m -- C++ code generation and formatting
+
+    Public API:
+      CppForm                    -- Converts a Mathematica expression to C++ syntax
+      CppCode                    -- Generates optimized C++ code from an expression
+      CppCodeFORM                -- Generates C++ code via FORM simplification
+      MakeCppFunction            -- Creates a C++ function definition string
+      MakeCppClass               -- Creates a C++ class definition string
+      MakeCppHeader              -- Creates a C++ header file string
+      MakeCppBlock               -- Creates a C++ source block with namespace
+      CreateKernelClass          -- Creates a full GPU kernel class (header + integrand)
+      WriteCodeToFile            -- Exports code to file with clang-format formatting
+      FormatCppCode              -- Formats C++ code via clang-format
+      FUseCppPowr                -- Toggles powr<N> template vs pow() usage
+      MakeParameterString        -- Generates full parameter declaration string
+
+    Internal:
+      clangFormatExists          -- Whether clang-format is available on PATH
+                                    (used by WriteCodeToFile, FormatCppCode)
+      CreateClangFormat          -- Creates .clang-format config file
+                                    (used by WriteCodeToFile, FormatCppCode)
+      wrapLargeStatementsForClangFormat -- Wraps large statements with clang-format off
+                                    (used by WriteCodeToFile, FormatCppCode)
+      fixClangFormatOffIndentation -- Re-indents clang-format off sections
+                                    (used by WriteCodeToFile, FormatCppCode)
+      formatFORMCode             -- Converts FORM Fortran output to C++ code
+                                    (used by CppCodeFORM)
+      makeCppTemplateParameter   -- Generates "typename TN" string
+                                    (used by MakeCppFunction)
+      makeCppParameter           -- Generates parameter string from Association
+                                    (used by MakeCppFunction)
+      prepParam                  -- Normalizes parameter spec to Association
+                                    (used by MakeCppFunction, MakeParameterString)
+
+    Variables:
+      $CppPowr                   -- Whether to use powr<N> templates (default True)
+      $CppPrecision              -- Numeric precision for C++ output (default 20)
+      $DefaultRegulatorDefinitions -- Default regulator GPU function definitions
+**********************************************************************************)
 
 Unprotect @ CExpression;
 

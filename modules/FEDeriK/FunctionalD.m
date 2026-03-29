@@ -1,5 +1,17 @@
 (**********************************************************************************
-    Taking functional derivatives of expressions.
+    FunctionalD.m -- Core functional derivative engine
+
+    Public API:
+      FunctionalD                -- Takes functional derivatives of expressions
+      FAddFDRule                 -- Adds a user-defined functional derivative rule
+      FClearFDRules              -- Clears all user-defined derivative rules
+
+    Internal:
+      SymmetricDerivative        -- Computes symmetric derivative with metric factors
+                                    (used by FunctionalD with explicit indices)
+
+    Variables:
+      $userRules                 -- List of user-defined derivative rules
 **********************************************************************************)
 
 $userRules = {};

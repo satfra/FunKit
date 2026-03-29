@@ -1,3 +1,19 @@
+(**********************************************************************************
+    Checks.m -- Validation and assertion functions
+
+    Public API:
+      FieldDefQ                  -- Validates a single field definition
+      AssertFieldDef             -- Aborts if field definition is invalid
+      FieldSpaceDefQ             -- Validates a field space definition Association
+      AssertFieldSpaceDef        -- Aborts if field space definition is invalid
+      FSetupQ                    -- Validates a setup Association
+      AssertFSetup               -- Aborts if setup is invalid
+      FieldQ                     -- Checks if a field exists in the setup
+      AssertField                -- Aborts if field does not exist
+      DerivativeListQ            -- Validates a derivative list
+      AssertDerivativeList       -- Aborts if derivative list is invalid
+**********************************************************************************)
+
 (* Check if a given field definition is valid. Can be either its own anti-field or a pair {af,f} *)
 
 FieldDefQ::lengthMismatch = "A field definition must be either of form f[x...] or {af[x...],f[x...]}. \"`1`\" does not fit.";

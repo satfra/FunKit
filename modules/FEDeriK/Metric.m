@@ -1,3 +1,18 @@
+(**********************************************************************************
+    Metric.m -- Field-space metric, index reduction, and commutation signs
+
+    Public API:
+      ReduceIndices              -- Resolves all metric/FMinus/SymmetryFactor in FTerm/FEx
+
+    Internal:
+      GrassOrder                 -- Computes Grassmann ordering sign for a field pair
+                                    (used by metric)
+      metric                     -- Evaluates the field-space metric for two fields
+                                    (used by ReduceIndices)
+      SymmetryFactorFromList     -- Computes symmetry factor from field repetitions
+                                    (used by ReduceIndices)
+**********************************************************************************)
+
 (*AntiGrassmannField-GrassmannField gives 1, otherwise -1*)
 
 GrassOrder[setup_, f1_, f2_, sign_] :=

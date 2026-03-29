@@ -1,5 +1,9 @@
 (**********************************************************************************
-     Expand Powers of FTerm and FEx up to a given order
+    Expansions.m -- Power expansion of FTerm/FEx and derivative operators
+
+    Public API:
+      FExpand                    -- Expands powers of FTerm/FEx to a given order
+      DExpand                    -- Expands powers of FDOp-containing terms
 **********************************************************************************)
 
 FExpand[setup_, expr_FTerm, order_Integer] /; order >= 0 :=

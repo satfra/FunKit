@@ -1,5 +1,18 @@
 (**********************************************************************************
-    General Compatibility definitions
+    Compatibility.m -- Interoperability with QMeS and DoFun packages
+
+    Public API:
+      FunKitForm                 -- Converts QMeS/DoFun expressions to FunKit form
+      QMeSForm                   -- Converts FunKit expressions to QMeS notation
+      DoFunForm                  -- Converts FunKit to DoFun notation (not yet impl.)
+
+    Internal:
+      QMeSNaming                 -- Renames a single object to QMeS convention
+                                    (used by QMeSForm)
+      QMeSSuperindexDiagramQ     -- Tests if a list is a QMeS superindex diagram
+                                    (used by FunKitForm)
+      DoFunSuperindexDiagramQ    -- Tests if an expression is a DoFun diagram
+                                    (used by FunKitForm)
 **********************************************************************************)
 
 FunKitForm[expr_List] :=

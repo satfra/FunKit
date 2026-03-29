@@ -1,6 +1,17 @@
 (**********************************************************************************
-    Global Setup: If $GlobalSetup is set, all functions that take a setup as first
-    argument will use this setup automatically if called without setup.
+    Global.m -- $GlobalSetup dispatch wrappers for AnSEL
+
+    Provides setup-free overloads for:
+      FDisconnectedQ, FRoute, FUnroute, FSimplify, FMakeSymmetryList
+
+    Also defines:
+      FSetLoopMomentumName       -- Sets base name for loop momentum variables
+
+    Variables:
+      $loopMomentumName          -- Current loop momentum base name (default "l")
+      $availableLoopMomenta      -- Bosonic loop momentum symbols (l1, l2, ...)
+      $availableLoopMomentaf     -- Fermionic loop momentum symbols (lf1, lf2, ...)
+      $availableLoopMomentafb    -- Anti-fermionic loop momentum symbols
 **********************************************************************************)
 
 FDisconnectedQ[expr_FTerm] /; Head[$GlobalSetup] =!= Symbol :=

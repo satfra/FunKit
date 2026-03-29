@@ -1,5 +1,27 @@
 (**********************************************************************************
-    Styling and Definitions of Graphical Elements for Diagram Drawing
+    FPlot.m -- Diagram drawing and graph visualization
+
+    Public API:
+      FPlot                      -- Plots diagrams from FEx/FTerm expressions
+      GetDiagram                 -- Builds a Graph object from an FTerm diagram
+
+    Internal:
+      MakeEdgeRule               -- Creates directed/undirected edge from an object
+                                    (used by GetDiagram)
+      crosscircle                -- Graphics primitive for cross-in-circle vertex
+                                    (used by $standardVertexStyles)
+      cross                      -- Graphics primitive for cross vertex
+                                    (used by $standardVertexStyles)
+      arcFunc                    -- Edge shape for directed self-loops
+                                    (used by GetDiagram)
+      arcFuncUn                  -- Edge shape for undirected self-loops
+                                    (used by GetDiagram)
+      shortTexPref               -- Formats an FTerm prefactor as TeX
+                                    (used by GetDiagram)
+
+    Variables:
+      $standardVertexStyles      -- Default vertex shape definitions
+      $standardVertexSize        -- Default vertex size definitions
 **********************************************************************************)
 
 MakeEdgeRule[setup_, obj_] :=

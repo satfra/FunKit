@@ -1,3 +1,27 @@
+(**********************************************************************************
+    util.m -- Shared internal utilities
+
+    Internal:
+      isNeg                      -- Tests if an index is negated (down)
+                                    (used by FMakeDiagrammaticRules, Notation, Metric)
+      makePosIdx                 -- Strips negation from an index
+                                    (used broadly: AnSEL, DiRK, DiANE, FEDeriK)
+      exclusions                 -- Default symbol exclusion filter
+                                    (used by customExclusions)
+      customExclusions           -- Extended symbol exclusion filter
+                                    (used by GetAllSymbols, TRACY/Tools)
+      GetAllSymbols              -- Extracts all unique symbols from an expression
+                                    (used by Notation, FPrint)
+      makeTemporaryFileName      -- Generates a unique temporary filename
+                                    (used by Cpp, Tracing)
+      ParallelMapSerialized      -- ParallelMap with BinarySerialize round-trip
+                                    (used by BalancedMap, PMap)
+      BalancedMap                -- Memory-efficient parallel Map over large lists
+                                    (used by Truncation, Derivatives, Tracing)
+      PMap                       -- Parallel Map with serialization
+                                    (used by Simplify)
+**********************************************************************************)
+
 (*Is an index down?*)
 
 isNeg[-i_] :=

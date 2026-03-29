@@ -1,3 +1,16 @@
+(**********************************************************************************
+    Cleaning.m -- Index fixing and FTerm/FEx reduction
+
+    Public API:
+      FixIndices                 -- Gives all closed indices unique names
+      ReduceFTerm                -- Merges scalar factors in an FTerm
+      ReduceFEx                  -- Fixes indices and reduces all FTerms in an FEx
+
+    Internal:
+      FDOpCount                  -- Counts FDOp occurrences in an expression
+                                    (used by ReduceFTerm)
+**********************************************************************************)
+
 (*Given a user-defined term or master equation, give all (closed) indices unique names.*)
 
 FixIndices[setup_, expr_List] :=

@@ -1,4 +1,44 @@
 (**********************************************************************************
+    FPrint.m -- LaTeX rendering of functional expressions
+
+    Public API:
+      FPrint                     -- Prints expressions as rendered LaTeX
+      FTex                       -- Converts FEx/FTerm expressions to LaTeX strings
+      FAddTexStyles              -- Adds TeX styling rules for symbols
+      FSetTexStyles              -- Sets (replaces) TeX styling rules for symbols
+
+    Internal:
+      MakeTexIndexList           -- Formats index lists as TeX sub/superscripts
+                                    (used by RenewFormatDefinitions)
+      MakeIdxField               -- Formats a single field with its index as TeX
+                                    (used by MakeTexIndexList)
+      prettySuperIndices         -- Assigns human-readable names to closed super-indices
+                                    (used by FTex)
+      prettyExplicitIndices      -- Assigns human-readable names to explicit indices
+                                    (used by FTex)
+      isLoopAssociation          -- Tests if an Association is a loop association
+                                    (used by FPlot, FPrint, FTex, prettySuperIndices)
+      isRoutedAssociation        -- Tests if an Association is a routed association
+                                    (used by FPlot, FTex, prettySuperIndices)
+      RenewFormatDefinitions     -- Re-registers all Format/TeXForm definitions
+                                    (used by FTex)
+
+    Variables:
+      $availableIndices          -- Pool of index names for prettification
+      $TexStyles                 -- Current TeX styling rules
+      $Fields                    -- Current field-to-TeX mappings
+      $Setup                     -- Current setup reference for formatting
+
+    Formatting:
+      Format[FDOp, TeXForm]      -- Functional derivative operator
+      Format[GammaN, TeXForm]    -- N-point vertex
+      Format[Propagator, TeXForm] -- Propagator
+      Format[FTerm, TeXForm]     -- Single term
+      Format[FEx, TeXForm]       -- Functional expression
+      Format[Association, TeXForm] -- Routed association
+**********************************************************************************)
+
+(**********************************************************************************
     Index list formatting
 **********************************************************************************)
 

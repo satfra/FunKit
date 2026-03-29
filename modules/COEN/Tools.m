@@ -1,4 +1,38 @@
 (**********************************************************************************
+    Tools.m -- Code generation settings and shared utilities
+
+    Public API:
+      FSetRegisterSize           -- Sets register budget for CSE optimization
+      FSetCodeOptimization       -- Enables/disables code optimization pipeline
+      FSetFastMath               -- Enables/disables fast math GPU intrinsics
+      FSetMaxKernelTerms         -- Sets max terms per sub-kernel before splitting
+      FSetCodePrecision          -- Sets code precision ("single" or "double")
+
+    Internal:
+      balancedBracesQ            -- Checks balanced parentheses in a string
+                                    (used by Cpp, CppOptimize)
+      balancedRBracesQ           -- Checks balanced square brackets in a string
+                                    (used by Cpp)
+      hasNoOperators             -- Tests if a string contains no operators
+                                    (used by Cpp)
+      parallelSimplify           -- Parallel FullSimplify with automatic fallback
+                                    (used by Cpp, CppOptimize, Fortran, Julia)
+
+    Variables:
+      $codeOptimizeFunctions     -- Patterns for subexpressions eligible for CSE
+      $codeOptimizeInterps       -- Patterns for interpolator calls to hoist
+      $availableRegisters        -- Register budget for CSE (default 32)
+      $codeOptimize              -- Master optimization toggle (default True)
+      $codeFactorTerms           -- Whether to apply FactorTerms (default True)
+      $codeFastMath              -- Fast math intrinsics toggle (default False)
+      $codePrecision             -- "single" or "double" (default "double")
+      $codeMaxKernelTerms        -- Max terms per sub-kernel (default 500)
+      $codeFormatStatementLimit  -- Max chars before disabling clang-format
+      $codeFMARestructure        -- FMA pattern restructuring toggle (default True)
+      $codeParallelThreshold     -- Min items for parallel evaluation (default 4)
+**********************************************************************************)
+
+(**********************************************************************************
     bashrc, zshrc and zshprofile sourcing to infer PATH
 **********************************************************************************)
 

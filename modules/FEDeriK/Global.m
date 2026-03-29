@@ -1,6 +1,40 @@
 (**********************************************************************************
-    Global Setup: If $GlobalSetup is set, all functions that take a setup as first
-    argument will use this setup automatically if called without setup.
+    Global.m -- $GlobalSetup dispatch wrappers and global object registry
+
+    Provides setup-free overloads for:
+      FTruncate, FTruncateOpenIndices, FTakeDerivatives, QMeSForm,
+      FExpand, DExpand, MakeClassicalAction, FMakeDSE,
+      FResolveDerivatives, FResolveFDOp, FOrderFields
+
+    Also defines:
+      FSetGlobalSetup            -- Sets or clears $GlobalSetup
+      FAddObject                 -- Registers a user-defined symbol
+      FShowObjects               -- Prints all registered objects
+      FAddIndexedObject          -- Registers a user-defined indexed object
+      FShowIndexedObjects        -- Prints all indexed objects
+      FAddOrderedObject          -- Registers a user-defined ordered object
+      FShowOrderedObjects        -- Prints all ordered objects
+      FAddCorrelationFunction    -- Registers a user-defined correlation function
+      FShowCorrelationFunctions  -- Prints all correlation functions
+      FSetAutoBuildSymmetryList   -- Toggles auto symmetry list construction
+      FSetAutoSimplify           -- Toggles auto simplification after derivatives
+      FEmptySetup                -- Returns a minimal empty setup Association
+
+    Variables:
+      $GlobalSetup               -- Currently active setup (protected)
+      $userCorrelationFunctions  -- User-registered correlation functions
+      $userIndexedObjects        -- User-registered indexed objects
+      $userOrderedObjects        -- User-registered ordered objects
+      $userObjects               -- User-registered general objects
+      $CorrelationFunctions      -- All correlation functions (built-in + user)
+      $OrderedObjects            -- All ordered objects
+      $indexedObjects            -- All indexed objects
+      $allObjects                -- All recognized objects
+      $nonCommutingObjects       -- Objects with non-commuting ordering
+      $MaxDerivativeIterations   -- Max iterations for derivative resolution (500)
+      $CanonicalOrdering         -- Current canonical field ordering string
+      $AutoBuildSymmetryList     -- Auto build symmetries flag (default True)
+      $AutoSimplify              -- Auto simplify flag (default True)
 **********************************************************************************)
 
 Protect[$GlobalSetup];

@@ -1,4 +1,19 @@
-(* ::Input::Initialization:: *)
+(**********************************************************************************
+    SuperIndexTransformations.m -- Transforms between explicit and super-index forms
+
+    Public API:
+      GetSuperIndexTermTransformations -- Returns {forward, backward} transformation
+                                          functions between explicit and super-indices
+      NormalizeSuperIndices      -- Canonicalizes closed super-index names
+
+    Internal:
+      GetSuperIndexTermTransformationsSingleFTerm -- Computes transformations for one FTerm
+                                    (used by GetSuperIndexTermTransformations)
+
+    Variables:
+      $momentum                  -- Tagged head for momenta in transformations
+      $groupIndex                -- Tagged head for group indices in transformations
+**********************************************************************************)
 
 GetSuperIndexTermTransformations::momentumConservation = "Momentum conservation for the momentum `1` has been violated.";
 

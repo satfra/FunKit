@@ -1,5 +1,10 @@
 (**********************************************************************************
-    FResolveFDOp : Resolve a single occurrence of FDOp in an FTerm or FEx.
+    Derivatives.m -- Functional derivative resolution
+
+    Public API:
+      FResolveFDOp               -- Resolves a single FDOp in an FTerm or FEx
+      FResolveDerivatives        -- Iteratively resolves all FDOp in an expression
+      FTakeDerivatives           -- Takes functional derivatives w.r.t. a field list
 **********************************************************************************)
 
 FResolveFDOp::nested = "The given term contains nested FDOp. Before proceeding, you need to expand these with DExpand. 

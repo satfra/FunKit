@@ -1,5 +1,34 @@
 (**********************************************************************************
-     Miscellaneous tools for TRACY
+    Tools.m -- Miscellaneous tools for TRACY
+
+    Public API:
+      NormalizeIndices            -- Canonicalizes closed indices in traced expressions
+      ImportAndSimplifyFORM      -- Imports FORM output and simplifies to Mathematica
+
+    Internal:
+      SafeReplaceTrace           -- Replaces dressings with unique symbols for FORM
+                                    (used by Tracing)
+      customExclusions           -- Extended symbol exclusion filter
+                                    (used by GetAllCustomSymbols)
+      removeFORMTracerRule       -- Rules to strip FormTracer-internal symbols
+                                    (used by GetAllCustomSymbols)
+      GetAllCustomSymbols        -- Extracts user-defined symbols excluding FormTracer
+                                    (used by Tracing)
+      GetAllMomenta              -- Extracts all momenta from an expression
+                                    (used by Tracing)
+      balancedBracesQ            -- Checks balanced parentheses in a string
+                                    (used by fortranToMathematica)
+      balancedBracketsQ          -- Checks balanced square brackets in a string
+                                    (used by ImportAndSimplifyFORM)
+      hasFortranOperator         -- Tests if a string contains Fortran operators
+                                    (used by fortranToMathematica)
+      fortranToMathematica       -- Converts Fortran-style FORM output to Mathematica
+                                    (used by ImportAndSimplifyFORM)
+      makeHashFile               -- Generates a cache file path from expression hash
+                                    (used by Tracing)
+
+    Variables:
+      $DefaultTimeConstraint     -- Default time limit for Simplify calls
 **********************************************************************************)
 
 SafeReplaceTrace[expr_] :=

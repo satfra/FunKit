@@ -1,5 +1,45 @@
 (**********************************************************************************
-    Overall Defs
+    Notation.m -- FTerm/FEx data type definitions and notation system
+
+    Public API:
+      FTermQ                     -- Predicate: True if expression is an FTerm
+      AssertFTerm                -- Aborts if expression is not an FTerm
+      FExQ                       -- Predicate: True if expression is an FEx
+      AssertFEx                  -- Aborts if expression is not an FEx
+      FDOpQ                      -- Predicate: True if expression is a valid FDOp
+      AssertFDOp                 -- Aborts if expression is not a valid FDOp
+      FExNumericMerge            -- Sums numeric FTerms in an FEx
+      FExMerge                   -- Flattens nested FEx heads
+      SplitPrefactor             -- Splits FTerm into prefactor and body
+      SeparateFExAnnotations     -- Splits annotations from FEx terms
+      DropFExAnnotations         -- Returns FEx without annotations
+      MergeFExAnnotations        -- Recombines FEx terms with annotations
+      FSetNotationA              -- Installs {fields},{indices} notation (default)
+      FSetNotationB              -- Installs field[index] notation
+
+    Internal:
+      couldBeField               -- Tests if expression looks like a field application
+                                    (used by FTerm rewrite rules)
+      isFreeTerm                 -- Tests if expression has no non-commuting objects
+                                    (used by FTerm rewrite rules)
+      makeObj                    -- Constructs indexed objects in current notation
+                                    (used broadly across all modules)
+      indexedObjectQ             -- Tests if expression is an indexed object
+                                    (used broadly across all modules)
+      getFields / getField       -- Extracts field(s) from an indexed object
+                                    (used broadly across all modules)
+      getIndices / getIndex      -- Extracts index/indices from an indexed object
+                                    (used broadly across all modules)
+      setField                   -- Replaces a field at a position in an object
+                                    (used by Truncation, Simplify)
+      getIdxSign                 -- Gets the sign of an index position
+                                    (used by Metric)
+      PrototypeObjectPattern     -- Returns a pattern matching any object of given head
+                                    (used by FunctionalD)
+
+    Formatting:
+      FTerm, FEx                 -- Rewrite rules for algebraic simplification
+      NonCommutativeMultiply     -- Rules for ** on FTerm/FEx
 **********************************************************************************)
 
 type::error = "The expression `1` is neither an FEx nor an FTerm.";

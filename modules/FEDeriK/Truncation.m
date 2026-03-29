@@ -1,4 +1,24 @@
-(* ::Input::Initialization:: *)
+(**********************************************************************************
+    Truncation.m -- Truncation of functional expressions to a given field content
+
+    Public API:
+      FTruncate                  -- Truncates FEx/FTerm to setup truncation table
+      FTruncateOpenIndices       -- Truncates only open (external) indices
+
+    Internal:
+      truncationPass             -- Applies truncation rules to a single FTerm
+                                    (used by FTruncate, LTrunc, OTrunc)
+      truncationList             -- Builds memoized Dispatch rules from setup
+                                    (used by truncationPass)
+      insertFields               -- Replaces AnyField at index positions with a field
+                                    (used by LTrunc)
+      insertFieldsIfAnyField     -- Like insertFields but only replaces AnyField slots
+                                    (used by LTrunc)
+      LTrunc                     -- Truncates closed indices recursively
+                                    (used by FTruncate)
+      OTrunc                     -- Truncates open indices
+                                    (used by FTruncateOpenIndices)
+**********************************************************************************)
 
 truncationPass[setup_, expr_FEx] :=
     Module[{},

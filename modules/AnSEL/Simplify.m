@@ -1,5 +1,28 @@
 (**********************************************************************************
-    Identification of specific diagrams (i.e. FTerms)
+    Simplify.m -- Diagram identification and simplification
+
+    Public API:
+      BuildSymmetryList          -- Constructs field permutations from symmetry groups
+      MergeSymmetries            -- Merges two symmetry lists
+      FMakeSymmetryList          -- Builds symmetry list from fields and their types
+      FSimplify                  -- Simplifies FEx by identifying equivalent diagrams
+      FSimplifyNoSym             -- Simplifies FEx without symmetry information
+
+    Internal:
+      StartPoints                -- Finds viable starting points for diagram comparison
+                                    (used by TermsEqualAndSum)
+      IterateDiagram             -- Traverses a diagram along closed indices
+                                    (used by TermsEqualAndSum)
+      TermsEqualAndSum           -- Tests if two FTerms are equivalent and sums them
+                                    (used by SubFSimplify)
+      RearrangeFields            -- Rearranges standalone fields to match equivalence
+                                    (used by TermsEqualAndSum)
+      FTermContent               -- Extracts notation-agnostic field content key
+                                    (used by SeparateTermGroups)
+      SeparateTermGroups         -- Groups FTerms by field content for simplification
+                                    (used by FSimplify)
+      SubFSimplify               -- Simplifies a group of same-content FTerms
+                                    (used by FSimplify)
 **********************************************************************************)
 
 (* Construct all permutations of fields in a derivativeList and their prefactors, given a list of symmetries *)

@@ -1,3 +1,10 @@
+(**********************************************************************************
+    Tools.m -- Dressing symmetry configuration for diagrammatic rules
+
+    Public API:
+      FSetSymmetricDressing      -- Declares symmetry properties of dressing tensors
+**********************************************************************************)
+
 FSetSymmetricDressing[obj_, {f__}] :=
     Module[{},
         Unprotect[dressing];

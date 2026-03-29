@@ -1,12 +1,25 @@
-(*FORM*)
+(**********************************************************************************
+    FORM.m -- FORM integration: momentum projections and symmetric point rules
 
-(* ::Subsection:: *)
+    Public API:
+      GetFTSynonym               -- Gets the FormTracer synonym for a Mathematica symbol
+      FMakeFiniteTFormMomentumExpansion -- Creates finite-T momentum expansion FORM rules
+      FMakeP0FormRule            -- Creates FORM rules for zeroth-component projection
+      FMakeP0Rule                -- Creates Mathematica rules for P0 projection
+      FMakeSPFormRule             -- Creates FORM rules for symmetric point projection
+      FMakeSPFiniteTFormRule      -- Creates finite-T symmetric point FORM rules
 
-(*FormTracer PostReplacement Code*)
-
-(* ::Subsubsection:: *)
-
-(*Tools*)
+    Internal:
+      RemoveFromExtraVars        -- Removes a symbol from FormTracer extra variables
+                                    (used by FMakeFiniteTFormMomentumExpansion,
+                                     FMakeP0FormRule, FMakeSPFormRule,
+                                     FMakeSPFiniteTFormRule)
+      scallDef                   -- FORM procedure for nested argument replacement
+                                    (used by Tracing)
+      CreateFormSet              -- Generates form.set configuration file via Python
+                                    (used by Tracing)
+      cos                        -- Orderless cosine symbol for angular projections
+**********************************************************************************)
 
 (* ::Input::Initialization:: *)
 

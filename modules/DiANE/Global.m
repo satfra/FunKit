@@ -1,6 +1,8 @@
 (**********************************************************************************
-    Global Setup: If $GlobalSetup is set, all functions that take a setup as first
-    argument will use this setup automatically if called without setup.
+    Global.m -- $GlobalSetup dispatch wrappers for DiANE
+
+    Provides setup-free overloads for:
+      FPrint, FTex, FPlot
 **********************************************************************************)
 
 FPrint[expr_] /; Head[$GlobalSetup] =!= Symbol :=

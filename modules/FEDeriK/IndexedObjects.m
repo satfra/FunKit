@@ -1,5 +1,54 @@
 (**********************************************************************************
-    Getting lists of fields from setup
+    IndexedObjects.m -- Field accessors, predicates, and indexed object utilities
+
+    Public API (field accessors, all memoized):
+      GetCommutingFields         -- Returns commuting field heads
+      GetAntiCommutingFields     -- Returns anti-commuting (partner) field heads
+      GetGrassmannFields         -- Returns Grassmann field heads
+      GetAntiGrassmannFields     -- Returns anti-Grassmann field heads
+      GetCommuting               -- Returns all commuting + commuting-source fields
+      GetGrassmann               -- Returns all Grassmann + Grassmann-source fields
+      GetFieldPairs              -- Returns {anti, field} pairs
+      GetSingleFields            -- Returns unpaired fields + source fields
+      GetAllFields               -- Returns all field heads in the setup
+      GetCSourceFields           -- Returns commuting source field heads
+      GetGrassmannSourceFields   -- Returns Grassmann source field heads
+      GetAllSourceFields         -- Returns all source field heads
+      GetNonSourceFields         -- Returns all non-source field heads
+
+    Public API (field predicates, all memoized):
+      FieldNameQ                 -- True if symbol is a known field name
+      HasPartnerField            -- True if field has a conjugate partner
+      IsGrassmannField           -- True if field is Grassmann (not anti)
+      IsAntiGrassmannField       -- True if field is anti-Grassmann
+      IsCommutingField           -- True if field is commuting (not anti)
+      IsAntiCommutingField       -- True if field is anti-commuting
+      IsGrassmann                -- True if field has Grassmann statistics
+      IsCommuting                -- True if field has commuting statistics
+      IsCSource                  -- True if field is a commuting source
+      IsGrassmannSource          -- True if field is a Grassmann source
+      IsSource                   -- True if field is any source field
+      GetPartnerField            -- Returns conjugate partner (or self if unpaired)
+
+    Public API (indexed object utilities):
+      ExtractFields              -- Returns deduplicated field heads in expression
+      ExtractFieldsWithIndex     -- Returns field-with-index instances
+      ContainsGrassmann          -- True if expression contains Grassmann fields
+      GrassmannCount             -- Counts Grassmann field applications
+      GetAllSuperIndices         -- Extracts all unique super-indices
+      ExtractObjectsWithIndex    -- Returns indexed objects and fields from expression
+      ExtractObjectsAndIndices   -- Returns {objects, indices} pair
+      GetClosedSuperIndices      -- Returns contracted (even-count) indices
+      GetOpenSuperIndices        -- Returns free (odd-count) indices
+      AllSuperIndicesClosed      -- True if all indices are contracted
+      SuperIndicesValid          -- True if no index appears more than twice
+      FSetSymmetricObject        -- Installs symmetry rules on an object head
+
+    Internal:
+      replFields                 -- Builds field[idx] -> Field[{field},{idx}] dispatch
+                                    (used broadly: Truncation, Routing, Derivatives, etc.)
+      unreplFields               -- Builds reverse dispatch Field -> field[idx]
+                                    (used by Truncation, Routing, etc.)
 **********************************************************************************)
 
 GetCommutingFields[setup_] :=

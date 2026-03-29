@@ -1,18 +1,32 @@
 (**********************************************************************************
-    C++ Code Generation Optimization Pipeline
+    CppOptimize.m -- Multi-pass optimization pipeline for numerical expressions
 
-    Multi-pass optimization for numerical expressions.
+    Internal (all used by CppCode/JuliaCode via optimizeExpression):
+      optimizeExpression         -- Pipeline orchestrator: runs all passes
+      hoistInterpolators         -- Pass 1: extracts global interpolator calls
+      earlySplit                 -- Pass 2: decides single vs multi-kernel split
+      dagCSE                     -- Pass 3: DAG-based common subexpression elimination
+      fallbackCSE                -- Pass 3 fallback: weighted-frequency CSE
+      normalizePowerBases        -- Pass 4: rewrites powers via existing temporaries
+      algebraicFactor            -- Pass 5: applies FactorTerms iteratively
+      hoistTranscendentals       -- Pass 6: hoists expensive transcendental calls
+      buildFMAChain              -- Pass 7 helper: chains FMA patterns from sum terms
+      fmaRestructure             -- Pass 7: restructures a*b+c into fma() calls
+      extractSummationCore       -- Extracts Plus core from Times[pref, Plus[...]]
+      optimizeSubKernel          -- Runs per-kernel optimization passes
+      splitIntoSubKernels        -- Post-optimization sub-kernel splitting
+      formatDefinitions          -- Formats defs as C++ const auto declarations
+                                    (used by Cpp, Julia)
+      formatReturnStatement      -- Formats a return statement
+                                    (used by Cpp)
+      stripQuotedNames           -- Removes quotes around CSE variable names
+                                    (used by Cpp, Julia)
+      getAllVarNames             -- Extracts all variable names from optimized result
+                                    (used by Cpp, Julia)
 
-    GLOBAL passes (run once on the full expression):
-      1. Interpolator call hoisting
-      2. Early splitting (decides single kernel vs sub-kernels)
-
-    PER-KERNEL passes (run independently per sub-kernel, or once if no split):
-      3. DAG-based common subexpression elimination
-      4. Power chain combination
-      5. Algebraic factoring
-      6. Transcendental hoisting
-      7. FMA pattern restructuring
+    Pipeline overview:
+      GLOBAL: interpolator hoisting -> early split decision
+      PER-KERNEL: CSE -> power chains -> factoring -> transcendentals -> FMA
 **********************************************************************************)
 
 (**********************************************************************************

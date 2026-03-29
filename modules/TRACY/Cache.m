@@ -1,3 +1,14 @@
+(**********************************************************************************
+    Cache.m -- Trace cache directory management
+
+    Public API:
+      FSetCacheDirectory         -- Sets (and creates) the trace cache directory
+      FClearTraceCache           -- Clears the trace cache (all or a subdirectory)
+
+    Variables:
+      $TraceCacheDir             -- Current trace cache directory path
+**********************************************************************************)
+
 FSetCacheDirectory::invalid = "The directory \"`1` \"could not be created.";
 
 FSetCacheDirectory[str_String] :=

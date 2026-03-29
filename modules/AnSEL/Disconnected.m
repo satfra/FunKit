@@ -1,9 +1,12 @@
 (**********************************************************************************
-    FDisconnectedQ — Check whether an FTerm represents a disconnected diagram.
+    Disconnected.m -- Disconnected diagram detection
 
-    A diagram is disconnected if its indexed objects partition into two or more
-    groups with no shared closed superindex between groups. Uses BFS on the
-    index-connectivity graph starting from the first object.
+    Public API:
+      FDisconnectedQ             -- Checks if an FTerm/FEx is a disconnected diagram
+
+    Internal:
+      objectIndices              -- Extracts positive superindices from an object
+                                    (used by FDisconnectedQ)
 **********************************************************************************)
 
 FDisconnectedQ::invalidArguments = "FDisconnectedQ expects an FTerm or FEx expression.";

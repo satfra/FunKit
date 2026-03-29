@@ -1,5 +1,24 @@
 (**********************************************************************************
-    Setting the canonical ordering, used throughout FunKit as a standard
+    Ordering.m -- Canonical field ordering and commutation signs
+
+    Public API:
+      FSetCanonicalOrdering      -- Sets the canonical field ordering convention
+      FieldOrderLess             -- Compares two fields under canonical ordering
+      CommuteSign                -- Returns commutation sign for a field pair
+      FSetUnorderedIndices       -- Sets number of unordered trailing indices
+      OrderObject                -- Sorts fields/indices in one indexed object
+      GetOrder                   -- Returns {sign, permutation} for canonical ordering
+      OrderFieldList             -- Sorts a plain field list canonically
+      OrderFields                -- Applies OrderObject to all sub-expressions
+      FOrderFields               -- Public wrapper for OrderFields with validation
+
+    Internal:
+      indicesLess                -- Tiebreaker for index ordering
+                                    (used by OrderObject)
+
+    Variables:
+      $AvailableCanonicalOrderings -- List of valid ordering strings
+      $unorderedIndices          -- Per-object count of unordered trailing indices
 **********************************************************************************)
 
 $AvailableCanonicalOrderings = {"g>ag>c", "ag>g>c", "c>g>ag", "c>ag>g"};

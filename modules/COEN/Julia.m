@@ -1,10 +1,15 @@
-(*Julia*)
+(**********************************************************************************
+    Julia.m -- Julia code generation
 
-(* ::Subsection::Closed:: *)
+    Public API:
+      JuliaForm                  -- Converts a Mathematica expression to Julia syntax
+      JuliaCode                  -- Generates optimized Julia code from an expression
+      MakeJuliaFunction          -- Wraps expression/body in a Julia function
 
-(*Julia formatting*)
-
-(* ::Input::Initialization:: *)
+    Internal:
+      IndentCode                 -- Indents a code string by a given level
+                                    (used by MakeJuliaFunction, MakeFortranFunction)
+**********************************************************************************)
 
 JuliaForm[expr_] :=
     Module[{Fstr},

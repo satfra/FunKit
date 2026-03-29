@@ -1,10 +1,10 @@
-(*Fortran*)
+(**********************************************************************************
+    Fortran.m -- Fortran code generation
 
-(* ::Subsection:: *)
-
-(*Fortran code creation*)
-
-(* ::Input::Initialization:: *)
+    Public API:
+      FortranCode                -- Generates Fortran code from a Mathematica expression
+      MakeFortranFunction        -- Wraps expression/body in a Fortran function
+**********************************************************************************)
 
 FortranCode[equation_, name_:"result"] :=
     Module[{optList, interpObj, replacementObj, replacementNames, replacements, definitions, returnStatement},
