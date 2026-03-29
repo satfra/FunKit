@@ -193,7 +193,8 @@ GetDiagram[setup_, expr_FTerm] :=
         {prefactor, Graph[graph, EdgeShapeFunction -> {x_ \[DirectedEdge] x_ :> arcFunc[graph, 20.0], x_ \[UndirectedEdge] x_ :> arcFuncUn[graph, 20.0]}]}
     ];
 
-FPlot[_, expr_] /; ($FrontEnd === Null || TrueQ[$Notebooks === False]) := expr;
+FPlot[setup_, expr_] /; ($FrontEnd === Null || TrueQ[$Notebooks === False]) :=
+    (AssertFSetup[setup]; expr);
 
 FPlot[setup_, expr_FTerm] :=
     Module[{},

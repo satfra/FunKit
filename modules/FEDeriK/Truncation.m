@@ -48,7 +48,7 @@ FTruncate::missing = "The given truncation misses a truncation table for `1`";
 
 FTruncate::FDOp = "The given expression contains unresolved derivative operators! Cannot truncate before resolving all FDOp.";
 
-FTruncate::emptyTruncation = "The truncation table in the given setup is empty. FTruncate will pass the expression through unchanged. Did you forget to add vertices with AddVertex?";
+FTruncate::emptyTruncation = "The truncation table in the given setup is empty. FTruncate will pass the expression through unchanged. Did you forget to add vertices to the setup?";
 
 indices::inconsistentContractions = "The index `1` has been contracted in an inconsistent way in the expression
     `2`";

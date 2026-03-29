@@ -842,20 +842,7 @@ StyleBox[\"COEN\",FontSize->10,FontWeight->\"Bold\",FontSlant->\"Italic\"]\)\!\
 \(\*StyleBox[\" \
 \",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"loaded\",FontSize->\
 10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\>\"", "]"}], 
-  ";"}], "\[IndentingNewLine]", 
- RowBox[{
-  RowBox[{"Get", "[", 
-   RowBox[{"$FunKitDirectory", "<>", "\"\<modules/SeDecA.m\>\""}], "]"}], 
-  ";"}], "\[IndentingNewLine]", 
- RowBox[{
-  RowBox[{
-  "PrintTemporary", "[", 
-   "\"\<\!\(\*StyleBox[\"...\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*\
-StyleBox[\"SeDecA\",FontSize->10,FontWeight->\"Bold\",FontSlant->\"Italic\"]\)\
-\!\(\*StyleBox[\" \
-\",FontSize->10,FontSlant->\"Italic\"]\)\!\(\*StyleBox[\"loaded\",FontSize->\
-10,FontWeight->\"Plain\",FontSlant->\"Italic\"]\)\>\"", "]"}], 
-  ";"}], "\[IndentingNewLine]", 
+  ";"}], "\[IndentingNewLine]",
  RowBox[{
   RowBox[{"If", "[", 
    RowBox[{
