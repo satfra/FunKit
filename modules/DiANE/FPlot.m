@@ -3,21 +3,21 @@
 
     Public API:
       FPlot                      -- Plots diagrams from FEx/FTerm expressions
-      GetDiagram                 -- Builds a Graph object from an FTerm diagram
+      FGetDiagram                 -- Builds a Graph object from an FTerm diagram
 
     Internal:
       MakeEdgeRule               -- Creates directed/undirected edge from an object
-                                    (used by GetDiagram)
+                                    (used by FGetDiagram)
       crosscircle                -- Graphics primitive for cross-in-circle vertex
                                     (used by $standardVertexStyles)
       cross                      -- Graphics primitive for cross vertex
                                     (used by $standardVertexStyles)
       arcFunc                    -- Edge shape for directed self-loops
-                                    (used by GetDiagram)
+                                    (used by FGetDiagram)
       arcFuncUn                  -- Edge shape for undirected self-loops
-                                    (used by GetDiagram)
+                                    (used by FGetDiagram)
       shortTexPref               -- Formats an FTerm prefactor as TeX
-                                    (used by GetDiagram)
+                                    (used by FGetDiagram)
 
     Variables:
       $standardVertexStyles      -- Default vertex shape definitions
@@ -91,7 +91,7 @@ FPlot::FDOp = "Cannot plot diagrams with unresolved derivative operators!";
 
 FPlot::noExternalField = "No object could be found for the external index `1`.";
 
-GetDiagram[setup_, expr_FTerm] :=
+FGetDiagram[setup_, expr_FTerm] :=
     Module[{PossibleVertices, PossibleEdges, Styles, diag, allObj, fieldObj, vertices, edges, vertexReplacements, graph, phantomVertices, edgeFields, fieldVertices, fieldEdges, fieldEdgeFields, oidx, externalVertices, vertexNames, doubledVertices, externalEdges, externalFields, idx, prefactor, doubledEdges, doFields, eWeights, addVertexSizes = {}},
         If[MemberQ[expr, FDOp[__], Infinity],
             Message[FPlot::FDOp];
@@ -221,14 +221,14 @@ FPlot[setup_, expr_] /; ($FrontEnd === Null || TrueQ[$Notebooks === False]) :=
 FPlot[setup_, expr_FTerm] :=
     Module[{},
         AssertFSetup[setup];
-        Print[Row @ GetDiagram[setup, expr]];
+        Print[Row @ FGetDiagram[setup, expr]];
         Return @ expr
     ];
 
 FPlot[setup_, expr_FEx] :=
     Module[{diags},
         AssertFSetup[setup];
-        diags = GetDiagram[setup, #]& /@ (DropFExAnnotations @ expr);
+        diags = FGetDiagram[setup, #]& /@ (DropFExAnnotations @ expr);
         If[MemberQ[{diags[[All, 1]]}, shortenTexTag, Infinity],
             diags = Map[{"\\oplus" // MaTeX`MaTeX, #[[2]]}&, diags];
             diags[[1, 1]] = "";

@@ -3,7 +3,7 @@
 
     Provides setup-free overloads for:
       FTruncate, FTruncateOpenIndices, FTakeDerivatives, QMeSForm,
-      FExpand, DExpand, MakeClassicalAction, FMakeDSE,
+      FExpand, DExpand, FMakeClassicalAction, FMakeDSE,
       FResolveDerivatives, FResolveFDOp, FOrderFields
 
     Also defines:
@@ -88,9 +88,9 @@ DExpand[expr_, order_Integer] /; Head[$GlobalSetup] =!= Symbol :=
 DExpand[expr_, order_Integer] :=
     (Message[FunKit::noGlobalSetup]; Abort[]);
 
-MakeClassicalAction[] /; Head[$GlobalSetup] =!= Symbol :=
-    MakeClassicalAction[$GlobalSetup];
-MakeClassicalAction[] :=
+FMakeClassicalAction[] /; Head[$GlobalSetup] =!= Symbol :=
+    FMakeClassicalAction[$GlobalSetup];
+FMakeClassicalAction[] :=
     (Message[FunKit::noGlobalSetup]; Abort[]);
 
 FMakeDSE[field_] /; Head[$GlobalSetup] =!= Symbol :=

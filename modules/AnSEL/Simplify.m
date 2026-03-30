@@ -2,8 +2,8 @@
     Simplify.m -- Diagram identification and simplification
 
     Public API:
-      BuildSymmetryList          -- Constructs field permutations from symmetry groups
-      MergeSymmetries            -- Merges two symmetry lists
+      FBuildSymmetryList          -- Constructs field permutations from symmetry groups
+      FMergeSymmetries            -- Merges two symmetry lists
       FMakeSymmetryList          -- Builds symmetry list from fields and their types
       FSimplify                  -- Simplifies FEx by identifying equivalent diagrams
       FSimplifyNoSym             -- Simplifies FEx without symmetry information
@@ -27,22 +27,22 @@
 
 (* Construct all permutations of fields in a derivativeList and their prefactors, given a list of symmetries *)
 
-BuildSymmetryList::invalidSymmetries = "Symmetries must be given as a list.";
+FBuildSymmetryList::invalidSymmetries = "Symmetries must be given as a list.";
 
-BuildSymmetryList::invalidSymmetryFormat = "Symmetries must be given as a list of lists.";
+FBuildSymmetryList::invalidSymmetryFormat = "Symmetries must be given as a list of lists.";
 
-BuildSymmetryList::invalidSymmetry = "The symmetry `1` is not a valid symmetry.";
+FBuildSymmetryList::invalidSymmetry = "The symmetry `1` is not a valid symmetry.";
 
-BuildSymmetryList::invalidCycle = "The cycle `1` is not a valid cycle.";
+FBuildSymmetryList::invalidCycle = "The cycle `1` is not a valid cycle.";
 
-BuildSymmetryList[setup_, symmetries_, derivativeList_] :=
+FBuildSymmetryList[setup_, symmetries_, derivativeList_] :=
     Module[{procDerList, buildOneSymmetry},
         If[Head[symmetries] =!= List,
-            Message[BuildSymmetryList::invalidSymmetries];
+            Message[FBuildSymmetryList::invalidSymmetries];
             Abort[]
         ];
         If[AnyTrue[symmetries, Not[Head[#] === List]&],
-            Message[BuildSymmetryList::invalidSymmetryFormat];
+            Message[FBuildSymmetryList::invalidSymmetryFormat];
             Abort[]
         ];
         If[Length[symmetries] === 0 || symmetries === {{}},
@@ -60,7 +60,7 @@ BuildSymmetryList[setup_, symmetries_, derivativeList_] :=
                 pairs = Subsets[sym[[ ;; -2]], {2}];
                 valid = Not @ AnyTrue[Map[ContainsAny[#[[1]], #[[2]]]&, pairs], Identity];
                 If[Not @ valid,
-                    Message[BuildSymmetryList::invalidSymmetry, sym];
+                    Message[FBuildSymmetryList::invalidSymmetry, sym];
                     Abort[]
                 ];
                 buildCycle[cyc_] :=
@@ -72,7 +72,7 @@ BuildSymmetryList[setup_, symmetries_, derivativeList_] :=
                             cycvalid = False
                         ];
                         If[Not @ cycvalid,
-                            Message[BuildSymmetryList::invalidCycle, cyc];
+                            Message[FBuildSymmetryList::invalidCycle, cyc];
                             Abort[]
                         ];
                         numberRules = {};
@@ -89,7 +89,7 @@ BuildSymmetryList[setup_, symmetries_, derivativeList_] :=
 
 (*Merge Symmetry lists*)
 
-MergeSymmetries[sym1_, sym2_] :=
+FMergeSymmetries[sym1_, sym2_] :=
     Module[{symCombine},
         Return[Join[sym1, sym2] // DeleteDuplicates];
         (* I am not sure we want to automatically blow up the number of rules*)
@@ -138,13 +138,13 @@ FMakeSymmetryList[setup_, {fields___}, {indices___}] :=
             If[IsCommuting[setup, curField[[1]]],
                 (*Build all possible cycles for the positions of this field*)
                 cycles = Map[Join[# /. Cycles -> Sequence, {1}]&, PermutationCycles /@ Permutations[Range[Length[fieldsWPos[[idx]]]]]];
-                subSymmetries[[idx]] = BuildSymmetryList[setup, cycles, curFieldList] // DeleteDuplicates;
+                subSymmetries[[idx]] = FBuildSymmetryList[setup, cycles, curFieldList] // DeleteDuplicates;
             ];
             If[IsGrassmann[setup, curField[[1]]],
                 (*For fermionic fields, we can only swap pairs, introducing a -1 factor*)
                 cycles = Map[Join[# /. Cycles -> Sequence, {-1}]&, PermutationCycles /@ Permutations[Range[Length[fieldsWPos[[idx]]]]]];
                 cycles = Select[cycles, Length[#[[1]]] == 2&];
-                subSymmetries[[idx]] = BuildSymmetryList[setup, cycles, curFieldList] // DeleteDuplicates;
+                subSymmetries[[idx]] = FBuildSymmetryList[setup, cycles, curFieldList] // DeleteDuplicates;
                 subSymmetries[[idx]] = Join[{<|"Rule" -> {}, "Factor" -> 1|>}, subSymmetries[[idx]]];
             ];
             ,
@@ -733,7 +733,7 @@ FSimplify[setup_, inexpr_FEx, OptionsPattern[]] :=
                 ,
                 {}
             ];
-        symmetries = MergeSymmetries[symmetries, OptionValue["Symmetries"]];
+        symmetries = FMergeSymmetries[symmetries, OptionValue["Symmetries"]];
         FunKitDebug[3, "FSimplify: Using symmetry list ", symmetries];
         If[symmetries === {},
             Return[MergeFExAnnotations[FSimplifyNoSym[setup, expr], annotations]]

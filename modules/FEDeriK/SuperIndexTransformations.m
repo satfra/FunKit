@@ -51,8 +51,14 @@ GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
         If[Length[indexPosToChange] === 0,
             Return[{{{}, {}, {}}, {{}, {}, {}}}]
         ];
-        (*Next, we isolate the group indices and try to group according to these. If no group indices are present, we try to group by momenta.*)
-        indicesToChange = Flatten[Table[allObj[[idx, 1, indexPosToChange[[idx]]]], {idx, 1, Length[allObj]}], 1];
+        (*Next, we isolate the group indices and try to group according to these. If no group indices are present, we try to group by momenta.
+          Guard: skip entries with no positions to change. In NotationB bare fields have an atomic
+          first Part, so Part[atom, {}] would produce Symbol[] instead of {} — avoid this.*)
+        indicesToChange = Flatten[Table[
+            If[Length[indexPosToChange[[idx]]] > 0,
+                allObj[[idx, 1, indexPosToChange[[idx]]]],
+                {}
+            ], {idx, 1, Length[allObj]}], 1];
         indexPosToChange =
             PositionIndex[
                 Join[

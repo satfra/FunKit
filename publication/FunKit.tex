@@ -236,10 +236,11 @@
 \getBielefeldAffiliation
 
 \begin{abstract}
-We introduce \FunKit, a Mathematica package for the derivation and the tracing of functional equations from arbitrary master equations.
-\FunKit provides an expression vocabulary and rules that can treat any given field theory and allows extensions by the user for more specific situations. 
-Therefore, it can be used in a wide range situations, for example Dyson-Schwinger or functional RG equations, flowing reparametrisations, nPI equations, (modified) STIs and WTIs, functional master equations with sources, and many others.
-Besides interfacing with the \FORM language to trace large tensor expressions efficiently, \FunKit also provides facilities to export arbitrary Mathematica expressions to C++ or Julia code, including the results of derivations, which can be then numerically treated. Both the tracing and code generation can be also used independently and in combination with other packages.
+We introduce \FunKit, a Mathematica package for the derivation and tracing of functional equations from arbitrary master equations.
+\FunKit provides an expression vocabulary and a set of rules that allow for derivations in any given field theory and master equation. It also allows extensions by the user for more specific situations.
+Therefore, it can be used in a wide range of situations, for example Dyson-Schwinger or functional RG equations, flowing reparametrisations, nPI equations, (modified) STIs and WTIs, functional master equations with sources, and many others.
+Besides interfacing with the \FORM language to trace large tensor expressions efficiently, \FunKit also provides facilities to export arbitrary Mathematica expressions to C++ or Julia code, including the results of derivations, which can then be evaluated numerically.
+Both the tracing and code generation can also be used independently and in combination with other packages.
 \end{abstract}
 
 \maketitle
@@ -251,28 +252,29 @@ Besides interfacing with the \FORM language to trace large tensor expressions ef
 \section{Introduction}
 \label{sec:Introduction}
 
-Functional computations, utilising e.g. the functional Renormalisation Group (fRG) or Dyson-Schwinger equations (DSE), allow for the direct calculation of non-perturbative aspects of quantum field theories and have been utilised with great success in a broad range of physical situations from quantum gravity to QCD to ultracold atoms. For some reviews and introductions to the topic see, e.g., \cite{Roberts:2000aa,Maris:2003vk,Pawlowski:2005xe,Gies:2006wv,Delamotte:2007pf,Rosten:2010vm,Metzner_2012,Fischer:2018sdj,Dupuis:2020fhh,Fu:2022gou}.
+Functional computations, utilising e.g. the functional Renormalisation Group (fRG) or Dyson-Schwinger equations (DSE), allow for the direct calculation of non-perturbative aspects of quantum field theories. They have been utilised with great success in a broad range of physical situations from quantum gravity to QCD to ultracold atoms. For some reviews and introductions to the topic see, e.g., \cite{Roberts:2000aa,Maris:2003vk,Pawlowski:2005xe,Gies:2006wv,Delamotte:2007pf,Rosten:2010vm,Metzner_2012,Fischer:2018sdj,Dupuis:2020fhh,Fu:2022gou}.
 
-All functional approaches require the derivation of closed expressions for all vertices occurring in the theory, or a chosen truncation thereof. Typically, expressions for all vertices can be obtained by taking functional derivatives of a given master equation, for example the Wetterich equation \cite{Wetterich:1992yh}, DSEs \cite{Dyson1, Schwinger1, Schwinger2} or Ward-Takahashi Identities.
+Such functional approaches require the derivation of closed expressions for all vertices occurring in the theory, or a chosen truncation thereof. Typically, expressions for all vertices can be obtained by taking functional derivatives of a given master equation, for example the Wetterich equation \cite{Wetterich:1992yh}, DSEs \cite{Dyson1, Schwinger1, Schwinger2} or Ward-Takahashi Identities.
 This allows a non-perturbative access to all correlation functions of the theory while maintaining a finite amount of loops in the exact expressions for each vertex. However, the equations for each correlation function rely on other correlation functions of higher order - thus, an infinite tower of functional equations ensues, which has to be truncated while maintaining all relevant physics.
 
 Many physical systems require sophisticated truncations to reach sometimes even qualitative reliability. Thus, the resulting diagrammatic expressions quickly grow very large, and computer-algebraic treatments thereof become a necessity.
-Additionally, new approaches to functional methods, e.g. spectral fRG flows \cite{Braun:2022mgx} or flowing reparametrisations in fRG, Polchinski or Wegner flows \cite{Ihssen:2023nqd, Ihssen:2024ihp}, require different diagrammatic building blocks, that cannot be easily achieved with already established software for automated analytic functional derivations.
+Additionally, new approaches to functional methods, e.g. spectral fRG flows \cite{Braun:2022mgx} or flowing reparametrisations in fRG, Polchinski or Wegner flows \cite{Ihssen:2023nqd, Ihssen:2024ihp}, require different diagrammatic building blocks that cannot be easily achieved with already established software for automated analytic functional derivations.
 Furthermore, for QCD or even just Yang-Mills theory, one obtains flow equations or DSEs which cannot be reliably calculated by hand even when using small truncations.
 
-There is already a number of powerful libraries available for the computer-algebraic derivation of functional equations. Among these are \DoFun \cite{Alkofer:2008nt,Huber:2011qr,Huber:2019dkb} and \QMeS \cite{Pawlowski:2021tkk}, which concern themselves with the derivation of functional equations from master equations, but are restricted to specific master equations. 
-The \FormTracer \cite{Cyrol:2016zqb} and the \TensorBases packages \cite{Braun:2025gvq} provide tools to trace the tensorial structure of the resulting diagrams using the symbolic language of \FORM\cite{Ruijl:2017dtg}.
+There are already a number of powerful libraries available for the computer-algebraic derivation of functional equations. Among these are \DoFun \cite{Alkofer:2008nt,Huber:2011qr,Huber:2019dkb} and \QMeS \cite{Pawlowski:2021tkk}, which concern themselves with the derivation of functional equations from master equations but are restricted to specific master equations. 
+The \FormTracer \cite{Cyrol:2016zqb} and the \TensorBases packages \cite{Braun:2025gvq} provide tools to trace the tensorial structure of the resulting diagrams using the symbolic language of \FORM~\cite{Ruijl:2017dtg}.
 For a general guide to the derivation of functional equations, also using the aforementioned tools, we guide the reader to the recent review \cite{Huber:2025cbd}.
 
-With \FunKit, we aim to provide a convenient all-in-one solution for the derivation of arbitrary functional equations.
-Therefore, we provide, starting with the specification of the theory, the taking of functional derivatives, diagram simplification, tracing of tensor structures, the specification of interaction bases, and the export to C++ or Julia code for numerical evaluation.
+With \FunKit, we aim to provide a convenient comprehensive solution for the derivation of arbitrary functional equations.
+To this end, we provide a complete pipeline to allow for the specification of the theory, the taking of functional derivatives, diagram simplification, the specification of interaction bases, tracing of tensor structures, and the export to C++ or Julia code for numerical evaluation.
 
-\FunKit builds for tracing heavily on \texttt{FormTracer} and \texttt{TensorBases}, while functional derivatives and diagram comparisons are implemented in a reliable manner by using a super-index notation, while making it possible to treat any given (user-specified) master equation.
+To trace tensor structures, \FunKit builds on \texttt{FormTracer} and \texttt{TensorBases}, while functional derivatives and diagram comparisons are implemented in a reliable manner by using a super-index notation, making it possible to handle any given (user-specified) master equation.
 
-\FunKit also aims to be fast by smartly parallelising tasks during derivations, using a mixture of optimisation algorithms of the \FORM package and Mathematica algorithms for tracing of tensor structures, and providing a sophisticated optimisation algorithm for C++ and Julia code output.
+\FunKit also aims to be fast by smartly parallelising tasks during derivations, using a mixture of optimisation algorithms of the \FORM package and Mathematica simplifications to process the output from the tracing of tensor structures, and providing a sophisticated optimisation algorithm for C++ and Julia code output.
 
-These latter two functionalities, i.e. the helpers for efficient tensor tracing and the generation of highly optimised C++ or Julia code, can be used independently from the analytic tools. This also allows to use \DoFun or \QMeS output, or otherwise derived equations, to be further processed by \FunKit. We explicitly provide compatibility layers to translate from and to the \DoFun and \QMeS Mathematica notations (see the function references in \Cref{app:all_func}). In particular, this allows for an easy inclusion of \FunKit into already existing computer algebra pipelines.
-Furthermore, the modular architecture of \FunKit and its high test coverage also allows \FunKit to be easily maintainable and expandable in the future.
+These latter two functionalities, i.e., the helpers for efficient tensor tracing and the generation of highly optimised C++ or Julia code, can be used independently of the analytic tools. 
+This also allows one to use \DoFun or \QMeS output, or otherwise derived equations, to be further processed by \FunKit. We explicitly provide compatibility layers to translate from and to the \DoFun and \QMeS Mathematica notations (see the function references in \Cref{app:all_func}). In particular, this allows for an easy inclusion of \FunKit into already existing computer algebra pipelines.
+Furthermore, its modular architecture and high test coverage also allows \FunKit to be easily maintainable and expandable in the future.
 
 
 \begin{figure*}[t]
@@ -354,7 +356,7 @@ With \FunKit, these steps translate to certain calls to \FunKit's functions that
 This workflow is also shown in \Cref{fig:workflow} and precisely corresponds to these six steps. Explicitly, to perform the first four steps for the two-point function in a scalar theory one has to call the following with \FunKit:
 %
 \begin{mmaCell}{Input}
-\mmaDef{Get}["FunKit`"]
+\mmaDef{Get}["FunKit\`{}"]
 \mmaDef{FSetGlobalSetup}[<|"FieldSpace" -> <|"Commuting" -> \{Phi[p]\}|>,
                   "Truncation" -> <|\mmaDef{GammaN} -> \{\{Phi,Phi,Phi\}, \{Phi,Phi,Phi,Phi\}\},
                                     \mmaDef{Propagator} -> \{\{Phi,Phi\}\},
@@ -378,7 +380,7 @@ This workflow is also shown in \Cref{fig:workflow} and precisely corresponds to 
 This showcases already the overall workflow of \FunKit, as described in the following sections and shown in~\Cref{fig:workflow}.
 
 The current work is structured in the following way:
-\Cref{sec:Notation} introduces the notation used throughout the paper. On a first read, or for readers already acquainted with the superindex formalism, one may only skim or skip the section and only use it for later reference.
+\Cref{sec:Notation} introduces the notation used throughout the paper. On a first read, or for readers already acquainted with the superindex formalism, one may only skim or skip the section and only refer to it later as needed.
 Then, we introduce the basic syntax for describing functional expressions in \Cref{sec:FEDeriK} and explain how to specify a theory, truncation and how to momentum- and index-route diagrams.
 In \Cref{sec:TRACY}, the specification of tensor bases and diagrammatic expressions is explained. Therein, we also show how to trace the resulting diagrams.
 Finally, \Cref{sec:COEN} briefly shows how to generate computer code in different languages from these equations.
@@ -396,10 +398,16 @@ To follow the code examples in the following sections, one may install the packa
 \mmaDef{Import}["https://raw.githubusercontent.com/satfra/FunKit/main/FunKitInstaller.m"]
 \end{mmaCell}
 %
+or, if already installed, import the \FunKit package with
+%
+\begin{mmaCell}{Input}
+\mmaDef{Get}["FunKit\`{}"]
+\end{mmaCell}
+%
 The \FunKit package has no further requirements except for a Mathematica version $\geq 13.3$ and a Linux or MacOS system. Direct support for Windows is currently not available, as \FORM does not support execution on Windows systems. However, using \FunKit via WSL (Windows Subsystem for Linux) is possible.
 
 A Notebook containing all code written below can be found at \texttt{examples/FunKitPaper.nb} inside the repository.
-Besides the guided explanations in this work, documentation on all functions provided by \FunKit can be accessed through their usage strings, i.e.
+Besides the guided explanations in this work, documentation on all functions provided by \FunKit can be accessed through their usage strings, i.e.,
 %
 \begin{mmaCell}{Input}
 \mmaDef{FEx}::\mmaCmt{usage}
@@ -445,21 +453,20 @@ We also provide several example notebooks where the derivation of certain theori
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 %\subsubsection{Superfield notation}
 
-To enable a reliable and concise handling of indices, in particular fermionic ones, \FunKit makes abundant use of the superfield notation used in \cite{Pawlowski:2005xe} and is thus very similar to how \QMeS handles this task. In particular, keeping track of signs for Grassmann fields is ensured by making use of such a notation. Therefore, for the convenience of the reader, we first briefly introduce the most important points, and then derive a list of the derivative rules used in \FunKit.
+To enable a reliable and concise handling of indices, in particular fermionic ones, \FunKit makes abundant use of the superfield notation used in \cite{Pawlowski:2005xe}. Importantly, keeping track of signs for Grassmann fields is ensured by making use of such a notation. Therefore, for the convenience of the reader, we first briefly introduce the most important points, and then derive a list of the derivative rules used in \FunKit.
 On a first read, or for readers already acquainted with the superindex formalism, one may only skim, or skip ahead to \Cref{sec:FEDeriK}, and only use it for later reference.
 
 In order to have a concise notation for any given QFT, we can use a single superfield $\Phi$.
-The information about the kind of field, as well as its momentum and group indices are then absorbed into its single multi-index, i.e. $\Phi^a$.
-The index $a$ in this example contains, for example, the information that the field is a gluon. Then, $a$ also contains a momentum $p$, as well as group indices for the Lorentz ($\mu$) and adjoint colour group ($c$), i.e. $$a = (A,p, (\mu, c)).$$
+The information about the kind of field, as well as its momentum and group indices are then absorbed into its single multi-index, i.e., $\Phi^a$.
+The index $a$ in this example contains, for example, the information that the field is a gluon. Then, $a$ also contains a momentum $p$, as well as group indices for the Lorentz ($\mu$) and adjoint colour group ($c$), i.e., $$a = (A,p, (\mu, c)).$$
 Similarly, any other object can also be labelled using multi-indices. For example, a general 1PI n-point function can be written as $\Gamma_{a_1a_2\ldots a_n}$. Partially restoring the fields, this becomes $\Gamma_{A^{\tilde{a}_1}A^{\tilde{a}_2}\ldots A^{\tilde{a}_n}}$ for an n-point function between only $A$-fields.
 
-An Einstein summation convention is adopted throughout this work, i.e. a sum is performed over any index pair where one index is raised and one lowered. As an example, in $\Gamma_{ab}G^{bd}$ a sum is performed over the superindex~$b$. This implies a sum over all field types, all associated group indices, and an integration over all momenta that occur. So, given a theory with gluons and ghosts $\bar{c}$, $c$, the resulting index expansion looks like
+An Einstein summation convention is adopted throughout this work, i.e., a sum is performed over any index pair where one index is raised and one lowered. As an example, in $\Gamma_{ab}G^{bd}$ a sum is performed over the superindex~$b$. This implies a sum over all field types, all associated group indices, and an integration over all momenta that occur. So, given a theory with gluons and ghosts $\bar{c}$, $c$, the resulting index expansion looks like
 %
 \begin{align*}
 	\Gamma_{ab}G^{bd} = \sum_{\mu e}\int_p\Gamma_{a\,A^a_{\mu e}(p)}G^{A^a_{\mu e}(p)\,d} + \sum_{e}\int_p\Gamma_{a\,c^e(p)}G^{c^e(p)\,d} + \sum_{e}\int_p\Gamma_{a\,\bar{c}^e(p)}G^{\bar{c}^e(p)\,d}\,.
 \end{align*}
 %
-It is clear that this notation greatly shortens the presentation.\\
 One important aspect, which the superindex notation must take into account, are the anti-commutation properties of Grassmann-number valued fields: when exchanging Grassmann indices, a minus should be produced. This can be realised by introducing a field metric, see also \cite{Pawlowski:2005xe, Braun:2025gvq},
 %
 \begin{equation}\label{eq:metric}
@@ -484,7 +491,7 @@ For the purpose of the metric, we group together fermions and anti-fermions for 
 	\gamma^{\bar\psi\bar\psi} = 0\,.
 \end{align}
 %
-This metric can be used to lower and raise indices of arbitrary tensors involving fields. We use the northwest-southeast convention, i.e. raise indices to the northwest, lower indices to the southeast:
+This metric can be used to lower and raise indices of arbitrary tensors involving fields. We use the northwest-southeast convention, i.e., raise indices to the northwest, lower indices to the southeast:
 %
 \begin{equation}
 	\Phi^a = \gamma^{ab}\Phi_b \,,
@@ -536,7 +543,7 @@ Similarly, for any correlation function $F$, e.g. the 1PI effective action $F=\G
 	\,.
 \end{align}
 %
-Specifically for approaches building on the 1PI effective action, we additionally provide the rules for the relation between the propagator $G^{ab} = \frac{\delta^2 W}{\delta J_a \delta J_b}$ and the 1PI two-point function $\Gamma_{ab} = \frac{\delta^2 \Gamma}{\delta \Phi^a \delta \Phi^b}$. \\
+Specifically for approaches building on the 1PI effective action, we additionally provide the rules for the relation between the propagator $G^{ab} = \frac{\delta^2 W}{\delta J_a \delta J_b}$ and the 1PI two-point function $\Gamma_{ab} = \frac{\delta^2 \Gamma}{\delta \Phi^a \delta \Phi^b}$. \\[0.5ex]
 We derive the relation between these two from the quantum equation of motion, first using left-derivatives,
 %
 \begin{align}\label{eq:propInvLeft}
@@ -605,7 +612,7 @@ In the following sections, all expressions used above will be introduced as symb
 \subsubsection{Syntax}
 \label{sec:FEDeriK_syntax}
 
-We use the Wetterich equation \cite{Wetterich:1992yh} as a first example how to write down a functional equation in \FunKit. It~reads
+We use the Wetterich equation \cite{Wetterich:1992yh} as a first example of how to write down a functional equation in \FunKit. It~reads
 %
 \begin{equation}
 	\partial_t\Gamma=\frac{1}{2}G^{ab}\partial_tR_{ab}\,,
@@ -620,7 +627,7 @@ In \FunKit, \labelcref{eq:Wetterich} can be written as the \mathem{\mmaDef{FTerm
 wEq = \mmaDef{FTerm}[1/2, \mmaDef{Propagator}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{a,b\}], \mmaDef{Rdot}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{-a,-b\}]]
 \end{mmaCell}
 %
-A single term in a functional equation is described using the \mathem{\mmaDef{FTerm}} tag, which encloses a list of factors, multiplied in the precise order as the appear inside \mathem{\mmaDef{FTerm}}. In other words, it represents a non-commutative product.
+A single term in a functional equation is described using the \mathem{\mmaDef{FTerm}} tag, which encloses a list of factors, multiplied in the precise order as they appear inside \mathem{\mmaDef{FTerm}}. In other words, it represents a non-commutative product.
 Furthermore, we have used \FunKit's common notation for objects with indices. Any indexed object takes two lists, where the first contains all involved fields and the second contains the corresponding (super-) indices. 
 For example, with this notation we can represent
 %
@@ -632,7 +639,7 @@ Here, the \mathem{\mmaDef{AnyField}} tag stands in for an unspecified field, whi
 %
 \begin{itemize}
 	\item Notation A, set by default, or by calling \mathem{\mmaDef{FSetNotationA[]}}, describes correlation functions as explained in this section.
-	\item Notation B, which can be set to be used with\mathem{\mmaDef{FSetNotationB[]}}, represents correlation functions similar to how \DoFun handles this task: the propagator in this notation reads
+	\item Notation B, which can be set to be used with \mathem{\mmaDef{FSetNotationB[]}}, represents correlation functions similar to how \DoFun handles this task: the propagator in this notation reads
 	%
 	\begin{align}
 		G^{A^a\,b}\simeq\texttt{\small Propagator[\textcolor{blue}{A}[a], AnyField[b]]}\,.
@@ -697,10 +704,10 @@ FEx[FTerm[-PhiDot[\{AnyField\},\{a\}],GammaN[\{AnyField\},\{-a\}]],
   FTerm[1/2,Propagator[\{AnyField,AnyField\},\{a,c\}],FDOp[AnyField[c]],PhiDot[b],R[\{AnyField,AnyField\},\{-a,-b\}]]]
 \end{mmaCell}
 %
-In the above, we have first informed \FunKit about a user-defined correlation function, \mathem{\mmaDef{PhiDot}} $\equiv \dot{\Phi}$, and instructed to never change the position of the last index (i.e. the superindex specifying $\Phi$ itself).
+In the above, we have first informed \FunKit about a user-defined correlation function, \mathem{\mmaDef{PhiDot}} $\equiv \dot{\Phi}$, and instructed it to never change the position of the last index (i.e., the superindex specifying $\Phi$ itself).
 Furthermore, we have already used \mathem{\mmaDef{FDOp}}, which represents a functional derivative operator, and nested \mathem{\mmaDef{FEx}} and \mathem{\mmaDef{FTerm}}. As visible from the output, \FunKit automatically expanded this into three \mathem{\mmaDef{FTerm}} expressions.
 
-Note that \FunKit knows by default the correlation function \mathem{\mmaDef{Phidot}}, which is precisely defined this way, but for demonstration purposes we have re-defined it here as \mathem{\mmaDef{PhiDot}}.
+We remark that \FunKit knows by default the correlation function \mathem{\mmaDef{Phidot}}, which is precisely defined this way, but for demonstration purposes we have re-defined it here as \mathem{\mmaDef{PhiDot}}.
 \FunKit will now automatically treat \mathem{\mmaDef{PhiDot}} as a field-dependent function, and take into account derivatives thereof.
 
 \mathem{\mmaDef{FEx}} and \mathem{\mmaDef{FTerm}} have some internal rules to automatically move numeric values to the first factor in any \mathem{\mmaDef{FTerm}} and expand any appearance of sums to the enclosing \mathem{\mmaDef{FEx}}. This behaviour can be seen, e.g. in
@@ -781,7 +788,7 @@ Normal multiplication immediately yields an error, as the factors in a given \ma
 %%%%%%%%%%%%%%%%%%%%%
 \subsubsection{Field setup}
 
-Most functions defined by \FunKit require the specification of a \textit{setup}. A setup is given by an \mathem{\mmaDef{Assocation}} with the mandatory key \mathem{"FieldSpace"} and further optional keys, which we will specify below.
+Most functions defined by \FunKit require the specification of a \textit{setup}. A setup is given by an \mathem{\mmaDef{Association}} with the mandatory key \mathem{"FieldSpace"} and further optional keys, which we will specify below.
 
 The field content of the theory is specified using another \mathem{\mmaDef{Assocation}}, usually with two entries, \mathem{"Commuting"}, and \mathem{"Grassmann"}. The value of these entries is a list of all fields occurring in the theory. For example, the fields of a gauge-fixed Yang-Mills theory can be given as
 %
@@ -795,7 +802,7 @@ fields = <|
 The gauge field \mathem{A} is a commuting field and has no partner field. In contrast, there are ghosts and anti-ghosts \mathem{cb}, \mathem{c}, hence they are specified as a pair in a nested list.
 Fields are always specified together with their full index structure. 
 In the above case of Yang-Mills theory, all fields have both momentum and additional group structure.  The momentum is then the first argument of the field and a list of all group indices gives the (optional) second argument.
-A momentum variable is always obligatory, i.e. a purely scalar field space would be specified as
+A momentum variable is always obligatory, i.e., a purely scalar field space would be specified as
 %
 \begin{mmaCell}{Input}
 fieldsPhi = <|"Commuting" -> \{\(\pmb{\phi}\)[p]\}|>;
@@ -808,7 +815,7 @@ setup = <|"FieldSpace" -> \mmaDef{fields}|>;
 \mmaDef{FSetGlobalSetup}[setup];
 \end{mmaCell}
 %
-All functions of \FunKit support two ways to call them. Either a specific setup is passed as the first argument of the function, and the function uses only the local information of the given setup. Or, a \textit{global setup} is specified using \mathem{\mmaDef{FSetGlobalSetup}}. Then, all functions of \FunKit can be called without explicitly passing a setup, and they simply use the setup that has been globally specified by the user. To shorten the presentation here, we are going to use this second mode of operating exclusively in this work.
+All functions of \FunKit support two ways to call them. Either a specific setup is passed as the first argument of the function, and the function uses only the local information of the given setup. Or, a \textit{global setup} is specified using \mathem{\mmaDef{FSetGlobalSetup}}. Then, all functions of \FunKit can be called without explicitly passing a setup, and they simply use the setup that has been globally specified by the user. To shorten the presentation, in this work we exclusively use this second mode of operation.
 
 Also, useful for deriving purely abstract expressions without explicit fields, \FunKit provides the pre-made \mathem{\mmaDef{FEmptySetup}}, which contains nothing but an empty field space.
 
@@ -816,7 +823,7 @@ Also, useful for deriving purely abstract expressions without explicit fields, \
 %%%%%%%%%%%%%%%%%%%%
 \subsubsection{Source terms}
 
-Source terms are treated as non‑dynamical external fields in \FunKit: they are not expanded in truncation operations, but otherwise participate normally in all other operations. Furthermore, they are always reordered to be right-most position when appearing in derivatives of correlators.
+Source terms are treated as non‑dynamical external fields in \FunKit: they are not expanded in truncation operations, but participate normally in all other operations. Furthermore, they are always reordered to be right-most position when appearing in derivatives of correlators.
 This is convenient for derivations that involve external sources, for example the Slavnov–Taylor identities (STIs) in gauge theories, where sources appear but should not be promoted to dynamical degrees of freedom.
 An example Yang–Mills setup with explicit source entries is:
 %
@@ -829,7 +836,7 @@ fieldsYMmSTI = <|
  |>;
 \end{mmaCell}
 %
-Note that Grassmann sources do not need to be paired with anti-fields.
+In the field space definition, Grassmann sources do not need to be paired with anti-fields.
 We provide the full calculation of the modified STI for the gluon-two-point function as an example in an fRG situation within the notebook \texttt{examples/mSTI-Yang-Mills.nb}.
 
 
@@ -887,7 +894,7 @@ To resolve derivatives, \FunKit provides the functions \mathem{\mmaDef{FResolveF
 	\put(-210,-95){\includegraphics[width=0.6\linewidth]{diagram_2}}
 \end{equation*}
 %
-In the above, we have put the derivative operators simply inside an overall \mathem{\mmaDef{FTerm}[...]}, which has the effect of multiplying them onto \mathem{\mmaDef{wEq}}. The result of resolving the derivative operators has not been automatically simplified. This can be done manually using \mathem{\mmaDef{FSimplify}}, i.e.
+In the above, we have put the derivative operators simply inside an overall \mathem{\mmaDef{FTerm}[...]}, which has the effect of multiplying them onto \mathem{\mmaDef{wEq}}. The result of resolving the derivative operators has not been automatically simplified. One can do this manually using \mathem{\mmaDef{FSimplify}}, i.e.,
 %
 \begin{mmaCell}{Input}
 \mmaDef{FResolveFDOp}[
@@ -898,7 +905,7 @@ In the above, we have put the derivative operators simply inside an overall \mat
 \end{mmaCell}
 %
 This yields precisely the same output as when using \mathem{\mmaDef{FTakeDerivatives}} or \mathem{\mmaDef{FResolveDerivatives}}, both of which invoke the simplification step automatically.
-It is recommended to always use \mathem{\mmaDef{FTakeDerivatives}} to perform functional derivatives, as this is the least manual way, and additional simplification hints are automatically generated, such as symmetry properties of the derivatives. \\
+We recommend always using \mathem{\mmaDef{FTakeDerivatives}} to perform functional derivatives, as it provides the most automated workflow. In particular, it generates additional simplification hints such as symmetry properties of the derivatives.\\
 We describe the simplification and derivative algorithm used by \FunKit in more detail in the green boxes below.
 
 \begin{tcolorbox}[title=Algorithm details: Derivatives,
@@ -916,7 +923,7 @@ We describe the simplification and derivative algorithm used by \FunKit in more 
 		\begin{enumerate}
 			\setlength\itemsep{0.05ex}
 			\item Identify the right-most \mathem{\mmaDef{FDOp}} in the given \mathem{\mmaDef{FTerm}}.
-			\item Realise the product rule: If there are $n$ factors in the given \mathem{\mmaDef{FTerm}} following the position of the \mathem{\mmaDef{FDOp}}, construct $n$ new terms $T_1,\ldots,T_n$. In the term $F_i$, the \mathem{\mmaDef{FDOp}} has been commuted with $i-1$ terms that follow, attaching the resulting sign from commutation to $F_i$.
+			\item Realise the product rule: If there are $n$ factors in the given \mathem{\mmaDef{FTerm}} following the position of the \mathem{\mmaDef{FDOp}}, construct $n$ new terms $F_1,\ldots,F_n$. In the term $F_i$, the \mathem{\mmaDef{FDOp}} has been commuted with $i-1$ terms that follow, attaching the resulting sign from commutation to $F_i$.
 			\item If \mathem{\mmaDef{FSetAutoSimplify}} is toggled on (default) and the number of generated terms is large, use \mathem{\mmaDef{FSimplify}} to reduce the result.
 			\item If any of the $F_i$ contain another \mathem{\mmaDef{FDOp}}, start from (a) with this term.
 		\end{enumerate}
@@ -981,7 +988,7 @@ Next, we modify the setup as
 \mmaDef{FSetTexStyles}[cb -> "{\textbackslash\textbackslash}bar\{c\}"];
 \end{mmaCell}
 %
-In the above, we have additionally told \FunKit how to render anti-ghosts when translating them to \LaTeX\, code.
+In the above, we have additionally told \FunKit how to render anti-ghosts when translating them to \LaTeX{} code.
 
 We can now easily truncate the above expression:
 %
@@ -1048,7 +1055,8 @@ Finally, the superfield indices have to be turned into explicit group indices, a
 }
 \end{equation*}
 %
-Note in the above that \mathem{\mmaDef{FRoute}} marks loop momenta that are purely fermionic, here $l_1^{(f)}$. This is useful in particular in finite-temperature calculations, where purely fermionic closed loops have to be summed over fermionic Matsubara frequencies. 
+Note in the above that \mathem{\mmaDef{FRoute}} marks loop momenta that are purely fermionic, here $l_1^{(f)}$. 
+This is particularly useful in finite-temperature calculations, where purely fermionic closed loops have to be summed over fermionic Matsubara frequencies. 
 The \mathem{\mmaDef{FRoute}} command groups together terms with the same loop order and additionally provides both the explicit indices of all external momenta and the names of all loop momenta.
 We explain the algorithm used by the routing in the green box at the end of this section.
 
@@ -1138,11 +1146,12 @@ In the above example, we also see that the command \mathem{\mmaDef{FPrint}} can 
 \subsection{Teaching FunKit}
 \label{sec:FEDeriK_teaching}
 
-Advanced users may be interested in expanding the vocabulary and derivative rules of \FunKit. This is explicitly made possible to allow for very general applications, and we explain it briefly in the following. 
+Advanced users may be interested in expanding the vocabulary and derivative rules of \FunKit. 
+This is explicitly supported to allow for very general applications, and we explain it briefly in the following. 
 %
 \paragraph{Adding new objects}
 %
-Use the `FAdd...` family of helpers to register new symbols so they participate correctly in ordering, truncation and derivative algorithms:
+Use the \mathem{\mmaDef{FAdd...}} family of helpers to register new symbols so they participate correctly in ordering, truncation and derivative algorithms:
 %
 \begin{mmaCell}{Input}
 \mmaDef{FAddObject}[MyTag];               (* general non-indexed object, can have indices and act 
@@ -1169,7 +1178,7 @@ The second argument may be a single integer or a list of positions, counted from
 %
 \paragraph{Custom functional derivative rules}
 %
-When the built‑in derivative rules are insufficient you may add user rules that \mathem{\mmaDef{FunctionalD}} applies during derivative resolution. Rules are added with
+When the built‑in derivative rules are insufficient, one may add user rules that \mathem{\mmaDef{FunctionalD}} applies during derivative resolution. Rules are added with
 %
 \begin{mmaCell}{Input}
 \mmaDef{FAddFDRule}[objectPattern, wrtPattern, resultExpr];
@@ -1182,7 +1191,7 @@ Examples:
 \mmaDef{FAddFDRule}[myObj[{A,A},{i_,j_}], A[k_], myRuleResult[{k,i,j}]];
 \end{mmaCell}
 %
-Note that \mathem{\mmaDef{FAddFDRule}} uses \mathem{\mmaDef{HoldAll}} to keep patterns intact and is applied by \mathem{\mmaDef{FunctionalD}} before the default derivative rules. Provide patterns on the left and the desired evaluated result on the right (use Mathematica patterns where needed).
+\mathem{\mmaDef{FAddFDRule}} uses \mathem{\mmaDef{HoldAll}} to keep patterns intact and is applied by \mathem{\mmaDef{FunctionalD}} before the default derivative rules. Provide patterns on the left and the desired evaluated result on the right (use Mathematica patterns where needed).
 %
 \paragraph{Clearing custom rules}
 %
@@ -1231,9 +1240,9 @@ bases = <|
 \mmaDef{FSetGlobalSetup}[\mmaDef{setup}];
 \end{mmaCell}
 %
-We have used in the above several default bases provided by \TensorBases. For more details on \TensorBases see \cite{Geissel:2024nmx}, and for a full list of bases one can call \mathem{\mmaDef{TBInfo[]}} to see all available bases\footnote{ In particular, to get acquainted with \TensorBases we point the reader to the example notebook at \url{https://github.com/satfra/TensorBases/blob/main/examples/Showcase.nb}}.
+We have used in the above several default bases provided by \TensorBases. For more details on \TensorBases see \cite{Geissel:2024nmx}. To see all available bases, one can call \mathem{\mmaDef{TBInfo[]}}\footnote{In particular, to get acquainted with \TensorBases we point the reader to the example notebook at \url{https://github.com/satfra/TensorBases/blob/main/examples/Showcase.nb}}.
 
-In particular, there are three ways to specify vertex bases:
+Generally, there are three ways to specify vertex bases:
 %
 \begin{enumerate}[(i)]
 	\item Giving only a name, e.g. \mathem{{A,A,A}->"AAAClass"}, which uses the full basis specified as \mathem{"AAAClass"}.
@@ -1277,7 +1286,7 @@ FEx[FTerm[2,S[\{A,A\},\{\{-p1,\{v2,c2\}\},\{p1,\{v1,c1\}\}\}]]]
 FEx[FTerm[2,deltaAdjCol[c2,c1]dressing[S,\{A,A\},1,\{-p1,p1\}]transProj[p1,v2,v1]]]
 \end{mmaCell}
 %
-It is good to notice, that sometimes a mixture of diagrammatic rules from given tensor bases, created with \mathem{\mmaDef{FMakeDiagrammaticRules}[]}, and hand-written additional rules may be appropriate. E.g. specifying the vertices of an O($N$) theory may be much easier when written out by hand, rather than creating separate tensor bases for every single vertex - even more so if $N=1$.
+Sometimes, a mixture of diagrammatic rules from given tensor bases, created with \mathem{\mmaDef{FMakeDiagrammaticRules}[]}, and hand-written additional rules may be appropriate. E.g. specifying the vertices of an O($N$) theory may be much easier when written out by hand, rather than creating separate tensor bases for every single vertex -- even more so if $N=1$.
 
 To obtain fully traced expressions, we usually need to use a projector to obtain the coefficient of a single element of the larger tensor basis. For the gluon propagator DSE, we can use the projector calculated by \TensorBases,
 %
@@ -1306,7 +1315,7 @@ Similarly, the above calculation can be also performed for all other diagrams ap
 	colframe=pastelgreen!73!black,
 	fonttitle=\bfseries]
 	
-	To the end of efficient tracing of large expressions using \FormTracer and \FORM, we automatically optimize the process in two directions:
+	To enable efficient tracing of large expressions using \FormTracer and \FORM, we automatically optimise the process in two directions:
 	%
 	\begin{itemize}
 		\item When giving multiple \mathem{\mmaDef{FTerm}} to \mathem{\mmaDef{FormTrace}} the terms are all traced separately in parallel.
@@ -1330,7 +1339,7 @@ DSEAcbc = \mmaDef{FTakeDerivatives}[\mmaDef{FMakeDSE}[A[i1]], \{cb[i2],c[i3]\}]/
 \end{equation*}
 %
 In the following, we trace the third diagram of the above.
-In many situations, the symmetric-point approximation can be a good momentum configuration to obtain a reduced system of correlation functions. In particular, if angular dependencies can be assumed to be mild, a system of symmetric-point diagrams defines a closed system of diagrams in DSE or fRG applications, see also \cite{Ihssen:2024miv} and \cite{Eichmann:2014xya, Eichmann:2015nra, Eichmann:2025etg} for more explicit treatments of 3- to 5-point~functions.
+In many situations, the symmetric-point approximation can be a good momentum configuration to obtain a reduced system of correlation functions. Specifically, if angular dependencies can be assumed to be mild, a system of symmetric-point diagrams defines a closed system of diagrams in DSE or fRG applications, see also \cite{Ihssen:2024miv} and \cite{Eichmann:2014xya, Eichmann:2015nra, Eichmann:2025etg} for more explicit treatments of 3- to 5-point~functions.
 
 The symmetric-point approximation effectively reduces the ($n-1$)-dimensional momentum dependence of each vertex dressing to a single scale. The approximation first consists of evaluating the flow of every diagram at a configuration specified through
 %
@@ -1399,7 +1408,7 @@ formRuleSP = \mmaDef{FMakeSPFormRule}[\{l1\},p,\{p1,p2,p3\}];
 %\end{mmaCell}
 %
 Note that \mathem{\mmaDef{FMakeSPFormRule}} simply generates \FORM code that gets injected at the end of the tracing pipeline.
-The left-over cosines \mathem{\mmaDef{cos}[p1,l1]}, as well as the other momentum arguments have to be parametrized by the user before actual evaluation or code export.
+The leftover cosines \mathem{\mmaDef{cos}[p1,l1]}, as well as the other momentum arguments have to be parameterised by the user before actual evaluation or code export.
 
 An full example, deriving a set of DSEs and flow equations for Yang-Mills theory with the above specified truncation, can be found in \texttt{examples/Yang-Mills.nb} in the \FunKit repository.
 
@@ -1445,8 +1454,8 @@ In the above, we have defined two new bases, one for the fermion propagator \mat
 \begin{itemize}
 	\item \mathem{"Name"}: A unique string identifier for the basis, used in all subsequent references.
 	\item \mathem{"Vertex"}: List of fields making up the vertex, e.g.\ \mathem{{psibar, psi}} for a two-point function. The order is significant.
-	\item \mathem{"VertexStructure"}: How to map a basis element onto a vertex (i.e. taking all derivatives of attached fields). Specified using an expression containing \mathem{\mmaDef{Tensor}[1,2,...]}, where the numbers specify the fields in \mathem{"Vertex"} counted from the first list element.
-	\item \mathem{"InnerProduct"}: Defines the trace operation used to compute the metric of the basis, expressed via \mathem{\mmaDef{Tensor1}} and \mathem{\mmaDef{Tensor2}} contracting two basis elements. Usually, this is given by the (coordinate-parametrised) action of the tensor in the dual tangent bundle of the field space manifold on a tensor in the tangent bundle, i.e.
+	\item \mathem{"VertexStructure"}: How to map a basis element onto a vertex (i.e., taking all derivatives of attached fields). Specified using an expression containing \mathem{\mmaDef{Tensor}[1,2,...]}, where the numbers specify the fields in \mathem{"Vertex"} counted from the first list element.
+	\item \mathem{"InnerProduct"}: Defines the trace operation used to compute the metric of the basis, expressed via \mathem{\mmaDef{Tensor1}} and \mathem{\mmaDef{Tensor2}} contracting two basis elements. Usually, this is given by the (coordinate-parametrised) action of the tensor in the dual tangent bundle of the field space manifold on a tensor in the tangent bundle, i.e.,
 	%
 	\begin{align}
 		\langle\mathcal{T}^{(i)},\mathcal{T}^{(j)}\rangle = \mathcal{T}^{(i)}_{a_1a_2\ldots}
@@ -1484,7 +1493,7 @@ setup4F = <|
   |>;
 \end{mmaCell}
 %
-Note that we do not set the above defined setup as the global setup, and thus specify it in all function calls in this subsection explicitly.
+Note that we do not set the above defined setup as the global setup, and thus explicitly specify it in all function calls in this subsection.
 Now, we can already create the diagrammatic rules for our setup:
 %
 \begin{mmaCell}{Input}
@@ -1535,7 +1544,7 @@ After routing and tracing, we obtain the flow equation as
 	\{\mmaFrac{4 GInv[1,lf1] GInv[2,lf1] (3 lambda[1] - 4(lambda[2] + lambda[3])) Rdot[lf1] sp[lf1,lf1]}{\mmaSup{(\mmaSup{GInv[1,lf1]}{2} - \mmaSup{GInv[2,lf1]}{2} sp[lf1,lf1])}{2}}\}
 \end{mmaCell}
 %
-Note here that we had to swap the fermion and anti-fermion in the projector in order to correctly route the Dirac tensor indices. One should be mindful of the thus arising additional minus.
+Note here that we had to swap the fermion and anti-fermion in the projector in order to correctly route the Dirac tensor indices. One should be mindful of the additional minus arising from the swapping of fields.
 
 In the same way, we can derive the flow of the first tensor structure of the four-fermion basis:
 %
@@ -1604,7 +1613,7 @@ We can now directly derive the gluon one-point DSE and show the rendered \LaTeX\
 	}
 \end{equation*}
 %
-Note that the \mathem{\mmaDef{FPrint}} command accepts output at any stage of the derivation. For example, one can show the output directly after truncation as
+The \mathem{\mmaDef{FPrint}} command accepts output at any stage of the derivation. For example, one can show the output directly after truncation as
 %
 \begin{mmaCell}{Input}
 \mmaDef{FMakeDSE}[A[x]]//\mmaDef{FTruncate}//\mmaDef{FPrint};
@@ -1627,7 +1636,7 @@ Note that the \mathem{\mmaDef{FPrint}} command accepts output at any stage of th
 %
 The typesetting code for the above equation can be also read out using the \mathem{\mmaDef{FTex}} command, and copied over to a document. Internally, we use \texttt{MaTeX} \cite{szabolcs_horvat_2024_10828124} to render the \LaTeX\xspace code inside Mathematica. This requires the \bash{pdflatex} command to be available on the system.
 
-For convenience, we also give the possibility to plot diagrams directly inside Mathematica. This can be done using the \mathem{\mmaDef{FPlot}} command, e.g. in the above example, as
+For convenience, we also give the possibility to plot diagrams directly inside Mathematica. To do this, one can use the \mathem{\mmaDef{FPlot}} command, e.g. in the above example, as
 %
 \begin{mmaCell}{Input}
 \mmaDef{FMakeDSE}[A[x]]//\mmaDef{FTruncate}//\mmaDef{FPlot};
@@ -1647,31 +1656,26 @@ Notice that we have already used the \mathem{\mmaDef{FPrint}} and \mathem{\mmaDe
 \FunKit provides a set of tools to conveniently translate the Mathematica expressions resulting after performing all traces into code that can be directly incorporated into a numerical program.
 To that end, \FunKit provides direct output to Julia functions, as well as a set of functions to generate C++ classes and methods with arbitrary types by means of templates.
 
-Before exporting the output of tracing, i.e. after the steps detailed in \Cref{sec:TRACY}, the user must parametrise all remaining symbolic objects (dressings, scalar products, angular variables). This is necessary to obtain numerically tractable expressions. For the Yang-Mills system we have taken also previously as an example, such a parametrisation can be given by.
+Before exporting the output of tracing, i.e., after the steps detailed in \Cref{sec:TRACY}, the user must parametrise all remaining symbolic objects (dressings, scalar products, angular variables). This is necessary to obtain numerically tractable expressions. For the Yang-Mills system we have taken also previously as an example, such a parametrisation can be given by
 %
 \begin{mmaCell}{Input}
 parameterizations=\{
-	lf1->l1,
-	cos[p,l1]->cospl1,
 	\mmaDef{dressing}[InverseProp,\{A,A\},1,\{p1_,p2_\}]:>ZA[Sqrt[sp[p2,p2]]]sp[p2,p2],
 	\mmaDef{dressing}[InverseProp,\{A,A\},2,\{a_,b_\}]:>xi^-1,
 	\mmaDef{dressing}[InverseProp,\{cb,c\},1,\{p1_,p2_\}]:>-Zc[Sqrt[sp[p2,p2]]]sp[p2,p2],
-	
 	\mmaDef{dressing}[S,\{A,A,A\},1,\{p1_,p2_,p3_\}]:>gS,
 	\mmaDef{dressing}[S,\{A,A,A,A\},1,\{p1_,p2_,p3_,p4_\}]:>gS^2,
 	\mmaDef{dressing}[S,\{A,cb,c\},1,\{p1_,p2_,p3_\}]:>gS,
-	
 	\mmaDef{dressing}[GammaN,\{A,A,A\},1,\{p1_,p2_,p3_\}]:>ZA3[Sqrt[(sp[p1,p1]+sp[p2,p2]+sp[p3,p3])/3]],
 	\mmaDef{dressing}[GammaN,\{A,cb,c\},1,\{p1_,p2_,p3_\}]:>ZAcbc[Sqrt[(sp[p1,p1]+sp[p2,p2]+sp[p3,p3])/3]],
-	
-	sp[l1,l1]:>l1^2,
-	sp[p1,p1]:>p^2,
-	sp[l1,p1]:>cospl1
+	lf1->l1,
+	sp[l1,l1]:>l1^2, sp[p1,p1]:>p^2, sp[l1,p1]:>cospl1 l1 p1,
+	cos[p,l1]->cospl1,
  \};
 parametrize[expr_]:=\mmaDef{UseLorentzLinearity}[expr//.parameterizations]//.parameterizations//\mmaDef{Simplify};
 \end{mmaCell}
 %
-In particular, we have parametrised all \mathem{\mmaDef{dressing}} functions and the remaining momentum products. With this in hand, we can immediately obtain Julia code from our previous tracing of the DSE of the gluon propagator:
+In the above, we have parametrised all \mathem{\mmaDef{dressing}} functions and the remaining momentum products. With this in hand, we can immediately obtain Julia code from our previous tracing of the DSE of the gluon propagator:
 %
 \begin{mmaCell}{Input}
 \mmaDef{MakeJuliaFunction}[
@@ -1686,32 +1690,30 @@ In particular, we have parametrised all \mathem{\mmaDef{dressing}} functions and
 function DSE_kernel_AA_1Loop(l1, cos, p, Nc, gS, ZA, Zc, ZA3, ZAcbc, ZA4)
   cospl1 = cos
   _interp1 = ZA(sqrt(l1^2))
-  _interp2 = ZA(sqrt(2*cospl1 + l1^2 + p^2))
-  _interp3 = ZA3(sqrt(0.6666666666666666)*sqrt(cospl1 + l1^2 + p^2))
-  _interp4 = ZAcbc(sqrt(0.6666666666666666)*sqrt(cospl1 + l1^2 + p^2))
+  _interp2 = ZA(sqrt(l1^2 + p^2 + 2*cospl1*l1*p1))
+  _interp3 = ZA3(sqrt(0.6666666666666666)*sqrt(l1^2 + p^2 + cospl1*l1*p1))
+  _interp4 = ZAcbc(sqrt(0.6666666666666666)*sqrt(l1^2 + p^2 + cospl1*l1*p1))
   _interp5 = Zc(sqrt(l1^2))
-  _interp6 = Zc(sqrt(2*cospl1 + l1^2 + p^2))
-  _cse1 = l1^2
-  _cse2 = p^2
-  _cse3 = 1/_cse2
-  _cse4 = cospl1^2
-  _cse5 = _cse1^(-2)
-  _cse6 = 2*cospl1
-  _cse7 = _cse1 + _cse2 + _cse6
-  _cse8 = _cse1 + _cse2
-  _cse9 = 7*_cse1*_cse2
-  _cse10 = _cse1^2
-  _cse11 = 3*_cse10
-  _cse12 = _cse2^2
-  _cse13 = 3*_cse12
-  _cse14 = 1/_interp1
-  return fma(-2,(_cse1*_cse11*_cse14*_cse2*_cse3*_cse5*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(-2,(_cse1*_cse13*_cse14*_cse2*_cse3*_cse5*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(-16,(_cse1^2*_cse14*_cse2^2*_cse3*_cse5*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(2,(_cse11*_cse14*_cse3*_cse4*_cse5*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(2,(_cse13*_cse14*_cse3*_cse4*_cse5*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(2,(_cse14*_cse3*_cse4^2*_cse5*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(2,(_cse14*_cse3*_cse4*_cse5*_cse9*_interp3*gS*Nc)/(_cse7^2*_interp2),fma(-1,(_cse2*_cse3*_interp4*gS*Nc)/(_cse7*_interp5*_interp6),fma(1/_cse1,(_cse3*_cse4*_interp4*gS*Nc)/(_cse7*_interp5*_interp6),fma(-12,(_cse1*_cse14*_cse2*_cse3*_cse5*_cse8*_interp3*cospl1*gS*Nc)/(_cse7^2*_interp2),fma(12,(_cse14*_cse3*_cse5*_cse8*_interp3*cospl1^3*gS*Nc)/(_cse7^2*_interp2),fma(-1,_cse14*_cse3*_cse4*_cse5*gS^2*Nc,fma(_cse14,_cse3*_cse5*_cse9*gS^2*Nc,0)))))))))))))/3.
+  _interp6 = Zc(sqrt(l1^2 + p^2 + 2*cospl1*l1*p1))
+  _cse1 = p^2
+  _cse2 = 1/_cse1
+  _cse3 = cospl1^2
+  _cse4 = p1^2
+  _cse5 = -(_cse3*_cse4)
+  _cse6 = 1/_cse7
+  _cse7 = l1^2
+  _cse8 = 2*cospl1*l1*p1
+  _cse9 = _cse1 + _cse7 + _cse8
+  _cse10 = _cse1 + _cse5
+  _cse11 = 1/_interp1
+  return fma(-6,(_cse1^2*_cse10*_cse11*_cse2*_cse6*_interp3*gS*Nc)/(_cse9^2*_interp2),fma(-16,(_cse1*_cse10*_cse11*_cse2*_cse6*_cse7*_interp3*gS*Nc)/(_cse9^2*_interp2),fma(-2,(_cse10*_cse11*_cse2*_cse3*_cse4*_cse6*_cse7*_interp3*gS*Nc)/(_cse9^2*_interp2),fma(-6,(_cse10*_cse11*_cse2*_cse6*_cse7^2*_interp3*gS*Nc)/(_cse9^2*_interp2),fma(-1,(_cse10*_cse2*_interp4*gS*Nc)/(_cse9*_interp5*
+    _interp6),fma(7,_cse1*_cse11*_cse2*_cse6*gS^2*Nc,fma(_cse11,_cse2*_cse5*_cse6*gS^2*Nc,fma(-12,(_cse1*_cse10*_cse11*_cse2*_cse6*_interp3*cospl1*gS*l1*Nc*p1)/(_cse9^2*_interp2),fma(-12,(_cse10*_cse11*_cse2*_cse6*_interp3*cospl1*gS*l1^3*Nc*p1)/(_cse9^2*_interp2),0)))))))))/3.
 end
 \end{mmaCell}
 %
 This code can then be copied into an existing Julia code and called by integration routines and iterators to solve the system of DSEs.
 
-Similarly, C++ code can be generated using the function \mathem{\mmaDef{MakeCppFunction}}. However, this function permits some more in-depth configuration of the types of parameters and the return type. Without specifying any of these, \cpp{auto} is simply used and deducing types is left to the compiler. Note that the code thus generated requires at least the C++20 standard.
+Similarly, C++ code can be generated using the function \mathem{\mmaDef{MakeCppFunction}}. However, this function permits more detailed configuration of parameter and return types. Without specifying any of these, \cpp{auto} is simply used and deducing types is left to the compiler. Note that the code thus generated requires at least the C++20 standard.
 Furthermore, we add \cpp{using namespace std;} manually at the start of the function body. This makes sure that all mathematical operations are defined (additionally the \cpp{"cmath"} header should be included). However, a user may define these functions differently, e.g. using \cpp{cuda::std} or manually.
 %
 \begin{mmaCell}{Input}
@@ -1730,100 +1732,50 @@ auto DSE_kernel_AA_1Loop(const auto &l1, const auto &cos, const auto &p, const a
   using namespace std;
   const auto &cospl1 = cos;
   const auto _interp1 = ZA(sqrt(powr<2>(l1)));
-  const auto _interp2 = ZA(sqrt(2. * cospl1 + powr<2>(l1) + powr<2>(p)));
-  const auto _interp3 = ZA3(0.816496580927726 * sqrt(cospl1 + powr<2>(l1) + powr<2>(p)));
-  const auto _interp4 = ZAcbc(0.816496580927726 * sqrt(cospl1 + powr<2>(l1) + powr<2>(p)));
+  const auto _interp2 = ZA(sqrt(powr<2>(l1) + powr<2>(p) + 2. * cospl1 * l1 * p1));
+  const auto _interp3 = ZA3(0.816496580927726 * sqrt(powr<2>(l1) + powr<2>(p) + cospl1 * l1 * p1));
+  const auto _interp4 = ZAcbc(0.816496580927726 * sqrt(powr<2>(l1) + powr<2>(p) + cospl1 * l1 * p1));
   const auto _interp5 = Zc(sqrt(powr<2>(l1)));
-  const auto _interp6 = Zc(sqrt(2. * cospl1 + powr<2>(l1) + powr<2>(p)));
-  const auto _cse1 = powr<2>(l1);
-  const auto _cse2 = powr<2>(p);
-  const auto _cse3 = powr<-1>(_cse2);
-  const auto _cse4 = powr<2>(cospl1);
-  const auto _cse5 = powr<-2>(_cse1);
-  const auto _cse6 = 2. * cospl1;
-  const auto _cse7 = _cse1 + _cse2 + _cse6;
-  const auto _cse8 = _cse1 + _cse2;
-  const auto _cse9 = 7. * _cse1 * _cse2;
-  const auto _cse10 = powr<2>(_cse1);
-  const auto _cse11 = 3. * _cse10;
-  const auto _cse12 = powr<2>(_cse2);
-  const auto _cse13 = 3. * _cse12;
-  const auto _cse14 = powr<-1>(_interp1); // clang-format off
+  const auto _interp6 = Zc(sqrt(powr<2>(l1) + powr<2>(p) + 2. * cospl1 * l1 * p1));
+  const auto _cse1 = powr<2>(p);
+  const auto _cse2 = powr<-1>(_cse1);
+  const auto _cse3 = powr<2>(cospl1);
+  const auto _cse4 = powr<2>(p1);
+  const auto _cse5 = -_cse3 * _cse4;
+  const auto _cse6 = powr<-1>(_cse7);
+  const auto _cse7 = powr<2>(l1);
+  const auto _cse8 = 2. * cospl1 * l1 * p1;
+  const auto _cse9 = _cse1 + _cse7 + _cse8;
+  const auto _cse10 = _cse1 + _cse5;
+  const auto _cse11 = powr<-1>(_interp1); // clang-format off
 
   return 0.3333333333333333 *
-    fma(-2.,
-      _cse1 * _cse11 * _cse14 * _cse2 * _cse3 * _cse5 * powr<-2>(_cse7) * powr<-1>(_interp2) *
-          _interp3 * gS * Nc,
-      fma(-2.,
-          _cse1 * _cse13 * _cse14 * _cse2 * _cse3 * _cse5 * powr<-2>(_cse7) * powr<-1>(_interp2) 
-          * _interp3 * gS * Nc,
-          fma(-16.,
-              powr<2>(_cse1) * _cse14 * powr<2>(_cse2) * _cse3 * _cse5 * powr<-2>(_cse7) *
-                  powr<-1>(_interp2) * _interp3 * gS * Nc,
-              fma(2.,
-                  _cse11 * _cse14 * _cse3 * _cse4 * _cse5 * powr<-2>(_cse7) * powr<-1>(_interp2) 
-                  * _interp3 * gS * Nc,
-                  fma(2.,
-                      _cse13 * _cse14 * _cse3 * _cse4 * _cse5 * powr<-2>(_cse7) *
-                          powr<-1>(_interp2) * _interp3 * gS * Nc,
-                      fma(2.,
-                          _cse14 * _cse3 * powr<2>(_cse4) * _cse5 * powr<-2>(_cse7) *
-                              powr<-1>(_interp2) * _interp3 * gS * Nc,
-                          fma(2.,
-                              _cse14 * _cse3 * _cse4 * _cse5 * powr<-2>(_cse7) * _cse9 *
-                                  powr<-1>(_interp2) * _interp3 * gS * Nc,
-                              fma(-1.,
-                                  _cse2 * _cse3 * powr<-1>(_cse7) * _interp4 *
-                                      powr<-1>(_interp5) * powr<-1>(_interp6) * gS * Nc,
-                                  fma(powr<-1>(_cse1),
-                                      _cse3 * _cse4 * powr<-1>(_cse7) * _interp4 *
-                                          powr<-1>(_interp5) * powr<-1>(_interp6) * gS * Nc,
-                                      fma(-12.,
-                                          _cse1 * _cse14 * _cse2 * _cse3 * _cse5 *
-                                              powr<-2>(_cse7) * _cse8 * powr<-1>(_interp2) *
-                                              _interp3 * cospl1 * gS * Nc,
-                                          fma(12.,
-                                              _cse14 * _cse3 * _cse5 * powr<-2>(_cse7) * _cse8 *
-                                                  powr<-1>(_interp2) * _interp3 *
-                                                  powr<3>(cospl1) * gS * Nc,
-                                              fma(-1.,
-                                                  _cse14 * _cse3 * _cse4 * _cse5 * powr<2>(gS) *
-                                                      Nc,
-                                                  fma(_cse14,
-                                                      _cse3 * _cse5 * _cse9 * powr<2>(gS) * Nc,
-                                                      0.)))))))))))));
- //lang-format on
+    fma(-6., powr<2>(_cse1) * _cse10 * _cse11 * _cse2 * _cse6 *
+      powr<-2>(_cse9) * powr<-1>(_interp2) * _interp3 * gS * Nc,
+        fma(-16., _cse1 * _cse10 * _cse11 * _cse2 * _cse6 * _cse7 * powr<-2>(_cse9) * 
+          powr<-1>(_interp2) * _interp3 * gS * Nc,
+            fma(-2., _cse10 * _cse11 * _cse2 * _cse3 * _cse4 * _cse6 * _cse7 * powr<-2>(_cse9) *
+                    powr<-1>(_interp2) * _interp3 * gS * Nc,
+                fma(-6., _cse10 * _cse11 * _cse2 * _cse6 * powr<2>(_cse7) * powr<-2>(_cse9) *
+                        powr<-1>(_interp2) * _interp3 * gS * Nc,
+                    fma(-1., _cse10 * _cse2 * powr<-1>(_cse9) * _interp4 * powr<-1>(_interp5) *
+                            powr<-1>(_interp6) * gS * Nc,
+                        fma(7., _cse1 * _cse11 * _cse2 * _cse6 * powr<2>(gS) * Nc,
+                            fma(_cse11, _cse2 * _cse5 * _cse6 * powr<2>(gS) * Nc,
+                                fma(-12., _cse1 * _cse10 * _cse11 * _cse2 * _cse6 * 
+                                    powr<-2>(_cse9) * powr<-1>(_interp2) * _interp3 * 
+                                  cospl1 * gS * l1 * Nc * p1,
+                                    fma(-12., _cse10 * _cse11 * _cse2 * _cse6 * 
+                                        powr<-2>(_cse9) * powr<-1>(_interp2) * _interp3 *
+                                        cospl1 * gS * powr<3>(l1) * Nc * p1,
+                                        0.)))))))));
+  // clang-format on
 \}
 \end{mmaCell}
-%
-\FunKit replaces integer powers of expressions in C++ with the function \cpp{powr<n>(expr)}. This allows for a more efficient implementation of (low) integer powers than the standard \cpp{std::pow(expr,n)}. For convenience, a possible implementation of \cpp{powr} may read,
-%
-\begin{lstlisting}[language=c++,style=myStyle]
-template <int n, typename NumberType>
-  requires requires(NumberType x) {
-    x * x;
-    static_cast<NumberType>(1) / x;
-  }
-constexpr NumberType powr(const NumberType x)
-{
-  if constexpr (n == 0)
-    return static_cast<NumberType>(1);
-  else if constexpr (n < 0)
-    return static_cast<NumberType>(1) / powr<-n,NumberType>(x);
-  else if constexpr (n == 1)
-    return x;
-  else if constexpr (n % 2 == 0)
-    return powr<n/2>(x) * powr<n/2>(x);
-  else
-    return powr<n/2>(x) * powr<n/2>(x) * x;
-}
-\end{lstlisting}
-%
-One can turn off usage of \cpp{powr} by setting
-%
-\begin{mmaCell}{Input}
-\mmaDef{FUseCppPowr}[\mmaDef{False}];
-\end{mmaCell}
+
+\vfill
+\newpage
+
 
 
 \begin{tcolorbox}[title=Algorithm details: Code generation,
@@ -1831,7 +1783,7 @@ One can turn off usage of \cpp{powr} by setting
 	colback=pastelgreen!5!white,
 	colframe=pastelgreen!73!black,
 	fonttitle=\bfseries]
-
+	
 	Both the Julia and C++ outputs of \FunKit process expressions through the following pipeline:
 	%
 	\begin{enumerate}
@@ -1843,18 +1795,55 @@ One can turn off usage of \cpp{powr} by setting
 		\item \textbf{FMA restructuring (per kernel):} Detect \cpp{a*b + c} patterns and rewrite them as fused multiply-add groups, enabling single-instruction FMA execution.
 		\item \textbf{Code formatting:} Emit temporaries as \cpp{const auto _cseN = <expr>;} and the final value as a \cpp{return} statement. Sub-kernels are wrapped in separate scopes that accumulate into a shared result variable.
 	\end{enumerate}
-
+	
 \end{tcolorbox}
+%
+\FunKit replaces integer powers of expressions in C++ with the function \cpp{powr<n>(expr)}. This allows for a more efficient implementation of (low) integer powers than the standard \cpp{std::pow(expr,n)}. For convenience, a possible implementation of \cpp{powr} may read,
+%
+\begin{lstlisting}[language=c++,style=myStyle]
+	template <int n, typename NumberType>
+	requires requires(NumberType x) {
+		x * x;
+		static_cast<NumberType>(1) / x;
+	}
+	constexpr NumberType powr(const NumberType x)
+	{
+		if constexpr (n == 0)
+		return static_cast<NumberType>(1);
+		else if constexpr (n < 0)
+		return static_cast<NumberType>(1) / powr<-n,NumberType>(x);
+		else if constexpr (n == 1)
+		return x;
+		else if constexpr (n % 2 == 0)
+		return powr<n/2>(x) * powr<n/2>(x);
+		else
+		return powr<n/2>(x) * powr<n/2>(x) * x;
+	}
+\end{lstlisting}
+%
+One can turn off usage of \cpp{powr} by setting
+%
+\begin{mmaCell}{Input}
+	\mmaDef{FUseCppPowr}[\mmaDef{False}];
+\end{mmaCell}
 
 
 %%%%%%%%%%%%%%%%%%%%
 \section{Conclusions}
 
-In this work, we have presented \FunKit, a Mathematica package for the derivation and processing of functional equations in quantum field theory, starting with the generation of algebraic expressions until the output of code that can be directly used in numerical applications.
+In this work, we have presented \FunKit, a Mathematica package for the derivation and processing of functional equations in quantum field theory.
+It provides tools for tasks from the generation of algebraic expressions to the output of code that can be directly used in numerical applications.
+In particular, we focus on a flexible and easy-to-use framework for deriving Dyson-Schwinger equations and functional Renormalisation Group equations for general quantum field theories. The package is designed to be extensible, allowing users to define their own field content, interactions, and truncations, and its modular structure readily accommodates future changes and improvements.
 
 The correctness of the \FunKit package is verified by an extensive test suite, comparing with other popular packages such as \DoFun, \QMeS and analytical expressions from the literature.
 
-In particular, we focus on a flexible and easy-to-use framework for deriving Dyson-Schwinger equations and functional Renormalisation Group equations for general quantum field theories. The package is designed to be extensible, allowing users to define their own field content, interactions, and truncations, and its modular structure allows easily for future changes and improvements.
+In comparison to \DoFun or \QMeS, \FunKit allows both for broader applications, not being restricted to particular master equations, and has a broader scope, as it culminates in either fully traced analytic expressions or code ready for use in a numerical framework. To our knowledge, no other package provides the entire pipeline depicted in \Cref{fig:workflow}.
+
+We have also described the algorithms used in \FunKit, which are optimised at every stage: parallelisation is dynamically switched on and off at every stage of the workflow to maximise performance, and the generated code is highly optimised for both CPU and GPU applications.
+
+We demonstrated the capabilities of \FunKit at the example of Yang-Mills theory, scalar field theory, a Yukawa theory and an NJL model. As for master equations, we show DSEs, the Wetterich equation, the modified STIs and dynamically reparameterised flow equations. All these examples can be found in the \FunKit repository, see also \Cref{tab:examples}.
+
+
 
 
 %%%%%%%%%%%%%%%%%%%%
@@ -1865,6 +1854,7 @@ FRS is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Fo
 	
 \end{acknowledgments}
 
+\vspace{1cm}
 
 %%%%%%%%%%%%%%%%%%%%
 
@@ -1879,43 +1869,14 @@ FRS is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Fo
 \label{app:Structure}
 
 
-\begin{figure*}[t]
-	\begin{tikzpicture}[node distance=2.5cm, auto,>=latex']
-		% Nodes
-		\node [block] (FEDeriK) {\FEDeriK (syntax)};
-		
-		\node [block, below of=FEDeriK] (AnSEL) {\AnSEL (truncation)};
-		\node [block, below of=AnSEL] (DiRK) {\DiRK (routing)};
-		\node [block, right of=AnSEL, node distance=5cm, yshift=-0ex] (TensorBases) {\TensorBases};
-		
-		\node [block, below of=TensorBases] (TRACY) {\TRACY (tracing)};
-		
-		\node [block, below of=DiRK] (DiANE) {\DiANE (visualization)};
-		
-		\node [block, below of=TRACY] (COEN) {\COEN (code output)};
-		
-		% Arrows
-		\draw [->] (FEDeriK) -- (TRACY);
-		
-		\draw [->] (TensorBases) -- (TRACY);
-		\draw [->] (FEDeriK) -- (AnSEL);
-		\draw [->] (AnSEL) -- (DiRK);
-		\draw [->] (DiRK) -- (TRACY);
-		\draw [->] (DiRK) -- (DiANE);
-		\draw [->] (TRACY) -- (COEN);
-	\end{tikzpicture}
-	\caption{Dependency structure of the submodules of \FunKit.
-	}
-	\label{fig:FunKit_structure}
-\end{figure*}
-
-Both for maintainability and usability, \FunKit is structured into modules, which partially depend on each other. A dependency graph of the modules is shown in \Cref{fig:FunKit_structure}. When you import FunKit for the first time, all modules are automatically loaded in the correct order. The modules are:
+Both for maintainability and usability, \FunKit is structured into modules, which partially depend on each other. A dependency graph of the modules is shown in \Cref{fig:FunKit_structure}. 
+When \FunKit is imported for the first time, all modules are automatically loaded in the correct order. The modules are:
 %
 \begin{itemize}
-	\item \FEDeriK, the {\textbf{F}unctional \textbf{E}quation \textbf{Deri}vation \textbf{K}it} is the core module of \FunKit, providing all the logic to derive functional equations. In particular, it provides the base syntax for the description of functional equations, gives facilities to perform functional derivatives and series expansions of derivative operators and fields.
+	\item \FEDeriK, the {\textbf{F}unctional \textbf{E}quation \textbf{Deri}vation \textbf{K}it} is the core module of \FunKit, providing all the logic to derive functional equations. It provides the base syntax for the description of functional equations, gives facilities to perform functional derivatives and series expansions of derivative operators and fields.
 	\item \AnSEL: The Analysis and Simplification of Equations with Loops module, which provides tools to group identical diagrams.
 	\item \DiRK: The Diagram Routing Kit, containing tools for momentum- and index-routing in arbitrary multi-loop diagrams.
-	\item \TensorBases: An external package to define tensor bases for correlation functions, see \cite{Braun:2025gvq}. This package will be automatically installed with FunKit, either during the installation, or when you import \FunKit for the first time in Mathematica.
+	\item \TensorBases: An external package to define tensor bases for correlation functions, see \cite{Braun:2025gvq}. This package will be automatically installed with FunKit, either during the installation, or when one imports \FunKit for the first time in Mathematica.
 	\item \TRACY gives a convenient interface to \FormTracer \cite{Cyrol:2016zqb} to trace out tensor structures in diagrams derived with \FunKit. \FormTracer is an external package which will be also automatically installed by \FunKit.
 	\item \DiANE: The Diagram Arts And Notation of Equations module, which provides tools to visualise diagrams and export \LaTeX code.
 	\item \COEN: The COde ENgine module, which provides tools to generate computer code in C++ or Julia from traced diagrams for further processing in a numerical framework.
@@ -1941,7 +1902,7 @@ The correctness of the output given by \FunKit is verified by a suite of unit te
 These can be run either directly from a Mathematica notebook by using the command
 %
 \begin{mmaCell}{Input}
-FTest[]
+\mmaDef{FTest}[]
 \end{mmaCell}
 %
 or alternatively by using the \texttt{CMake} integration of \FunKit from the repositories top directory:
@@ -1962,15 +1923,48 @@ make test-single FILE=FEDeriK/FunctionalDTests.m
 Additional to unit tests, we also verify that \FunKit produces output identical to \QMeS and \DoFun for one- to four-point functions in the case of a purely scalar and a Yukawa theory, see the tests in \texttt{tests/CrossTests/}.
 
 
-\newpage
+\begin{figure*}[t]
+	\begin{tikzpicture}[node distance=2.5cm, auto,>=latex']
+		% Nodes
+		\node [block] (FEDeriK) {\FEDeriK (syntax)};
+		
+		\node [block, below of=FEDeriK] (AnSEL) {\AnSEL (truncation)};
+		\node [block, below of=AnSEL] (DiRK) {\DiRK (routing)};
+		\node [block, right of=AnSEL, node distance=5cm, yshift=-0ex] (TensorBases) {\TensorBases};
+		
+		\node [block, below of=TensorBases] (TRACY) {\TRACY (tracing)};
+		
+		\node [block, below of=DiRK] (DiANE) {\DiANE (visualisation)};
+		
+		\node [block, below of=TRACY] (COEN) {\COEN (code output)};
+		
+		% Arrows
+		\draw [->] (FEDeriK) -- (TRACY);
+		
+		\draw [->] (TensorBases) -- (TRACY);
+		\draw [->] (FEDeriK) -- (AnSEL);
+		\draw [->] (AnSEL) -- (DiRK);
+		\draw [->] (DiRK) -- (TRACY);
+		\draw [->] (DiRK) -- (DiANE);
+		\draw [->] (TRACY) -- (COEN);
+	\end{tikzpicture}
+	\caption{Dependency structure of the submodules of \FunKit.
+	}
+	\label{fig:FunKit_structure}
+\end{figure*}
+
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{Overview of all functions in \FunKit}
 \label{app:all_func}
 
-Note that any of the listed functions that take a \mathem{setup} as the first argument can be also called without it, if a global setup has been set beforehand using \mathem{\mmaDef{FSetGlobalSetup}[setup]}.
+All of the listed functions that take a \mathem{setup} as the first argument can be also called without it, if a global setup has been set beforehand using \mathem{\mmaDef{FSetGlobalSetup}[setup]}.
 
-Besides the explanations in this document, \FunKit gives detailed documentation on each function in its usage string, i.e. an expression like \mathem{\mmaDef{FTakeDerivatives}::\mmaCmt{usage}} will give explanations on how to use the function.
+Besides the explanations in this document, \FunKit gives detailed documentation on each function in its usage string, i.e., an expression like \mathem{\mmaDef{FTakeDerivatives}::\mmaCmt{usage}} will give explanations on how to use the function.
 
+\vfill
+\newpage
 
 \begin{tcolorbox}[title=Master Equations,
 	title filled=false,
@@ -1985,7 +1979,7 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 		\small Constructs the Dyson-Schwinger equation $\Gamma_{b} = \left\langle \frac{\delta S[\phi]}{\delta \phi^b} \right\rangle_{\phi^a = \Phi^a + G^{ab}\frac{\delta}{\delta\Phi^b}}$.
 		\\[3ex]
 		\mathem{\mmaDef{WetterichEquation}} & 
-		\small The Wetterich equation for the functional renormalization group, ${\partial_t \Gamma = (1/2) G^{ab} (\partial_t R)_{ab}}$.
+		\small The Wetterich equation for the functional Renormalisation Group, ${\partial_t \Gamma = (1/2) G^{ab} (\partial_t R)_{ab}}$.
 		\\[3ex]
 		\mathem{\mmaDef{GeneralizedFlowEquation}} & 
 		\small The generalised fRG flow equation with flowing field reparametrisation $\dot\Phi$, ${\partial_t \Gamma = -\dot\Phi^a\Gamma_a + \frac{1}{2}G^{ac}(\gamma_c^{\phantom{c}b}\partial_t + \frac{\delta\dot{\Phi}^b}{\delta\Phi^c}){R}_{ab}}$.
@@ -2008,7 +2002,7 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 		\small Represents a sum of \mathem{\mmaDef{FTerm}} objects and is the main container for functional equations in \FunKit. Supports non-commutative multiplication \mathem{**} and handles some simplifications.
 		\\[3ex]
 		\mathem{\mmaDef{FTerm}} &
-		\small A single term in a functional equation, i.e. a product of factors. Factors can be numbers, objects, fields, derivative operators, or appropriate combinations thereof. Putting two Grassmann fields into the same factor, will lead to errors being thrown.
+		\small A single term in a functional equation, i.e., a product of factors. Factors can be numbers, objects, fields, derivative operators, or appropriate combinations thereof. Putting two Grassmann fields into the same factor, will lead to errors being thrown.
 		\\[3ex]
 		\mathem{\mmaDef{Propagator}} &
 		\small Two-index object representing the propagator $G_{ab}$.
@@ -2044,7 +2038,7 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 		\small A tag representing a yet unspecified field.
 		\\[3ex]
 		\mathem{\mmaDef{FDOp}} &
-		\small A derivative operator, taking a single field or correlation function, e.g. \mathem{\mmaDef{FDOp}[A[i1]]} or  \mathem{\mmaDef{FDOp}[\mmaDef{R}[{\mmaDef{AnyField},\mmaDef{AnyField}},{i1,i2}]]}
+		\small A derivative operator, taking a single field or correlation function, e.g., \mathem{\mmaDef{FDOp}[A[i1]]} or  \mathem{\mmaDef{FDOp}[\mmaDef{R}[{\mmaDef{AnyField},\mmaDef{AnyField}},{i1,i2}]]}
 		\\[3ex]
 		\mathem{\mmaDef{dressing}} &
 		\small Represents the diagrammatic dressing of objects with specific field content. The full form is
@@ -2063,16 +2057,16 @@ colframe=pastelblue,
 fonttitle=\bfseries]
 \begin{tabular}{p{4.2cm} p{11.6cm}}
 	\mathem{\mmaDef{FPrint}[setup, expr]} & 
-	\small Prints functional expressions in formatted mathematical notation using \LaTeX\, rendering with the \texttt{MaTeX} package. Returns the original expression after printing for easy chaining.
+	\small Prints functional expressions in formatted mathematical notation using \LaTeX{} rendering with the \texttt{MaTeX} package. Returns the original expression after printing for easy chaining.
 	\\[3ex]
 	\mathem{\mmaDef{FTex}[setup, expr]} & 
-	\small Outputs a string of \LaTeX\, code for the given expression.
+	\small Outputs a string of \LaTeX{} code for the given expression.
 	\\[3ex]
 	\mathem{\mmaDef{FPlot}[setup, expr]} & 
 	\small Prints Feynman Diagrams of the given functional expression.
 	\\[3ex]
 	\mathem{\mmaDef{FAddTexStyles}[rules...]} & 
-	\small Adds custom \LaTeX\, styling rules for specific mathematical objects or fields. Style rules should be given as replacement rules, e.g. \mathem{field -> "\\mathbf{field}"}.
+	\small Adds custom \LaTeX{} styling rules for specific mathematical objects or fields. Style rules should be given as replacement rules, e.g., \mathem{field -> "\\mathbf{field}"}.
 	\\[3ex]
 	\mathem{\mmaDef{FSetTexStyles}[rules...]} & 
 	\small Same as \mathem{\mmaDef{FAddTexStyles}}, but resets the list of known style rules.
@@ -2107,7 +2101,7 @@ fonttitle=\bfseries]
 	Explicitly, a sum is taken over all possible fields for every single open-index \mathem{\mmaDef{AnyField}} in the expression.
 	\\[3ex]
 	\mathem{\mmaDef{FMakeSymmetryList}[setup,fields]} &
-	\small Returns a list of symmetries between the provided fields with indices. \mathem{fields} must be given as a list of indexed fields, e.g. \mathem{{f1[i1],...]}}.\newline
+	\small Returns a list of symmetries between the provided fields with indices. \mathem{fields} must be given as a list of indexed fields, e.g., \mathem{{f1[i1],...]}}.\newline
 	Any \mathem{\mmaDef{FEx}} can be annotated as \mathem{\mmaDef{FEx}[..., "Symmetries"->symmetryList]}.
 	\\[3ex]
 	\mathem{\mmaDef{FSimplify}[setup,expr]} &
@@ -2143,7 +2137,7 @@ fonttitle=\bfseries]
 	\small Sets the symbol for loop momentum variables. Must be a string (Default: \mathem{"l"}) which will then lead to momenta \mathem{l1}, \mathem{lf1}, etc
 	\\[3ex]
 	\mathem{\mmaDef{FUnroute}[setup, expr]} & 
-	\small \textbf{Experimental:} Reverses the index and momentum routing performed by FRoute, i.e. converts routed expressions back to superindex notation.
+	\small \textbf{Experimental:} Reverses the index and momentum routing performed by FRoute, i.e., converts routed expressions back to superindex notation.
 \end{tabular}
 \end{tcolorbox}
 
@@ -2161,7 +2155,7 @@ fonttitle=\bfseries]
 	\newline\phantom{.}\hspace{4cm}\mathem{{f1,...}]} & 
 	\small Sets symmetry properties for diagrammatic dressing of objects.
 	The order of field arguments is taken to be irrelevant.
-	Alternatively, \mathem{\mmaDef{FSetSymmetricDressing}[obj, {f1,f2,...}, {1,3,...}]} allows specifying which indices should be symmetrized.
+	Alternatively, \mathem{\mmaDef{FSetSymmetricDressing}[obj, {f1,f2,...}, {1,3,...}]} allows specifying which indices should be symmetrised.
 	\\[3ex]
 	\mathem{\mmaDef{FormTrace}[expr]} & 
 	\small We extend the \mathem{\mmaDef{FormTrace}} command from \cite{Cyrol:2016zqb} to take \mathem{\mmaDef{FEx}} and \mathem{\mmaDef{FTerm}}. These are automatically traced in parallel, if possible.\newline 
@@ -2169,7 +2163,7 @@ fonttitle=\bfseries]
 	\mathem{\mmaDef{FormTrace}[expr,preReplRules,postReplRules]} and \mathem{\mmaDef{FormTrace}[name,expr,preReplRules,postReplRules]} allow for specifying  custom \FORM preRepl and postRepl rules, see \cite{Cyrol:2016zqb} and \mathem{\mmaDef{FormTrace}::\mmaCmt{usage}}.
 	\\[3ex]
 	\mathem{\mmaDef{FFormSimplify}[expr]} &
-	\small Simplifies expressions using FORM's output optimization (O4) algorithms.
+	\small Simplifies expressions using FORM's output optimisation (O4) algorithms.
 	\mathem{\mmaDef{FFormSimplify}[expr,preReplRules,postReplRules]} allows specifying custom \FORM preRepl and postRepl rules, see \cite{Cyrol:2016zqb}.
 	\\[3ex]
 	\mathem{\mmaDef{FMakeSPFormRule}[{l1,...},p,}
@@ -2181,7 +2175,7 @@ fonttitle=\bfseries]
 	\\[3ex]
 	\mathem{\mmaDef{FMakeSPFiniteTFormRule}[{l1,...},}
 	\newline\phantom{.}\hspace{3.7cm}\mathem{p,{p1,...}]} & 
-	\small Creates a \FORM rule for a $(d-1)$-dimensional symmetric point configuration, i.e. a purely spatial symmetric point. Parameters are identical to the ones in \mathem{\mmaDef{FMakeSPFormRule}}.
+	\small Creates a \FORM rule for a $(d-1)$-dimensional symmetric point configuration, i.e., a purely spatial symmetric point. Parameters are identical to the ones in \mathem{\mmaDef{FMakeSPFormRule}}.
 	\\[3ex]
 	\mathem{\mmaDef{FMakeP0Rule}[{p1,...},{prj1,...}]} & 
 	\small Creates a replacement rule to project temporal components of momentum expressions. The first argument is a list of external leg momenta \mathem{{p1,p2,...}}.
@@ -2239,16 +2233,16 @@ fonttitle=\bfseries]
 		\small Generates a return statement for C++ code using FORM's output functionality for the given mathematical expression.
 		\\[3ex]
 		\mathem{\mmaDef{MakeCppClass}[...]} & 
-		\small Generates code for a C++ class. \newline The output is customized through its options, see \mathem{\mmaDef{Options}[\mmaDef{MakeCppClass}]}.
+		\small Generates code for a C++ class. \newline The output is customised through its options, see \mathem{\mmaDef{Options}[\mmaDef{MakeCppClass}]}.
 		\\[3ex]
 		\mathem{\mmaDef{MakeCppHeader}[...]} & 
-		\small Generates code for a C++ header. \newline The output is customized through its options, see \mathem{\mmaDef{Options}[\mmaDef{MakeCppHeader}]}.
+		\small Generates code for a C++ header. \newline The output is customised through its options, see \mathem{\mmaDef{Options}[\mmaDef{MakeCppHeader}]}.
 		\\[3ex]
 		\mathem{\mmaDef{MakeCppBlock}[...]} & 
-		\small Generates code for a C++ namespace. \newline The output is customized through its options, see \mathem{\mmaDef{Options}[\mmaDef{MakeCppBlock}]}.
+		\small Generates code for a C++ namespace. \newline The output is customised through its options, see \mathem{\mmaDef{Options}[\mmaDef{MakeCppBlock}]}.
 		\\[3ex]
 		\mathem{\mmaDef{MakeCppFunction}[...]} & 
-		\small Generates code for a C++ function/method. \newline The output is customized through its options, see \mathem{\mmaDef{Options}[\mmaDef{MakeCppFunction}]}.
+		\small Generates code for a C++ function/method. \newline The output is customised through its options, see \mathem{\mmaDef{Options}[\mmaDef{MakeCppFunction}]}.
 		\\[3ex]
 		\mathem{\mmaDef{FUseCppPowr}[expr]} & 
 		\small Controls whether to use the \texttt{powr} function for power operations in C++ code generation.
@@ -2298,7 +2292,7 @@ fonttitle=\bfseries]
 		\\[3ex]
 		\mathem{\mmaDef{FAddFDRule}[object, wrt, result]} & 
 		\small Adds a custom functional derivative rule to be used with priority when taking derivatives. Patterns should be used in general.\newline
-		The rule applies to \mathem{object} (e.g. \mathem{\mmaDef{GammaN}[{f__},{i__}]}) when taking a derivative with respect to \mathem{wrt} (e.g. \mathem{ob[{f1_,f2_},{i1_,i2_}]}), which yields the \mathem{result} (e.g. \mathem{MyResult[{f1,f2,f},{i1,i2,i}]}).
+		The rule applies to \mathem{object} (e.g., \mathem{\mmaDef{GammaN}[{f__},{i__}]}) when taking a derivative with respect to \mathem{wrt} (e.g., \mathem{ob[{f1_,f2_},{i1_,i2_}]}), which yields the \mathem{result} (e.g., \mathem{MyResult[{f1,f2,f},{i1,i2,i}]}).
 		\\[3ex]
 		\mathem{\mmaDef{FClearFDRules}[]} & 
 		\small Clears all custom functional derivative rules added with \mathem{\mmaDef{FAddFDRule}}.
@@ -2352,7 +2346,7 @@ fonttitle=\bfseries]
 	\mathem{\mmaDef{FSetCacheDirectory}[]} resets the cache directory to the default \texttt{/tmp/TraceCache/}.
 	\\[3ex]
 	\mathem{\mmaDef{FSetRegisterSize}[int]} &
-	\small Sets the number of available registers for optimization in C++ code generation. This is in particular important for calculations on the GPU, where the number of registers is very limited.	The default value is 32, but varying \mathem{\mmaDef{$availableRegisters}} can help optimize performance.
+	\small Sets the number of available registers for optimisation in C++ code generation. This is in particular important for calculations on the GPU, where the number of registers is very limited.	The default value is 32, but varying \mathem{\mmaDef{$availableRegisters}} can help optimise performance.
 	\\[3ex]
 	\mathem{\mmaDef{FSetNotationA}[]} &
 	\small Activates the default two-list object notation: \mathem{obj[\{f1,f2,...\},\{i1,i2,...\}]}. This is the standard \FunKit notation and is active by default at load time.
@@ -2361,7 +2355,7 @@ fonttitle=\bfseries]
 	\small Activates the field[index] object notation: \mathem{obj[f1[i1],f2[i2],...]}. In this notation each argument to a correlation function directly pairs its field with its index.
 	\\[3ex]
 	\mathem{\mmaDef{FSetCodeOptimization}[bool]} &
-	\small Enables (\mathem{\mmaDef{True}}, default) or disables (\mathem{\mmaDef{False}}) the C++ code optimization pipeline.
+	\small Enables (\mathem{\mmaDef{True}}, default) or disables (\mathem{\mmaDef{False}}) the C++ code optimisation pipeline.
 	\\[3ex]
 	\mathem{\mmaDef{FSetFastMath}[bool]} &
 	\small Enables CUDA fast-math intrinsics (\texttt{\_\_expf}, \texttt{\_\_logf}, etc.). Single precision only.

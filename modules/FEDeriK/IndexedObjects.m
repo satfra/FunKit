@@ -273,13 +273,19 @@ GetPartnerField[setup_, field_Symbol[i__]] :=
 **********************************************************************************)
 
 ExtractFields[setup_Association, expr_] :=
-    Module[{},
-        Return @ (DeleteDuplicates[Head /@ Cases[{expr}, Alternatives @@ Map[Blank, GetAllFields[setup]], Infinity]]);
+    Module[{masked},
+        (*Mask indexed objects — same rationale as ExtractFieldsWithIndex*)
+        masked = expr /. (obj_?indexedObjectQ :> Null);
+        Return @ (DeleteDuplicates[Head /@ Cases[{masked}, Alternatives @@ Map[Blank, GetAllFields[setup]], Infinity]]);
     ];
 
 ExtractFieldsWithIndex[setup_Association, expr_] :=
-    Module[{},
-        Return @ Cases[{expr}, Alternatives @@ Map[Blank, GetAllFields[setup]], Infinity];
+    Module[{masked},
+        (*Mask indexed objects to avoid counting field[index] arguments embedded inside
+          them. In NotationB, e.g. S[A[-i1], cb[-i2], c[-i3]], the ghost fields would
+          otherwise be found by Cases at Infinity depth.*)
+        masked = expr /. (obj_?indexedObjectQ :> Null);
+        Return @ Cases[{masked}, Alternatives @@ Map[Blank, GetAllFields[setup]], Infinity];
     ];
 
 ContainsGrassmann[setup_Association, expr_] :=
@@ -301,8 +307,8 @@ GrassmannCount[setup_Association, expr_] :=
 GetAllSuperIndices[setup_, expr_FTerm] :=
     Module[{idxO, idxF},
         idxO = Cases[expr, Alternatives @@ (Map[Blank[#]&, $indexedObjects]), {1, 2}];
-        idxF = Cases[expr, Alternatives @@ (Map[Blank[#]&, GetAllFields[setup]]), {1, 2}];
-        Return[makePosIdx /@ (idxF[[All, 1]] \[Union] Join @@ idxO[[All, 2]]) // DeleteDuplicates]
+        idxF = Cases[expr, Alternatives @@ (Map[Blank[#]&, GetAllFields[setup]]), {1}];
+        Return[makePosIdx /@ (idxF[[All, 1]] \[Union] Join @@ (getIndices /@ idxO)) // DeleteDuplicates]
     ];
 
 GetAllSuperIndices[setup_Association, expr_FEx] :=
@@ -315,14 +321,14 @@ GetAllSuperIndices[setup_Association, expr_FEx] :=
 **********************************************************************************)
 
 ExtractObjectsWithIndex[setup_Association, expr_FTerm] :=
-    Module[{allFields, iObjs, all, depth1Fields},
+    Module[{allFields, iObjs, all, depth1Fields, masked},
         allFields = {AnyField} \[Union] GetAllFields[setup];
         iObjs = $indexedObjects;
-        all = Cases[expr, Alternatives @@ Map[Blank[#]&, Join[iObjs, allFields]], {1, 2}];
-(* In NotationB, field[index] pairs embedded inside indexed objects appear at depth 2.
-   Filter: keep indexed objects from any depth, but field applications from depth 1 only.
-   MemberQ on the depth-1 set preserves appearance order from the original Cases. *)
-        depth1Fields = Cases[expr, Alternatives @@ Map[Blank[#]&, allFields], {1}];
+        (*Mask FMinus and SymmetryFactor before searching: in NotationB their field[index]
+          arguments at depth 2 would otherwise be found and mistakenly kept.*)
+        masked = expr /. {(h : FMinus | SymmetryFactor)[__] :> h};
+        all = Cases[masked, Alternatives @@ Map[Blank[#]&, Join[iObjs, allFields]], {1, 2}];
+        depth1Fields = Cases[masked, Alternatives @@ Map[Blank[#]&, allFields], {1}];
         Return @ Select[all, MemberQ[iObjs, Head[#]] || MemberQ[depth1Fields, #]&];
     ];
 
@@ -332,15 +338,13 @@ ExtractObjectsWithIndex[setup_Association, expr_FEx] :=
     ];
 
 ExtractObjectsAndIndices[setup_, expr_FTerm] :=
-    Module[{all, idxO, idxF, iObjs, allFields, depth1Fields},
+    Module[{idxO, idxF, iObjs, allFields, masked},
         iObjs = $indexedObjects;
         allFields = Join[GetAllFields[setup], {AnyField}];
-        all = Cases[expr, Alternatives @@ Map[Blank[#]&, Join[iObjs, allFields]], {1, 2}];
-(* In NotationB, field[index] pairs embedded inside indexed objects appear at depth 2.
-   Keep indexed objects from any depth, but field applications only from depth 1. *)
-        depth1Fields = Cases[expr, Alternatives @@ Map[Blank[#]&, allFields], {1}];
-        idxO = Select[all, MemberQ[iObjs, Head[#]]&];
-        idxF = Select[all, MemberQ[allFields, Head[#]] && MemberQ[depth1Fields, #]&];
+        (*Mask FMinus/SymmetryFactor — same rationale as ExtractObjectsWithIndex.*)
+        masked = expr /. {(h : FMinus | SymmetryFactor)[__] :> h};
+        idxO = Cases[masked, Alternatives @@ Map[Blank[#]&, iObjs], {1, 2}];
+        idxF = Cases[masked, Alternatives @@ Map[Blank[#]&, allFields], {1}];
         Return[{Join[idxO, idxF], makePosIdx /@ Join[idxF[[All, 1]], Join @@ (getIndices /@ idxO)] // DeleteDuplicates}]
     ];
 

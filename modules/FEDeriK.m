@@ -55,7 +55,7 @@ Expands expressions containing derivative operators up to the specified order.
 Similar to FExpand but specifically handles expansions involving functional derivatives.
 Used for perturbative expansions in functional methods.";
 
-MakeClassicalAction::usage = "MakeClassicalAction[setup]
+FMakeClassicalAction::usage = "FMakeClassicalAction[setup]
 Constructs the classical action from the setup's truncation table for the object S.
 Returns an FEx containing all terms in the classical action with appropriate prefactors.
 The setup must contain a truncation table with key S specifying the field combinations.";

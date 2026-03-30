@@ -86,14 +86,14 @@ With[{res = FMinus[Phi[i], Chi[j]] ^ 3},
     AppendTo[tests, TestCreate[res, FMinus[Phi[i], Chi[j]], TestID -> "NotationB: FMinus cubed is FMinus"]]
 ];
 
-(* ObjectQ: recognises valid NotationB objects and rejects NotationA format *)
+(* orderedObjectQ: recognises valid NotationB objects and rejects NotationA format *)
 
-With[{res = FunKit`Private`ObjectQ[Propagator[Phi[i1], Chi[i2]]]},
-    AppendTo[tests, TestCreate[res, True, TestID -> "NotationB: ObjectQ valid object"]]
+With[{res = FunKit`Private`orderedObjectQ[Propagator[Phi[i1], Chi[i2]]]},
+    AppendTo[tests, TestCreate[res, True, TestID -> "NotationB: orderedObjectQ valid object"]]
 ];
 
-With[{res = FunKit`Private`ObjectQ[Propagator[{Phi, Chi}, {i1, i2}]]},
-    AppendTo[tests, TestCreate[res, False, TestID -> "NotationB: ObjectQ rejects NotationA format"]]
+With[{res = FunKit`Private`orderedObjectQ[Propagator[{Phi, Chi}, {i1, i2}]]},
+    AppendTo[tests, TestCreate[res, False, TestID -> "NotationB: orderedObjectQ rejects NotationA format"]]
 ];
 
 (* PrototypeObjectPattern returns a Blank pattern in NotationB *)

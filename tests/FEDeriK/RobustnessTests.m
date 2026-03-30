@@ -54,10 +54,10 @@ AppendTo[tests, TestCreate[
 ]];
 
 AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`MakeClassicalAction[], "AbortTriggered"],
+    CheckAbort[FunKit`FMakeClassicalAction[], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::noGlobalSetup},
-    TestID -> "A2: MakeClassicalAction without global setup should abort"
+    TestID -> "A2: FMakeClassicalAction without global setup should abort"
 ]];
 
 AppendTo[tests, TestCreate[
@@ -423,7 +423,7 @@ AppendTo[tests, TestCreate[
 
 (**********************************************************************************
     G3: FMakeDSE guarded FSimplify call
-    We verify MakeClassicalAction works (positive test) to confirm the
+    We verify FMakeClassicalAction works (positive test) to confirm the
     setup is valid. The G3 code change ensures FMakeDSE only calls FSimplify
     when AnSEL is loaded and $AutoSimplify is True, matching the pattern
     used in Truncation.m and Derivatives.m.
@@ -436,11 +436,11 @@ testSetupDSE = Module[{p},
 
 AppendTo[tests, TestCreate[
     Module[{result},
-        result = FunKit`MakeClassicalAction[testSetupDSE];
+        result = FunKit`FMakeClassicalAction[testSetupDSE];
         Head[result]
     ],
     FEx,
-    TestID -> "G3: MakeClassicalAction should return FEx"
+    TestID -> "G3: FMakeClassicalAction should return FEx"
 ]];
 
 (**********************************************************************************

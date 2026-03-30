@@ -73,6 +73,9 @@ ReduceIndices[setup_, term_] :=
 ReduceIndices[setup_, {}] :=
     {};
 
+ReduceIndices[setup_, 0] :=
+    0;
+
 ReduceIndices[setup_, term_FTerm] :=
     Module[{gPairs, closedSIndices, cases, casesOpen, closed, i, both, result = term, casesFMinus, casesSymmetry, casesGamma},
         closedSIndices = GetClosedSuperIndices[setup, term];

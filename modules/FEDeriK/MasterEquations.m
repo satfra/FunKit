@@ -2,7 +2,7 @@
     MasterEquations.m -- Master equation definitions (Wetterich, DSE, generalized)
 
     Public API:
-      MakeClassicalAction        -- Constructs classical action from setup truncation
+      FMakeClassicalAction        -- Constructs classical action from setup truncation
       WetterichEquation          -- Returns the Wetterich flow equation
       GeneralizedFlowEquation    -- Returns the generalized flow equation with Phidot
       RGInvGeneralizedFlowEquation -- RG-invariant version of the generalized flow eq.
@@ -13,13 +13,13 @@
     Classical Action
 **********************************************************************************)
 
-MakeClassicalAction::noTruncation = "The given setup does not have a truncation for S!";
+FMakeClassicalAction::noTruncation = "The given setup does not have a truncation for S!";
 
-MakeClassicalAction[setup_] :=
+FMakeClassicalAction[setup_] :=
     Module[{indices, i, prefac},
         AssertFSetup[setup];
         If[FreeQ[Keys[setup["Truncation"]], S],
-            Message[MakeClassicalAction::noTruncation];
+            Message[FMakeClassicalAction::noTruncation];
             Abort[]
         ];
         FEx @@
@@ -28,7 +28,7 @@ MakeClassicalAction[setup_] :=
                     prefac = Split[#];
                     prefac = Times @@ (1 / ((Length[#]& /@ prefac)!));
                     indices = Map[Unique["i"]&, #];
-                    FTerm[prefac, S[#, -indices]] ** (FTerm @@ Table[Construct[#[[i]], indices[[i]]], {i, 1, Length[#]}])
+                    FTerm[prefac, makeObj[S, #, -indices]] ** (FTerm @@ Table[Construct[#[[i]], indices[[i]]], {i, 1, Length[#]}])
                 )&
                 ,
                 OrderFieldList[setup, #]& /@ setup["Truncation"][S]
@@ -83,7 +83,7 @@ FMakeDSE[setup_, field_] :=
         AssertFSetup[setup];
         AssertDerivativeList[setup, {field}];
         (*Make a classical action*)
-        classAct = MakeClassicalAction[setup];
+        classAct = FMakeClassicalAction[setup];
         (*Take one derivative with "field" classical action*)
         dS =
             FResolveDerivatives[setup, FTerm[FDOp[field]] ** classAct] //
@@ -91,20 +91,22 @@ FMakeDSE[setup_, field_] :=
             ReduceIndices[setup, #]&;
         (*Separate powers out into factors in the FTerm. Need this to insert FDOp in the next step*)
         dS = dS //. Times[pre___, f1_[id1_], post___] :> NonCommutativeMultiply[pre, f1[id1], post];
-        (*Insert \[Phi]^a->\[CapitalPhi]^a+G^ab\[Delta]/\[Delta]\[CapitalPhi]^b *)
+        (*Insert \[Phi]^a->\[CapitalPhi]^a+G^ab\[Delta]/\[Delta]\[CapitalPhi]^b
+          Use Replace at level {2} (FTerm arguments) to avoid replacing field[index]
+          patterns inside indexed objects in NotationB.*)
         dS =
-            dS /.
-                (
-                    Map[
-                        #[id_] :>
-                            Module[{i},
-                                i = Symbol @ SymbolName @ Unique["i"];
-                                FEx[FTerm[#[id]], FTerm[makeObj[Propagator, {#, AnyField}, {id, i}], FDOp[AnyField[i]]]]
-                            ]&
-                        ,
-                        GetAllFields[setup]
-                    ]
-                );
+            Replace[dS,
+                Map[
+                    #[id_] :>
+                        Module[{i},
+                            i = Symbol @ SymbolName @ Unique["i"];
+                            FEx[FTerm[#[id]], FTerm[makeObj[Propagator, {#, AnyField}, {id, i}], FDOp[AnyField[i]]]]
+                        ]&
+                    ,
+                    GetAllFields[setup]
+                ],
+                {2}
+            ];
         dS //
         FResolveDerivatives[setup, #]& //
         If[ModuleLoaded[AnSEL] && $AutoSimplify === True,

@@ -186,7 +186,7 @@ LTrunc[setup_, expr_FTerm] :=
                             idx2 = getIndex[s2, idxPos[[2]]];
                             FunKitDebug[3, "Replacing the index ", makePosIdx[idx1], " by field ", #];
                             (*And find all index-looking objects and put in a replacement of the field at the right position.*)
-                            localRet = ret /. {obj_?indexedObjectQ /; (MemberQ[makePosIdx /@ getIndices[obj], idx1] || MemberQ[makePosIdx /@ getIndices[obj], idx2]) :> insertFields[insertFields[obj, idx2, #], idx1, #]};
+                            localRet = ret /. {obj_?objectQ /; (MemberQ[makePosIdx /@ getIndices[obj], idx1] || MemberQ[makePosIdx /@ getIndices[obj], idx2]) :> insertFields[insertFields[obj, idx2, #], idx1, #]};
                             truncationPass[setup, FTerm @@ localRet]
                         ]&
                         ,
@@ -208,7 +208,7 @@ LTrunc[setup_, expr_FTerm] :=
                     Map[
                         Module[{localRet},
                             FunKitDebug[3, "Replacing AnyField at index ", makePosIdx[anyIdx], " with field ", #];
-                            localRet = ret /. {obj_?indexedObjectQ /; MemberQ[makePosIdx /@ getIndices[obj], makePosIdx @ anyIdx] :> insertFieldsIfAnyField[obj, anyIdx, #]};
+                            localRet = ret /. {obj_?objectQ /; MemberQ[makePosIdx /@ getIndices[obj], makePosIdx @ anyIdx] :> insertFieldsIfAnyField[obj, anyIdx, #]};
                             truncationPass[setup, FTerm @@ localRet]
                         ]&
                         ,

@@ -154,7 +154,7 @@ indicesLess[i1_, i2_] :=
 OrderObject[setup_, expr_] :=
     expr;
 
-OrderObject[setup_, obj_ /; ObjectQ[obj]] :=
+OrderObject[setup_, obj_ /; orderedObjectQ[obj]] :=
     Module[
         {i, curi, prefactor = 1, pref, reverse, nfields, nindices}
         ,

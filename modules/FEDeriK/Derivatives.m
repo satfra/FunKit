@@ -55,8 +55,20 @@ FResolveFDOp[setup_, term_FTerm] :=
             obj = ExtractObjectsWithIndex[setup, FTerm[termsNoFDOp[[nPre + idx]]]];
             obj = Select[obj, MemberQ[$nonCommutingObjects, Head[#]] || MatchQ[#, _Symbol[_]]&];
             obj = obj /. doFields;
-            (*Commuting the next derivative past the objects in the current part*)
-            cTerm = cTerm * Times @@ Map[makeObj[FMinus, {Head[dF], #[[1]]}, {dF[[1]], #[[2]]}]&, Transpose[{Flatten[getFields /@ obj], Flatten[getIndices /@ obj]}]];
+            (*Commuting the next derivative past the objects in the current part.
+              Extract {field, index} pairs from each object. Bare field applications (e.g. A[si])
+              are not indexed objects, so getFields/getIndices would fail on them — handle separately.*)
+            Module[{pairs},
+                pairs = Flatten[
+                    Map[
+                        If[indexedObjectQ[#],
+                            Transpose[{getFields[#], getIndices[#]}],
+                            {{Head[#], #[[1]]}}
+                        ]&,
+                        obj
+                    ], 1];
+                cTerm = cTerm * Times @@ Map[makeObj[FMinus, {Head[dF], #[[1]]}, {dF[[1]], #[[2]]}]&, pairs];
+            ];
             ,
             {idx, 1, nPost}
         ];
@@ -95,7 +107,7 @@ FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
                 ,
                 {}
             ];
-        symmetries = MergeSymmetries[symmetries, OptionValue["Symmetries"]];
+        symmetries = FMergeSymmetries[symmetries, OptionValue["Symmetries"]];
         {fw, bw} = GetSuperIndexTermTransformations[setup, ret];
         ret = BalancedMap[fw, ret];
         (*ParallelMap will incur some overhead, but it quickly pays off*)
@@ -153,9 +165,9 @@ FTakeDerivatives[setup_, expr_FEx, derivativeList_, OptionsPattern[]] :=
             ,
             symmetries = OptionValue["Symmetries"];
         ];
-        symmetries = MergeSymmetries[symmetries, OptionValue["Symmetries"]];
+        symmetries = FMergeSymmetries[symmetries, OptionValue["Symmetries"]];
         If[KeyExistsQ[annotations, "Symmetries"],
-            symmetries = MergeSymmetries[symmetries, annotations["Symmetries"]];
+            symmetries = FMergeSymmetries[symmetries, annotations["Symmetries"]];
         ];
         If[symmetries =!= {},
             result = FEx[FEx @@ result, "Symmetries" -> symmetries]

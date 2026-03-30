@@ -24,7 +24,10 @@
                                     (used by FTerm rewrite rules)
       makeObj                    -- Constructs indexed objects in current notation
                                     (used broadly across all modules)
-      indexedObjectQ             -- Tests if expression is an indexed object
+      correlationFunctionQ       -- Tests if head is in $CorrelationFunctions
+      orderedObjectQ             -- Tests if expression is an ordered object
+      indexedObjectQ             -- Tests if head is in $indexedObjects
+      objectQ                    -- Tests if head is in $allObjects
                                     (used broadly across all modules)
       getFields / getField       -- Extracts field(s) from an indexed object
                                     (used broadly across all modules)
@@ -409,6 +412,19 @@ Derivative[__][\[Gamma]][__] :=
 Derivative[__][SymmetryFactor][__] :=
     0;
 
+(*In NotationB, fields appear as heads inside object arguments (e.g. S[A[-i1], ...]).
+  D sees these as non-constant dependencies and applies the chain rule, producing spurious
+  Derivative terms. These objects are opaque — their differentiation is handled by the
+  product rule acting on bare fields, not by the chain rule.*)
+Derivative[__][S][__] :=
+    0;
+
+Derivative[__][R][__] :=
+    0;
+
+Derivative[__][Rdot][__] :=
+    0;
+
 (* FMinus rules are installed by FSetNotationA[]/FSetNotationB[] below *)
 
 (**********************************************************************************
@@ -466,9 +482,11 @@ FSetNotationA[] :=
         getIdxSign[obj_, pos_] := -2 * Boole[isNeg[getIndex[obj, pos]]] + 1;
         makeObj[kind_Symbol, fieldList_List, indexList_List] := kind[fieldList, indexList];
         setField[obj_, pos_Integer, field_] := ReplacePart[obj, {1, pos} -> field];
-        ObjectQ[expr_] := MatchQ[expr, _Symbol[_List, _List]] && MemberQ[$OrderedObjects, Head[expr]];
+        correlationFunctionQ[expr_] := MemberQ[$CorrelationFunctions, Head[expr]];
+        orderedObjectQ[expr_] := MatchQ[expr, _Symbol[_List, _List]] && MemberQ[$OrderedObjects, Head[expr]];
+        indexedObjectQ[expr_] := MemberQ[$indexedObjects, Head[expr]];
+        objectQ[expr_] := MemberQ[$allObjects, Head[expr]];
         PrototypeObjectPattern[head_Symbol] := head @@ ConstantArray[Blank[], Length[makeObj[head, {}, {}]]];
-        indexedObjectQ[expr_] := MemberQ[$OrderedObjects, Head[expr]] || Head[expr] === FMinus;
         (*FMinus rules: two-list notation*)
         Unprotect[FMinus];
         DownValues[FMinus] = {};
@@ -497,9 +515,11 @@ FSetNotationB[] :=
         With[{getIndex$ = getIndex},
             setField[obj_, pos_Integer, field_] := ReplacePart[obj, pos -> field[getIndex$[obj, pos]]];
         ];
-        ObjectQ[expr_] := MemberQ[$OrderedObjects, Head[expr]] && Length[expr] > 0 && AllTrue[List @@ expr, MatchQ[#, _[_]]&];
+        correlationFunctionQ[expr_] := MemberQ[$CorrelationFunctions, Head[expr]];
+        orderedObjectQ[expr_] := MemberQ[$OrderedObjects, Head[expr]] && Length[expr] > 0 && AllTrue[List @@ expr, MatchQ[#, _[_]]&];
+        indexedObjectQ[expr_] := MemberQ[$indexedObjects, Head[expr]];
+        objectQ[expr_] := MemberQ[$allObjects, Head[expr]];
         PrototypeObjectPattern[head_Symbol] := head[__];
-        indexedObjectQ[expr_] := MemberQ[$OrderedObjects, Head[expr]] || Head[expr] === FMinus;
         (*FMinus rules: field[index] notation*)
         Unprotect[FMinus];
         DownValues[FMinus] = {};

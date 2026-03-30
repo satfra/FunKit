@@ -2,7 +2,7 @@
 
 (**********************************************************************************
     Tests for AnSEL Simplify module
-    Covers: FSimplify, TermsEqualAndSum, FTermContent, FMakeSymmetryList, BuildSymmetryList
+    Covers: FSimplify, TermsEqualAndSum, FTermContent, FMakeSymmetryList, FBuildSymmetryList
 **********************************************************************************)
 
 tests = {};
@@ -628,7 +628,7 @@ AppendTo[
 ];
 
 (**********************************************************************************
-    Section 8: BuildSymmetryList — 4 tests
+    Section 8: FBuildSymmetryList — 4 tests
 **********************************************************************************)
 
 AppendTo[
@@ -637,13 +637,13 @@ AppendTo[
     TestCreate[
         Module[{result, setup},
             setup = GetFunKitSetupScalar[];
-            result = FunKit`Private`BuildSymmetryList[setup, {{{1, 2}, 1}}, {Phi[i1], Phi[i2]}];
+            result = FunKit`Private`FBuildSymmetryList[setup, {{{1, 2}, 1}}, {Phi[i1], Phi[i2]}];
             Length[result]
         ]
         ,
         2
         ,
-        TestID -> "BuildSymmetryList: valid 2-cycle"
+        TestID -> "FBuildSymmetryList: valid 2-cycle"
     ]
 ];
 
@@ -653,13 +653,13 @@ AppendTo[
     TestCreate[
         Module[{result, setup},
             setup = GetFunKitSetupScalar[];
-            result = FunKit`Private`BuildSymmetryList[setup, {{{1, 2, 3}, 1}}, {Phi[i1], Phi[i2], Phi[i3]}];
+            result = FunKit`Private`FBuildSymmetryList[setup, {{{1, 2, 3}, 1}}, {Phi[i1], Phi[i2], Phi[i3]}];
             Length[result]
         ]
         ,
         2
         ,
-        TestID -> "BuildSymmetryList: valid 3-cycle"
+        TestID -> "FBuildSymmetryList: valid 3-cycle"
     ]
 ];
 
@@ -670,7 +670,7 @@ AppendTo[
         CheckAbort[
             Module[{result, setup},
                 setup = GetFunKitSetupScalar[];
-                FunKit`Private`BuildSymmetryList[setup, {{{1, 5}, 1}}, {Phi[i1], Phi[i2]}]
+                FunKit`Private`FBuildSymmetryList[setup, {{{1, 5}, 1}}, {Phi[i1], Phi[i2]}]
             ]
             ,
             "AbortTriggered"
@@ -678,7 +678,7 @@ AppendTo[
         ,
         "AbortTriggered"
         ,
-        TestID -> "BuildSymmetryList: invalid cycle aborts"
+        TestID -> "FBuildSymmetryList: invalid cycle aborts"
     ]
 ];
 
@@ -688,12 +688,12 @@ AppendTo[
     TestCreate[
         Module[{setup},
             setup = GetFunKitSetupScalar[];
-            FunKit`Private`BuildSymmetryList[setup, {}, {Phi[i1], Phi[i2]}]
+            FunKit`Private`FBuildSymmetryList[setup, {}, {Phi[i1], Phi[i2]}]
         ]
         ,
         {}
         ,
-        TestID -> "BuildSymmetryList: empty symmetries"
+        TestID -> "FBuildSymmetryList: empty symmetries"
     ]
 ];
 
@@ -708,12 +708,12 @@ AppendTo[
         Module[{setup, resultNoSym, resultWithSym},
             setup = GetFunKitSetupScalar[];
             FSetGlobalSetup[setup];
-            $AutoBuildSymmetryList = False;
+            $AutoFBuildSymmetryList = False;
             resultNoSym =
                 FTakeDerivatives[setup, WetterichEquation, {Phi[i1], Phi[i2], Phi[i3], Phi[i4]}] //
                 FTruncate //
                 FSimplify;
-            $AutoBuildSymmetryList = True;
+            $AutoFBuildSymmetryList = True;
             resultWithSym =
                 FTakeDerivatives[setup, WetterichEquation, {Phi[i1], Phi[i2], Phi[i3], Phi[i4]}] //
                 FTruncate //
@@ -734,12 +734,12 @@ AppendTo[
         Module[{setup, resultNoSym, resultWithSym},
             setup = GetFunKitSetupFourFermion[];
             FSetGlobalSetup[setup];
-            $AutoBuildSymmetryList = False;
+            $AutoFBuildSymmetryList = False;
             resultNoSym =
                 FTakeDerivatives[setup, WetterichEquation, {Psi[i1], Psibar[i2], Psi[i3], Psibar[i4]}] //
                 FTruncate //
                 FSimplify;
-            $AutoBuildSymmetryList = True;
+            $AutoFBuildSymmetryList = True;
             resultWithSym =
                 FTakeDerivatives[setup, WetterichEquation, {Psi[i1], Psibar[i2], Psi[i3], Psibar[i4]}] //
                 FTruncate //

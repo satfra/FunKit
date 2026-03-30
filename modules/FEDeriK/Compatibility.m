@@ -25,7 +25,7 @@ FunKitForm[expr_List] :=
 QMeSNaming[setup_, expr_] :=
     expr;
 
-QMeSNaming[setup_, obj_ /; ObjectQ[obj]] :=
+QMeSNaming[setup_, obj_ /; orderedObjectQ[obj]] :=
     Module[
         {oldCanonicalOrdering, transf, prefactor, mobj, mfields, mindices, prefix, fieldPart, indexPart}
         ,
