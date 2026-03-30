@@ -294,6 +294,15 @@ LTrunc[setup_, expr_FTerm] :=
                 Return[{}]
             ];
             propCombinations = Tuples[propCandidates];
+            (*Filter inconsistent combinations: shared indices must get the same field*)
+            propCombinations = Select[propCombinations,
+                Module[{allRules = Join @@ Map[Normal, #]},
+                    AllTrue[
+                        GatherBy[allRules, First],
+                        Apply[SameQ, #[[All, 2]]]&
+                    ]
+                ]&
+            ];
             propCombinations = Map[Join @@ # &, propCombinations];
         ,
             propCombinations = {<||>}
