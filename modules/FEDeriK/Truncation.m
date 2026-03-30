@@ -293,17 +293,29 @@ LTrunc[setup_, expr_FTerm] :=
                 ];
                 Return[{}]
             ];
-            propCombinations = Tuples[propCandidates];
-            (*Filter inconsistent combinations: shared indices must get the same field*)
-            propCombinations = Select[propCombinations,
-                Module[{allRules = Join @@ Map[Normal, #]},
-                    AllTrue[
-                        GatherBy[allRules, First],
-                        Apply[SameQ, #[[All, 2]]]&
-                    ]
-                ]&
+            (*Constrained Tuples: build combinations incrementally, pruning
+              inconsistent index->field assignments at each step.
+              Much faster than Tuples + post-filter for many propagators.*)
+            propCombinations = propCandidates[[1]];
+            Do[
+                Module[{nextCombos = {}, shared, combo, cand},
+                    Do[
+                        combo = propCombinations[[ci]];
+                        Do[
+                            cand = propCandidates[[pi, ki]];
+                            shared = Intersection[Keys[combo], Keys[cand]];
+                            If[shared === {} || AllTrue[shared, combo[#] === cand[#]&],
+                                AppendTo[nextCombos, Join[combo, cand]]
+                            ];
+                            , {ki, 1, Length[propCandidates[[pi]]]}
+                        ];
+                        , {ci, 1, Length[propCombinations]}
+                    ];
+                    propCombinations = nextCombos;
+                ];
+                If[propCombinations === {}, Break[]];
+                , {pi, 2, Length[propCandidates]}
             ];
-            propCombinations = Map[Join @@ # &, propCombinations];
         ,
             propCombinations = {<||>}
         ];
