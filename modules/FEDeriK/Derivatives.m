@@ -13,10 +13,15 @@ Error in `1`";
 FResolveFDOp[setup_, expr_FEx] :=
     Module[{},
         AssertFSetup[setup];
-        Return[FEx @@ Catenate[List @@@ BalancedMap[FResolveFDOp[setup, #]&, List @@ expr]]];
+        Return[FEx @@ Catenate[BalancedMap[FResolveFDOpInternal[setup, #]&, List @@ expr]]];
     ];
 
+(* Public wrapper: returns FEx for backward compatibility *)
 FResolveFDOp[setup_, term_FTerm] :=
+    FEx @@ FResolveFDOpInternal[setup, term];
+
+(* Internal workhorse: returns a plain List of FTerms (no FEx wrapper) *)
+FResolveFDOpInternal[setup_, term_FTerm] :=
     Module[
         {rTerm = term, FDOpPos, termsNoFDOp, dF, idx, i, obj, ind, a, dTerms, nPre, nPost, ret, cTerm, doFields, fw, bw, deriv}
         ,
@@ -28,13 +33,13 @@ FResolveFDOp[setup_, term_FTerm] :=
         (*Find rightmost FDOp; if none present, return immediately*)
         FDOpPos = FirstPosition[Reverse @ (List @@ rTerm), _FDOp, Missing["NotFound"], {1}];
         If[MissingQ[FDOpPos],
-            Return[FEx[rTerm]]
+            Return[{rTerm}]
         ];
         FDOpPos = Length[rTerm] - FDOpPos[[1]] + 1;
         termsNoFDOp = FTerm[rTerm[[1 ;; FDOpPos - 1]], rTerm[[FDOpPos + 1 ;; ]]];
         (*If the derivative operator is trailing, it acts on nothing and the term is zero.*)
         If[FDOpPos >= Length[rTerm],
-            Return[FEx[0]]
+            Return[{}]
         ];
         dF = rTerm[[FDOpPos, 1]];
         FunKitDebug[2, "Found derivative operator ", FDOp[dF], " at position ", FDOpPos, " in given term."];
@@ -73,9 +78,11 @@ FResolveFDOp[setup_, term_FTerm] :=
             {idx, 1, nPost}
         ];
         (*Note: up till here, the performance impact is minimal.However, the following blowup of terms will multiply it*)
-        dTerms = ReduceIndices[setup, FEx @@ dTerms];
+        (*Light reduction: only resolve FMinus/SymmetryFactor signs. Full metric resolution deferred to per-pass.*)
+        dTerms = Map[ReduceIndicesLight[setup, #]&, dTerms];
         FunKitDebug[6, "Result: ", dTerms];
-        Return[ReduceFEx[setup, dTerms]];
+        (*Filter zeros and return as plain list of FTerms*)
+        Select[dTerms, # =!= FTerm[0] && # =!= 0&]
     ];
 
 FResolveFDOp[setup_, expr_] :=
@@ -110,22 +117,33 @@ FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
         symmetries = FMergeSymmetries[symmetries, OptionValue["Symmetries"]];
         {fw, bw} = GetSuperIndexTermTransformations[setup, ret];
         ret = BalancedMap[fw, ret];
+        (*Convert to plain list of FTerms for the derivative loop*)
+        If[Head[ret] === FEx, ret = List @@ ret];
         (*ParallelMap will incur some overhead, but it quickly pays off*)
         i = 0;
         While[
             MemberQ[ret, FDOp[__], Infinity] && i < $MaxDerivativeIterations
             ,
             FunKitDebug[1, "Doing derivative pass ", i + 1];
-            ret = BalancedMap[FResolveFDOp[setup, #]&, ret];
-            ret = Catenate[List @@@ ret];
-            (*If AnSEL has been loaded, use FSimplify to reduce redundant terms*)
-            If[ModuleLoaded[AnSEL] && $AutoSimplify === True && Length[ret] < 32,
-                ret = List @@ FunKit`FSimplify[setup, FEx @@ ret, "Symmetries" -> symmetries];
+            Module[{t0 = AbsoluteTime[]},
+                ret = Catenate[Map[FResolveFDOpInternal[setup, #]&, ret]];
+                If[ValueQ[$ProfileFDOp], $ProfileFDOp += AbsoluteTime[] - t0];
+            ];
+            (*If AnSEL has been loaded, use FSimplify to reduce redundant terms.
+              Skip for high-symmetry cases where the O(n^2 * |symmetries|) cost is too high. *)
+            If[ModuleLoaded[AnSEL] && $AutoSimplify === True && Length[ret] < 32 && Length[symmetries] <= 6,
+                Module[{t0 = AbsoluteTime[]},
+                    ret = Map[ReduceIndices[setup, #]&, ret];
+                    ret = List @@ FunKit`FSimplify[setup, FEx @@ ret, "Symmetries" -> symmetries];
+                    If[ValueQ[$ProfileDerivSimplify], $ProfileDerivSimplify += AbsoluteTime[] - t0];
+                ];
             ];
             FunKitDebug[1, "Finished pass ", i + 1, ", current length: ", Length[ret]];
             i++;
         ];
-        ret = BalancedMap[bw, ret];
+        (*Full metric resolution once after all derivative passes*)
+        ret = Map[ReduceIndices[setup, #]&, ret];
+        ret = Map[bw, ret];
         FunKitDebug[1, "Finished resolving derivatives"];
         Return[MergeFExAnnotations[FEx @@ ret, annotations]];
     ]

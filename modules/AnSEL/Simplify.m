@@ -466,22 +466,36 @@ TermsEqualAndSum::undeterminedFields = "Error: Cannot equate terms if they are n
 
 (* This is the main function for checking if two diagrams are equal to each other. Returns either False, or the sum of the two terms *)
 
+(* Preprocessed variant: terms already have ReduceIndices applied.
+   Skips only ReduceIndices; still does FixIndices+FOrderFields for correct index naming. *)
+TermsEqualAndSumPre[setup_, it1_FTerm, it2_FTerm] :=
+    Module[{t1, t2},
+        t1 = FixIndices[setup, FOrderFields[setup, it1]];
+        t2 = FixIndices[setup, FOrderFields[setup, it2]];
+        TermsEqualAndSumCore[setup, t1, t2]
+    ];
+
 TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
     Module[
-        {t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2], nt1, nt2, curIdx1, curIdx2, curIdxRepl, startPoints, doFields, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2, nallIdxReplNew, tmp}
+        {t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2]}
         ,
         (*Start off by default-ordering t1 and t2*)
         t1 = FixIndices[setup, FOrderFields[setup, t1]];
         t2 = FixIndices[setup, FOrderFields[setup, t2]];
-        (*Skip comparison for intermediate terms that still contain unresolved AnyField placeholders.
-          SplitPrefactor and the diagram-walk logic are not designed for unresolved field content,
-          and would trigger First::normal warnings via getIndices on integer arguments.*)
+        (*Skip comparison for intermediate terms that still contain unresolved AnyField placeholders.*)
         If[!FreeQ[it1, AnyField] || !FreeQ[it2, AnyField],
             Return[False]
         ];
+        TermsEqualAndSumCore[setup, t1, t2]
+    ];
+
+TermsEqualAndSumCore[setup_, t1_FTerm, t2_FTerm] :=
+    Module[
+        {nt1, nt2, curIdx1, curIdx2, curIdxRepl, startPoints, doFields, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2, nallIdxReplNew, tmp}
+        ,
         (*Briefly check the trivial case*)
         FunKitDebug[4, "    TermsEqualAndSum: Comparing \n  ", t1, "\n   &\n  ", t2];
-        If[it1 === it2,
+        If[t1 === t2,
             FunKitDebug[3, "    Terms are identical, returning FTerm[2, t1]."];
             Return @ FTerm[2, t1]
         ];
@@ -643,9 +657,11 @@ SubFSimplify[setup_, expr_] /; Length[expr] > 64 :=
 
 SubFSimplify[setup_, expr_] /; Length[expr] <= 64 :=
     Module[{ret = List @@ expr, idx, jdx, red},
+        (* Preprocess: ReduceIndices only; FixIndices+FOrderFields already done by FSimplify entry *)
+        ret = Map[ReduceIndices[setup, #]&, ret];
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
-                red = TermsEqualAndSum[setup, ret[[idx]], ret[[jdx]]];
+                red = TermsEqualAndSumPre[setup, ret[[idx]], ret[[jdx]]];
                 FunKitDebug[3, "Compared ", idx, " and ", jdx, ", result: ", red];
                 If[red =!= False,
                     ret[[idx]] = red;
@@ -669,11 +685,15 @@ SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] > 64 :=
     ];
 
 SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] <= 64 :=
-    Module[{ret = List @@ expr, idx, jdx, kdx, red},
+    Module[{ret = List @@ expr, idx, jdx, kdx, red, preprocess, t2sym},
+        (* Preprocess: ReduceIndices only; FixIndices+FOrderFields already done by FSimplify entry *)
+        preprocess = FixIndices[setup, FOrderFields[setup, ReduceIndices[setup, #]]]&;
+        ret = Map[ReduceIndices[setup, #]&, ret];
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
                 For[kdx = 1, kdx <= Length[symmetryList], kdx++,
-                    red = TermsEqualAndSum[setup, ret[[idx]], FTerm[symmetryList[[kdx, Key["Factor"]]]] ** ret[[jdx]] /. symmetryList[[kdx, Key["Rule"]]]];
+                    t2sym = preprocess[FTerm[symmetryList[[kdx, Key["Factor"]]]] ** ret[[jdx]] /. symmetryList[[kdx, Key["Rule"]]]];
+                    red = TermsEqualAndSumPre[setup, ret[[idx]], t2sym];
                     FunKitDebug[3, "Compared ", idx, " and ", jdx, ", result: ", red];
                     If[red =!= False,
                         ret[[idx]] = red;

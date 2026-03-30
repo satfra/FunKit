@@ -33,7 +33,7 @@ FixIndices::invalidIndices = "Invalid superindices: `1`"
 
 FixIndices[setup_, expr_FTerm] :=
     Module[
-        {indices, newIndices, replacements, indexedObjects, ret = expr}
+        {indices, newIndices, replacements, indexedObjects, ret = expr, t0 = AbsoluteTime[]}
         ,
         (*First, take care of nested sub-terms*)
         ret = FTerm @@ ((List @@ ret) /. FTerm[a__] :> FixIndices[setup, FTerm[a]]);
@@ -45,6 +45,7 @@ FixIndices[setup_, expr_FTerm] :=
         indices = GetClosedSuperIndices[setup, ret];
         newIndices = Map[Symbol @ SymbolName @ Unique[StringReplace[ToString[#], i : DigitCharacter.. :> ""]]&, indices];
         replacements = Thread[indices -> newIndices];
+        If[ValueQ[$FixIndicesTime], $FixIndicesTime += AbsoluteTime[] - t0; $FixIndicesCount++];
         Return[ret /. replacements];
     ];
 
@@ -129,6 +130,11 @@ ReduceFTerm[setup_, term_] :=
     ];
 
 (* ::Input::Initialization:: *)
+
+(* Lightweight variant for the derivative hot loop: just filter zeros, skip FixIndices/ReduceFTerm.
+   Full ReduceFEx is deferred to after all derivatives complete. *)
+ReduceFExLight[setup_, equation_] :=
+    Select[equation, # =!= {} && # =!= FTerm[0] && # =!= 0&];
 
 ReduceFEx[setup_, equation_] :=
     Module[{reduced = equation},

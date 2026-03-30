@@ -61,6 +61,33 @@ SymmetryFactorFromList[ex_List] :=
     Reduce all metric and FMinus factors in FTerm or FEx expressions
 **********************************************************************************)
 
+(**********************************************************************************
+    Light variant: resolves only FMinus and SymmetryFactor (cheap scalar signs).
+    Skips the expensive gamma pair-matching and GetClosedSuperIndices.
+    Used during derivative iteration where terms still contain AnyField.
+**********************************************************************************)
+
+ReduceIndicesLight[setup_, term_FTerm] :=
+    Module[{result = term, casesFMinus, casesSymmetry},
+        casesFMinus = Cases[term, FMinus[__], Infinity];
+        casesFMinus = Select[casesFMinus, FreeQ[getFields[#], AnyField]&];
+        casesSymmetry = Cases[term, SymmetryFactor[__], Infinity];
+        casesSymmetry = Select[casesSymmetry, FreeQ[getFields[#], AnyField]&];
+        If[Length[casesFMinus] > 0,
+            result = result /. Map[# -> CommuteSign[setup, getField[#, 1], getField[#, 2]]&, casesFMinus];
+        ];
+        If[Length[casesSymmetry] > 0,
+            result = result /. Map[# -> SymmetryFactorFromList[getFields[#]]&, casesSymmetry];
+        ];
+        result
+    ];
+
+ReduceIndicesLight[setup_, eq_FEx] :=
+    Map[ReduceIndicesLight[setup, #]&, eq];
+
+ReduceIndicesLight[setup_, 0] := 0;
+ReduceIndicesLight[setup_, {}] := {};
+
 ReduceIndices::FTermFEx = "The given expression is neither an FTerm nor an FEx:
 `1`";
 
@@ -77,7 +104,7 @@ ReduceIndices[setup_, 0] :=
     0;
 
 ReduceIndices[setup_, term_FTerm] :=
-    Module[{gPairs, closedSIndices, cases, casesOpen, closed, i, both, result = term, casesFMinus, casesSymmetry, casesGamma},
+    Module[{gPairs, closedSIndices, cases, casesOpen, closed, i, both, result = term, casesFMinus, casesSymmetry, casesGamma, t0 = AbsoluteTime[]},
         closedSIndices = GetClosedSuperIndices[setup, term];
         (*Pick out all metric factors and FMinus...*)
         cases = Cases[term, \[Gamma][__] | FMinus[__] | SymmetryFactor[__], Infinity];
@@ -132,6 +159,7 @@ ReduceIndices[setup_, term_FTerm] :=
                         {i, 1, Length[casesGamma]}
                     ];
         ];
+        If[ValueQ[$ReduceIndicesTime], $ReduceIndicesTime += AbsoluteTime[] - t0; $ReduceIndicesCount++];
         Return[result];
     ];
 

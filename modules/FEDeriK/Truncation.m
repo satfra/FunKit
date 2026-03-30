@@ -56,6 +56,17 @@ truncationPass[setup_, expr_] :=
         Return[ret];
     ];
 
+(* Light variant: applies truncation dispatch only, no ReduceIndices.
+   Used inside LTrunc expansion where ReduceIndices would be wasted on partial terms. *)
+truncationPassLight[setup_, expr_FTerm] :=
+    expr /. truncationList[setup];
+
+truncationPassLight[setup_, expr_FEx] :=
+    Map[truncationPassLight[setup, #]&, expr];
+
+truncationPassLight[setup_, expr_] :=
+    expr /. truncationList[setup];
+
 (* ::Input::Initialization:: *)
 
 FTruncate::wrongExpr = "Cannot truncate an expression which is neither an FEx nor an FTerm. The expression was `1`";
@@ -102,120 +113,87 @@ LTrunc[setup_, expr_] :=
     );
 
 LTrunc[setup_, expr_FEx] :=
-    Module[{},
-        Map[LTrunc[setup, #]&, expr]
-    ];
+    Join @@ Map[LTrunc[setup, #]&, List @@ expr];
 
+(* LTrunc returns a list of bare lists (each = one surviving term's factors).
+   FTruncate handles wrapping back into FTerm/FEx after BalancedMap. *)
 LTrunc[setup_, expr_FTerm] :=
-    Module[{ret = List @@ expr, curi, allObj, closedIndices, openIndices, i, allFields = GetNonSourceFields[setup], idx, subObj, idxOccur, idxPos, ignore, notFoundCuri, doFields, a, undoFields},
-        FunKitDebug[3, "Truncating the term (closed indices) ", expr];
+    Module[{ret = List @@ expr, allObj, closedIndices, allFields = GetNonSourceFields[setup],
+            idx, subObj, idxOccur, idxPos, ignore, doFields, undoFields, a,
+            anyFieldPairs = {}, sentinelExpr, rawObjects, rawIndices, counts, curi, bothAny,
+            terms, nextTerms, pair, obj1, obj2, p1, p2, pidx, isBothAny, field, localRet, newTerm},
         doFields = replFields[setup];
         undoFields = unreplFields[setup];
         ret = ret /. doFields;
-        (*Start off with the nested FTerms*)
+        (*Start off with the nested FTerms — recurse into them first*)
         ret = ret /. FTerm[a__] :> LTrunc[setup, FTerm[a]];
-        (*Abort if there is nothing to do*)
+        (*If no AnyField remains, just apply truncation and return*)
         If[FreeQ[ret, AnyField, Infinity],
-            Return[truncationPass[setup, FTerm@@ret] /. undoFields]
+            Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
         ];
-        (*Single call: extract objects and closed indices in one traversal*)
-        Module[{sentinelExpr, rawObjects, rawIndices, counts},
-            sentinelExpr = FTerm @@ (ret /. FTerm[__] :> ignore);
-            {rawObjects, rawIndices} = ExtractObjectsAndIndices[setup, sentinelExpr];
-            rawIndices = Select[rawIndices, Head[#] =!= List&];
-            counts = Map[Count[rawObjects, #, {1, 5}]&, rawIndices];
-            closedIndices = Pick[rawIndices, Map[Mod[#, 2] === 0&, counts]];
-            allObj = rawObjects /. doFields;
-        ];
-        (*Abort if there is nothing to do*)
+        (*Extract objects and closed indices in one traversal*)
+        sentinelExpr = FTerm @@ (ret /. FTerm[__] :> ignore);
+        {rawObjects, rawIndices} = ExtractObjectsAndIndices[setup, sentinelExpr];
+        rawIndices = Select[rawIndices, Head[#] =!= List&];
+        counts = Map[Count[rawObjects, #, {1, 5}]&, rawIndices];
+        closedIndices = Pick[rawIndices, Map[Mod[#, 2] === 0&, counts]];
+        allObj = rawObjects /. doFields;
         If[Length[closedIndices] === 0,
-            Return[truncationPass[setup, FTerm@@ret] /. undoFields]
+            Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
         ];
-        FunKitDebug[3, "  Searching for the first object that needs expansion..."];
-        (*Next, try to find the first factor that needs to be expanded*)
-        notFoundCuri = True;
-        curi = 1;
-        While[
-            notFoundCuri
-            ,
-            If[curi > Length[closedIndices],
-                FunKitDebug[2, "Leaving AnyFields in open indices unexpanded: ", FTerm @@ ret /. undoFields];
-            Return[truncationPass[setup, FTerm@@ret] /. undoFields]
-            ];
+        (*Collect ALL AnyField pairs in one pass*)
+        For[curi = 1, curi <= Length[closedIndices], curi++,
             idx = closedIndices[[curi]];
             subObj = Select[allObj, MemberQ[getIndices[#], idx, {1, 3}]&];
-            If[Length[subObj] < 2,
-                Message[indices::objectNotFound, idx, expr, Length[subObj], 2];
-                Abort[];
+            If[Length[subObj] < 2, Continue[]];
+            idxOccur = {
+                If[MemberQ[getIndices[subObj[[1]]], -idx], -idx, idx],
+                If[MemberQ[getIndices[subObj[[2]]], -idx], -idx, idx]
+            };
+            If[Sort @ idxOccur =!= Sort @ {idx, -idx}, Continue[]];
+            idxPos = {
+                FirstPosition[getIndices[subObj[[1]]], idxOccur[[1]]][[1]],
+                FirstPosition[getIndices[subObj[[2]]], idxOccur[[2]]][[1]]
+            };
+            bothAny = getField[subObj[[1]], idxPos[[1]]] === AnyField && getField[subObj[[2]], idxPos[[2]]] === AnyField;
+            If[getField[subObj[[1]], idxPos[[1]]] === AnyField || getField[subObj[[2]], idxPos[[2]]] === AnyField,
+                AppendTo[anyFieldPairs, {subObj[[1]], idxPos[[1]], subObj[[2]], idxPos[[2]], idx, bothAny}];
             ];
-            idxOccur =
-                {
-                    If[MemberQ[getIndices[subObj[[1]]], -idx],
-                        -idx
+        ];
+        If[Length[anyFieldPairs] === 0,
+            Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
+        ];
+        (*Sequential pair-by-pair expansion with early pruning*)
+        terms = {ret};
+        Do[
+            pair = anyFieldPairs[[pi]];
+            {obj1, p1, obj2, p2, pidx, isBothAny} = pair;
+            nextTerms = {};
+            Do[
+                Do[
+                    field = allFields[[fi]];
+                    If[isBothAny,
+                        localRet = terms[[ti]] /. {obj_?objectQ /; (MemberQ[makePosIdx /@ getIndices[obj], pidx] || MemberQ[makePosIdx /@ getIndices[obj], -pidx]) :> insertFields[obj, pidx, field]};
                         ,
-                        idx
-                    ]
+                        localRet = terms[[ti]] /. {obj_?objectQ /; (MemberQ[makePosIdx /@ getIndices[obj], makePosIdx @ pidx]) :> insertFieldsIfAnyField[obj, pidx, field]};
+                    ];
+                    newTerm = truncationPassLight[setup, FTerm @@ localRet];
+                    If[newTerm =!= FTerm[0] && newTerm =!= 0,
+                        AppendTo[nextTerms, List @@ newTerm];
+                    ];
                     ,
-                    If[MemberQ[getIndices[subObj[[2]]], -idx],
-                        -idx
-                        ,
-                        idx
-                    ]
-                };
-            If[Sort @ idxOccur =!= Sort @ {idx, -idx},
-                Message[indices::inconsistentContractions, idx, expr];
-                Abort[]
-            ];
-            idxPos = {FirstPosition[getIndices[subObj[[1]]], idxOccur[[1]]][[1]], FirstPosition[getIndices[subObj[[2]]], idxOccur[[2]]][[1]]};
-            If[getField[subObj[[1]], idxPos[[1]]] =!= AnyField && getField[subObj[[2]], idxPos[[2]]] =!= AnyField,
-                curi++;
-                Continue[]
-            ];
-            notFoundCuri = False;
-        ];
-        If[getField[subObj[[1]], idxPos[[1]]] === AnyField && getField[subObj[[2]], idxPos[[2]]] === AnyField,
-            (*Now replace all the fields:*)
-            ret =
-                FEx @@
-                    Map[
-                        Module[
-                            {s1 = subObj[[1]], s2 = subObj[[2]], idx1, idx2, field1, field2, localRet}
-                            ,
-                            (*Pick the indices associated to where we want to insert a given field:*)
-                            idx1 = getIndex[s1, idxPos[[1]]];
-                            idx2 = getIndex[s2, idxPos[[2]]];
-                            FunKitDebug[3, "Replacing the index ", makePosIdx[idx1], " by field ", #];
-                            (*And find all index-looking objects and put in a replacement of the field at the right position.*)
-                            localRet = ret /. {obj_?objectQ /; (MemberQ[makePosIdx /@ getIndices[obj], idx1] || MemberQ[makePosIdx /@ getIndices[obj], idx2]) :> insertFields[insertFields[obj, idx2, #], idx1, #]};
-                            truncationPass[setup, FTerm @@ localRet]
-                        ]&
-                        ,
-                        allFields
-                    ];
-            Return[LTrunc[setup, ret /. undoFields]];
-        ];
-        (* One side has AnyField, the other has a concrete field.
-           Expand AnyField over all fields (like the both-AnyField case),
-           but only replace positions where the field is currently AnyField. *)
-        Module[{anyIdx},
-            If[getField[subObj[[1]], idxPos[[1]]] === AnyField,
-                anyIdx = getIndex[subObj[[1]], idxPos[[1]]];
+                    {fi, 1, Length[allFields]}
+                ];
                 ,
-                anyIdx = getIndex[subObj[[2]], idxPos[[2]]];
+                {ti, 1, Length[terms]}
             ];
-            ret =
-                FEx @@
-                    Map[
-                        Module[{localRet},
-                            FunKitDebug[3, "Replacing AnyField at index ", makePosIdx[anyIdx], " with field ", #];
-                            localRet = ret /. {obj_?objectQ /; MemberQ[makePosIdx /@ getIndices[obj], makePosIdx @ anyIdx] :> insertFieldsIfAnyField[obj, anyIdx, #]};
-                            truncationPass[setup, FTerm @@ localRet]
-                        ]&
-                        ,
-                        allFields
-                    ];
-            Return[LTrunc[setup, ret /. undoFields]];
+            terms = nextTerms;
+            If[Length[terms] === 0, Break[]];
+            ,
+            {pi, 1, Length[anyFieldPairs]}
         ];
+        (*Return list of bare lists, with undoFields applied*)
+        Map[(# /. undoFields)&, terms]
     ];
 
 OTrunc[setup_, {}] :=
@@ -330,10 +308,15 @@ FTruncate[setup_, expr_FEx] :=
         ];
         FunKitDebug[1, "Truncating the given expression"];
         {ret0, annotations} = SeparateFExAnnotations[expr];
-        (*Take care of closed indices recursively*)
+        (*Take care of closed indices — LTrunc returns lists-of-lists*)
         ret0 = BalancedMap[LTrunc[setup, #]&, ret0];
-        (*Finally, reduce indices again to be safe*)
-        ret0 = BalancedMap[ReduceIndices[setup, #]&, ret0];
+        (*Merge: ret0 is a List where each element is a list-of-bare-lists from LTrunc.
+          Flatten one level, filter empties/zeros, wrap each bare list in FTerm.*)
+        ret0 = If[Length[ret0] > 0, Join @@ ret0, {}];
+        ret0 = Select[ret0, # =!= {} && # =!= {0}&];
+        ret0 = Map[FTerm @@ # &, ret0];
+        (*ret0 is now a flat List of FTerms — reduce indices*)
+        ret0 = Map[ReduceIndices[setup, #]&, ret0];
         FunKitDebug[1, "Finished truncating the given expression"];
         ret0 = OrderFields[setup, FixIndices[setup, #]& /@ ret0];
         (*Directly remove all FEx[]*)

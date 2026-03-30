@@ -153,3 +153,28 @@ add_custom_target(
     ${CMAKE_CURRENT_BINARY_DIR}/test.log
   DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m
   COMMENT "Running tests")
+
+# ##############################################################################
+# Benchmarks
+# ##############################################################################
+
+add_custom_target(
+  bench
+  COMMAND
+    ${WolframLanguage_wolframscript_EXE} -script
+    ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m | tee
+    ${CMAKE_CURRENT_BINARY_DIR}/bench.log
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m
+  COMMENT "Running benchmarks"
+  VERBATIM)
+
+# Run a single benchmark file:
+#   make bench-single FILE=ScalarBench.m
+add_custom_target(
+  bench-single
+  COMMAND
+    ${WolframLanguage_wolframscript_EXE} -script
+    ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m $(FILE) | tee
+    ${CMAKE_CURRENT_BINARY_DIR}/bench.log
+  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m
+  COMMENT "Running benchmark")

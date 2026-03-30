@@ -5,9 +5,15 @@
 **********************************************************************************)
 
 BenchmarkThunk[label_String, thunk_, nWarm_Integer:2, nRuns_Integer:5] :=
-    Module[{ts},
+    Module[{ts, t},
+        WriteString[$Output, "    " <> label <> ": warming up..."];
         Do[thunk[], {nWarm}];
-        ts = Table[First @ AbsoluteTiming[thunk[]], {nRuns}];
+        ts = Table[
+            WriteString[$Output, "\r    " <> label <> ": run " <> ToString[i] <> "/" <> ToString[nRuns] <> "...    "];
+            t = First @ AbsoluteTiming[thunk[]];
+            t
+            , {i, nRuns}];
+        WriteString[$Output, "\r    " <> label <> ": " <> ToString[NumberForm[Mean[ts], {5, 3}]] <> " s           \n"];
         <|"Label" -> label, "Mean" -> Mean[ts],
           "StdDev" -> If[Length[ts] > 1, StandardDeviation[ts], 0.],
           "Runs" -> ts|>
@@ -20,40 +26,43 @@ BenchmarkThunk[label_String, thunk_, nWarm_Integer:2, nRuns_Integer:5] :=
 BenchmarkCase[title_String, derivList_List, fkSetup_Association,
               qmesSetup_, doFunSetupStr_, doFunFields_String,
               nWarm_Integer:2, nRuns_Integer:5] :=
-    Module[{fkDerivRes, fkTruncRes, fkSimpRes, results = <||>},
+    Module[{fkDerivRes, fkTruncRes, results = <||>},
         FSetGlobalSetup[fkSetup];
+        Print["  [" <> title <> "]"];
+
+        (* Disable AutoSimplify for fair comparison: QMeS does not reduce diagrams *)
+        FSetAutoSimplify[False];
 
         (* Pre-compute intermediate results for stage isolation *)
+        WriteString[$Output, "    Pre-computing..."];
         fkDerivRes = FTakeDerivatives[fkSetup, WetterichEquation, derivList];
         fkTruncRes = FTruncate[fkSetup, fkDerivRes];
-        fkSimpRes  = FSimplify[fkSetup, fkTruncRes];
+        WriteString[$Output, " done\n"];
 
         (* FunKit individual stages *)
         results["FunKit-FTakeDerivatives"] = BenchmarkThunk["FTakeDerivatives",
             Function[{}, FTakeDerivatives[fkSetup, WetterichEquation, derivList]], nWarm, nRuns];
         results["FunKit-FTruncate"] = BenchmarkThunk["FTruncate",
             Function[{}, FTruncate[fkSetup, fkDerivRes]], nWarm, nRuns];
-        results["FunKit-FSimplify"] = BenchmarkThunk["FSimplify",
-            Function[{}, FSimplify[fkSetup, fkTruncRes]], nWarm, nRuns];
         results["FunKit-FRoute"] = BenchmarkThunk["FRoute",
-            Function[{}, FRoute[fkSetup, fkSimpRes]], nWarm, nRuns];
+            Function[{}, FRoute[fkSetup, fkTruncRes]], nWarm, nRuns];
 
         (* FunKit full derivation *)
         results["FunKit-Full"] = BenchmarkThunk["FunKit Full",
             Function[{},
                 FTakeDerivatives[fkSetup, WetterichEquation, derivList] //
-                FTruncate // FSimplify],
+                FTruncate],
             nWarm, nRuns];
 
-        (* QMeS *)
+        (* Restore AutoSimplify *)
+        FSetAutoSimplify[True];
+
+        (* QMeS — without ReduceIdenticalFlowDiagrams for fair comparison *)
         If[qmesSetup =!= None,
             results["QMeS-Full"] = BenchmarkThunk["QMeS Full",
                 Function[{},
-                    Module[{diag},
-                        diag = DeriveFunctionalEquation[qmesSetup, derivList,
-                            "OutputLevel" -> "SuperindexDiagrams"];
-                        ReduceIdenticalFlowDiagrams[diag, derivList]
-                    ]
+                    DeriveFunctionalEquation[qmesSetup, derivList,
+                        "OutputLevel" -> "SuperindexDiagrams"]
                 ], nWarm, nRuns];
         ];
 
@@ -75,18 +84,23 @@ BenchmarkCase[title_String, derivList_List, fkSetup_Association,
 BenchmarkDSECase[title_String, field_, derivList_List, fkSetup_Association,
                  qmesSetup_, doFunSetupStr_, doFunCmd_String,
                  nWarm_Integer:2, nRuns_Integer:5] :=
-    Module[{dse, fkDerivRes, fkTruncRes, fkSimpRes, results = <||>,
+    Module[{dse, fkDerivRes, fkTruncRes, results = <||>,
             qmesDerivList},
         FSetGlobalSetup[fkSetup];
+        Print["  [" <> title <> "]"];
+
+        (* Disable AutoSimplify for fair comparison: QMeS does not reduce diagrams *)
+        FSetAutoSimplify[False];
 
         (* Pre-compute intermediate results *)
+        WriteString[$Output, "    Pre-computing..."];
         dse = FMakeDSE[fkSetup, field];
         If[Length[derivList] > 0,
             fkDerivRes = FTakeDerivatives[fkSetup, dse, derivList];,
             fkDerivRes = dse;
         ];
         fkTruncRes = FTruncate[fkSetup, fkDerivRes];
-        fkSimpRes  = FSimplify[fkSetup, fkTruncRes];
+        WriteString[$Output, " done\n"];
 
         (* FunKit individual stages *)
         results["FunKit-FMakeDSE"] = BenchmarkThunk["FMakeDSE",
@@ -97,10 +111,8 @@ BenchmarkDSECase[title_String, field_, derivList_List, fkSetup_Association,
         ];
         results["FunKit-FTruncate"] = BenchmarkThunk["FTruncate",
             Function[{}, FTruncate[fkSetup, fkDerivRes]], nWarm, nRuns];
-        results["FunKit-FSimplify"] = BenchmarkThunk["FSimplify",
-            Function[{}, FSimplify[fkSetup, fkTruncRes]], nWarm, nRuns];
         results["FunKit-FRoute"] = BenchmarkThunk["FRoute",
-            Function[{}, FRoute[fkSetup, fkSimpRes]], nWarm, nRuns];
+            Function[{}, FRoute[fkSetup, fkTruncRes]], nWarm, nRuns];
 
         (* FunKit full *)
         results["FunKit-Full"] = BenchmarkThunk["FunKit Full",
@@ -109,9 +121,12 @@ BenchmarkDSECase[title_String, field_, derivList_List, fkSetup_Association,
                     d = FMakeDSE[fkSetup, field];
                     If[Length[derivList] > 0,
                         d = FTakeDerivatives[fkSetup, d, derivList]];
-                    d // FTruncate // FSimplify
+                    d // FTruncate
                 ]
             ], nWarm, nRuns];
+
+        (* Restore AutoSimplify *)
+        FSetAutoSimplify[True];
 
         (* QMeS — for DSE, the derivative list includes the DSE field as the last entry *)
         If[qmesSetup =!= None,
@@ -186,8 +201,6 @@ PrintBenchmarkTable[bench_Association] :=
         ];
         AppendTo[rows, {"FTruncate",
             FormatTime[res["FunKit-FTruncate"]], "    -    ", "    -    "}];
-        AppendTo[rows, {"FSimplify",
-            FormatTime[res["FunKit-FSimplify"]], "    -    ", "    -    "}];
         AppendTo[rows, {"FRoute",
             FormatTime[res["FunKit-FRoute"]], "    -    ", "    -    "}];
 
@@ -265,7 +278,6 @@ BenchmarkResultToCSVRows[bench_Association] :=
         If[isDSE, addRow["FMakeDSE", "FunKit-FMakeDSE", None, None]];
         addRow["FTakeDerivatives", "FunKit-FTakeDerivatives", None, None];
         addRow["FTruncate", "FunKit-FTruncate", None, None];
-        addRow["FSimplify", "FunKit-FSimplify", None, None];
         addRow["FRoute", "FunKit-FRoute", None, None];
 
         rows
