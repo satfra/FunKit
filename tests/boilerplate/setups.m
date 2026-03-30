@@ -59,6 +59,40 @@ GetFunKitSetupFourFermion[] :=
     Return[<|"FieldSpace" -> fields, "Truncation" -> trunc|>];
   ];
 
+(* Yang-Mills Setups *)
+
+GetFunKitSetupYangMills[] :=
+    Module[{p, v, c},
+        <|
+            "FieldSpace" -> <|
+                "Commuting" -> {A[p, {v, c}]},
+                "Grassmann" -> {{cb[p, {c}], c[p, {c}]}}
+            |>,
+            "Truncation" -> <|
+                GammaN -> {{A, A}, {A, A, A}, {A, A, A, A}, {A, cb, c}, {cb, c}},
+                Propagator -> {{A, A}, {cb, c}},
+                Rdot -> {{A, A}, {cb, c}},
+                S -> {{A, A}, {A, A, A}, {A, A, A, A}, {cb, c}, {cb, c, A}},
+                Field -> {{}}
+            |>
+        |>
+    ];
+
+GetQMeSDSESetupYangMills[] :=
+    Module[{p, v, c, fields, trunc, classAct},
+        classAct = {{A, A}, {A, A, A}, {A, A, A, A}, {cb, c}, {cb, c, A}};
+        fields = <|"bosonic" -> {A[p, {v, c}]}, "fermionic" -> {{cb[p, {c}], c[p, {c}]}}|>;
+        trunc = {{A, A}, {A, A, A}, {A, A, A, A}, {A, cb, c}, {cb, c}};
+        <|"MasterEquation" -> <|"getDSE" -> "True", "classicalAction" -> classAct|>,
+          "FieldSpace" -> fields, "Truncation" -> trunc|>
+    ];
+
+GetDoFunSetupYangMills[] :=
+"
+actionYMSymbolic={{A,2},{A,3},{A,4},{cb,c},{cb,c,A}};
+setFields[{A},{{c,cb}}];
+";
+
 (* Yukawa setup with source fields *)
 
 GetFunKitSetupWithSources[] :=
