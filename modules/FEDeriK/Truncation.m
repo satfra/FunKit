@@ -121,7 +121,9 @@ LTrunc[setup_, expr_FTerm] :=
     Module[{ret = List @@ expr, allObj, closedIndices, allFields = GetNonSourceFields[setup],
             idx, subObj, idxOccur, idxPos, ignore, doFields, undoFields, a,
             anyFieldPairs = {}, sentinelExpr, rawObjects, rawIndices, counts, curi, bothAny,
-            terms, nextTerms, pair, obj1, obj2, p1, p2, pidx, isBothAny, field, localRet, newTerm},
+            terms, nextTerms, pidx, isBothAny, field, localRet,
+            pairPositions, positions, truncKeys, killed, pos, h, sortedFields,
+            tExtract, tExpand},
         doFields = replFields[setup];
         undoFields = unreplFields[setup];
         ret = ret /. doFields;
@@ -132,6 +134,7 @@ LTrunc[setup_, expr_FTerm] :=
             Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
         ];
         (*Extract objects and closed indices in one traversal*)
+        tExtract = AbsoluteTime[];
         sentinelExpr = FTerm @@ (ret /. FTerm[__] :> ignore);
         {rawObjects, rawIndices} = ExtractObjectsAndIndices[setup, sentinelExpr];
         rawIndices = Select[rawIndices, Head[#] =!= List&];
@@ -160,37 +163,84 @@ LTrunc[setup_, expr_FTerm] :=
                 AppendTo[anyFieldPairs, {subObj[[1]], idxPos[[1]], subObj[[2]], idxPos[[2]], idx, bothAny}];
             ];
         ];
-        If[Length[anyFieldPairs] === 0,
+        If[anyFieldPairs === {},
             Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
         ];
-        (*Sequential pair-by-pair expansion with early pruning*)
+        tExtract = AbsoluteTime[] - tExtract;
+        (*Pre-compute sorted truncation table for fast inline checks*)
+        truncKeys = Intersection[Keys[setup["Truncation"]], $indexedObjects];
+        truncSorted = Association @@ Map[(# -> (Sort /@ setup["Truncation"][#]))&, truncKeys];
+        (*Sequential pair-by-pair expansion with early pruning.
+          Hybrid replacement: direct for top-level objects, scoped ReplaceAll for Times products.
+          Inline truncation check avoids expensive FTerm wrapping + Dispatch.*)
+        tExpand = AbsoluteTime[];
         terms = {ret};
         Do[
-            pair = anyFieldPairs[[pi]];
-            {obj1, p1, obj2, p2, pidx, isBothAny} = pair;
+            pidx = anyFieldPairs[[pi, 5]];
+            pidxPos = makePosIdx @ pidx;
+            isBothAny = anyFieldPairs[[pi, 6]];
             nextTerms = {};
             Do[
+                field = allFields[[fi]];
                 Do[
-                    field = allFields[[fi]];
-                    If[isBothAny,
-                        localRet = terms[[ti]] /. {obj_?objectQ /; (MemberQ[makePosIdx /@ getIndices[obj], pidx] || MemberQ[makePosIdx /@ getIndices[obj], -pidx]) :> insertFields[obj, pidx, field]};
+                    (*Hybrid field insertion: scan each element once*)
+                    localRet = terms[[ti]];
+                    Do[
+                        If[objectQ[localRet[[pos]]],
+                            (*Top-level object: direct replacement if it contains the index*)
+                            If[MemberQ[makePosIdx /@ getIndices[localRet[[pos]]], pidxPos],
+                                localRet[[pos]] =
+                                    If[isBothAny,
+                                        insertFields[localRet[[pos]], pidx, field],
+                                        insertFieldsIfAnyField[localRet[[pos]], pidx, field]
+                                    ];
+                            ];
                         ,
-                        localRet = terms[[ti]] /. {obj_?objectQ /; (MemberQ[makePosIdx /@ getIndices[obj], makePosIdx @ pidx]) :> insertFieldsIfAnyField[obj, pidx, field]};
+                            (*Non-object element (e.g. Times[FMinus, FMinus]): scoped ReplaceAll if it contains the index*)
+                            If[!FreeQ[localRet[[pos]], pidxPos],
+                                localRet[[pos]] = localRet[[pos]] /.
+                                    If[isBothAny,
+                                        {obj_?objectQ /; MemberQ[makePosIdx /@ getIndices[obj], pidxPos] :> insertFields[obj, pidx, field]},
+                                        {obj_?objectQ /; MemberQ[makePosIdx /@ getIndices[obj], pidxPos] :> insertFieldsIfAnyField[obj, pidx, field]}
+                                    ];
+                            ];
+                        ];
+                        , {pos, 1, Length[localRet]}
                     ];
-                    newTerm = truncationPassLight[setup, FTerm @@ localRet];
-                    If[newTerm =!= FTerm[0] && newTerm =!= 0,
-                        AppendTo[nextTerms, List @@ newTerm];
+                    (*Inline truncation check on top-level indexed objects*)
+                    killed = False;
+                    Do[
+                        If[objectQ[localRet[[pos]]],
+                            h = Head[localRet[[pos]]];
+                            If[MemberQ[truncKeys, h] && FreeQ[localRet[[pos]], AnyField, Infinity],
+                                If[!MemberQ[truncSorted[h], Sort @ getFields[localRet[[pos]]]],
+                                    killed = True;
+                                ];
+                            ];
+                        ];
+                        If[killed, Break[]];
+                        , {pos, 1, Length[localRet]}
+                    ];
+                    If[!killed,
+                        AppendTo[nextTerms, localRet];
                     ];
                     ,
-                    {fi, 1, Length[allFields]}
+                    {ti, 1, Length[terms]}
                 ];
                 ,
-                {ti, 1, Length[terms]}
+                {fi, 1, Length[allFields]}
             ];
             terms = nextTerms;
             If[Length[terms] === 0, Break[]];
             ,
             {pi, 1, Length[anyFieldPairs]}
+        ];
+        tExpand = AbsoluteTime[] - tExpand;
+        If[ValueQ[$ProfileLTruncDetail],
+            $ProfileLTruncExtract += tExtract;
+            $ProfileLTruncExpand += tExpand;
+            $ProfileLTruncCalls++;
+            $ProfileLTruncPairs += Length[anyFieldPairs];
         ];
         (*Return list of bare lists, with undoFields applied*)
         Map[(# /. undoFields)&, terms]
@@ -309,22 +359,34 @@ FTruncate[setup_, expr_FEx] :=
         FunKitDebug[1, "Truncating the given expression"];
         {ret0, annotations} = SeparateFExAnnotations[expr];
         (*Take care of closed indices — LTrunc returns lists-of-lists*)
-        ret0 = BalancedMap[LTrunc[setup, #]&, ret0];
-        (*Merge: ret0 is a List where each element is a list-of-bare-lists from LTrunc.
-          Flatten one level, filter empties/zeros, wrap each bare list in FTerm.*)
-        ret0 = If[Length[ret0] > 0, Join @@ ret0, {}];
-        ret0 = Select[ret0, # =!= {} && # =!= {0}&];
-        ret0 = Map[FTerm @@ # &, ret0];
+        Module[{t0 = AbsoluteTime[]},
+            ret0 = BalancedMap[LTrunc[setup, #]&, ret0];
+            (*Merge: ret0 is a List where each element is a list-of-bare-lists from LTrunc.
+              Flatten one level, filter empties/zeros, wrap each bare list in FTerm.*)
+            ret0 = If[Length[ret0] > 0, Join @@ ret0, {}];
+            ret0 = Select[ret0, # =!= {} && # =!= {0}&];
+            ret0 = Map[FTerm @@ # &, ret0];
+            If[ValueQ[$ProfileLTrunc], $ProfileLTrunc += AbsoluteTime[] - t0];
+        ];
         (*ret0 is now a flat List of FTerms — reduce indices*)
-        ret0 = Map[ReduceIndices[setup, #]&, ret0];
+        Module[{t0 = AbsoluteTime[]},
+            ret0 = Map[ReduceIndices[setup, #]&, ret0];
+            If[ValueQ[$ProfilePostRI], $ProfilePostRI += AbsoluteTime[] - t0];
+        ];
         FunKitDebug[1, "Finished truncating the given expression"];
-        ret0 = OrderFields[setup, FixIndices[setup, #]& /@ ret0];
+        Module[{t0 = AbsoluteTime[]},
+            ret0 = OrderFields[setup, FixIndices[setup, #]& /@ ret0];
+            If[ValueQ[$ProfileFixOrder], $ProfileFixOrder += AbsoluteTime[] - t0];
+        ];
         (*Directly remove all FEx[]*)
         ret0 = ret0 /. FEx[] -> {} // Flatten;
         ret0 = FEx @@ ret0;
         ret0 = MergeFExAnnotations[ret0, annotations];
         If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
-            ret0 = FunKit`FSimplify[setup, ret0];
+            Module[{t0 = AbsoluteTime[]},
+                ret0 = FunKit`FSimplify[setup, ret0];
+                If[ValueQ[$ProfileFSimplify], $ProfileFSimplify += AbsoluteTime[] - t0];
+            ];
             {ret0, annotations} = SeparateFExAnnotations[ret0];
             ret0 = BalancedMap[ReduceIndices[setup, #]&, ret0];
             ret0 = MergeFExAnnotations[FEx @@ ret0, annotations];
