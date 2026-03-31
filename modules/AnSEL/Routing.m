@@ -24,6 +24,7 @@ FieldSetupIndices::notFound = "The field `1` was not found in the setup's field 
 
 (*Solve a single linear momentum conservation equation sum == 0 for variable mom.
   Faster than Solve[] which dispatches through the full CAS solver.*)
+
 solveLinearMomConservation[sum_, mom_] :=
     Module[{coeff = Coefficient[sum, mom]},
         mom -> -(sum /. mom -> 0) / coeff
@@ -119,44 +120,47 @@ FRoute[setup_, expr_FTerm] :=
             ,
             {idx, 1, Length[objects] - 1}
         ];
-        (*Now, momenta. As a first step, we insert the correct index structures into all superindices and define momentum variables at every single vertex. We loop over all closed indices.*)
-        Do[
-            subObj = Select[objects, MemberQ[#, closedIndices[[idx]], Infinity]&];
-            If[Length[subObj] === 0,
-                Message[FRoute::noObjectForIndex, closedIndices[[idx]]];
-                Abort[]
-            ];
-            subObj = subObj[[1]];
-            (*The indexed object we currently modify. There are always two and we simply grab the first. *)
-            (*The position of the current index inside the subObj*)
-            indPos = FirstPosition[getIndices[subObj], closedIndices[[idx]]][[1]];
-            (*See what kind of field is associated with the index*)
-            assocField = getField[subObj, indPos];
-            (*Grab the index structure of this field from the setup and assign a new momentum variable*)
-            indStruct =
-                Map[
-                    If[MatchQ[#, _Symbol],
-                        Unique[SymbolName[#]]
+        (*Now, momenta. Collect all closed-index replacement rules in one pass, then apply at once. *)
+        Module[{allClosedRules = {}},
+            Do[
+                subObj = Select[objects, MemberQ[#, closedIndices[[idx]], Infinity]&];
+                If[Length[subObj] === 0,
+                    Message[FRoute::noObjectForIndex, closedIndices[[idx]]];
+                    Abort[]
+                ];
+                subObj = subObj[[1]];
+                (*The indexed object we currently modify. There are always two and we simply grab the first. *)
+                (*The position of the current index inside the subObj*)
+                indPos = FirstPosition[getIndices[subObj], closedIndices[[idx]]][[1]];
+                (*See what kind of field is associated with the index*)
+                assocField = getField[subObj, indPos];
+                (*Grab the index structure of this field from the setup and assign a new momentum variable*)
+                indStruct =
+                    Map[
+                        If[MatchQ[#, _Symbol],
+                            Unique[SymbolName[#]]
+                            ,
+                            #
+                        ]&
                         ,
-                        #
-                    ]&
-                    ,
-                    FieldSetupIndices[setup, assocField]
-                    ,
-                    {1, 3}
+                        FieldSetupIndices[setup, assocField]
+                        ,
+                        {1, 3}
+                    ];
+                indStruct[[1]] = loopMomentum[indStruct[[1]], IsGrassmann[setup, assocField]];
+                (* We want to keep the index sign in the momenta, but remove it from the group indices *)
+                Module[{rules = {closedIndices[[idx]] -> indStruct}},
+                    If[Length[indStruct] > 1,
+                        rules = Join[rules, Thread[-(makePosIdx /@ indStruct[[2]]) -> (makePosIdx /@ indStruct[[2]])]];
+                    ];
+                    allClosedRules = Join[allClosedRules, rules];
                 ];
-            indStruct[[1]] = loopMomentum[indStruct[[1]], IsGrassmann[setup, assocField]];
-            (* replace all occurences of the superindex with the fitting index structure. *)
-            (* We want to keep the index sign in the momenta, but remove it from the group indices *)
-            Module[{rules = {closedIndices[[idx]] -> indStruct}},
-                If[Length[indStruct] > 1,
-                    rules = Join[rules, Thread[-(makePosIdx /@ indStruct[[2]]) -> (makePosIdx /@ indStruct[[2]])]];
-                ];
-                ret = ret /. rules /. rules;
-                objects = objects /. rules /. rules;
+                ,
+                {idx, 1, Length[closedIndices]}
             ];
-            ,
-            {idx, 1, Length[closedIndices]}
+            (*Apply all closed-index rules at once — two passes for sign propagation in group indices*)
+            ret = ret /. allClosedRules /. allClosedRules;
+            objects = objects /. allClosedRules /. allClosedRules;
         ];
 (*Next, we treat the external superindices. We assign to each an open group structure and a new momentum p1,p2,... 
 Momentum conservation is already enforced here, i.e. \!\(
@@ -165,46 +169,43 @@ Momentum conservation is already enforced here, i.e. \!\(
 \*SubscriptBox[\(\[Sum]\), \(i < n\)]\(
 \*SubscriptBox[\(p\), \(i\)]\ for\ the\ last\ momentum\ \(
 \*SubscriptBox[\(p\), \(n\)]\(.\)\)\)\)*)
+        (*Collect ALL open-index replacement rules, then apply at once.*)
         externalIndices = Table[{}, {idx, 1, Length[openIndices]}];
-        Do[
-            (*see above*)subObj = Select[objects, MemberQ[#, openIndices[[idx]], Infinity]&];
-            If[Length[subObj] === 0,
-                Message[FRoute::noObjectForIndex, openIndices[[idx]]];
-                Abort[]
-            ];
-            subObj = subObj[[1]];
-            indPos = FirstPosition[getIndices[subObj], openIndices[[idx]]][[1]];
-            assocField = getField[subObj, indPos];
-            indStruct =
-                Map[
-                    If[MatchQ[#, _Symbol],
-                        Symbol[SymbolName[#] <> ToString[idx]]
-                        ,
-                        #
-                    ]&
-                    ,
-                    FieldSetupIndices[setup, assocField]
-                    ,
-                    {1, 3}
+        Module[{allOpenRules = {}},
+            Do[
+                subObj = Select[objects, MemberQ[#, openIndices[[idx]], Infinity]&];
+                If[Length[subObj] === 0,
+                    Message[FRoute::noObjectForIndex, openIndices[[idx]]];
+                    Abort[]
                 ];
-(*Subscript[p, n]=-\!\(
-\*SubscriptBox[\(\[Sum]\), \(i < n\)]
-\*SubscriptBox[\(p\), \(i\)]\)*)
-            If[idx === Length[openIndices],
-                indStruct[[1]] = -Total[Values[externalIndices][[ ;; idx - 1, 1]]]
+                subObj = subObj[[1]];
+                indPos = FirstPosition[getIndices[subObj], openIndices[[idx]]][[1]];
+                assocField = getField[subObj, indPos];
+                indStruct =
+                    Map[
+                        If[MatchQ[#, _Symbol],
+                            Symbol[SymbolName[#] <> ToString[idx]]
+                            ,
+                            #
+                        ]&
+                        ,
+                        FieldSetupIndices[setup, assocField]
+                        ,
+                        {1, 3}
+                    ];
+                If[idx === Length[openIndices],
+                    indStruct[[1]] = -Total[Values[externalIndices][[ ;; idx - 1, 1]]]
+                    ,
+                    indStruct[[1]] = externalMomentum[indStruct[[1]], IsGrassmann[setup, assocField]];
+                ];
+                AppendTo[allOpenRules, (-openIndices[[idx]]) -> indStruct];
+                AppendTo[allOpenRules, openIndices[[idx]] -> indStruct];
+                externalIndices[[idx]] = openIndices[[idx]] -> indStruct;
                 ,
-                indStruct[[1]] = externalMomentum[indStruct[[1]], IsGrassmann[setup, assocField]];
+                {idx, 1, Length[openIndices]}
             ];
-            (*Wrap the momenta in externalMomentum[...]*)
-            (*Do the replacements*)
-            Module[{rules = {(-openIndices[[idx]]) -> indStruct, openIndices[[idx]] -> indStruct}},
-                ret = ret /. rules;
-                objects = objects /. rules;
-            ];
-            (*This is information for the user, which we will return.    *)
-            externalIndices[[idx]] = openIndices[[idx]] -> indStruct;
-            ,
-            {idx, 1, Length[openIndices]}
+            ret = ret /. allOpenRules;
+            objects = objects /. allOpenRules;
         ];
         (*extract a list of all new external momenta*)
         externalMomenta = Values[externalIndices][[All, 1]];
