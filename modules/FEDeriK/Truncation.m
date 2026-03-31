@@ -58,6 +58,7 @@ truncationPass[setup_, expr_] :=
 
 (* Light variant: applies truncation dispatch only, no ReduceIndices.
    Used inside LTrunc expansion where ReduceIndices would be wasted on partial terms. *)
+
 truncationPassLight[setup_, expr_FTerm] :=
     expr /. truncationList[setup];
 
@@ -103,52 +104,65 @@ insertFieldsIfAnyField[obj_, idx_, field_Symbol] :=
         Fold[setField[#1, #2, field]&, obj, anyPositions]
     ];
 
+(* Cache for permutation lists keyed by {head, nLegs, fixed slot->field pairs, closedAny slot list} *)
+
+$permCache = <||>;
+
 (* Generate candidate field assignments for an object's AnyField slots at closed indices.
    Returns a list of Associations mapping makePosIdx[index] -> field.
    Empty list {} means no valid assignment exists. {<||>} means nothing to enumerate. *)
-(* Cache for permutation lists keyed by {head, nLegs, fixed slot->field pairs, closedAny slot list} *)
-$permCache = <||>;
 
 getObjectCandidates[setup_, truncSorted_, obj_, closedIndexSet_Association, nonSourceFields_List] :=
-    Module[{h = Head[obj], nLegs, entries, perms, closedAnySlots = {}, fixedSlots = {}, s, idx,
-            fixedInfo, cacheKey},
+    Module[{h = Head[obj], nLegs, entries, perms, closedAnySlots = {}, fixedSlots = {}, s, idx, fixedInfo, cacheKey},
         nLegs = Length[getFields[obj]];
         Do[
             If[getField[obj, s] =!= AnyField,
                 AppendTo[fixedSlots, s]
-            ,
+                ,
                 idx = makePosIdx[getIndex[obj, s]];
                 If[KeyExistsQ[closedIndexSet, idx],
                     AppendTo[closedAnySlots, s]
                 ];
             ];
-            , {s, 1, nLegs}
+            ,
+            {s, 1, nLegs}
         ];
-        If[closedAnySlots === {}, Return[{<||>}]];
-        If[!KeyExistsQ[truncSorted, h], Return[{<||>}]];
+        If[closedAnySlots === {},
+            Return[{<||>}]
+        ];
+        If[!KeyExistsQ[truncSorted, h],
+            Return[{<||>}]
+        ];
         (*Check cache: key is {head, nLegs, fixed fields, closedAny positions}*)
         fixedInfo = Table[{s, getField[obj, s]}, {s, fixedSlots}];
         cacheKey = {h, nLegs, fixedInfo, closedAnySlots};
         If[KeyExistsQ[$permCache, cacheKey],
             perms = $permCache[cacheKey]
-        ,
+            ,
             entries = Select[setup["Truncation"][h], Length[#] === nLegs&];
-            If[entries === {}, Return[{}]];
+            If[entries === {},
+                Return[{}]
+            ];
             perms = DeleteDuplicates[Join @@ Map[Permutations, entries]];
             Do[perms = Select[perms, #[[s]] === getField[obj, s]&];, {s, fixedSlots}];
             Do[perms = Select[perms, MemberQ[nonSourceFields, #[[s]]]&];, {s, closedAnySlots}];
             AssociateTo[$permCache, cacheKey -> perms];
         ];
-        If[perms === {}, Return[{}]];
-        DeleteDuplicates @ Map[
-            Function[perm,
-                Association @@ Table[makePosIdx[getIndex[obj, s]] -> perm[[s]], {s, closedAnySlots}]
-            ],
-            perms
-        ]
+        If[perms === {},
+            Return[{}]
+        ];
+        DeleteDuplicates @
+            Map[
+                Function[perm,
+                    Association @@ Table[makePosIdx[getIndex[obj, s]] -> perm[[s]], {s, closedAnySlots}]
+                ]
+                ,
+                perms
+            ]
     ];
 
 (* Apply index->field assignment to an object's AnyField slots. Notation-agnostic. *)
+
 applyAssignmentToObj[obj_, assignment_Association] :=
     Module[{result = obj, s, idx},
         Do[
@@ -158,7 +172,8 @@ applyAssignmentToObj[obj_, assignment_Association] :=
                     result = setField[result, s, assignment[idx]]
                 ];
             ];
-            , {s, 1, Length[getFields[obj]]}
+            ,
+            {s, 1, Length[getFields[obj]]}
         ];
         result
     ];
@@ -167,47 +182,46 @@ applyAssignmentToObj[obj_, assignment_Association] :=
    Returns list of Associations (complete index->field mappings for surviving terms).
    vertices: list of {retPosition, object} pairs, sorted by leg count ascending.
    assignment: Association of makePosIdx[index] -> field. *)
-expandVertices[setup_, truncSorted_, truncKeys_, closedIndexSet_, nonSourceFields_,
-               {}, assignment_Association] := {assignment};
 
-expandVertices[setup_, truncSorted_, truncKeys_, closedIndexSet_, nonSourceFields_,
-               vertices_List, assignment_Association] :=
+expandVertices[setup_, truncSorted_, truncKeys_, closedIndexSet_, nonSourceFields_, {}, assignment_Association] :=
+    {assignment};
+
+expandVertices[setup_, truncSorted_, truncKeys_, closedIndexSet_, nonSourceFields_, vertices_List, assignment_Association] :=
     Module[{vObj, resolvedObj, h, newAssign, candidates, remainingClosedAny, s, idx},
         vObj = vertices[[1, 2]];
         resolvedObj = applyAssignmentToObj[vObj, assignment];
-        remainingClosedAny = Select[Range[Length[getFields[resolvedObj]]],
-            getField[resolvedObj, #] === AnyField &&
-            KeyExistsQ[closedIndexSet, makePosIdx[getIndex[resolvedObj, #]]]&
-        ];
+        remainingClosedAny = Select[Range[Length[getFields[resolvedObj]]], getField[resolvedObj, #] === AnyField && KeyExistsQ[closedIndexSet, makePosIdx[getIndex[resolvedObj, #]]]&];
         If[remainingClosedAny === {},
             (* All closed AnyField slots determined — validate if fully concrete *)
             h = Head[resolvedObj];
-            If[FreeQ[resolvedObj, AnyField] && KeyExistsQ[truncSorted, h] &&
-               !MemberQ[truncSorted[h], Sort @ getFields[resolvedObj]],
+            If[FreeQ[resolvedObj, AnyField] && KeyExistsQ[truncSorted, h] && !MemberQ[truncSorted[h], Sort @ getFields[resolvedObj]],
                 {} (* Killed by truncation *)
-            ,
+                ,
                 newAssign = assignment;
                 Do[
                     idx = makePosIdx[getIndex[resolvedObj, s]];
                     If[KeyExistsQ[closedIndexSet, idx] && !KeyExistsQ[newAssign, idx],
                         AssociateTo[newAssign, idx -> getField[resolvedObj, s]]
                     ];
-                    , {s, 1, Length[getFields[resolvedObj]]}
+                    ,
+                    {s, 1, Length[getFields[resolvedObj]]}
                 ];
-                expandVertices[setup, truncSorted, truncKeys, closedIndexSet, nonSourceFields,
-                               Rest[vertices], newAssign]
+                expandVertices[setup, truncSorted, truncKeys, closedIndexSet, nonSourceFields, Rest[vertices], newAssign]
             ]
-        ,
+            ,
             (* Some closed AnyField remain — enumerate candidates *)
             candidates = getObjectCandidates[setup, truncSorted, resolvedObj, closedIndexSet, nonSourceFields];
-            If[candidates === {}, Return[{}]];
-            Join @@ Map[
-                Function[cand,
-                    expandVertices[setup, truncSorted, truncKeys, closedIndexSet, nonSourceFields,
-                                   Rest[vertices], Join[assignment, cand]]
-                ],
-                candidates
-            ]
+            If[candidates === {},
+                Return[{}]
+            ];
+            Join @@
+                Map[
+                    Function[cand,
+                        expandVertices[setup, truncSorted, truncKeys, closedIndexSet, nonSourceFields, Rest[vertices], Join[assignment, cand]]
+                    ]
+                    ,
+                    candidates
+                ]
         ]
     ];
 
@@ -226,15 +240,9 @@ LTrunc[setup_, expr_FEx] :=
 (* LTrunc returns a list of bare lists (each = one surviving term's factors).
    FTruncate handles wrapping back into FTerm/FEx after BalancedMap.
    Object-level enumeration: propagators first, then vertices smallest-to-largest. *)
+
 LTrunc[setup_, expr_FTerm] :=
-    Module[{ret = List @@ expr, closedIndices, allFields = GetNonSourceFields[setup],
-            ignore, doFields, undoFields, a,
-            sentinelExpr, rawObjects, rawIndices, counts,
-            propLikeHeads, propLike = {}, vertexLike = {},
-            truncKeys, truncSorted, closedIndexSet,
-            propCandidates, propCombinations, survivors, concreteFields,
-            assignment, localRet, terms = {},
-            tExtract, tExpand, pos, h, s, idx, killed, hasClosedAny},
+    Module[{ret = List @@ expr, closedIndices, allFields = GetNonSourceFields[setup], ignore, doFields, undoFields, a, sentinelExpr, rawObjects, rawIndices, counts, propLikeHeads, propLike = {}, vertexLike = {}, truncKeys, truncSorted, closedIndexSet, propCandidates, propCombinations, survivors, concreteFields, assignment, localRet, terms = {}, tExtract, tExpand, pos, h, s, idx, killed, hasClosedAny},
         doFields = replFields[setup];
         undoFields = unreplFields[setup];
         ret = ret /. doFields;
@@ -257,29 +265,30 @@ LTrunc[setup_, expr_FTerm] :=
         truncKeys = Intersection[Keys[setup["Truncation"]], $indexedObjects];
         truncSorted = Association @@ Map[(# -> (Sort /@ setup["Truncation"][#]))&, truncKeys];
         closedIndexSet = Association @@ Map[(# -> True)&, closedIndices];
-        (*Classify top-level objects with AnyField at closed indices into
-          propagator-like (enumerate first) and vertex-like (validate/expand after)*)
+(*Classify top-level objects with AnyField at closed indices into
+  propagator-like (enumerate first) and vertex-like (validate/expand after)*)
         propLikeHeads = {Propagator, Rdot, R};
         Do[
-            If[objectQ[ret[[pos]]] && !FreeQ[ret[[pos]], AnyField] &&
-               MemberQ[truncKeys, Head[ret[[pos]]]],
+            If[objectQ[ret[[pos]]] && !FreeQ[ret[[pos]], AnyField] && MemberQ[truncKeys, Head[ret[[pos]]]],
                 hasClosedAny = False;
                 Do[
-                    If[getField[ret[[pos]], s] === AnyField &&
-                       KeyExistsQ[closedIndexSet, makePosIdx[getIndex[ret[[pos]], s]]],
-                        hasClosedAny = True; Break[]
+                    If[getField[ret[[pos]], s] === AnyField && KeyExistsQ[closedIndexSet, makePosIdx[getIndex[ret[[pos]], s]]],
+                        hasClosedAny = True;
+                        Break[]
                     ];
-                    , {s, 1, Length[getFields[ret[[pos]]]]}
+                    ,
+                    {s, 1, Length[getFields[ret[[pos]]]]}
                 ];
                 If[hasClosedAny,
                     If[MemberQ[propLikeHeads, Head[ret[[pos]]]],
                         AppendTo[propLike, {pos, ret[[pos]]}]
-                    ,
+                        ,
                         AppendTo[vertexLike, {pos, ret[[pos]]}]
                     ];
                 ];
             ];
-            , {pos, 1, Length[ret]}
+            ,
+            {pos, 1, Length[ret]}
         ];
         (*If no objects need enumeration, apply truncation and return*)
         If[propLike === {} && vertexLike === {},
@@ -289,12 +298,9 @@ LTrunc[setup_, expr_FTerm] :=
         vertexLike = SortBy[vertexLike, Length[getFields[#[[2]]]]&];
         tExtract = AbsoluteTime[] - tExtract;
         tExpand = AbsoluteTime[];
-        (*Phase 1: Generate propagator/regulator candidates*)
+        (*Step 1: Generate propagator/regulator candidates*)
         If[Length[propLike] > 0,
-            propCandidates = Map[
-                getObjectCandidates[setup, truncSorted, #[[2]], closedIndexSet, allFields]&,
-                propLike
-            ];
+            propCandidates = Map[getObjectCandidates[setup, truncSorted, #[[2]], closedIndexSet, allFields]&, propLike];
             (*If any propagator has zero valid candidates, no terms survive*)
             If[AnyTrue[propCandidates, # === {}&],
                 tExpand = AbsoluteTime[] - tExpand;
@@ -305,9 +311,8 @@ LTrunc[setup_, expr_FTerm] :=
                 ];
                 Return[{}]
             ];
-            (*Constrained Tuples: build combinations incrementally, pruning
-              inconsistent index->field assignments at each step.
-              Much faster than Tuples + post-filter for many propagators.*)
+(*Now build constrained Tuples: build combinations in the truncation table incrementally, remove inconsistent index->field assignments at each step.
+  Much faster than fixing things later.*)
             propCombinations = propCandidates[[1]];
             Do[
                 Module[{nextCombos = {}, shared, combo, cand},
@@ -319,21 +324,25 @@ LTrunc[setup_, expr_FTerm] :=
                             If[shared === {} || AllTrue[shared, combo[#] === cand[#]&],
                                 AppendTo[nextCombos, Join[combo, cand]]
                             ];
-                            , {ki, 1, Length[propCandidates[[pi]]]}
+                            ,
+                            {ki, 1, Length[propCandidates[[pi]]]}
                         ];
-                        , {ci, 1, Length[propCombinations]}
+                        ,
+                        {ci, 1, Length[propCombinations]}
                     ];
                     propCombinations = nextCombos;
                 ];
-                If[propCombinations === {}, Break[]];
-                , {pi, 2, Length[propCandidates]}
+                If[propCombinations === {},
+                    Break[]
+                ];
+                ,
+                {pi, 2, Length[propCandidates]}
             ];
-        ,
+            ,
             propCombinations = {<||>}
         ];
-        (*Phase 2: Validate vertices for each propagator combination.
-          Inline fast path for fully-determined vertices (Wetterich/FRG).
-          Falls back to expandVertices for partially-determined (DSE).*)
+(*Step 2: Validate vertices for each propagator combination. This is the fast path for fully-determined vertices (e.g in FRG). 
+Falls back to expandVertices if anything is left over.*)
         survivors = {};
         Do[
             assignment = propCombinations[[ci]];
@@ -341,41 +350,48 @@ LTrunc[setup_, expr_FTerm] :=
             Do[
                 Module[{vObj = vertexLike[[vi, 2]], nLegs, effectiveFields, vidx, hasRemaining = False},
                     nLegs = Length[getFields[vObj]];
-                    effectiveFields = Table[
-                        If[getField[vObj, s] === AnyField,
-                            vidx = makePosIdx[getIndex[vObj, s]];
-                            If[KeyExistsQ[assignment, vidx], assignment[vidx], AnyField]
-                        ,
-                            getField[vObj, s]
-                        ],
-                        {s, 1, nLegs}
-                    ];
-                    (*Check for remaining closed AnyField — rare DSE case*)
+                    effectiveFields =
+                        Table[
+                            If[getField[vObj, s] === AnyField,
+                                vidx = makePosIdx[getIndex[vObj, s]];
+                                If[KeyExistsQ[assignment, vidx],
+                                    assignment[vidx]
+                                    ,
+                                    AnyField
+                                ]
+                                ,
+                                getField[vObj, s]
+                            ]
+                            ,
+                            {s, 1, nLegs}
+                        ];
+                    (*Check for remaining closed AnyField — rare case*)
                     If[MemberQ[effectiveFields, AnyField],
                         Do[
-                            If[effectiveFields[[s]] === AnyField &&
-                               KeyExistsQ[closedIndexSet, makePosIdx[getIndex[vObj, s]]],
-                                hasRemaining = True; Break[]
+                            If[effectiveFields[[s]] === AnyField && KeyExistsQ[closedIndexSet, makePosIdx[getIndex[vObj, s]]],
+                                hasRemaining = True;
+                                Break[]
                             ];
-                            , {s, 1, nLegs}
+                            ,
+                            {s, 1, nLegs}
                         ];
                         If[hasRemaining,
-                            (*DSE fallback: use expandVertices for remaining vertices*)
+                            (*fallback: use expandVertices for remaining vertices*)
                             Module[{fallbackResult},
-                                fallbackResult = expandVertices[setup, truncSorted, truncKeys,
-                                    closedIndexSet, allFields, vertexLike[[vi;;]], assignment];
+                                fallbackResult = expandVertices[setup, truncSorted, truncKeys, closedIndexSet, allFields, vertexLike[[vi ;; ]], assignment];
                                 If[fallbackResult =!= {},
                                     survivors = Join[survivors, fallbackResult]
                                 ];
                             ];
-                            killed = True; Break[] (*skip inline path, fallback handled it*)
-                        ];
+                            killed = True;
+                            Break[]
+                        (*skip inline path, fallback handled it*)];
                     ];
                     (*Validate fully-determined vertex*)
                     h = Head[vObj];
-                    If[!MemberQ[effectiveFields, AnyField] && KeyExistsQ[truncSorted, h] &&
-                       !MemberQ[truncSorted[h], Sort @ effectiveFields],
-                        killed = True; Break[]
+                    If[!MemberQ[effectiveFields, AnyField] && KeyExistsQ[truncSorted, h] && !MemberQ[truncSorted[h], Sort @ effectiveFields],
+                        killed = True;
+                        Break[]
                     ];
                     (*Propagate resolved fields to assignment for next vertex*)
                     Do[
@@ -383,16 +399,21 @@ LTrunc[setup_, expr_FTerm] :=
                         If[effectiveFields[[s]] =!= AnyField && KeyExistsQ[closedIndexSet, vidx] && !KeyExistsQ[assignment, vidx],
                             AssociateTo[assignment, vidx -> effectiveFields[[s]]]
                         ];
-                        , {s, 1, nLegs}
+                        ,
+                        {s, 1, nLegs}
                     ];
                 ];
-                , {vi, 1, Length[vertexLike]}
+                ,
+                {vi, 1, Length[vertexLike]}
             ];
-            If[!killed, AppendTo[survivors, assignment]];
-            , {ci, 1, Length[propCombinations]}
+            If[!killed,
+                AppendTo[survivors, assignment]
+            ];
+            ,
+            {ci, 1, Length[propCombinations]}
         ];
-        (*Collect concrete fields from all objects at closed indices.
-          Fills gaps for FMinus etc. whose AnyField is at an index determined by concrete objects.*)
+(*Collect concrete fields from all objects at closed indices.
+  Fills gaps for FMinus and other co-existing objects, where AnyField is at an index determined by concrete objects.*)
         concreteFields = <||>;
         Do[
             If[objectQ[ret[[pos]]],
@@ -401,13 +422,15 @@ LTrunc[setup_, expr_FTerm] :=
                     If[KeyExistsQ[closedIndexSet, idx] && getField[ret[[pos]], s] =!= AnyField && !KeyExistsQ[concreteFields, idx],
                         AssociateTo[concreteFields, idx -> getField[ret[[pos]], s]]
                     ];
-                    , {s, 1, Length[getFields[ret[[pos]]]]}
+                    ,
+                    {s, 1, Length[getFields[ret[[pos]]]]}
                 ];
             ];
-            , {pos, 1, Length[ret]}
+            ,
+            {pos, 1, Length[ret]}
         ];
         survivors = Map[Join[concreteFields, #]&, survivors];
-        (*Phase 3: Materialize surviving assignments into concrete terms*)
+        (*Step 3: Convert surviving assignments into concrete terms*)
         Do[
             assignment = survivors[[si]];
             Module[{assignDispatch = Dispatch[Normal[assignment]], f},
@@ -422,30 +445,34 @@ LTrunc[setup_, expr_FTerm] :=
                                         result = setField[result, s, f]
                                     ];
                                 ];
-                                , {s, 1, nL}
+                                ,
+                                {s, 1, nL}
                             ];
                             localRet[[pos]] = result;
                         ];
-                    ,
+                        ,
                         (*Non-object element (e.g. Times[FMinus, FMinus]): scoped ReplaceAll*)
                         If[!FreeQ[localRet[[pos]], AnyField],
-                            localRet[[pos]] = localRet[[pos]] /.
-                                obj_?objectQ /; !FreeQ[obj, AnyField] :>
-                                    Module[{result = obj, nL = Length[getFields[obj]]},
-                                        Do[
-                                            If[getField[result, s] === AnyField,
-                                                f = makePosIdx[getIndex[result, s]] /. assignDispatch;
-                                                If[f =!= makePosIdx[getIndex[result, s]],
-                                                    result = setField[result, s, f]
+                            localRet[[pos]] =
+                                localRet[[pos]] /.
+                                    obj_?objectQ /; !FreeQ[obj, AnyField] :>
+                                        Module[{result = obj, nL = Length[getFields[obj]]},
+                                            Do[
+                                                If[getField[result, s] === AnyField,
+                                                    f = makePosIdx[getIndex[result, s]] /. assignDispatch;
+                                                    If[f =!= makePosIdx[getIndex[result, s]],
+                                                        result = setField[result, s, f]
+                                                    ];
                                                 ];
+                                                ,
+                                                {s, 1, nL}
                                             ];
-                                            , {s, 1, nL}
-                                        ];
-                                        result
-                                    ]
+                                            result
+                                        ]
                         ];
                     ];
-                    , {pos, 1, Length[localRet]}
+                    ,
+                    {pos, 1, Length[localRet]}
                 ];
             ];
             (*Final truncation check on fully-concrete objects*)
@@ -459,11 +486,17 @@ LTrunc[setup_, expr_FTerm] :=
                         ];
                     ];
                 ];
-                If[killed, Break[]];
-                , {pos, 1, Length[localRet]}
+                If[killed,
+                    Break[]
+                ];
+                ,
+                {pos, 1, Length[localRet]}
             ];
-            If[!killed, AppendTo[terms, localRet]];
-            , {si, 1, Length[survivors]}
+            If[!killed,
+                AppendTo[terms, localRet]
+            ];
+            ,
+            {si, 1, Length[survivors]}
         ];
         tExpand = AbsoluteTime[] - tExpand;
         If[ValueQ[$ProfileLTruncDetail],
@@ -482,41 +515,53 @@ LTrunc[setup_, expr_FTerm] :=
    Same interface as LTrunc: takes FTerm, returns list of bare lists. *)
 
 (*Convert NotationA indexed object to {field, index} list notation*)
+
 toListNotation[obj_] /; objectQ[obj] && Length[obj] === 2 && ListQ[obj[[1]]] :=
     Head[obj] @@ Transpose[{obj[[1]], obj[[2]]}];
-toListNotation[x_] := x;
+
+toListNotation[x_] :=
+    x;
 
 (*Convert {field, index} list notation back to NotationA*)
+
 fromListNotation[obj_] /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] :=
     Head[obj][(List @@ obj)[[All, 1]], (List @@ obj)[[All, 2]]];
-fromListNotation[x_] := x;
+
+fromListNotation[x_] :=
+    x;
 
 (*Build resolve rules from a concrete list-notation propagator:
   each {field, index} leg produces {AnyField, ±index} -> {field, ±index} *)
+
 buildCTruncResolveRules[obj_] :=
-    Flatten @ Map[With[{f = #[[1]], idx = #[[2]]},
-        {{AnyField, idx} -> {f, idx}, {AnyField, -idx} -> {f, -idx}}
-    ]&, List @@ obj];
+    Flatten @
+        Map[
+            With[{f = #[[1]], idx = #[[2]]},
+                {{AnyField, idx} -> {f, idx}, {AnyField, -idx} -> {f, -idx}}
+            ]&
+            ,
+            List @@ obj
+        ];
 
-CTrunc[setup_, {}] := {};
+CTrunc[setup_, {}] :=
+    {};
 
-CTrunc[setup_, expr_] := (Message[FTruncate::wrongExpr, expr]; Abort[]);
+CTrunc[setup_, expr_] :=
+    (
+        Message[FTruncate::wrongExpr, expr];
+        Abort[]
+    );
 
-CTrunc[setup_, expr_FEx] := Join @@ Map[CTrunc[setup, #]&, List @@ expr];
+CTrunc[setup_, expr_FEx] :=
+    Join @@ Map[CTrunc[setup, #]&, List @@ expr];
 
 CTrunc[setup_, expr_FTerm] :=
-    Module[{ret = List @@ expr, closedIndices, allFields = GetNonSourceFields[setup],
-            ignore, doFields, undoFields, a,
-            sentinelExpr, rawObjects, rawIndices, counts,
-            propLikeHeads, propLike = {}, vertexLike = {},
-            truncKeys, truncSorted, closedIndexSet,
-            retL, propInfo = {}, vertexKillRules, current, survived,
-            tExtract, tExpand, pos, h, s, hasClosedAny},
+    Module[{ret = List @@ expr, closedIndices, allFields = GetNonSourceFields[setup], ignore, doFields, undoFields, a, sentinelExpr, rawObjects, rawIndices, counts, propLikeHeads, propLike = {}, vertexLike = {}, truncKeys, truncSorted, closedIndexSet, retL, propInfo = {}, vertexKillRules, current, survived, tExtract, tExpand, pos, h, s, hasClosedAny},
         doFields = replFields[setup];
         undoFields = unreplFields[setup];
         ret = ret /. doFields;
-        (*CTrunc uses list notation internally, which requires NotationA.
-          Fall back to LTrunc if the expression uses NotationB.*)
+(*CTrunc uses list notation internally, i.e. {field, index}, which requires NotationA.
+  Fall back to LTrunc if the expression uses NotationB.*)
         Module[{firstObj = FirstCase[ret, _?objectQ, None]},
             If[firstObj =!= None && !ListQ[firstObj[[1]]],
                 Return[LTrunc[setup, expr]]
@@ -543,24 +588,26 @@ CTrunc[setup_, expr_FTerm] :=
         (*Classify objects*)
         propLikeHeads = {Propagator, Rdot, R};
         Do[
-            If[objectQ[ret[[pos]]] && !FreeQ[ret[[pos]], AnyField] &&
-               MemberQ[truncKeys, Head[ret[[pos]]]],
+            If[objectQ[ret[[pos]]] && !FreeQ[ret[[pos]], AnyField] && MemberQ[truncKeys, Head[ret[[pos]]]],
                 hasClosedAny = False;
                 Do[
-                    If[getField[ret[[pos]], s] === AnyField &&
-                       KeyExistsQ[closedIndexSet, makePosIdx[getIndex[ret[[pos]], s]]],
-                        hasClosedAny = True; Break[]
+                    If[getField[ret[[pos]], s] === AnyField && KeyExistsQ[closedIndexSet, makePosIdx[getIndex[ret[[pos]], s]]],
+                        hasClosedAny = True;
+                        Break[]
                     ];
-                    , {s, 1, Length[getFields[ret[[pos]]]]}
+                    ,
+                    {s, 1, Length[getFields[ret[[pos]]]]}
                 ];
                 If[hasClosedAny,
                     If[MemberQ[propLikeHeads, Head[ret[[pos]]]],
-                        AppendTo[propLike, {pos, ret[[pos]]}],
+                        AppendTo[propLike, {pos, ret[[pos]]}]
+                        ,
                         AppendTo[vertexLike, {pos, ret[[pos]]}]
                     ];
                 ];
             ];
-            , {pos, 1, Length[ret]}
+            ,
+            {pos, 1, Length[ret]}
         ];
         If[propLike === {} && vertexLike === {},
             Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
@@ -571,19 +618,23 @@ CTrunc[setup_, expr_FTerm] :=
         ];
         tExtract = AbsoluteTime[] - tExtract;
         tExpand = AbsoluteTime[];
-        (*Convert to list notation. Wrap numerics in numWrap to prevent ** from combining them.
-          For Times products containing FMinus/SymmetryFactor, convert each factor individually.*)
-        retL = Map[
-            Which[
-                NumericQ[#] || (Head[#] === Times && AllTrue[List @@ #, NumericQ]),
-                    numWrap$[#],
-                Head[#] === Times,
-                    Times @@ Map[toListNotation, List @@ #],
-                True,
-                    toListNotation[#]
-            ]&,
-            ret
-        ];
+(*Convert to list notation. Wrap numerics in numWrap to prevent ** from combining them.
+  For Times products containing FMinus/SymmetryFactor, convert each factor individually.*)
+        retL =
+            Map[
+                Which[
+                    NumericQ[#] || (Head[#] === Times && AllTrue[List @@ #, NumericQ]),
+                        numWrap$[#]
+                    ,
+                    Head[#] === Times,
+                        Times @@ Map[toListNotation, List @@ #]
+                    ,
+                    True,
+                        toListNotation[#]
+                ]&
+                ,
+                ret
+            ];
         (*Build propagator alternatives in list notation*)
         Do[
             Module[{obj = retL[[propLike[[pi, 1]]]], hd, legs, nLegs, entries, perms, concretes},
@@ -592,45 +643,65 @@ CTrunc[setup_, expr_FTerm] :=
                 nLegs = Length[legs];
                 entries = Select[setup["Truncation"][hd], Length[#] === nLegs&];
                 perms = DeleteDuplicates[Join @@ Map[Permutations, entries]];
-                Do[If[legs[[s, 1]] =!= AnyField, perms = Select[perms, #[[s]] === legs[[s, 1]]&]];, {s, 1, nLegs}];
-                Do[If[legs[[s, 1]] === AnyField, perms = Select[perms, MemberQ[allFields, #[[s]]]&]];, {s, 1, nLegs}];
+                Do[
+                    If[legs[[s, 1]] =!= AnyField,
+                        perms = Select[perms, #[[s]] === legs[[s, 1]]&]
+                    ];
+                    ,
+                    {s, 1, nLegs}
+                ];
+                Do[
+                    If[legs[[s, 1]] === AnyField,
+                        perms = Select[perms, MemberQ[allFields, #[[s]]]&]
+                    ];
+                    ,
+                    {s, 1, nLegs}
+                ];
                 concretes = Map[hd @@ MapThread[{#1, #2}&, {#, legs[[All, 2]]}]&, perms];
                 AppendTo[propInfo, {propLike[[pi, 1]], obj, concretes}];
             ];
-            , {pi, 1, Length[propLike]}
+            ,
+            {pi, 1, Length[propLike]}
         ];
         (*Build vertex kill rules — batch kernel-level truncation check*)
-        vertexKillRules = Dispatch @ Flatten @ Map[
-            Module[{hd = #},
-                hd[b:{_, _}..] /; FreeQ[{b}[[All, 1]], AnyField] &&
-                    !MemberQ[truncSorted[hd], Sort[{b}[[All, 1]]]] :> 0
-            ]&,
-            Select[truncKeys, !MemberQ[propLikeHeads, #]&]
-        ];
+        vertexKillRules =
+            Dispatch @
+                Flatten @
+                    Map[
+                        Module[{hd = #},
+                            hd[b : {_, _}..] /; FreeQ[{b}[[All, 1]], AnyField] && !MemberQ[truncSorted[hd], Sort[{b}[[All, 1]]]] :> 0
+                        ]&
+                        ,
+                        Select[truncKeys, !MemberQ[propLikeHeads, #]&]
+                    ];
         (*Incremental Distribute: one propagator at a time, pre-resolve + batch kill*)
         current = NonCommutativeMultiply @@ retL;
         Do[
             Module[{ppos, origProp, alts},
                 {ppos, origProp, alts} = propInfo[[pi]];
-                (*If this propagator was already resolved by a previous step's rules,
-                  still apply resolve rules from each concrete alternative present in current
-                  to resolve FMinus AnyField at shared indices.*)
+(*If this propagator was already resolved by a previous step's rules,
+  still apply resolve rules from each concrete alternative present in current
+  to resolve FMinus AnyField at shared indices.*)
                 If[FreeQ[current, origProp],
                     Do[
                         If[!FreeQ[current, alts[[ai]]],
                             current = current /. buildCTruncResolveRules[alts[[ai]]]
                         ];
-                        , {ai, 1, Length[alts]}
+                        ,
+                        {ai, 1, Length[alts]}
                     ];
                     Continue[]
                 ];
                 (*For each alternative: replace propagator AND resolve connected vertex AnyField*)
-                current = Plus @@ Map[
-                    Module[{rules = buildCTruncResolveRules[#]},
-                        (current /. origProp -> #) /. rules
-                    ]&,
-                    alts
-                ];
+                current =
+                    Plus @@
+                        Map[
+                            Module[{rules = buildCTruncResolveRules[#]},
+                                (current /. origProp -> #) /. rules
+                            ]&
+                            ,
+                            alts
+                        ];
                 (*Distribute Plus through ** — kernel level*)
                 current = Distribute[current, Plus, NonCommutativeMultiply];
                 (*Batch kill invalid vertices — kernel level*)
@@ -639,8 +710,11 @@ CTrunc[setup_, expr_FTerm] :=
                 current = current /. x_NonCommutativeMultiply /; !FreeQ[x, 0] :> 0;
                 current = current /. {0 + a_ :> a, 0. + a_ :> a};
             ];
-            If[current === 0, Break[]];
-            , {pi, 1, Length[propInfo]}
+            If[current === 0,
+                Break[]
+            ];
+            ,
+            {pi, 1, Length[propInfo]}
         ];
         tExpand = AbsoluteTime[] - tExpand;
         If[ValueQ[$ProfileLTruncDetail],
@@ -651,51 +725,71 @@ CTrunc[setup_, expr_FTerm] :=
         ];
         (*No final resolution here — done after conversion back to NotationA below*)
         (*Convert surviving terms back to bare lists in NotationA*)
-        If[current === 0, Return[{}]];
-        survived = If[Head[current] === Plus, List @@ current, {current}];
-        survived = DeleteCases[survived, 0];
-        survived = Map[
-            Module[{factors, concreteFields = <||>},
-                factors = If[Head[#] === NonCommutativeMultiply, List @@ #, {#}];
-                (*Convert ALL objects back from list notation — including inside nested Times/Plus*)
-                Module[{convertBack},
-                    convertBack[obj_] /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] := fromListNotation[obj];
-                    convertBack[Times[args__]] := Times @@ Map[convertBack, {args}];
-                    convertBack[Plus[args__]] := Plus @@ Map[convertBack, {args}];
-                    convertBack[x_] := x;
-                    factors = Map[convertBack, factors];
-                ];
-                factors = factors /. numWrap$[x_] :> x;
-                (*Resolve remaining AnyField in FMinus/SymmetryFactor from concrete objects — same as LTrunc*)
-                Do[
-                    If[objectQ[factors[[pos]]],
-                        Do[
-                            Module[{idx = makePosIdx[getIndex[factors[[pos]], s]]},
-                                If[KeyExistsQ[closedIndexSet, idx] && getField[factors[[pos]], s] =!= AnyField && !KeyExistsQ[concreteFields, idx],
-                                    AssociateTo[concreteFields, idx -> getField[factors[[pos]], s]]
-                                ];
-                            ];
-                            , {s, 1, Length[getFields[factors[[pos]]]]}
-                        ];
-                    ];
-                    , {pos, 1, Length[factors]}
-                ];
-                If[Length[concreteFields] > 0 && !FreeQ[factors, AnyField],
-                    factors = Map[
-                        If[objectQ[#],
-                            applyAssignmentToObj[#, concreteFields],
-                            If[!FreeQ[#, AnyField],
-                                # /. obj_?objectQ /; !FreeQ[obj, AnyField] :> applyAssignmentToObj[obj, concreteFields],
-                                #
-                            ]
-                        ]&,
-                        factors
-                    ];
-                ];
-                factors /. undoFields
-            ]&,
-            survived
+        If[current === 0,
+            Return[{}]
         ];
+        survived =
+            If[Head[current] === Plus,
+                List @@ current
+                ,
+                {current}
+            ];
+        survived = DeleteCases[survived, 0];
+        survived =
+            Map[
+                Module[{factors, concreteFields = <||>},
+                    factors =
+                        If[Head[#] === NonCommutativeMultiply,
+                            List @@ #
+                            ,
+                            {#}
+                        ];
+                    (*Convert ALL objects back from list notation — including inside nested Times/Plus*)
+                    Module[{convertBack},
+                        convertBack[obj_] /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] := fromListNotation[obj];
+                        convertBack[Times[args__]] := Times @@ Map[convertBack, {args}];
+                        convertBack[Plus[args__]] := Plus @@ Map[convertBack, {args}];
+                        convertBack[x_] := x;
+                        factors = Map[convertBack, factors];
+                    ];
+                    factors = factors /. numWrap$[x_] :> x;
+                    (*Resolve remaining AnyField in FMinus/SymmetryFactor from concrete objects — same as LTrunc*)
+                    Do[
+                        If[objectQ[factors[[pos]]],
+                            Do[
+                                Module[{idx = makePosIdx[getIndex[factors[[pos]], s]]},
+                                    If[KeyExistsQ[closedIndexSet, idx] && getField[factors[[pos]], s] =!= AnyField && !KeyExistsQ[concreteFields, idx],
+                                        AssociateTo[concreteFields, idx -> getField[factors[[pos]], s]]
+                                    ];
+                                ];
+                                ,
+                                {s, 1, Length[getFields[factors[[pos]]]]}
+                            ];
+                        ];
+                        ,
+                        {pos, 1, Length[factors]}
+                    ];
+                    If[Length[concreteFields] > 0 && !FreeQ[factors, AnyField],
+                        factors =
+                            Map[
+                                If[objectQ[#],
+                                    applyAssignmentToObj[#, concreteFields]
+                                    ,
+                                    If[!FreeQ[#, AnyField],
+                                        # /. obj_?objectQ /; !FreeQ[obj, AnyField] :> applyAssignmentToObj[obj, concreteFields]
+                                        ,
+                                        #
+                                    ]
+                                ]&
+                                ,
+                                factors
+                            ];
+                    ];
+                    factors /. undoFields
+                ]&
+                ,
+                survived
+            ];
         survived
     ];
 
@@ -776,8 +870,8 @@ FTruncateOpenIndices[setup_, expr_FEx] :=
         ];
         FunKitDebug[1, "Truncating (open indices) the given expression"];
         {ret0, annotations} = SeparateFExAnnotations[expr];
-            (*Resolve open indices directly*)
-            ret0 = BalancedMap[OTrunc[setup, #]&, ret0];
+        (*Resolve open indices directly*)
+        ret0 = BalancedMap[OTrunc[setup, #]&, ret0];
         (*Finally, reduce indices again to be safe*)
         ret0 = BalancedMap[ReduceIndices[setup, #]&, ret0];
         FunKitDebug[1, "Finished truncating (open indices) the given expression"];
@@ -815,22 +909,33 @@ FTruncate[setup_, expr_FEx] :=
         (*Take care of closed indices — CTrunc returns lists-of-lists*)
         Module[{t0 = AbsoluteTime[]},
             ret0 = BalancedMap[CTrunc[setup, #]&, ret0];
-            (*Merge: ret0 is a List where each element is a list-of-bare-lists from LTrunc.
-              Flatten one level, filter empties/zeros, wrap each bare list in FTerm.*)
-            ret0 = If[Length[ret0] > 0, Join @@ ret0, {}];
+(*Merge: ret0 is a List where each element is a list-of-bare-lists from LTrunc.
+  Flatten one level, filter empties/zeros, wrap each bare list in FTerm.*)
+            ret0 =
+                If[Length[ret0] > 0,
+                    Join @@ ret0
+                    ,
+                    {}
+                ];
             ret0 = Select[ret0, # =!= {} && # =!= {0}&];
-            ret0 = Map[FTerm @@ # &, ret0];
-            If[ValueQ[$ProfileLTrunc], $ProfileLTrunc += AbsoluteTime[] - t0];
+            ret0 = Map[FTerm @@ #&, ret0];
+            If[ValueQ[$ProfileLTrunc],
+                $ProfileLTrunc += AbsoluteTime[] - t0
+            ];
         ];
         (*ret0 is now a flat List of FTerms — reduce indices*)
         Module[{t0 = AbsoluteTime[]},
             ret0 = Map[ReduceIndices[setup, #]&, ret0];
-            If[ValueQ[$ProfilePostRI], $ProfilePostRI += AbsoluteTime[] - t0];
+            If[ValueQ[$ProfilePostRI],
+                $ProfilePostRI += AbsoluteTime[] - t0
+            ];
         ];
         FunKitDebug[1, "Finished truncating the given expression"];
         Module[{t0 = AbsoluteTime[]},
             ret0 = OrderFields[setup, FixIndices[setup, #]& /@ ret0];
-            If[ValueQ[$ProfileFixOrder], $ProfileFixOrder += AbsoluteTime[] - t0];
+            If[ValueQ[$ProfileFixOrder],
+                $ProfileFixOrder += AbsoluteTime[] - t0
+            ];
         ];
         (*Directly remove all FEx[]*)
         ret0 = ret0 /. FEx[] -> {} // Flatten;
@@ -839,7 +944,9 @@ FTruncate[setup_, expr_FEx] :=
         If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
             Module[{t0 = AbsoluteTime[]},
                 ret0 = FunKit`FSimplify[setup, ret0];
-                If[ValueQ[$ProfileFSimplify], $ProfileFSimplify += AbsoluteTime[] - t0];
+                If[ValueQ[$ProfileFSimplify],
+                    $ProfileFSimplify += AbsoluteTime[] - t0
+                ];
             ];
             {ret0, annotations} = SeparateFExAnnotations[ret0];
             ret0 = BalancedMap[ReduceIndices[setup, #]&, ret0];
@@ -855,7 +962,13 @@ FTruncateOpenIndices[setup_, expr_FTerm] :=
     FTruncateOpenIndices[setup, FEx[expr]];
 
 FTruncate[setup_, expr_] :=
-    (Message[FTruncate::wrongExpr, expr]; Abort[]);
+    (
+        Message[FTruncate::wrongExpr, expr];
+        Abort[]
+    );
 
 FTruncateOpenIndices[setup_, expr_] :=
-    (Message[FTruncate::wrongExpr, expr]; Abort[]);
+    (
+        Message[FTruncate::wrongExpr, expr];
+        Abort[]
+    );
