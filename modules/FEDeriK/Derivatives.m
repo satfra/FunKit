@@ -157,8 +157,8 @@ FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
             FunKitDebug[1, "Finished pass ", i + 1, ", current length: ", Length[ret]];
             i++;
         ];
-        (*Full metric resolution once after all derivative passes*)
-        ret = Map[ReduceIndices[setup, #]&, ret];
+        (*Full metric resolution once after all derivative passes — batched*)
+        ret = ReduceIndicesBatch[setup, ret];
         ret = Map[bw, ret];
         FunKitDebug[1, "Finished resolving derivatives"];
         Return[MergeFExAnnotations[FEx @@ ret, annotations]];

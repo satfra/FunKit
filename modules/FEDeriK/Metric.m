@@ -179,6 +179,30 @@ ReduceIndices[setup_, term_FTerm] :=
         Return[result];
     ];
 
+(* Batched ReduceIndices: processes a List of FTerms with shared FMinus/SymmetryFactor resolution.
+   Collects all unique FMinus/SymmetryFactor across all terms, builds rules once, applies in one /. pass.
+   Terms with γ are handled individually (γ resolution involves per-term closed-index analysis). *)
+ReduceIndicesBatch[setup_, terms_List] :=
+    Module[{allFMinus, allSymF, batchRules, result = terms, t0 = AbsoluteTime[]},
+        (*Batch FMinus + SymmetryFactor: collect unique instances, build rules, apply once*)
+        allFMinus = DeleteDuplicates @ Cases[result, fm_FMinus /; FreeQ[getFields[fm], AnyField], Infinity];
+        allSymF = DeleteDuplicates @ Cases[result, sf_SymmetryFactor /; FreeQ[getFields[sf], AnyField], Infinity];
+        batchRules = Join[
+            Map[# -> CommuteSign[setup, getField[#, 1], getField[#, 2]]&, allFMinus],
+            Map[# -> SymmetryFactorFromList[getFields[#]]&, allSymF]
+        ];
+        If[Length[batchRules] > 0,
+            result = result /. Dispatch[batchRules]
+        ];
+        (*Per-term γ resolution — only for terms that actually contain γ*)
+        result = Map[If[!FreeQ[#, \[Gamma]], ReduceIndices[setup, #], #]&, result];
+        If[ValueQ[$ReduceIndicesTime],
+            $ReduceIndicesTime += AbsoluteTime[] - t0;
+            $ReduceIndicesCount += Length[terms]
+        ];
+        result
+    ];
+
 ReduceIndices[setup_, eq_FEx] :=
     Module[{},
         Map[ReduceIndices[setup, #]&, eq]

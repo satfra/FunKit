@@ -902,9 +902,9 @@ FTruncate[setup_, expr_FEx] :=
                 $ProfileLTrunc += AbsoluteTime[] - t0
             ];
         ];
-        (*ret0 is now a flat List of FTerms — reduce indices*)
+        (*ret0 is now a flat List of FTerms — reduce indices (batched)*)
         Module[{t0 = AbsoluteTime[]},
-            ret0 = Map[ReduceIndices[setup, #]&, ret0];
+            ret0 = ReduceIndicesBatch[setup, ret0];
             If[ValueQ[$ProfilePostRI],
                 $ProfilePostRI += AbsoluteTime[] - t0
             ];
