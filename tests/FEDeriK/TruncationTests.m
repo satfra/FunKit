@@ -185,6 +185,37 @@ AppendTo[
     ]
 ];
 
+(* An explicit GammaN vertex with mixed concrete + AnyField fields must expand
+   correctly: the concrete field stays, AnyField is expanded, and the result
+   survives if the combination is in the truncation table. *)
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{expr, result},
+            (* Free-standing explicit field Phi[i1] alongside Propagator with AnyField.
+               The truncation includes Field -> {{Phi}} so the free field survives.
+               The contracted AnyField in the Propagator expands normally. *)
+            Module[{extSetup},
+                extSetup = ySetup;
+                extSetup["Truncation", Field] = {{Phi}, {Psi}, {Psibar}};
+                expr = FEx[FTerm[
+                    Phi[i1],
+                    Propagator[{AnyField, AnyField}, {-i1, i2}],
+                    Rdot[{AnyField, AnyField}, {-i2, -i3}]]];
+                result = FTruncate[extSetup, expr];
+                (* Phi[i1] must survive, AnyField must expand, no AnyField remains *)
+                Not @ (result === FEx[]) && Not @ FreeQ[result, Phi, Infinity]
+            ]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FTruncate basic: mixed concrete+AnyField fields expand correctly"
+    ]
+];
+
 (* FEx annotations are passed through FTruncate unchanged. *)
 
 AppendTo[

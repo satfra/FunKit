@@ -502,6 +502,13 @@ FSetNotationA[] :=
             Field[expr_] =.;
             Protect[Field];
         ];
+        (*List notation conversion for CTrunc: NotationA objects to/from {field, index} pairs*)
+        toListNotation[obj_] /; objectQ[obj] && Length[obj] === 2 && ListQ[obj[[1]]] :=
+            Head[obj] @@ Transpose[{obj[[1]], obj[[2]]}];
+        toListNotation[x_] := x;
+        fromListNotation[obj_] /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] :=
+            Head[obj][(List @@ obj)[[All, 1]], (List @@ obj)[[All, 2]]];
+        fromListNotation[x_] := x;
     ];
 
 FSetNotationB[] :=
@@ -536,6 +543,13 @@ FSetNotationB[] :=
         Unprotect[Field];
         Field[expr_] := expr;
         Protect[Field];
+        (*List notation conversion for CTrunc: NotationB objects to/from {field, index} pairs*)
+        toListNotation[obj_] /; objectQ[obj] && Length[obj] >= 1 && MatchQ[obj[[1]], _[_]] :=
+            Head[obj] @@ Map[{Head[#], First[#]}&, List @@ obj];
+        toListNotation[x_] := x;
+        fromListNotation[obj_] /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] :=
+            Head[obj] @@ Map[#[[1]][#[[2]]]&, List @@ obj];
+        fromListNotation[x_] := x;
     ];
 
 FSetNotationA[];

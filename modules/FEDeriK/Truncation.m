@@ -514,21 +514,7 @@ Falls back to expandVertices if anything is left over.*)
    with pre-resolved vertex AnyField for batch kernel-level /. operations.
    Same interface as LTrunc: takes FTerm, returns list of bare lists. *)
 
-(*Convert NotationA indexed object to {field, index} list notation*)
-
-toListNotation[obj_] /; objectQ[obj] && Length[obj] === 2 && ListQ[obj[[1]]] :=
-    Head[obj] @@ Transpose[{obj[[1]], obj[[2]]}];
-
-toListNotation[x_] :=
-    x;
-
-(*Convert {field, index} list notation back to NotationA*)
-
-fromListNotation[obj_] /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] :=
-    Head[obj][(List @@ obj)[[All, 1]], (List @@ obj)[[All, 2]]];
-
-fromListNotation[x_] :=
-    x;
+(*toListNotation and fromListNotation are defined in Notation.m by FSetNotationA/B*)
 
 (*Build resolve rules from a concrete list-notation propagator:
   each {field, index} leg produces {AnyField, ±index} -> {field, ±index} *)
@@ -560,13 +546,6 @@ CTrunc[setup_, expr_FTerm] :=
         doFields = replFields[setup];
         undoFields = unreplFields[setup];
         ret = ret /. doFields;
-(*CTrunc uses list notation internally, i.e. {field, index}, which requires NotationA.
-  Fall back to LTrunc if the expression uses NotationB.*)
-        Module[{firstObj = FirstCase[ret, _?objectQ, None]},
-            If[firstObj =!= None && !ListQ[firstObj[[1]]],
-                Return[LTrunc[setup, expr]]
-            ];
-        ];
         (*Recurse into nested FTerms*)
         ret = ret /. FTerm[a__] :> CTrunc[setup, FTerm[a]];
         (*Early exit if no AnyField*)
