@@ -25,6 +25,7 @@
 \DeclareMathAlphabet{\mathbbold}{U}{bbold}{m}{n}
 
 \usepackage{pifont}
+\newcommand{\cmark}{\ding{51}}
 \newcommand{\xmark}{\ding{55}}
 
 % graphics and colours
@@ -1826,6 +1827,73 @@ One can turn off usage of \cpp{powr} by setting
 \begin{mmaCell}{Input}
 	\mmaDef{FUseCppPowr}[\mmaDef{False}];
 \end{mmaCell}
+
+%%%%%%%%%%%%%%%%%%%%
+\section{Comparisons}
+
+\begin{table*}[t]
+	\centering
+	\renewcommand{\arraystretch}{1.25}
+	\begin{tabular}[t]{l c c c}
+		\toprule
+		\textbf{Feature} & \DoFun & \QMeS & \FunKit \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Master equations}} \\
+		\quad Dyson-Schwinger equations            & \cmark  & \cmark  & \cmark \\
+		\quad Wetterich equation (fRG)              & \cmark  & \cmark  & \cmark \\
+		\quad (Modified) Slavnov-Taylor id.         & \xmark  & \cmark  & \cmark \\
+		\quad Composite operator equations          & \cmark  & \xmark  & \xmark \\
+		\quad Arbitrary master equations            & \xmark  & \xmark  & \cmark \\
+		\quad Multi-index func.\ derivatives        & \xmark  & \xmark  & \cmark \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Field content}} \\
+		\quad Commuting (bosonic) fields            & \cmark  & \cmark  & \cmark \\
+		\quad Grassmann (fermionic) fields          & \cmark  & \cmark  & \cmark \\
+		\quad Complex fields                        & \cmark  & \cmark  & \cmark \\
+		\quad Background / source fields            & \xmark  & (\cmark) & \cmark \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Truncation \& simplification}} \\
+		\quad Vertex-list truncation                & \cmark  & \cmark  & \cmark \\
+		\quad Loop-order filtering                  & \cmark  & \xmark  & \cmark \\
+		\quad Broken-symmetry phase                 & \cmark  & \xmark  & \cmark \\
+		\quad Diagram topology identification       & \cmark  & (\cmark) & \cmark \\
+		\quad Automatic diagram simplification      & \cmark  & \cmark  & \cmark \\
+		\bottomrule
+	\end{tabular}
+	\hfill
+	\begin{tabular}[t]{l c c c}
+		\toprule
+		\textbf{Feature} & \DoFun & \QMeS & \FunKit \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Momentum routing \& diagrammatic rules}} \\
+		\quad One-loop momentum routing             & (\cmark) & \cmark  & \cmark \\
+		\quad Multi-loop momentum routing           & \xmark  & \xmark  & \cmark \\
+		\quad Feynman rule generation               & \cmark  & \cmark  & \cmark \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Index \& trace contraction}} \\
+		\quad Built-in index contraction            & \cmark  & (\cmark) & \cmark \\
+		\quad FORM integration                      & (\cmark) & \xmark  & \cmark \\
+		\quad Trace caching                         & \xmark  & \xmark  & \cmark \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Output \& visualisation}} \\
+		\quad Feynman diagram plots                 & \cmark  & (\cmark) & \cmark \\
+		\quad \LaTeX{} rendering                    & \xmark  & \xmark  & \cmark \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Optimized code generation}} \\
+		\quad C\texttt{++}                          & \xmark  & \xmark  & \cmark \\
+		\quad Fortran                               & \xmark  & \xmark  & \cmark \\
+		\quad Julia                                 & \xmark  & \xmark  & \cmark \\
+		\quad GPU kernel support                    & \xmark  & \xmark  & \cmark \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Interoperability}} \\
+		\quad FeynCalc compatibility                & (\cmark) & \xmark  & \xmark \\
+		\quad Cross-package format conversion       & \xmark  & \xmark  & \cmark \\
+		\bottomrule
+	\end{tabular}
+	\caption{Feature comparison of \DoFun (v3.0)~\cite{Huber:2019dkb,Huber:2011qr}, \QMeS (v1.2)~\cite{Pawlowski:2021tkk} and \FunKit. A \cmark{} indicates full support, (\cmark) partial or indirect support, and \xmark{} no support.}
+	\label{tab:comparison}
+\end{table*}         
+
 
 
 %%%%%%%%%%%%%%%%%%%%

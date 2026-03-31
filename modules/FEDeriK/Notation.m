@@ -459,7 +459,7 @@ FDOp[a_, b__] :=
     )
 
 FDOpQ[setup_, expr_] :=
-    (Head[expr] === FDOp) && MatchQ[expr, (_[_, {__}] | _[_])] && FieldQ[setup, #]& @@ expr;
+    (Head[expr] === FDOp) && MatchQ[expr, (_[_, {__}] | _[_])] && (FieldQ[setup, #] || orderedObjectQ[#])& @@ expr;
 
 AssertFDOp[setup_, expr_] :=
     If[Not @ FDOpQ[setup, expr],

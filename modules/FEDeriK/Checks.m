@@ -198,7 +198,7 @@ AssertField[setup_, expr_] :=
 
 DerivativeListQ::notList = "A derivative list must be a List.";
 
-DerivativeListQ::invalidField = "All entries of a derivative list must be valid fields defined in the setup.";
+DerivativeListQ::invalidField = "All entries of a derivative list must be valid fields or ordered objects defined in the setup.";
 
 DerivativeListQ[setup_, derivativeList_] :=
     Module[{},
@@ -206,8 +206,8 @@ DerivativeListQ[setup_, derivativeList_] :=
             Message[DerivativeListQ::notList];
             Return[False]
         ];
-        If[Not @ AllTrue[derivativeList, Quiet[FieldQ[setup, #]]&],
-            If[AllTrue[derivativeList, Head[#] === AnyField || FieldQ[setup, #]&],
+        If[Not @ AllTrue[derivativeList, Quiet[FieldQ[setup, #]] || orderedObjectQ[#]&],
+            If[AllTrue[derivativeList, Head[#] === AnyField || FieldQ[setup, #] || orderedObjectQ[#]&],
                 Message[FunKit::warning, "The derivative list contains AnyField entries."];
                 ,
                 Message[DerivativeListQ::invalidField];
