@@ -43,13 +43,13 @@ AppendTo[benchmarks, BenchmarkCase[
     ymDoFun, "actionYMSymbolic,{A,A}"
 ]];
 
-(* Ghost 2-point flow — blocked by ghost derivative validation issue *)
-(* AppendTo[benchmarks, BenchmarkCase[
+(* Ghost 2-point flow *)
+AppendTo[benchmarks, BenchmarkCase[
     "Yang-Mills: Ghost 2-point (Wetterich)",
     {cb[i1], c[i2]},
     ymFK, ymQMeSWett,
     ymDoFun, "actionYMSymbolic,{cb,c}"
-]]; *)
+]];
 
 (* Three-gluon vertex flow *)
 AppendTo[benchmarks, BenchmarkCase[
@@ -59,18 +59,18 @@ AppendTo[benchmarks, BenchmarkCase[
     ymDoFun, "actionYMSymbolic,{A,A,A}"
 ]];
 
-(* Ghost-gluon vertex flow — blocked by ghost derivative validation issue *)
-(* AppendTo[benchmarks, BenchmarkCase[
+(* Ghost-gluon vertex flow *)
+AppendTo[benchmarks, BenchmarkCase[
     "Yang-Mills: Ghost-gluon vertex (Wetterich)",
     {A[i1], cb[i2], c[i3]},
     ymFK, ymQMeSWett,
     ymDoFun, "actionYMSymbolic,{A,cb,c}"
-]]; *)
+]];
 
-(* Ghost-gluon vertex DSE — blocked by ghost DSE setup issue (derivList validation) *)
-(* AppendTo[benchmarks, BenchmarkDSECase[
+(* Ghost-gluon vertex DSE *)
+AppendTo[benchmarks, BenchmarkDSECase[
     "Yang-Mills: Ghost-gluon vertex DSE",
     cb[i1], {c[i2], A[i3]},
     ymFK, ymQMeSDSE,
     ymDoFun, "doDSE[actionYMSymbolic,{cb,c,A}]"
-]]; *)
+]];

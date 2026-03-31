@@ -99,11 +99,11 @@ setFields[{Phi},{{Psi,Psibar}}];
 (* Yang-Mills Setups *)
 
 GetFunKitSetupYangMills[] :=
-    Module[{p, v, c},
+    Module[{p, v, col},
         <|
             "FieldSpace" -> <|
-                "Commuting" -> {A[p, {v, c}]},
-                "Grassmann" -> {{cb[p, {c}], c[p, {c}]}}
+                "Commuting" -> {A[p, {v, col}]},
+                "Grassmann" -> {{cb[p, {col}], c[p, {col}]}}
             |>,
             "Truncation" -> <|
                 GammaN -> {{A, A}, {A, A, A}, {A, A, A, A}, {A, cb, c}, {cb, c}},
@@ -116,18 +116,18 @@ GetFunKitSetupYangMills[] :=
     ];
 
 GetQMeSDSESetupYangMills[] :=
-    Module[{p, v, c, fields, trunc, classAct},
+    Module[{p, v, col, fields, trunc, classAct},
         classAct = {{A, A}, {A, A, A}, {A, A, A, A}, {cb, c}, {cb, c, A}};
-        fields = <|"bosonic" -> {A[p, {v, c}]}, "fermionic" -> {{cb[p, {c}], c[p, {c}]}}|>;
+        fields = <|"bosonic" -> {A[p, {v, col}]}, "fermionic" -> {{cb[p, {col}], c[p, {col}]}}|>;
         trunc = {{A, A}, {A, A, A}, {A, A, A, A}, {A, cb, c}, {cb, c}};
         <|"MasterEquation" -> <|"getDSE" -> "True", "classicalAction" -> classAct|>,
           "FieldSpace" -> fields, "Truncation" -> trunc|>
     ];
 
 GetQMeSWetterichSetupYangMills[] :=
-    Module[{i, j, p, v, c, fields, eq, trunc},
+    Module[{i, j, p, v, col, fields, eq, trunc},
         eq = {"Prefactor" -> {1/2}, <|"type" -> "Regulatordot", "indices" -> {i, j}|>, <|"type" -> "Propagator", "indices" -> {i, j}|>};
-        fields = <|"bosonic" -> {A[p, {v, c}]}, "fermionic" -> {{cb[p, {c}], c[p, {c}]}}|>;
+        fields = <|"bosonic" -> {A[p, {v, col}]}, "fermionic" -> {{cb[p, {col}], c[p, {col}]}}|>;
         trunc = {{A, A}, {A, A, A}, {A, A, A, A}, {A, cb, c}, {cb, c}};
         <|"MasterEquation" -> eq, "FieldSpace" -> fields, "Truncation" -> trunc|>
     ];

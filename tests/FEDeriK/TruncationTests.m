@@ -172,7 +172,9 @@ AppendTo[
     tests
     ,
     TestCreate[
-        Module[{expr, result},
+        Module[
+            {expr, result}
+            ,
             (* Wetterich-like trace: contracted indices force AnyField expansion *)
             expr = FEx[FTerm[1/2, Propagator[{AnyField, AnyField}, {i1, i2}], Rdot[{AnyField, AnyField}, {-i2, -i1}]]];
             result = FTruncate[scalarSetup, expr];
@@ -193,19 +195,18 @@ AppendTo[
     tests
     ,
     TestCreate[
-        Module[{expr, result},
-            (* Free-standing explicit field Phi[i1] alongside Propagator with AnyField.
-               The truncation includes Field -> {{Phi}} so the free field survives.
-               The contracted AnyField in the Propagator expands normally. *)
+        Module[
+            {expr, result}
+            ,
+(* Free-standing explicit field Phi[i1] alongside Propagator with AnyField.
+   The truncation includes Field -> {{Phi}} so the free field survives.
+   The contracted AnyField in the Propagator expands normally. *)
             Module[{extSetup},
                 extSetup = ySetup;
                 extSetup["Truncation", Field] = {{Phi}, {Psi}, {Psibar}};
-                expr = FEx[FTerm[
-                    Phi[i1],
-                    Propagator[{AnyField, AnyField}, {-i1, i2}],
-                    Rdot[{AnyField, AnyField}, {-i2, -i3}]]];
+                expr = FEx[FTerm[Phi[i1], Propagator[{AnyField, AnyField}, {-i1, i2}], Rdot[{AnyField, AnyField}, {-i2, -i3}]]];
                 result = FTruncate[extSetup, expr];
-                (* Phi[i1] must survive, AnyField must expand, no AnyField remains *)
+                (* Phi[i1] must survive, result must not be empty *)
                 Not @ (result === FEx[]) && Not @ FreeQ[result, Phi, Infinity]
             ]
         ]
