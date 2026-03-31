@@ -4,7 +4,6 @@
     Public API:
       ReduceIndices              -- Resolves all metric/FMinus/SymmetryFactor in FTerm/FEx
       ReduceGamma                -- Resolves only metric factors in FTerm (used by ReduceIndices)
-      ReduceIndicesLight         -- Resolves only FMinus/SymmetryFactor in FTerm/FEx (used during derivative iteration)
       ReduceIndicesBatch         -- Batched version of ReduceIndices for Lists of FTerms (used in Truncation)
 
     Internal:
@@ -63,36 +62,6 @@ SymmetryFactorFromList[ex_List] :=
 (**********************************************************************************
     Reduce all metric and FMinus factors in FTerm or FEx expressions
 **********************************************************************************)
-
-(**********************************************************************************
-    Light variant: resolves only FMinus and SymmetryFactor (cheap scalar signs).
-    Skips the expensive gamma pair-matching and GetClosedSuperIndices.
-    Used during derivative iteration where terms still contain AnyField.
-**********************************************************************************)
-
-ReduceIndicesLight[setup_, term_FTerm] :=
-    Module[{result = term, casesFMinus, casesSymmetry},
-        casesFMinus = Cases[term, FMinus[__], Infinity];
-        casesFMinus = Select[casesFMinus, FreeQ[getFields[#], AnyField]&];
-        casesSymmetry = Cases[term, SymmetryFactor[__], Infinity];
-        casesSymmetry = Select[casesSymmetry, FreeQ[getFields[#], AnyField]&];
-        If[Length[casesFMinus] > 0,
-            result = result /. Map[# -> CommuteSign[setup, getField[#, 1], getField[#, 2]]&, casesFMinus];
-        ];
-        If[Length[casesSymmetry] > 0,
-            result = result /. Map[# -> SymmetryFactorFromList[getFields[#]]&, casesSymmetry];
-        ];
-        result
-    ];
-
-ReduceIndicesLight[setup_, eq_FEx] :=
-    Map[ReduceIndicesLight[setup, #]&, eq];
-
-ReduceIndicesLight[setup_, 0] :=
-    0;
-
-ReduceIndicesLight[setup_, {}] :=
-    {};
 
 ReduceIndices::FTermFEx = "The given expression is neither an FTerm nor an FEx:
 `1`";
@@ -260,5 +229,5 @@ ReduceIndicesBatch[setup_, terms_List] :=
 
 ReduceIndices[setup_, eq_FEx] :=
     Module[{},
-        Map[ReduceIndices[setup, #]&, eq]
+        FEx @@ ReduceIndicesBatch[setup, List @@ eq]
     ];

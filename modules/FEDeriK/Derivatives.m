@@ -86,7 +86,7 @@ FResolveFDOpInternal[setup_, term_FTerm] :=
         ];
         (*Note: up till here, the performance impact is minimal.However, the following blowup of terms will multiply it*)
         (*Light reduction: only resolve FMinus/SymmetryFactor signs. Full metric resolution deferred to per-pass.*)
-        dTerms = Map[ReduceIndicesLight[setup, #]&, dTerms];
+        dTerms = ReduceIndicesBatch[setup, dTerms];
         FunKitDebug[6, "Result: ", dTerms];
         (*Filter zeros and return as plain list of FTerms*)
         Select[dTerms, # =!= FTerm[0] && # =!= 0&]
@@ -147,7 +147,7 @@ FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
   Skip for high-symmetry cases where the O(n^2 * |symmetries|) cost is too high. *)
             If[ModuleLoaded[AnSEL] && $AutoSimplify === True && Length[ret] < 32 && Length[symmetries] <= 6,
                 Module[{t0 = AbsoluteTime[]},
-                    ret = Map[ReduceIndices[setup, #]&, ret];
+                    ret = ReduceIndicesBatch[setup, ret];
                     ret = List @@ FunKit`FSimplify[setup, FEx @@ ret, "Symmetries" -> symmetries];
                     If[ValueQ[$ProfileDerivSimplify],
                         $ProfileDerivSimplify += AbsoluteTime[] - t0

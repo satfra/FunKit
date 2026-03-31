@@ -852,7 +852,7 @@ FTruncateOpenIndices[setup_, expr_FEx] :=
         (*Resolve open indices directly*)
         ret0 = BalancedMap[OTrunc[setup, #]&, ret0];
         (*Finally, reduce indices again to be safe*)
-        ret0 = BalancedMap[ReduceIndices[setup, #]&, ret0];
+        ret0 = ReduceIndicesBatch[setup, ret0];
         FunKitDebug[1, "Finished truncating (open indices) the given expression"];
         ret0 = OrderFields[setup, FixIndices[setup, #]& /@ ret0];
         (*Directly remove all FEx[]*)
@@ -862,7 +862,7 @@ FTruncateOpenIndices[setup_, expr_FEx] :=
         If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
             ret0 = FunKit`FSimplify[setup, ret0];
             {ret0, annotations} = SeparateFExAnnotations[ret0];
-            ret0 = BalancedMap[ReduceIndices[setup, #]&, ret0];
+            ret0 = ReduceIndicesBatch[setup, ret0];
             ret0 = MergeFExAnnotations[FEx @@ ret0, annotations];
         ];
         Return[ret0];
@@ -928,7 +928,7 @@ FTruncate[setup_, expr_FEx] :=
                 ];
             ];
             {ret0, annotations} = SeparateFExAnnotations[ret0];
-            ret0 = BalancedMap[ReduceIndices[setup, #]&, ret0];
+            ret0 = ReduceIndicesBatch[setup, ret0];
             ret0 = MergeFExAnnotations[FEx @@ ret0, annotations];
         ];
         Return[ret0];

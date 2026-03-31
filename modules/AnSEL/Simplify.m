@@ -171,10 +171,32 @@ FMakeSymmetryList[setup_, {fields___}, {indices___}] :=
 StartPoints[setup_, t1_FTerm, t2_FTerm] :=
     Module[{obj1, obj2, count, desired, sList, match1, match2, cidx1, cidx2, doFields, fieldKey},
         doFields = replFields[setup];
-        (*Get all sub-objects inside the terms. Apply replFields only to non-indexed objects
-          (standalone field applications) to avoid corrupting indexed-object structure in NotationB.*)
-        obj1 = Reverse @ Sort @ Map[If[indexedObjectQ[#], #, # /. doFields]&, ExtractObjectsWithIndex[setup, t1]];
-        obj2 = Reverse @ Sort @ Map[If[indexedObjectQ[#], #, # /. doFields]&, ExtractObjectsWithIndex[setup, t2]];
+(*Get all sub-objects inside the terms. Apply replFields only to non-indexed objects
+  (standalone field applications) to avoid corrupting indexed-object structure in NotationB.*)
+        obj1 =
+            Reverse @
+                Sort @
+                    Map[
+                        If[indexedObjectQ[#],
+                            #
+                            ,
+                            # /. doFields
+                        ]&
+                        ,
+                        ExtractObjectsWithIndex[setup, t1]
+                    ];
+        obj2 =
+            Reverse @
+                Sort @
+                    Map[
+                        If[indexedObjectQ[#],
+                            #
+                            ,
+                            # /. doFields
+                        ]&
+                        ,
+                        ExtractObjectsWithIndex[setup, t2]
+                    ];
         FunKitDebug[4, "StartPoints: Comparing objects ", obj1, " and ", obj2];
         (*Build a notation-agnostic field-content key for each object*)
         fieldKey[obj_] := Head[obj] @@ Sort @ getFields[obj];
@@ -212,16 +234,17 @@ IterateDiagram[setup_Association, allObj_, closedIndices_, openIndices_, curPos_
         otherIndices = Intersection[otherIndices, closedIndices];
         FunKitDebug[4, "Found outgoing indices: ", otherIndices];
         (*all objects containing the otherIndices*)
-        followObjects = Table[
-            candidates = Select[DeleteCases[allObj, curPos], MemberQ[getIndices[#], otherIndices[[i]], Infinity]&];
-            If[Length[candidates] === 0,
-                Message[IterateDiagram::noFollowObject, otherIndices[[i]]];
-                Abort[]
+        followObjects =
+            Table[
+                candidates = Select[DeleteCases[allObj, curPos], MemberQ[getIndices[#], otherIndices[[i]], Infinity]&];
+                If[Length[candidates] === 0,
+                    Message[IterateDiagram::noFollowObject, otherIndices[[i]]];
+                    Abort[]
+                ];
+                candidates[[1]]
+                ,
+                {i, 1, Length[otherIndices]}
             ];
-            candidates[[1]]
-            ,
-            {i, 1, Length[otherIndices]}
-        ];
         FunKitDebug[3, "Found followObjects: ", followObjects];
         Return[{otherIndices, followObjects}]
     ];
@@ -438,8 +461,10 @@ Returns both the sign and the reordered t2*)
         If[equiv[[1]] === Null || equiv[[2]] === Null,
             Return[{1, t2}]
         ];
-        nf1 = getFields[t1]; ni1 = getIndices[t1];
-        nf2 = getFields[t2]; ni2 = getIndices[t2];
+        nf1 = getFields[t1];
+        ni1 = getIndices[t1];
+        nf2 = getFields[t2];
+        ni2 = getIndices[t2];
         ipos1 = FirstPosition[makePosIdx /@ ni1, equiv[[1]]][[1]];
         ipos2 = FirstPosition[makePosIdx /@ ni2, equiv[[2]]][[1]];
         (*nothing to do:*)
@@ -468,6 +493,7 @@ TermsEqualAndSum::undeterminedFields = "Error: Cannot equate terms if they are n
 
 (* Preprocessed variant: terms already have ReduceIndices applied.
    Skips only ReduceIndices; still does FixIndices+FOrderFields for correct index naming. *)
+
 TermsEqualAndSumPre[setup_, it1_FTerm, it2_FTerm] :=
     Module[{t1, t2},
         t1 = FixIndices[setup, FOrderFields[setup, it1]];
@@ -533,8 +559,34 @@ TermsEqualAndSumCore[setup_, t1_FTerm, t2_FTerm] :=
         FunKitDebug[4, "Collected StartPoints"];
         doFields = replFields[setup];
         (*collect objects for both terms; apply replFields only to non-indexed objects*)
-        allObjt1 = Select[Map[If[indexedObjectQ[#], #, # /. doFields]&, ExtractObjectsWithIndex[setup, t1]], FreeQ[FMinus[__]]];
-        allObjt2 = Select[Map[If[indexedObjectQ[#], #, # /. doFields]&, ExtractObjectsWithIndex[setup, t2]], FreeQ[FMinus[__]]];
+        allObjt1 =
+            Select[
+                Map[
+                    If[indexedObjectQ[#],
+                        #
+                        ,
+                        # /. doFields
+                    ]&
+                    ,
+                    ExtractObjectsWithIndex[setup, t1]
+                ]
+                ,
+                FreeQ[FMinus[__]]
+            ];
+        allObjt2 =
+            Select[
+                Map[
+                    If[indexedObjectQ[#],
+                        #
+                        ,
+                        # /. doFields
+                    ]&
+                    ,
+                    ExtractObjectsWithIndex[setup, t2]
+                ]
+                ,
+                FreeQ[FMinus[__]]
+            ];
         oidxt1 = GetOpenSuperIndices[setup, t1];
         oidxt2 = GetOpenSuperIndices[setup, t2];
         (*We pick the first candidate for t1 and iterate over all candidates for t2.*)
@@ -656,9 +708,11 @@ SubFSimplify[setup_, expr_] /; Length[expr] > 64 :=
     ];
 
 SubFSimplify[setup_, expr_] /; Length[expr] <= 64 :=
-    Module[{ret = List @@ expr, idx, jdx, red},
+    Module[
+        {ret = List @@ expr, idx, jdx, red}
+        ,
         (* Preprocess: ReduceIndices only; FixIndices+FOrderFields already done by FSimplify entry *)
-        ret = Map[ReduceIndices[setup, #]&, ret];
+        ret = ReduceIndicesBatch[setup, ret];
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
                 red = TermsEqualAndSumPre[setup, ret[[idx]], ret[[jdx]]];
@@ -685,10 +739,12 @@ SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] > 64 :=
     ];
 
 SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] <= 64 :=
-    Module[{ret = List @@ expr, idx, jdx, kdx, red, preprocess, t2sym},
+    Module[
+        {ret = List @@ expr, idx, jdx, kdx, red, preprocess, t2sym}
+        ,
         (* Preprocess: ReduceIndices only; FixIndices+FOrderFields already done by FSimplify entry *)
         preprocess = FixIndices[setup, FOrderFields[setup, ReduceIndices[setup, #]]]&;
-        ret = Map[ReduceIndices[setup, #]&, ret];
+        ret = ReduceIndicesBatch[setup, ret];
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
                 For[kdx = 1, kdx <= Length[symmetryList], kdx++,
