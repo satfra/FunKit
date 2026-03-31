@@ -115,14 +115,14 @@ BenchmarkCase[title_String, derivList_List, fkSetup_Association, qmesSetup_, doF
                     nRuns
                 ];
         ];
-        (* DoFun *)
+        (* DoFun — with identify->False to skip diagram reduction for fair comparison *)
         If[doFunSetupStr =!= None,
             results["DoFun-Full"] =
                 BenchmarkThunk[
                     "DoFun Full"
                     ,
                     Function[{},
-                        wrapDoFun[doFunSetupStr <> "doRGE[" <> doFunFields <> "]"]
+                        wrapDoFun[doFunSetupStr <> "doRGE[" <> doFunFields <> ", identify->False]"]
                     ]
                     ,
                     nWarm
@@ -244,14 +244,14 @@ BenchmarkDSECase[title_String, field_, derivList_List, fkSetup_Association, qmes
                     nRuns
                 ];
         ];
-        (* DoFun — uses doDSE; doFunCmd is the full command string e.g. "doDSE[action,{A,A}]" *)
+        (* DoFun — with identify->False to skip diagram reduction for fair comparison *)
         If[doFunSetupStr =!= None,
             results["DoFun-Full"] =
                 BenchmarkThunk[
                     "DoFun Full"
                     ,
                     Function[{},
-                        wrapDoFun[doFunSetupStr <> doFunCmd]
+                        wrapDoFun[doFunSetupStr <> StringReplace[doFunCmd, "]" ~~ EndOfString :> ", identify->False]"]]
                     ]
                     ,
                     nWarm

@@ -4,10 +4,14 @@
 import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import math
+import glob
+import os
 
 # ── Configuration ────────────────────────────────────────────────────────────
 
-CSV_FILE = "results/benchmark_20260331_1533.csv"
+# Grab the latest CSV file from the "results" folder and set it here.
+CSV_FILE = max(glob.glob("results/benchmark_*.csv"), key=os.path.getctime)
 
 # Which titles to include. Set to a list of exact title strings to filter,
 # or None to include all.
@@ -16,14 +20,14 @@ SELECTED_TITLES = None
 # Subplot grouping: key = subplot title, value = list of substrings to match
 # against the Title column.
 GROUPS = {
-    "Four-Fermion": ["Four-Fermion"],
+    "NJL model": ["Four-Fermion"],
     "Scalar Theory": ["Scalar Theory"],
     "Yang-Mills": ["Yang-Mills"],
     "Yukawa": ["Yukawa"],
 }
 
 # Tools to compare (column prefixes)
-TOOLS = ["FunKit", "QMeS", "DoFun"]
+TOOLS = ["FunKit", "DoFun", "QMeS"]
 COLORS = {"FunKit": "#2077B4", "QMeS": "#FF7F0E", "DoFun": "#2CA02C"}
 
 # ── Script ───────────────────────────────────────────────────────────────────
@@ -54,16 +58,27 @@ n_groups = len(grouped)
 if n_groups == 0:
     raise SystemExit("No data matched the configured groups/titles.")
 
-fig, axes = plt.subplots(1, n_groups, figsize=(5 * n_groups, 5), squeeze=False)
+ncols = math.ceil(math.sqrt(n_groups))
+nrows = math.ceil(n_groups / ncols)
+
+fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 5 * nrows), squeeze=False)
 axes = axes.flatten()
+
+# Hide unused subplots
+for ax in axes[n_groups:]:
+    ax.set_visible(False)
 
 bar_width = 0.25
 
 for ax, (group_name, sub) in zip(axes, grouped.items()):
     # Short labels: strip "Category: " prefix and shorten common suffixes
     labels = [t.split(": ", 1)[-1] if ": " in t else t for t in sub["Title"]]
-    labels = [l.replace(" (Wetterich)", "") .replace(" function", "")
-              .replace(" vertex", "").replace(" DSE", "") for l in labels]
+    labels = [
+        l.replace(" (Wetterich)", " flow")
+        .replace(" function", "")
+        .replace(" vertex", "")
+        for l in labels
+    ]
     x = np.arange(len(labels))
 
     for i, tool in enumerate(TOOLS):

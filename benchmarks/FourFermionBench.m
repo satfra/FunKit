@@ -2,22 +2,20 @@
 
 benchmarks = {};
 
-ffFK    = GetFunKitSetupFourFermion[];
-ffQMeS  = GetQMeSWetterichSetupFourFermion[];
+ffFK = GetFunKitSetupFourFermion[];
+
+ffQMeS = GetQMeSWetterichSetupFourFermion[];
+
 ffDoFun = GetDoFunSetupFourFermion[];
 
 (* 2-point function *)
-AppendTo[benchmarks, BenchmarkCase[
-    "Four-Fermion: 2-point (Wetterich)",
-    {Psibar[i1], Psi[i2]},
-    ffFK, ffQMeS,
-    ffDoFun, "actionFourFermionSymbolic,{Psibar,Psi}"
-]];
+
+AppendTo[benchmarks, BenchmarkCase["Four-Fermion: 2-point (Wetterich)", {Psibar[i1], Psi[i2]}, ffFK, ffQMeS, ffDoFun, "actionFourFermionSymbolic,{Psibar,Psi}"]];
 
 (* 4-point function *)
-AppendTo[benchmarks, BenchmarkCase[
-    "Four-Fermion: 4-point (Wetterich)",
-    {Psibar[i1], Psibar[i2], Psi[i3], Psi[i4]},
-    ffFK, ffQMeS,
-    ffDoFun, "actionFourFermionSymbolic,{Psibar,Psibar,Psi,Psi}"
-]];
+
+AppendTo[benchmarks, BenchmarkCase["Four-Fermion: 4-point (Wetterich)", {Psibar[i1], Psibar[i2], Psi[i3], Psi[i4]}, ffFK, ffQMeS, ffDoFun, "actionFourFermionSymbolic,{Psibar,Psibar,Psi,Psi}"]];
+
+(* 6-point function *)
+
+AppendTo[benchmarks, BenchmarkCase["Four-Fermion: 6-point (Wetterich)", {Psibar[i1], Psibar[i2], Psibar[i3], Psi[i4], Psi[i5], Psi[i6]}, ffFK, ffQMeS, ffDoFun, "actionFourFermionSymbolic,{Psibar,Psibar,Psibar,Psi,Psi,Psi}"]];

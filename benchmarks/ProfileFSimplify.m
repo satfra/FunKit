@@ -24,10 +24,12 @@ Print[];
 Print["=== FSimplify profiling ==="];
 
 (* Without symmetries *)
+FunKit`Private`ResetFSimplifyProfile[];
 {tSimp, simpRes} = AbsoluteTiming[FunKit`FSimplify[setup, truncRes]];
 Print["FSimplify (no symmetries): ", NumberForm[tSimp, {5,3}], " s"];
 Print["  Input terms:  ", Length[truncRes]];
 Print["  Output terms: ", Length[simpRes]];
+FunKit`Private`PrintFSimplifyProfile[];
 
 (* With symmetries from FTakeDerivatives *)
 {truncResSym, annotations} = FunKit`Private`SeparateFExAnnotations[truncRes];
@@ -35,9 +37,11 @@ symmetries = If[KeyExistsQ[annotations, "Symmetries"], annotations["Symmetries"]
 Print["  Symmetries: ", Length[symmetries]];
 
 If[Length[symmetries] > 0,
+    FunKit`Private`ResetFSimplifyProfile[];
     {tSimpSym, simpResSym} = AbsoluteTiming[FunKit`FSimplify[setup, truncRes, "Symmetries" -> symmetries]];
     Print["FSimplify (with symmetries): ", NumberForm[tSimpSym, {5,3}], " s"];
     Print["  Output terms: ", Length[simpResSym]];
+    FunKit`Private`PrintFSimplifyProfile[];
 ];
 
 (* Also test on a simpler case: Yukawa scalar 4-point *)
@@ -50,8 +54,10 @@ truncY = FTruncate[setupY, derivY];
 Print["Terms after truncation: ", Length[truncY]];
 
 FunKit`FSimplify[setupY, truncY]; (* warmup *)
+FunKit`Private`ResetFSimplifyProfile[];
 {tSimpY, simpResY} = AbsoluteTiming[FunKit`FSimplify[setupY, truncY]];
 Print["FSimplify: ", NumberForm[tSimpY, {5,3}], " s"];
 Print["  Output terms: ", Length[simpResY]];
+FunKit`Private`PrintFSimplifyProfile[];
 
 Exit[0];

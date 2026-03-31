@@ -25,6 +25,53 @@
                                     (used by FSimplify)
 **********************************************************************************)
 
+(* Profiling accumulators — set to non-zero initial values to enable *)
+
+$ProfileSubFSimplify = 0.;
+
+$ProfileTermsEqual = 0.;
+
+$ProfileTermsEqualCount = 0;
+
+$ProfileTermsEqualSuccess = 0;
+
+$ProfileStartPoints = 0.;
+
+$ProfileGraphTraversal = 0.;
+
+$ProfileRearrangeFields = 0.;
+
+$ProfilePrecompute = 0.;
+
+$ProfileSymPreprocess = 0.;
+
+$ProfileFSimplifyEnabled = False;
+
+ResetFSimplifyProfile[] :=
+    (
+        $ProfileFSimplifyEnabled = True;
+        $ProfileSubFSimplify = 0.;
+        $ProfileTermsEqual = 0.;
+        $ProfileTermsEqualCount = 0;
+        $ProfileTermsEqualSuccess = 0;
+        $ProfileStartPoints = 0.;
+        $ProfileGraphTraversal = 0.;
+        $ProfileRearrangeFields = 0.;
+        $ProfilePrecompute = 0.;
+        $ProfileSymPreprocess = 0.;
+    );
+
+PrintFSimplifyProfile[] :=
+    (
+        Print["  SubFSimplify total:    ", NumberForm[$ProfileSubFSimplify, {5, 4}], " s"];
+        Print["  TermsEqualAndSum:      ", NumberForm[$ProfileTermsEqual, {5, 4}], " s  (", $ProfileTermsEqualCount, " calls, ", $ProfileTermsEqualSuccess, " matches)"];
+        Print["    StartPoints:         ", NumberForm[$ProfileStartPoints, {5, 4}], " s"];
+        Print["    Pre-compute (cidx/oidx/objs): ", NumberForm[$ProfilePrecompute, {5, 4}], " s"];
+        Print["    Graph traversal:     ", NumberForm[$ProfileGraphTraversal, {5, 4}], " s"];
+        Print["    RearrangeFields:     ", NumberForm[$ProfileRearrangeFields, {5, 4}], " s"];
+        Print["  Sym preprocess:        ", NumberForm[$ProfileSymPreprocess, {5, 4}], " s"];
+    );
+
 (* Construct all permutations of fields in a derivativeList and their prefactors, given a list of symmetries *)
 
 FBuildSymmetryList::invalidSymmetries = "Symmetries must be given as a list.";
@@ -166,57 +213,38 @@ FMakeSymmetryList[setup_, {fields___}, {indices___}] :=
         Return[symmetries];
     ];
 
-(*Get viable starting points for a comparison of two diagrams*)
+(*Get viable starting points for a comparison of two diagrams.
+  Requires pre-computed object lists (from PrecomputeTermData). *)
 
-StartPoints[setup_, t1_FTerm, t2_FTerm, cidx1_, cidx2_] :=
-    Module[{obj1, obj2, count, desired, sList, match1, match2, doFields, fieldKey},
-        doFields = replFields[setup];
-(*Get all sub-objects inside the terms. Apply replFields only to non-indexed objects
-  (standalone field applications) to avoid corrupting indexed-object structure in NotationB.*)
-        obj1 =
-            Reverse @
-                Sort @
-                    Map[
-                        If[indexedObjectQ[#],
-                            #
-                            ,
-                            # /. doFields
-                        ]&
-                        ,
-                        ExtractObjectsWithIndex[setup, t1]
+StartPoints[setup_, t1_FTerm, t2_FTerm, cidx1_, cidx2_, obj1_, obj2_] :=
+    Module[{count, desired, sList, match1, match2, fieldKey, $profTmp, $profResult},
+        {$profTmp, $profResult} =
+            AbsoluteTiming[
+                Module[{},
+                    FunKitDebug[4, "StartPoints: Comparing objects ", obj1, " and ", obj2];
+                    (*Build a notation-agnostic field-content key for each object*)
+                    fieldKey[obj_] := Head[obj] @@ Sort @ getFields[obj];
+                    (*If the objects (with field content) do not match, they are not identical.*)
+                    If[Sort @ Map[fieldKey, obj1] =!= Sort @ Map[fieldKey, obj2],
+                        FunKitDebug[4, "Failed at object head check"];
+                        Return[{False, Null, Null}]
                     ];
-        obj2 =
-            Reverse @
-                Sort @
-                    Map[
-                        If[indexedObjectQ[#],
-                            #
-                            ,
-                            # /. doFields
-                        ]&
-                        ,
-                        ExtractObjectsWithIndex[setup, t2]
+                    If[Length[cidx1] =!= Length[cidx2],
+                        FunKitDebug[4, "Failed at closed index count check: ", Length[cidx1], " vs ", Length[cidx2]];
+                        Return[{False, Null, Null}]
                     ];
-        FunKitDebug[4, "StartPoints: Comparing objects ", obj1, " and ", obj2];
-        (*Build a notation-agnostic field-content key for each object*)
-        fieldKey[obj_] := Head[obj] @@ Sort @ getFields[obj];
-        (*If the objects (with field content) do not match, they are not identical.*)
-        If[Sort @ Map[fieldKey, obj1] =!= Sort @ Map[fieldKey, obj2],
-            FunKitDebug[4, "Failed at object head check"];
-            Return[{False, Null, Null}]
-        ];
-        If[Length[cidx1] =!= Length[cidx2],
-            FunKitDebug[4, "Failed at closed index count check: ", Length[cidx1], " vs ", Length[cidx2]];
-            Return[{False, Null, Null}]
-        ];
-        (*Otherwise, we check which object is the "rarest"*)
-        sList = Map[fieldKey, obj1];
-        count = Counts[sList];
-        desired = Keys[count][[PositionSmallest[Values[count]][[1]]]];
-        match1 = Select[obj1, (fieldKey[#] === desired)&];
-        match2 = Select[obj2, (fieldKey[#] === desired)&];
-        (*return all possible starting points *)
-        Return[{True, match1, match2}]
+                    (*Otherwise, we check which object is the "rarest"*)
+                    sList = Map[fieldKey, obj1];
+                    count = Counts[sList];
+                    desired = Keys[count][[PositionSmallest[Values[count]][[1]]]];
+                    match1 = Select[obj1, (fieldKey[#] === desired)&];
+                    match2 = Select[obj2, (fieldKey[#] === desired)&];
+                    (*return all possible starting points *)
+                    {True, match1, match2}
+                ]
+            ];
+        $ProfileStartPoints += $profTmp;
+        Return[$profResult]
     ];
 
 (*Find all objects following the closed indices attached to the object curPos*)
@@ -452,39 +480,46 @@ TermsEqualAndSum[
     ];
 
 RearrangeFields[setup_, t1_, t2_, equiv_] :=
-    Module[
-        {ipos1, ipos2, idx, sign, newt2, nf1, ni1, nf2, ni2}
-        ,
+    Module[{ipos1, ipos2, idx, sign, newt2, nf1, ni1, nf2, ni2, $profTmp, $profResult},
+        {$profTmp, $profResult} =
+            AbsoluteTiming[
+                Module[
+                    {}
+                    ,
 (* Given two objects t1, t2, re-order the fields in the indexed object t2,
 so that the exit index equivalently fits the position in t1.
 Returns both the sign and the reordered t2*)
-        If[equiv[[1]] === Null || equiv[[2]] === Null,
-            Return[{1, t2}]
-        ];
-        nf1 = getFields[t1];
-        ni1 = getIndices[t1];
-        nf2 = getFields[t2];
-        ni2 = getIndices[t2];
-        ipos1 = FirstPosition[makePosIdx /@ ni1, equiv[[1]]][[1]];
-        ipos2 = FirstPosition[makePosIdx /@ ni2, equiv[[2]]][[1]];
-        (*nothing to do:*)
-        If[ipos1 === ipos2,
-            Return[{1, t2}]
-        ];
-        sign =
-            If[ipos2 > ipos1,
-                (*commute pos2 backwards*)
-                Table[makeObj[FMinus, {nf2[[ipos2]], nf2[[ipos2 - idx]]}, {ni2[[ipos2]], ni2[[ipos2 - idx]]}], {idx, 1, ipos2 - ipos1}]
-                ,
-                (*commute pos2 forwards*)
-                Table[makeObj[FMinus, {nf2[[ipos2]], nf2[[ipos2 + idx]]}, {ni2[[ipos2]], ni2[[ipos2 + idx]]}], {idx, 1, ipos1 - ipos2}]
+                    If[equiv[[1]] === Null || equiv[[2]] === Null,
+                        Return[{1, t2}]
+                    ];
+                    nf1 = getFields[t1];
+                    ni1 = getIndices[t1];
+                    nf2 = getFields[t2];
+                    ni2 = getIndices[t2];
+                    ipos1 = FirstPosition[makePosIdx /@ ni1, equiv[[1]]][[1]];
+                    ipos2 = FirstPosition[makePosIdx /@ ni2, equiv[[2]]][[1]];
+                    (*nothing to do:*)
+                    If[ipos1 === ipos2,
+                        Return[{1, t2}]
+                    ];
+                    sign =
+                        If[ipos2 > ipos1,
+                            (*commute pos2 backwards*)
+                            Table[makeObj[FMinus, {nf2[[ipos2]], nf2[[ipos2 - idx]]}, {ni2[[ipos2]], ni2[[ipos2 - idx]]}], {idx, 1, ipos2 - ipos1}]
+                            ,
+                            (*commute pos2 forwards*)
+                            Table[makeObj[FMinus, {nf2[[ipos2]], nf2[[ipos2 + idx]]}, {ni2[[ipos2]], ni2[[ipos2 + idx]]}], {idx, 1, ipos1 - ipos2}]
+                        ];
+                    (*Resolve the resulting FMinus, if possible*)
+                    sign = Times @@ ReduceIndices[setup, FTerm @@ sign];
+                    (*Replace the indices & fields in t2*)
+                    newt2 = makeObj[Head[t2], Insert[Delete[nf2, ipos2], nf2[[ipos2]], ipos1], Insert[Delete[ni2, ipos2], ni2[[ipos2]], ipos1]];
+                    FunKitDebug[4, "Given ", t1, ", rearranged ", t2, " to ", newt2, " with sign ", sign];
+                    {sign, newt2}
+                ]
             ];
-        (*Resolve the resulting FMinus, if possible*)
-        sign = Times @@ ReduceIndices[setup, FTerm @@ sign];
-        (*Replace the indices & fields in t2*)
-        newt2 = makeObj[Head[t2], Insert[Delete[nf2, ipos2], nf2[[ipos2]], ipos1], Insert[Delete[ni2, ipos2], ni2[[ipos2]], ipos1]];
-        FunKitDebug[4, "Given ", t1, ", rearranged ", t2, " to ", newt2, " with sign ", sign];
-        Return[{sign, newt2}];
+        $ProfileRearrangeFields += $profTmp;
+        Return[$profResult];
     ];
 
 TermsEqualAndSum::undeterminedFields = "Error: Cannot equate terms if they are not fully truncated, i.e. contain instances of AnyField.";
@@ -495,98 +530,73 @@ TermsEqualAndSum::undeterminedFields = "Error: Cannot equate terms if they are n
    Skips only ReduceIndices; still does FixIndices+FOrderFields for correct index naming. *)
 
 (* TermsEqualAndSumPre: terms are assumed already normalized (FixIndices + FOrderFields)
-   by SubFSimplify before the pairwise loop. No redundant re-normalization. *)
-TermsEqualAndSumPre[setup_, it1_FTerm, it2_FTerm] :=
-    TermsEqualAndSumCore[setup, it1, it2];
+   by SubFSimplify before the pairwise loop. No redundant re-normalization.
+   Requires pre-computed data from PrecomputeTermData for both terms. *)
+
+TermsEqualAndSumPre[setup_, it1_FTerm, it2_FTerm, data1_Association, data2_Association] :=
+    TermsEqualAndSumCore[setup, it1, it2, data1, data2];
 
 TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
-    Module[
-        {t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2]}
-        ,
-        (*Start off by default-ordering t1 and t2*)
+    Module[{t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2]},
         t1 = FixIndices[setup, FOrderFields[setup, t1]];
         t2 = FixIndices[setup, FOrderFields[setup, t2]];
-        (*Skip comparison for intermediate terms that still contain unresolved AnyField placeholders.*)
         If[!FreeQ[it1, AnyField] || !FreeQ[it2, AnyField],
             Return[False]
         ];
-        TermsEqualAndSumCore[setup, t1, t2]
+        TermsEqualAndSumPre[setup, t1, t2, PrecomputeTermData[setup, t1], PrecomputeTermData[setup, t2]]
     ];
 
-TermsEqualAndSumCore[setup_, t1_FTerm, t2_FTerm] :=
-    Module[
-        {nt1, nt2, curIdx1, curIdx2, curIdxRepl, startPoints, doFields, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2, nallIdxReplNew, tmp}
-        ,
-        (*Briefly check the trivial case*)
+(* Requires pre-computed data from PrecomputeTermData for both terms *)
+
+TermsEqualAndSumCore[setup_, t1_FTerm, t2_FTerm, data1_Association, data2_Association] :=
+    Module[{nt1, nt2, curIdx1, curIdx2, curIdxRepl, startPoints, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2, nallIdxReplNew, tmp, $profT0 = AbsoluteTime[]},
+        $ProfileTermsEqualCount++;
         FunKitDebug[4, "    TermsEqualAndSum: Comparing \n  ", t1, "\n   &\n  ", t2];
         If[t1 === t2,
             FunKitDebug[3, "    Terms are identical, returning FTerm[2, t1]."];
+            $ProfileTermsEqual += AbsoluteTime[] - $profT0;
+            $ProfileTermsEqualSuccess++;
             Return @ FTerm[2, t1]
         ];
         If[Length[t1] >= 2 && Length[t2] >= 2,
             If[t1[[2 ;; ]] === t2[[2 ;; ]] && FreeQ[{t1[[1]]}, Alternatives @@ $indexedObjects, Infinity],
-                FunKitDebug[3, "    Terms are identical starting with t1[[2 ;; ]], returning FTerm[t1[[1]] + t1[[2]], t1[[2 ;; ]]]."];
+                $ProfileTermsEqual += AbsoluteTime[] - $profT0;
+                $ProfileTermsEqualSuccess++;
                 Return @ FTerm[t1[[1]] + t2[[1]], t1[[2 ;; ]]]
             ];
             If[t1[[2 ;; ]] === t2[[1 ;; ]] && FreeQ[{t1[[1]]}, Alternatives @@ $indexedObjects, Infinity],
-                FunKitDebug[3, "    Terms are identical starting with t1[[2 ;; ]], returning FTerm[t1[[1]] + 1, t1[[2 ;; ]]]."];
+                $ProfileTermsEqual += AbsoluteTime[] - $profT0;
+                $ProfileTermsEqualSuccess++;
                 Return @ FTerm[t1[[1]] + 1, t1[[2 ;; ]]]
             ];
             If[t1[[1 ;; ]] === t2[[2 ;; ]] && FreeQ[{t1[[1]]}, Alternatives @@ $indexedObjects, Infinity],
-                FunKitDebug[3, "    Terms are identical starting with t1[[1 ;; ]], returning FTerm[1 + t2[[1]], t1[[1 ;; ]]]."];
+                $ProfileTermsEqual += AbsoluteTime[] - $profT0;
+                $ProfileTermsEqualSuccess++;
                 Return @ FTerm[1 + t2[[1]], t1[[1 ;; ]]]
             ];
         ];
-        (*Let's obtain closed superindices*)
-        cidxt1 = GetClosedSuperIndices[setup, t1];
-        cidxt2 = GetClosedSuperIndices[setup, t2];
+        (* Use pre-computed data *)
+        cidxt1 = data1["cidx"];
+        cidxt2 = data2["cidx"];
         If[Length[cidxt1] =!= Length[cidxt2],
-            FunKitDebug[3, "    Different number of closed indices: ", Length[cidxt1], " vs ", Length[cidxt2]];
+            $ProfileTermsEqual += AbsoluteTime[] - $profT0;
             Return[False]
         ];
         If[Length[cidxt1] == 0,
-            (*We had the identity already above, so nothing to do here*)
+            $ProfileTermsEqual += AbsoluteTime[] - $profT0;
             Return[False]
         ];
-        (*Get all the possible starting points for the search — pass pre-computed closed indices*)
-        startPoints = StartPoints[setup, t1, t2, cidxt1, cidxt2];
+        allObjt1 = data1["objs"];
+        allObjt2 = data2["objs"];
+        oidxt1 = data1["oidx"];
+        oidxt2 = data2["oidx"];
+        startPoints = StartPoints[setup, t1, t2, cidxt1, cidxt2, allObjt1, allObjt2];
         If[Not[startPoints[[1]]],
             FunKitDebug[3, "    No matching StartPoints could be identified"];
+            $ProfileTermsEqual += AbsoluteTime[] - $profT0;
             Return[False]
         ];
         FunKitDebug[4, "Collected StartPoints"];
-        doFields = replFields[setup];
-        (*collect objects for both terms; apply replFields only to non-indexed objects*)
-        allObjt1 =
-            Select[
-                Map[
-                    If[indexedObjectQ[#],
-                        #
-                        ,
-                        # /. doFields
-                    ]&
-                    ,
-                    ExtractObjectsWithIndex[setup, t1]
-                ]
-                ,
-                FreeQ[FMinus[__]]
-            ];
-        allObjt2 =
-            Select[
-                Map[
-                    If[indexedObjectQ[#],
-                        #
-                        ,
-                        # /. doFields
-                    ]&
-                    ,
-                    ExtractObjectsWithIndex[setup, t2]
-                ]
-                ,
-                FreeQ[FMinus[__]]
-            ];
-        oidxt1 = GetOpenSuperIndices[setup, t1];
-        oidxt2 = GetOpenSuperIndices[setup, t2];
         (*We pick the first candidate for t1 and iterate over all candidates for t2.*)
         startt1 = startPoints[[2, 1]];
         (*starting indices can only be closed indices! We pick these out with the following 4 commands*)
@@ -596,27 +606,22 @@ TermsEqualAndSumCore[setup_, t1_FTerm, t2_FTerm] :=
         cidxstartt1 = makePosIdx /@ Pick[getIndices[startt1], cidxstartt1];
         (*Sanity check*)
         If[Length[cidxstartt1] === 0,
+            $ProfileTermsEqual += AbsoluteTime[] - $profT0;
             Return[False]
         ];
         FunKitDebug[3, "Comparing the terms \n  ", t1, "\n  ", t2];
         If[Length[Intersection[getIndices[startt1], cidxt1]] == 1,
-            (*If there are no other closed indices, the current index is outgoing and we should not mark it as entry*)
             curIdx1 = Null
             ,
             curIdx1 = cidxstartt1[[1]];
         ];
-        (*If the terms are equal for any starting candidates for t2, we have succeeded*)
         For[idx = 1, idx <= Length[startPoints[[3]]], idx++,
             startt2 = startPoints[[3, idx]];
-            (*We need to identify all possible insertion points in t2 that fit the insertion in t1*)
-            (*starting indices can only be 1. closed indices 2. have same field content as the starting point in t1. We pick these out with the following 2 commands*)
             cidxstartt2 = Map[(MemberQ[cidxt2, #[[1]]] && #[[2]] === startt1fields[[1]])&, Transpose[{makePosIdx /@ getIndices[startt2], getFields[startt2]}]];
             cidxstartt2 = Pick[makePosIdx /@ getIndices[startt2], cidxstartt2];
-            (*Loop over all possible starting indices*)
             FunKitDebug[4, "We have: ", Length[cidxstartt2], " possible starting indices in t2."];
             For[jdx = 1, jdx <= Length[cidxstartt2], jdx++,
                 If[Length[Intersection[getIndices[startt2], cidxt2]] == 1,
-                    (*If there are no other closed indices, the current index is outgoing and we should not mark it as entry*)
                     curIdx2 = Null
                     ,
                     curIdx2 = cidxstartt2[[jdx]];
@@ -627,20 +632,10 @@ TermsEqualAndSumCore[setup_, t1_FTerm, t2_FTerm] :=
                         ,
                         {}
                     ];
-                FunKitDebug[4, "Replacing indices: ", curIdxRepl];
-                (*re-order the starting point so that it fits the first.*)
                 {startsign, nstartt2} = RearrangeFields[setup, startt1, startt2, {curIdx1, curIdx2}];
                 branchAllObjt2 = allObjt2 /. startt2 -> nstartt2;
-                (*if nstartt2 (first object) has only one field, set the start index to Null*)
-                (*iterate the diagram*)
-                FunKitDebug[3, "Starting sign: ", startsign /. curIdxRepl];
-                FunKitDebug[3, "Starting point replacement: ", curIdxRepl];
-                FunKitDebug[3, "StartPoints: \n  ", startt1, "\n  ", nstartt2 /. curIdxRepl];
-                FunKitDebug[3, "StartIndices: \n  ", curIdx1, "\n  ", curIdx2 /. curIdxRepl];
-                {equal, branchAllObjt2, nt2, nallIdxReplNew} = TermsEqualAndSum[setup, t1, t2 /. curIdxRepl, allObjt1, cidxt1, oidxt1, {startt1}, curIdx1, branchAllObjt2 /. curIdxRepl, cidxt2 /. curIdxRepl, oidxt2 /. curIdxRepl, {nstartt2} /. curIdxRepl, curIdx2 /. curIdxRepl, startsign /. curIdxRepl];
-                FunKitDebug[6, "Returned from main call"];
-                FunKitDebug[3, "Finished pass ", jdx, " with equal=", equal];
-                (*If we found an equality, break out*)
+                {tmp, {equal, branchAllObjt2, nt2, nallIdxReplNew}} = AbsoluteTiming[TermsEqualAndSum[setup, t1, t2 /. curIdxRepl, allObjt1, cidxt1, oidxt1, {startt1}, curIdx1, branchAllObjt2 /. curIdxRepl, cidxt2 /. curIdxRepl, oidxt2 /. curIdxRepl, {nstartt2} /. curIdxRepl, curIdx2 /. curIdxRepl, startsign /. curIdxRepl]];
+                $ProfileGraphTraversal += tmp;
                 If[equal =!= False,
                     Break[]
                 ];
@@ -649,24 +644,22 @@ TermsEqualAndSumCore[setup_, t1_FTerm, t2_FTerm] :=
                 Break[]
             ];
         ];
-        (*If equal===False, the terms are clearly not equal*)
         If[equal === False,
+            $ProfileTermsEqual += AbsoluteTime[] - $profT0;
             Return[False];
         ];
-        (*No need to do any ordering if there are no explicit Grassmanns in the expression*)
+        $ProfileTermsEqualSuccess++;
         If[GrassmannCount[setup, t1] === 0,
             FunKitDebug[2, "Found two equal terms"];
             {fac1, terms1} = SplitPrefactor[setup, t1];
             {fac2, terms2} = SplitPrefactor[setup, nt2];
             factor = fac1 + equal * fac2;
             factor = ReduceIndices[setup, FTerm[factor]];
-            FunKitDebug[2, "With prefactor: ", factor];
+            $ProfileTermsEqual += AbsoluteTime[] - $profT0;
             Return @ FTerm[factor, terms1];
         ];
-        FunKitDebug[2, "STOPPING HERE: Need to resolve Grassmann factors!"];
+        $ProfileTermsEqual += AbsoluteTime[] - $profT0;
         Return[False];
-        Print[Style["FATAL: Could not resolve Grassmann factors", Red]];
-        Abort[];
     ];
 
 (**********************************************************************************
@@ -694,6 +687,27 @@ SeparateTermGroups[setup_, expr_] :=
         Return[groupedDiagrams]
     ];
 
+(* Pre-compute per-term data for the pairwise comparison loop *)
+
+PrecomputeTermData[setup_, term_FTerm] :=
+    Module[{doFields = replFields[setup], objs},
+        objs =
+            Select[
+                Map[
+                    If[indexedObjectQ[#],
+                        #
+                        ,
+                        # /. doFields
+                    ]&
+                    ,
+                    ExtractObjectsWithIndex[setup, term]
+                ]
+                ,
+                FreeQ[FMinus[__]]
+            ];
+        <|"cidx" -> GetClosedSuperIndices[setup, term], "oidx" -> GetOpenSuperIndices[setup, term], "objs" -> objs|>
+    ];
+
 (* Withing a group of possibly matching FTerms, check for any possible equalities *)
 
 SubFSimplify[setup_, expr_] /; Length[expr] > 64 :=
@@ -707,22 +721,28 @@ SubFSimplify[setup_, expr_] /; Length[expr] > 64 :=
 
 SubFSimplify[setup_, expr_] /; Length[expr] <= 64 :=
     Module[
-        {ret = List @@ expr, idx, jdx, red}
+        {ret = List @@ expr, idx, jdx, red, termData, $profT0 = AbsoluteTime[]}
         ,
         (* Preprocess: ReduceIndices, then re-normalize once (γ resolution may change indices) *)
         ret = ReduceIndicesBatch[setup, ret];
         ret = OrderFields[setup, FixIndices[setup, #]& /@ ret];
+        (* Pre-compute per-term data once *)
+        termData = Map[PrecomputeTermData[setup, #]&, ret];
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
-                red = TermsEqualAndSumPre[setup, ret[[idx]], ret[[jdx]]];
+                red = TermsEqualAndSumPre[setup, ret[[idx]], ret[[jdx]], termData[[idx]], termData[[jdx]]];
                 FunKitDebug[3, "Compared ", idx, " and ", jdx, ", result: ", red];
                 If[red =!= False,
                     ret[[idx]] = red;
                     ret = Delete[ret, jdx];
+                    (* Recompute data for the merged term *)
+                    termData[[idx]] = PrecomputeTermData[setup, ret[[idx]]];
+                    termData = Delete[termData, jdx];
                     jdx--;
                 ];
             ];
         ];
+        $ProfileSubFSimplify += AbsoluteTime[] - $profT0;
         Return[ret];
     ];
 
@@ -739,28 +759,35 @@ SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] > 64 :=
 
 SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] <= 64 :=
     Module[
-        {ret = List @@ expr, idx, jdx, kdx, red, preprocess, t2sym}
+        {ret = List @@ expr, idx, jdx, kdx, red, preprocess, t2sym, termData, $profT0 = AbsoluteTime[], $profTmpSP}
         ,
         (* Preprocess for symmetry-transformed terms (which are newly created and need normalization) *)
         preprocess = FixIndices[setup, FOrderFields[setup, ReduceIndices[setup, #]]]&;
         (* Normalize the group once *)
         ret = ReduceIndicesBatch[setup, ret];
         ret = OrderFields[setup, FixIndices[setup, #]& /@ ret];
+        (* Pre-compute per-term data once *)
+        termData = Map[PrecomputeTermData[setup, #]&, ret];
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
                 For[kdx = 1, kdx <= Length[symmetryList], kdx++,
+                    $profTmpSP = AbsoluteTime[];
                     t2sym = preprocess[FTerm[symmetryList[[kdx, Key["Factor"]]]] ** ret[[jdx]] /. symmetryList[[kdx, Key["Rule"]]]];
-                    red = TermsEqualAndSumPre[setup, ret[[idx]], t2sym];
+                    $ProfileSymPreprocess += AbsoluteTime[] - $profTmpSP;
+                    red = TermsEqualAndSumPre[setup, ret[[idx]], t2sym, termData[[idx]], PrecomputeTermData[setup, t2sym]];
                     FunKitDebug[3, "Compared ", idx, " and ", jdx, ", result: ", red];
                     If[red =!= False,
                         ret[[idx]] = red;
                         ret = Delete[ret, jdx];
+                        termData[[idx]] = PrecomputeTermData[setup, ret[[idx]]];
+                        termData = Delete[termData, jdx];
                         jdx--;
                         kdx = Length[symmetryList] + 1;
                     ];
                 ];
             ];
         ];
+        $ProfileSubFSimplify += AbsoluteTime[] - $profT0;
         Return[ret];
     ];
 
@@ -772,7 +799,7 @@ FSimplifyNoSym[setup_, expr_] :=
     Module[{subGroups, res, useParallel},
         FunKitDebug[1, "Simplifying diagrammatic expression of length ", Length[expr]];
         subGroups = SeparateTermGroups[setup, expr];
-        useParallel = AllTrue[subGroups, Length[#] <= 64&] && ($FunKitDebugLevel <= 2);
+        useParallel = AllTrue[subGroups, Length[#] <= 64&] && ($FunKitDebugLevel <= 2) && !$ProfileFSimplifyEnabled;
         If[useParallel,
             res = FEx @@ Flatten[PMap[SubFSimplify[setup, #]&, subGroups]];
             ,
@@ -817,7 +844,7 @@ FSimplify[setup_, inexpr_FEx, OptionsPattern[]] :=
         ];
         FunKitDebug[1, "Simplifying diagrammatic expression of length ", Length[expr], "with symmetry list"];
         subGroups = SeparateTermGroups[setup, expr];
-        useParallel = AllTrue[subGroups, Length[#] <= 64&] && ($FunKitDebugLevel <= 2);
+        useParallel = AllTrue[subGroups, Length[#] <= 64&] && ($FunKitDebugLevel <= 2) && !$ProfileFSimplifyEnabled;
         If[useParallel,
             res = FEx @@ Flatten[PMap[SubFSimplify[setup, #, Evaluate @ symmetries]&, subGroups]];
             ,

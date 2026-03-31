@@ -118,7 +118,9 @@ StyleBox[\"TensorBases\",\nFontWeight->\"Bold\"]\) to run."];Abort[];
 ];
 ];
 
+Print[""]
 Block[{(*Print*)},Get["TensorBases`"]];
+Print[""]
 PrintTemporary["\!\(\*
 StyleBox[\"TensorBases\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
@@ -264,7 +266,6 @@ StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"COEN\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
-
 If[$FrontEnd=!=Null,
 Print["Welcome to  \!\(\*
 StyleBox[\"\:2588\:2580\",\nFontColor->GrayLevel[0]]\)\!\(\*
