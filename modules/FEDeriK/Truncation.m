@@ -106,8 +106,12 @@ insertFieldsIfAnyField[obj_, idx_, field_Symbol] :=
 (* Generate candidate field assignments for an object's AnyField slots at closed indices.
    Returns a list of Associations mapping makePosIdx[index] -> field.
    Empty list {} means no valid assignment exists. {<||>} means nothing to enumerate. *)
+(* Cache for permutation lists keyed by {head, nLegs, fixed slot->field pairs, closedAny slot list} *)
+$permCache = <||>;
+
 getObjectCandidates[setup_, truncSorted_, obj_, closedIndexSet_Association, nonSourceFields_List] :=
-    Module[{h = Head[obj], nLegs, entries, perms, closedAnySlots = {}, fixedSlots = {}, s, idx},
+    Module[{h = Head[obj], nLegs, entries, perms, closedAnySlots = {}, fixedSlots = {}, s, idx,
+            fixedInfo, cacheKey},
         nLegs = Length[getFields[obj]];
         Do[
             If[getField[obj, s] =!= AnyField,
@@ -122,11 +126,19 @@ getObjectCandidates[setup_, truncSorted_, obj_, closedIndexSet_Association, nonS
         ];
         If[closedAnySlots === {}, Return[{<||>}]];
         If[!KeyExistsQ[truncSorted, h], Return[{<||>}]];
-        entries = Select[setup["Truncation"][h], Length[#] === nLegs&];
-        If[entries === {}, Return[{}]];
-        perms = DeleteDuplicates[Join @@ Map[Permutations, entries]];
-        Do[perms = Select[perms, #[[s]] === getField[obj, s]&];, {s, fixedSlots}];
-        Do[perms = Select[perms, MemberQ[nonSourceFields, #[[s]]]&];, {s, closedAnySlots}];
+        (*Check cache: key is {head, nLegs, fixed fields, closedAny positions}*)
+        fixedInfo = Table[{s, getField[obj, s]}, {s, fixedSlots}];
+        cacheKey = {h, nLegs, fixedInfo, closedAnySlots};
+        If[KeyExistsQ[$permCache, cacheKey],
+            perms = $permCache[cacheKey]
+        ,
+            entries = Select[setup["Truncation"][h], Length[#] === nLegs&];
+            If[entries === {}, Return[{}]];
+            perms = DeleteDuplicates[Join @@ Map[Permutations, entries]];
+            Do[perms = Select[perms, #[[s]] === getField[obj, s]&];, {s, fixedSlots}];
+            Do[perms = Select[perms, MemberQ[nonSourceFields, #[[s]]]&];, {s, closedAnySlots}];
+            AssociateTo[$permCache, cacheKey -> perms];
+        ];
         If[perms === {}, Return[{}]];
         DeleteDuplicates @ Map[
             Function[perm,
@@ -319,11 +331,65 @@ LTrunc[setup_, expr_FTerm] :=
         ,
             propCombinations = {<||>}
         ];
-        (*Phase 2: Validate/expand vertices for each propagator combination*)
-        survivors = Join @@ Map[
-            expandVertices[setup, truncSorted, truncKeys, closedIndexSet, allFields,
-                           vertexLike, #]&,
-            propCombinations
+        (*Phase 2: Validate vertices for each propagator combination.
+          Inline fast path for fully-determined vertices (Wetterich/FRG).
+          Falls back to expandVertices for partially-determined (DSE).*)
+        survivors = {};
+        Do[
+            assignment = propCombinations[[ci]];
+            killed = False;
+            Do[
+                Module[{vObj = vertexLike[[vi, 2]], nLegs, effectiveFields, vidx, hasRemaining = False},
+                    nLegs = Length[getFields[vObj]];
+                    effectiveFields = Table[
+                        If[getField[vObj, s] === AnyField,
+                            vidx = makePosIdx[getIndex[vObj, s]];
+                            If[KeyExistsQ[assignment, vidx], assignment[vidx], AnyField]
+                        ,
+                            getField[vObj, s]
+                        ],
+                        {s, 1, nLegs}
+                    ];
+                    (*Check for remaining closed AnyField — rare DSE case*)
+                    If[MemberQ[effectiveFields, AnyField],
+                        Do[
+                            If[effectiveFields[[s]] === AnyField &&
+                               KeyExistsQ[closedIndexSet, makePosIdx[getIndex[vObj, s]]],
+                                hasRemaining = True; Break[]
+                            ];
+                            , {s, 1, nLegs}
+                        ];
+                        If[hasRemaining,
+                            (*DSE fallback: use expandVertices for remaining vertices*)
+                            Module[{fallbackResult},
+                                fallbackResult = expandVertices[setup, truncSorted, truncKeys,
+                                    closedIndexSet, allFields, vertexLike[[vi;;]], assignment];
+                                If[fallbackResult =!= {},
+                                    survivors = Join[survivors, fallbackResult]
+                                ];
+                            ];
+                            killed = True; Break[] (*skip inline path, fallback handled it*)
+                        ];
+                    ];
+                    (*Validate fully-determined vertex*)
+                    h = Head[vObj];
+                    If[!MemberQ[effectiveFields, AnyField] && KeyExistsQ[truncSorted, h] &&
+                       !MemberQ[truncSorted[h], Sort @ effectiveFields],
+                        killed = True; Break[]
+                    ];
+                    (*Propagate resolved fields to assignment for next vertex*)
+                    Do[
+                        vidx = makePosIdx[getIndex[vObj, s]];
+                        If[effectiveFields[[s]] =!= AnyField && KeyExistsQ[closedIndexSet, vidx] && !KeyExistsQ[assignment, vidx],
+                            AssociateTo[assignment, vidx -> effectiveFields[[s]]]
+                        ];
+                        , {s, 1, nLegs}
+                    ];
+                ];
+                , {vi, 1, Length[vertexLike]}
+            ];
+            If[!killed, AppendTo[survivors, assignment]];
+            , {ci, 1, Length[propCombinations]}
         ];
         (*Collect concrete fields from all objects at closed indices.
           Fills gaps for FMinus etc. whose AnyField is at an index determined by concrete objects.*)
@@ -344,18 +410,43 @@ LTrunc[setup_, expr_FTerm] :=
         (*Phase 3: Materialize surviving assignments into concrete terms*)
         Do[
             assignment = survivors[[si]];
-            localRet = ret;
-            Do[
-                If[objectQ[localRet[[pos]]],
-                    localRet[[pos]] = applyAssignmentToObj[localRet[[pos]], assignment]
-                ,
-                    (*Non-object element (e.g. Times[FMinus, FMinus]): scoped ReplaceAll*)
-                    If[!FreeQ[localRet[[pos]], AnyField],
-                        localRet[[pos]] = localRet[[pos]] /.
-                            obj_?objectQ /; !FreeQ[obj, AnyField] :> applyAssignmentToObj[obj, assignment]
+            Module[{assignDispatch = Dispatch[Normal[assignment]], f},
+                localRet = ret;
+                Do[
+                    If[objectQ[localRet[[pos]]],
+                        Module[{result = localRet[[pos]], nL = Length[getFields[localRet[[pos]]]]},
+                            Do[
+                                If[getField[result, s] === AnyField,
+                                    f = makePosIdx[getIndex[result, s]] /. assignDispatch;
+                                    If[f =!= makePosIdx[getIndex[result, s]],
+                                        result = setField[result, s, f]
+                                    ];
+                                ];
+                                , {s, 1, nL}
+                            ];
+                            localRet[[pos]] = result;
+                        ];
+                    ,
+                        (*Non-object element (e.g. Times[FMinus, FMinus]): scoped ReplaceAll*)
+                        If[!FreeQ[localRet[[pos]], AnyField],
+                            localRet[[pos]] = localRet[[pos]] /.
+                                obj_?objectQ /; !FreeQ[obj, AnyField] :>
+                                    Module[{result = obj, nL = Length[getFields[obj]]},
+                                        Do[
+                                            If[getField[result, s] === AnyField,
+                                                f = makePosIdx[getIndex[result, s]] /. assignDispatch;
+                                                If[f =!= makePosIdx[getIndex[result, s]],
+                                                    result = setField[result, s, f]
+                                                ];
+                                            ];
+                                            , {s, 1, nL}
+                                        ];
+                                        result
+                                    ]
+                        ];
                     ];
+                    , {pos, 1, Length[localRet]}
                 ];
-                , {pos, 1, Length[localRet]}
             ];
             (*Final truncation check on fully-concrete objects*)
             killed = False;
@@ -496,6 +587,7 @@ FTruncate[setup_, expr_FEx] :=
             Abort[]
         ];
         FunKitDebug[1, "Truncating the given expression"];
+        $permCache = <||>;
         {ret0, annotations} = SeparateFExAnnotations[expr];
         (*Take care of closed indices — LTrunc returns lists-of-lists*)
         Module[{t0 = AbsoluteTime[]},
