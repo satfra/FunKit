@@ -476,6 +476,185 @@ LTrunc[setup_, expr_FTerm] :=
         Map[(# /. undoFields)&, terms]
     ];
 
+(* CTrunc — Kernel-level field expansion via Distribute.
+   Converts FTerm factors to {field, index} list notation, uses NonCommutativeMultiply + Distribute
+   with pre-resolved vertex AnyField for batch kernel-level /. operations.
+   Same interface as LTrunc: takes FTerm, returns list of bare lists. *)
+
+(*Convert NotationA indexed object to {field, index} list notation*)
+toListNotation[obj_] /; objectQ[obj] && Length[obj] === 2 && ListQ[obj[[1]]] :=
+    Head[obj] @@ Transpose[{obj[[1]], obj[[2]]}];
+toListNotation[x_] := x;
+
+(*Convert {field, index} list notation back to NotationA*)
+fromListNotation[obj_] /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] :=
+    Head[obj][(List @@ obj)[[All, 1]], (List @@ obj)[[All, 2]]];
+fromListNotation[x_] := x;
+
+(*Build resolve rules from a concrete list-notation propagator:
+  each {field, index} leg produces {AnyField, ±index} -> {field, ±index} *)
+buildCTruncResolveRules[obj_] :=
+    Flatten @ Map[With[{f = #[[1]], idx = #[[2]]},
+        {{AnyField, idx} -> {f, idx}, {AnyField, -idx} -> {f, -idx}}
+    ]&, List @@ obj];
+
+CTrunc[setup_, {}] := {};
+
+CTrunc[setup_, expr_] := (Message[FTruncate::wrongExpr, expr]; Abort[]);
+
+CTrunc[setup_, expr_FEx] := Join @@ Map[CTrunc[setup, #]&, List @@ expr];
+
+CTrunc[setup_, expr_FTerm] :=
+    Module[{ret = List @@ expr, closedIndices, allFields = GetNonSourceFields[setup],
+            ignore, doFields, undoFields, a,
+            sentinelExpr, rawObjects, rawIndices, counts,
+            propLikeHeads, propLike = {}, vertexLike = {},
+            truncKeys, truncSorted, closedIndexSet,
+            retL, propInfo = {}, vertexKillRules, current, survived,
+            tExtract, tExpand, pos, h, s, hasClosedAny},
+        doFields = replFields[setup];
+        undoFields = unreplFields[setup];
+        ret = ret /. doFields;
+        (*CTrunc uses list notation internally, which requires NotationA.
+          Fall back to LTrunc if the expression uses NotationB.*)
+        Module[{firstObj = FirstCase[ret, _?objectQ, None]},
+            If[firstObj =!= None && !ListQ[firstObj[[1]]],
+                Return[LTrunc[setup, expr]]
+            ];
+        ];
+        (*Recurse into nested FTerms*)
+        ret = ret /. FTerm[a__] :> CTrunc[setup, FTerm[a]];
+        (*Early exit if no AnyField*)
+        If[FreeQ[ret, AnyField, Infinity],
+            Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
+        ];
+        tExtract = AbsoluteTime[];
+        sentinelExpr = FTerm @@ (ret /. FTerm[__] :> ignore);
+        {rawObjects, rawIndices} = ExtractObjectsAndIndices[setup, sentinelExpr];
+        rawIndices = Select[rawIndices, Head[#] =!= List&];
+        counts = Map[Count[rawObjects, #, {1, 5}]&, rawIndices];
+        closedIndices = Pick[rawIndices, Map[Mod[#, 2] === 0&, counts]];
+        If[Length[closedIndices] === 0,
+            Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
+        ];
+        truncKeys = Intersection[Keys[setup["Truncation"]], $indexedObjects];
+        truncSorted = Association @@ Map[(# -> (Sort /@ setup["Truncation"][#]))&, truncKeys];
+        closedIndexSet = Association @@ Map[(# -> True)&, closedIndices];
+        (*Classify objects*)
+        propLikeHeads = {Propagator, Rdot, R};
+        Do[
+            If[objectQ[ret[[pos]]] && !FreeQ[ret[[pos]], AnyField] &&
+               MemberQ[truncKeys, Head[ret[[pos]]]],
+                hasClosedAny = False;
+                Do[
+                    If[getField[ret[[pos]], s] === AnyField &&
+                       KeyExistsQ[closedIndexSet, makePosIdx[getIndex[ret[[pos]], s]]],
+                        hasClosedAny = True; Break[]
+                    ];
+                    , {s, 1, Length[getFields[ret[[pos]]]]}
+                ];
+                If[hasClosedAny,
+                    If[MemberQ[propLikeHeads, Head[ret[[pos]]]],
+                        AppendTo[propLike, {pos, ret[[pos]]}],
+                        AppendTo[vertexLike, {pos, ret[[pos]]}]
+                    ];
+                ];
+            ];
+            , {pos, 1, Length[ret]}
+        ];
+        If[propLike === {} && vertexLike === {},
+            Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
+        ];
+        (*If no propLike objects (DSE vertex-only case), fall back to LTrunc*)
+        If[propLike === {},
+            Return[LTrunc[setup, expr]]
+        ];
+        tExtract = AbsoluteTime[] - tExtract;
+        tExpand = AbsoluteTime[];
+        (*Convert to list notation. Wrap numerics in numWrap to prevent ** from combining them.
+          For Times products containing FMinus/SymmetryFactor, convert each factor individually.*)
+        retL = Map[
+            Which[
+                NumericQ[#] || (Head[#] === Times && AllTrue[List @@ #, NumericQ]),
+                    numWrap$[#],
+                Head[#] === Times,
+                    Times @@ Map[toListNotation, List @@ #],
+                True,
+                    toListNotation[#]
+            ]&,
+            ret
+        ];
+        (*Build propagator alternatives in list notation*)
+        Do[
+            Module[{obj = retL[[propLike[[pi, 1]]]], hd, legs, nLegs, entries, perms, concretes},
+                hd = Head[obj];
+                legs = List @@ obj;
+                nLegs = Length[legs];
+                entries = Select[setup["Truncation"][hd], Length[#] === nLegs&];
+                perms = DeleteDuplicates[Join @@ Map[Permutations, entries]];
+                Do[If[legs[[s, 1]] =!= AnyField, perms = Select[perms, #[[s]] === legs[[s, 1]]&]];, {s, 1, nLegs}];
+                Do[If[legs[[s, 1]] === AnyField, perms = Select[perms, MemberQ[allFields, #[[s]]]&]];, {s, 1, nLegs}];
+                concretes = Map[hd @@ MapThread[{#1, #2}&, {#, legs[[All, 2]]}]&, perms];
+                AppendTo[propInfo, {propLike[[pi, 1]], obj, concretes}];
+            ];
+            , {pi, 1, Length[propLike]}
+        ];
+        (*Build vertex kill rules — batch kernel-level truncation check*)
+        vertexKillRules = Dispatch @ Flatten @ Map[
+            Module[{hd = #},
+                hd[b:{_, _}..] /; FreeQ[{b}[[All, 1]], AnyField] &&
+                    !MemberQ[truncSorted[hd], Sort[{b}[[All, 1]]]] :> 0
+            ]&,
+            Select[truncKeys, !MemberQ[propLikeHeads, #]&]
+        ];
+        (*Incremental Distribute: one propagator at a time, pre-resolve + batch kill*)
+        current = NonCommutativeMultiply @@ retL;
+        Do[
+            Module[{ppos, origProp, alts},
+                {ppos, origProp, alts} = propInfo[[pi]];
+                (*Skip if this propagator was already resolved by a previous step's rules*)
+                If[FreeQ[current, origProp], Continue[]];
+                (*For each alternative: replace propagator AND resolve connected vertex AnyField*)
+                current = Plus @@ Map[
+                    Module[{rules = buildCTruncResolveRules[#]},
+                        (current /. origProp -> #) /. rules
+                    ]&,
+                    alts
+                ];
+                (*Distribute Plus through ** — kernel level*)
+                current = Distribute[current, Plus, NonCommutativeMultiply];
+                (*Batch kill invalid vertices — kernel level*)
+                current = current /. vertexKillRules;
+                (*Remove ** products containing 0*)
+                current = current /. x_NonCommutativeMultiply /; !FreeQ[x, 0] :> 0;
+                current = current /. {0 + a_ :> a, 0. + a_ :> a};
+            ];
+            If[current === 0, Break[]];
+            , {pi, 1, Length[propInfo]}
+        ];
+        tExpand = AbsoluteTime[] - tExpand;
+        If[ValueQ[$ProfileLTruncDetail],
+            $ProfileLTruncExtract += tExtract;
+            $ProfileLTruncExpand += tExpand;
+            $ProfileLTruncCalls++;
+            $ProfileLTruncPairs += Length[propLike] + Length[vertexLike];
+        ];
+        (*Convert surviving terms back to bare lists in NotationA*)
+        If[current === 0, Return[{}]];
+        survived = If[Head[current] === Plus, List @@ current, {current}];
+        survived = DeleteCases[survived, 0];
+        survived = Map[
+            Module[{factors},
+                factors = If[Head[#] === NonCommutativeMultiply, List @@ #, {#}];
+                factors = factors /. obj_ /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] :> fromListNotation[obj];
+                factors = factors /. numWrap$[x_] :> x;
+                factors /. undoFields
+            ]&,
+            survived
+        ];
+        survived
+    ];
+
 OTrunc[setup_, {}] :=
     {}
 
