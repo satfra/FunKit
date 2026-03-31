@@ -323,15 +323,17 @@ TermsEqualAndSum[
                         ,
                         {}
                     ];
+                (*Compose new rule with existing rules to resolve chaining*)
+                curIdxRepl = curIdxRepl /. allIdxRepl;
                 AppendTo[allIdxRepl, curIdxRepl];
                 FunKitDebug[4, "Replacing indices: ", curIdxRepl];
-                allObjt2 = allObjt2 /. allIdxRepl;
-                memory2 = memory2 /. allIdxRepl;
-                curPos2 = curPos2 /. allIdxRepl;
-                nextPos2[[1]] = nextPos2[[1]] /. allIdxRepl;
-                t2 = t2 /. allIdxRepl;
-                sign2 = sign2 /. allIdxRepl;
-                cidxt2 = cidxt2 /. allIdxRepl;
+                allObjt2 = allObjt2 /. curIdxRepl;
+                memory2 = memory2 /. curIdxRepl;
+                curPos2 = curPos2 /. curIdxRepl;
+                nextPos2[[1]] = nextPos2[[1]] /. curIdxRepl;
+                t2 = t2 /. curIdxRepl;
+                sign2 = sign2 /. curIdxRepl;
+                cidxt2 = cidxt2 /. curIdxRepl;
                 nextInd2[[1]] = nextInd1[[1]];
                 (*fix the current object*)
                 {temp1, temp2} = RearrangeFields[setup, curPos1, curPos2, {nextInd1[[1]], nextInd2[[1]]}];
