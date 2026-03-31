@@ -494,12 +494,10 @@ TermsEqualAndSum::undeterminedFields = "Error: Cannot equate terms if they are n
 (* Preprocessed variant: terms already have ReduceIndices applied.
    Skips only ReduceIndices; still does FixIndices+FOrderFields for correct index naming. *)
 
+(* TermsEqualAndSumPre: terms are assumed already normalized (FixIndices + FOrderFields)
+   by SubFSimplify before the pairwise loop. No redundant re-normalization. *)
 TermsEqualAndSumPre[setup_, it1_FTerm, it2_FTerm] :=
-    Module[{t1, t2},
-        t1 = FixIndices[setup, FOrderFields[setup, it1]];
-        t2 = FixIndices[setup, FOrderFields[setup, it2]];
-        TermsEqualAndSumCore[setup, t1, t2]
-    ];
+    TermsEqualAndSumCore[setup, it1, it2];
 
 TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
     Module[
@@ -711,8 +709,9 @@ SubFSimplify[setup_, expr_] /; Length[expr] <= 64 :=
     Module[
         {ret = List @@ expr, idx, jdx, red}
         ,
-        (* Preprocess: ReduceIndices only; FixIndices+FOrderFields already done by FSimplify entry *)
+        (* Preprocess: ReduceIndices, then re-normalize once (γ resolution may change indices) *)
         ret = ReduceIndicesBatch[setup, ret];
+        ret = OrderFields[setup, FixIndices[setup, #]& /@ ret];
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
                 red = TermsEqualAndSumPre[setup, ret[[idx]], ret[[jdx]]];
@@ -742,9 +741,11 @@ SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] <= 64 :=
     Module[
         {ret = List @@ expr, idx, jdx, kdx, red, preprocess, t2sym}
         ,
-        (* Preprocess: ReduceIndices only; FixIndices+FOrderFields already done by FSimplify entry *)
+        (* Preprocess for symmetry-transformed terms (which are newly created and need normalization) *)
         preprocess = FixIndices[setup, FOrderFields[setup, ReduceIndices[setup, #]]]&;
+        (* Normalize the group once *)
         ret = ReduceIndicesBatch[setup, ret];
+        ret = OrderFields[setup, FixIndices[setup, #]& /@ ret];
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
                 For[kdx = 1, kdx <= Length[symmetryList], kdx++,
