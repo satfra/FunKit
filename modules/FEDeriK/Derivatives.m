@@ -122,7 +122,7 @@ FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
         (*ParallelMap will incur some overhead, but it quickly pays off*)
         i = 0;
         While[
-            MemberQ[ret, FDOp[__], Infinity] && i < $MaxDerivativeIterations
+            MemberQ[ret, FDOp[__], {1, 3}] && i < $MaxDerivativeIterations
             ,
             FunKitDebug[1, "Doing derivative pass ", i + 1];
             Module[{t0 = AbsoluteTime[]},

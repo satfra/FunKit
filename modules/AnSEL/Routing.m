@@ -22,15 +22,23 @@
 
 FieldSetupIndices::notFound = "The field `1` was not found in the setup's field space.";
 
-FieldSetupIndices[setup_, field_] :=
-    Module[{result},
-        result = SelectFirst[Flatten @ Values[setup["FieldSpace"]], Head[#] === field&];
-        If[MissingQ[result],
-            Message[FieldSetupIndices::notFound, field];
-            Abort[]
-        ];
-        List @@ result
+(*Solve a single linear momentum conservation equation sum == 0 for variable mom.
+  Faster than Solve[] which dispatches through the full CAS solver.*)
+solveLinearMomConservation[sum_, mom_] :=
+    Module[{coeff = Coefficient[sum, mom]},
+        mom -> -(sum /. mom -> 0) / coeff
     ];
+
+FieldSetupIndices[setup_, field_] :=
+    FieldSetupIndices[setup, field] =
+        Module[{result},
+            result = SelectFirst[Flatten @ Values[setup["FieldSpace"]], Head[#] === field&];
+            If[MissingQ[result],
+                Message[FieldSetupIndices::notFound, field];
+                Abort[]
+            ];
+            List @@ result
+        ];
 
 FRoute::undeterminedFields = "Cannot route indices in expressions with undetermined fields.";
 
@@ -245,7 +253,7 @@ Momentum conservation is already enforced here, i.e. \!\(
                 ];
                 mom = mom[[1]];
                 (*Now create the replacement rule*)
-                momRepl = Solve[Total[getIndices[subObj][[All, 1]]] == 0, mom][[1, 1]];
+                momRepl = solveLinearMomConservation[Total[getIndices[subObj][[All, 1]]], mom];
                 objects = objects /. momRepl;
                 ret = ret /. momRepl;
                 FunKitDebug[3, "      FRoute: routing a momentum as ", momRepl];
@@ -279,7 +287,7 @@ Momentum conservation is already enforced here, i.e. \!\(
                 ];
                 mom = mom[[1]];
                 (*now build the replacement rule*)
-                momRepl = Solve[Total[getIndices[subObj][[All, 1]]] == 0, mom][[1, 1]];
+                momRepl = solveLinearMomConservation[Total[getIndices[subObj][[All, 1]]], mom];
                 (*if the given momentum is NOT a fermionic one, we will need to replace all the momenta on the right-hand-side with NOT fermionic ones*)
                 If[Not @ mom[[2]],
                     rightMomenta = Cases[momRepl[[2]], loopMomentum[__, True], Infinity] // DeleteDuplicates;
@@ -287,7 +295,7 @@ Momentum conservation is already enforced here, i.e. \!\(
                     subObj = subObj /. rightMomenta;
                     objects = objects /. rightMomenta;
                     ret = ret /. rightMomenta;
-                    momRepl = Solve[Total[getIndices[subObj][[All, 1]]] == 0, mom][[1, 1]];
+                    momRepl = solveLinearMomConservation[Total[getIndices[subObj][[All, 1]]], mom];
                 ];
                 objects = objects /. momRepl;
                 ret = ret /. momRepl;

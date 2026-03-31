@@ -320,15 +320,21 @@ GetAllSuperIndices[setup_Association, expr_FEx] :=
     Getting indexed objects from FTerms / FExs
 **********************************************************************************)
 
+(* Cached Alternatives patterns for object/field extraction — rebuilt when $indexedObjects changes *)
+$objFieldAlt[setup_] := $objFieldAlt[setup] =
+    Alternatives @@ Map[Blank[#]&, Join[$indexedObjects, GetAllFields[setup], {AnyField}]];
+$objAlt := $objAlt = Alternatives @@ Map[Blank[#]&, $indexedObjects];
+$fieldAlt[setup_] := $fieldAlt[setup] =
+    Alternatives @@ Map[Blank[#]&, Join[GetAllFields[setup], {AnyField}]];
+
 ExtractObjectsWithIndex[setup_Association, expr_FTerm] :=
-    Module[{allFields, iObjs, all, depth1Fields, masked},
-        allFields = {AnyField} \[Union] GetAllFields[setup];
+    Module[{iObjs, all, depth1Fields, masked},
         iObjs = $indexedObjects;
         (*Mask FMinus and SymmetryFactor before searching: in NotationB their field[index]
           arguments at depth 2 would otherwise be found and mistakenly kept.*)
         masked = expr /. {(h : FMinus | SymmetryFactor)[__] :> h};
-        all = Cases[masked, Alternatives @@ Map[Blank[#]&, Join[iObjs, allFields]], {1, 2}];
-        depth1Fields = Cases[masked, Alternatives @@ Map[Blank[#]&, allFields], {1}];
+        all = Cases[masked, $objFieldAlt[setup], {1, 2}];
+        depth1Fields = Cases[masked, $fieldAlt[setup], {1}];
         Return @ Select[all, MemberQ[iObjs, Head[#]] || MemberQ[depth1Fields, #]&];
     ];
 
@@ -338,13 +344,11 @@ ExtractObjectsWithIndex[setup_Association, expr_FEx] :=
     ];
 
 ExtractObjectsAndIndices[setup_, expr_FTerm] :=
-    Module[{idxO, idxF, iObjs, allFields, masked},
-        iObjs = $indexedObjects;
-        allFields = Join[GetAllFields[setup], {AnyField}];
+    Module[{idxO, idxF, masked},
         (*Mask FMinus/SymmetryFactor — same rationale as ExtractObjectsWithIndex.*)
         masked = expr /. {(h : FMinus | SymmetryFactor)[__] :> h};
-        idxO = Cases[masked, Alternatives @@ Map[Blank[#]&, iObjs], {1, 2}];
-        idxF = Cases[masked, Alternatives @@ Map[Blank[#]&, allFields], {1}];
+        idxO = Cases[masked, $objAlt, {1, 2}];
+        idxF = Cases[masked, $fieldAlt[setup], {1}];
         Return[{Join[idxO, idxF], makePosIdx /@ Join[idxF[[All, 1]], Join @@ (getIndices /@ idxO)] // DeleteDuplicates}]
     ];
 
@@ -453,17 +457,19 @@ FSetSymmetricObject[_, {}] :=
 (* Expanding / Shortening between Field[{f}, {i...}] and f[i...] *)
 
 replFields[setup_] :=
-    Dispatch @
-        Module[{allFields, repl},
-            allFields = Join[GetAllFields[setup], {AnyField}];
-            repl = Join[Thread[(#[a__]& /@ allFields) :> Evaluate[(makeObj[Field, {#}, {a}]& /@ allFields)]]];
-            Select[repl, Not @ (((Head @ #[[1]])[None] /. #) === (Head @ #[[1]])[None])&]
-        ];
+    replFields[setup] =
+        Dispatch @
+            Module[{allFields, repl},
+                allFields = Join[GetAllFields[setup], {AnyField}];
+                repl = Join[Thread[(#[a__]& /@ allFields) :> Evaluate[(makeObj[Field, {#}, {a}]& /@ allFields)]]];
+                Select[repl, Not @ (((Head @ #[[1]])[None] /. #) === (Head @ #[[1]])[None])&]
+            ];
 
 unreplFields[setup_] :=
-    Dispatch @
-        Module[{allFields, repl},
-            allFields = Join[GetAllFields[setup], {AnyField}];
-            repl = Thread[(makeObj[Field, {#}, {a__}]& /@ allFields) :> Evaluate[(#[a]& /@ allFields)]];
-            Select[repl, Head @ #[[1]] =!= Head @ #[[2]]&]
-        ];
+    unreplFields[setup] =
+        Dispatch @
+            Module[{allFields, repl},
+                allFields = Join[GetAllFields[setup], {AnyField}];
+                repl = Thread[(makeObj[Field, {#}, {a__}]& /@ allFields) :> Evaluate[(#[a]& /@ allFields)]];
+                Select[repl, Head @ #[[1]] =!= Head @ #[[2]]&]
+            ];
