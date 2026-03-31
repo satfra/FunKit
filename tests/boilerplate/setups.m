@@ -124,6 +124,14 @@ GetQMeSDSESetupYangMills[] :=
           "FieldSpace" -> fields, "Truncation" -> trunc|>
     ];
 
+GetQMeSWetterichSetupYangMills[] :=
+    Module[{i, j, p, v, c, fields, eq, trunc},
+        eq = {"Prefactor" -> {1/2}, <|"type" -> "Regulatordot", "indices" -> {i, j}|>, <|"type" -> "Propagator", "indices" -> {i, j}|>};
+        fields = <|"bosonic" -> {A[p, {v, c}]}, "fermionic" -> {{cb[p, {c}], c[p, {c}]}}|>;
+        trunc = {{A, A}, {A, A, A}, {A, A, A, A}, {A, cb, c}, {cb, c}};
+        <|"MasterEquation" -> eq, "FieldSpace" -> fields, "Truncation" -> trunc|>
+    ];
+
 GetDoFunSetupYangMills[] :=
 "
 actionYMSymbolic={{A,2},{A,3},{A,4},{cb,c},{cb,c,A}};
