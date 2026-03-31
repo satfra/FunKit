@@ -612,8 +612,18 @@ CTrunc[setup_, expr_FTerm] :=
         Do[
             Module[{ppos, origProp, alts},
                 {ppos, origProp, alts} = propInfo[[pi]];
-                (*Skip if this propagator was already resolved by a previous step's rules*)
-                If[FreeQ[current, origProp], Continue[]];
+                (*If this propagator was already resolved by a previous step's rules,
+                  still apply resolve rules from each concrete alternative present in current
+                  to resolve FMinus AnyField at shared indices.*)
+                If[FreeQ[current, origProp],
+                    Do[
+                        If[!FreeQ[current, alts[[ai]]],
+                            current = current /. buildCTruncResolveRules[alts[[ai]]]
+                        ];
+                        , {ai, 1, Length[alts]}
+                    ];
+                    Continue[]
+                ];
                 (*For each alternative: replace propagator AND resolve connected vertex AnyField*)
                 current = Plus @@ Map[
                     Module[{rules = buildCTruncResolveRules[#]},
@@ -639,15 +649,49 @@ CTrunc[setup_, expr_FTerm] :=
             $ProfileLTruncCalls++;
             $ProfileLTruncPairs += Length[propLike] + Length[vertexLike];
         ];
+        (*No final resolution here — done after conversion back to NotationA below*)
         (*Convert surviving terms back to bare lists in NotationA*)
         If[current === 0, Return[{}]];
         survived = If[Head[current] === Plus, List @@ current, {current}];
         survived = DeleteCases[survived, 0];
         survived = Map[
-            Module[{factors},
+            Module[{factors, concreteFields = <||>},
                 factors = If[Head[#] === NonCommutativeMultiply, List @@ #, {#}];
-                factors = factors /. obj_ /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] :> fromListNotation[obj];
+                (*Convert ALL objects back from list notation — including inside nested Times/Plus*)
+                Module[{convertBack},
+                    convertBack[obj_] /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] := fromListNotation[obj];
+                    convertBack[Times[args__]] := Times @@ Map[convertBack, {args}];
+                    convertBack[Plus[args__]] := Plus @@ Map[convertBack, {args}];
+                    convertBack[x_] := x;
+                    factors = Map[convertBack, factors];
+                ];
                 factors = factors /. numWrap$[x_] :> x;
+                (*Resolve remaining AnyField in FMinus/SymmetryFactor from concrete objects — same as LTrunc*)
+                Do[
+                    If[objectQ[factors[[pos]]],
+                        Do[
+                            Module[{idx = makePosIdx[getIndex[factors[[pos]], s]]},
+                                If[KeyExistsQ[closedIndexSet, idx] && getField[factors[[pos]], s] =!= AnyField && !KeyExistsQ[concreteFields, idx],
+                                    AssociateTo[concreteFields, idx -> getField[factors[[pos]], s]]
+                                ];
+                            ];
+                            , {s, 1, Length[getFields[factors[[pos]]]]}
+                        ];
+                    ];
+                    , {pos, 1, Length[factors]}
+                ];
+                If[Length[concreteFields] > 0 && !FreeQ[factors, AnyField],
+                    factors = Map[
+                        If[objectQ[#],
+                            applyAssignmentToObj[#, concreteFields],
+                            If[!FreeQ[#, AnyField],
+                                # /. obj_?objectQ /; !FreeQ[obj, AnyField] :> applyAssignmentToObj[obj, concreteFields],
+                                #
+                            ]
+                        ]&,
+                        factors
+                    ];
+                ];
                 factors /. undoFields
             ]&,
             survived
@@ -768,9 +812,9 @@ FTruncate[setup_, expr_FEx] :=
         FunKitDebug[1, "Truncating the given expression"];
         $permCache = <||>;
         {ret0, annotations} = SeparateFExAnnotations[expr];
-        (*Take care of closed indices — LTrunc returns lists-of-lists*)
+        (*Take care of closed indices — CTrunc returns lists-of-lists*)
         Module[{t0 = AbsoluteTime[]},
-            ret0 = BalancedMap[LTrunc[setup, #]&, ret0];
+            ret0 = BalancedMap[CTrunc[setup, #]&, ret0];
             (*Merge: ret0 is a List where each element is a list-of-bare-lists from LTrunc.
               Flatten one level, filter empties/zeros, wrap each bare list in FTerm.*)
             ret0 = If[Length[ret0] > 0, Join @@ ret0, {}];
