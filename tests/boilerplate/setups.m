@@ -59,6 +59,43 @@ GetFunKitSetupFourFermion[] :=
     Return[<|"FieldSpace" -> fields, "Truncation" -> trunc|>];
   ];
 
+GetQMeSWetterichSetupFourFermion[] :=
+  Module[{i, j, a, p, fields, eq, trunc},
+    eq = {"Prefactor" -> {1/2}, <|"type" -> "Regulatordot", "indices" -> {i, j}|>, <|"type" -> "Propagator", "indices" -> {i, j}|>};
+    fields = <|"bosonic" -> {}, "fermionic" -> {{Psibar[p, {a}], Psi[p, {a}]}}|>;
+    trunc = {{Psibar, Psi}, {Psibar, Psibar, Psi, Psi}};
+    Return[<|"MasterEquation" -> eq, "FieldSpace" -> fields, "Truncation" -> trunc|>];
+  ];
+
+GetDoFunSetupFourFermion[] :=
+"
+actionFourFermionSymbolic={{Psi,Psibar},{Psi,Psi,Psibar,Psibar}};
+setFields[{},{{Psi,Psibar}}];
+";
+
+(* Extended Yukawa Setups — includes four-fermion vertex *)
+
+GetFunKitSetupYukawaExtended[] :=
+  Module[{p, fields, eq, trunc},
+    fields = <|"Commuting" -> {Phi[p]}, "Grassmann" -> {{Psibar[p, {a}], Psi[p, {a}]}}|>;
+    trunc = <|Rdot -> {{Phi, Phi}, {Psi, Psibar}}, Propagator -> {{Phi, Phi}, {Psi, Psibar}}, GammaN -> {{Phi}, {Psi, Psibar}, {Phi, Phi}, {Psi, Psibar, Phi}, {Psibar, Psibar, Psi, Psi}}|>;
+    Return[<|"FieldSpace" -> fields, "Truncation" -> trunc|>];
+  ];
+
+GetQMeSWetterichSetupYukawaExtended[] :=
+  Module[{i, j, a, b, p, fields, eq, trunc},
+    eq = {"Prefactor" -> {1/2}, <|"type" -> "Regulatordot", "indices" -> {i, j}|>, <|"type" -> "Propagator", "indices" -> {i, j}|>};
+    fields = <|"bosonic" -> {Phi[p]}, "fermionic" -> {{Psibar[p, {a}], Psi[p, {a}]}}|>;
+    trunc = {{Phi}, {Psi, Psibar}, {Phi, Phi}, {Psi, Psibar, Phi}, {Psibar, Psibar, Psi, Psi}};
+    Return[<|"MasterEquation" -> eq, "FieldSpace" -> fields, "Truncation" -> trunc|>];
+  ];
+
+GetDoFunSetupYukawaExtended[] :=
+"
+actionYukawaExtSymbolic={{Phi,2},{Psi,Psibar},{Psi,Psibar,Phi},{Psi,Psi,Psibar,Psibar}};
+setFields[{Phi},{{Psi,Psibar}}];
+";
+
 (* Yang-Mills Setups *)
 
 GetFunKitSetupYangMills[] :=

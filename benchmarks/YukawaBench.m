@@ -37,3 +37,15 @@ AppendTo[benchmarks, BenchmarkCase[
     yFK, yQMeS,
     yDoFun, "actionYukawaSymbolic,{Phi,Phi,Phi,Phi}"
 ]];
+
+(* Four-fermion vertex — requires extended truncation with {Psibar, Psibar, Psi, Psi} *)
+yFKext    = GetFunKitSetupYukawaExtended[];
+yQMeSext  = GetQMeSWetterichSetupYukawaExtended[];
+yDoFunext = GetDoFunSetupYukawaExtended[];
+
+AppendTo[benchmarks, BenchmarkCase[
+    "Yukawa: Four-fermion vertex (Wetterich)",
+    {Psibar[i1], Psibar[i2], Psi[i3], Psi[i4]},
+    yFKext, yQMeSext,
+    yDoFunext, "actionYukawaExtSymbolic,{Psibar,Psibar,Psi,Psi}"
+]];
