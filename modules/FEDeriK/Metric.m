@@ -85,8 +85,11 @@ ReduceIndicesLight[setup_, term_FTerm] :=
 ReduceIndicesLight[setup_, eq_FEx] :=
     Map[ReduceIndicesLight[setup, #]&, eq];
 
-ReduceIndicesLight[setup_, 0] := 0;
-ReduceIndicesLight[setup_, {}] := {};
+ReduceIndicesLight[setup_, 0] :=
+    0;
+
+ReduceIndicesLight[setup_, {}] :=
+    {};
 
 ReduceIndices::FTermFEx = "The given expression is neither an FTerm nor an FEx:
 `1`";
@@ -102,6 +105,16 @@ ReduceIndices[setup_, {}] :=
 
 ReduceIndices[setup_, 0] :=
     0;
+
+ReduceIndices[setup_, t_\[Gamma]] :=
+    ReduceIndices[setup, t] =
+        Module[{},
+            If[FreeQ[t, AnyField, {1, 2}],
+                Return[metric[setup, getIdxSign[t, 1] getField[t, 1], getIdxSign[t, 2] getField[t, 2]]]
+                ,
+                Return[t]
+            ]
+        ];
 
 ReduceIndices[setup_, term_FTerm] :=
     Module[{gPairs, closedSIndices, cases, casesOpen, closed, i, both, result = term, casesFMinus, casesSymmetry, casesGamma, t0 = AbsoluteTime[]},
@@ -159,7 +172,10 @@ ReduceIndices[setup_, term_FTerm] :=
                         {i, 1, Length[casesGamma]}
                     ];
         ];
-        If[ValueQ[$ReduceIndicesTime], $ReduceIndicesTime += AbsoluteTime[] - t0; $ReduceIndicesCount++];
+        If[ValueQ[$ReduceIndicesTime],
+            $ReduceIndicesTime += AbsoluteTime[] - t0;
+            $ReduceIndicesCount++
+        ];
         Return[result];
     ];
 

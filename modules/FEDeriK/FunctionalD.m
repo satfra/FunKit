@@ -54,14 +54,22 @@ SymmetricDerivative[fields1_, ind1_, fields2_, ind2_] :=
         Return[SymmetryFactor[fields2, ind2] * Total[ret]];
     ];
 
+(**********************************************************************************
+    Direct implementation through D and adding Upvalues for the derivative rules. 
+    This is not the most efficient way to take functional derivatives, but it is straightforward 
+    and flexible, allowing user-defined rules to be easily added.
+    FunKit uses now the functionalDeriv (see below) for a more efficient implementation, 
+    but falls back to this for user-defined rules and exotic expressions.
+**********************************************************************************)
+
 FunctionalD[setup_, expr_, v : (f_[_] | {f_[_], _Integer}).., OptionsPattern[]] :=
     Internal`InheritedBlock[
         {f, nonConst, rule, i}
         ,
         FunKitDebug[3, "Taking functional derivative of ", expr, " w.r.t. ", {v}];
         Unprotect[f];
-        nonConst = DeleteDuplicates @ Sort @ ({f, Power} \[Union] $CorrelationFunctions);
-        (*Apply user-defined rules*)
+        nonConst = DeleteDuplicates @ Sort @ Join[{f, Power, AnyField}, $CorrelationFunctions];
+        (*First, do apply all user-defined rules, these take precedence*)
         Do[
             If[MemberQ[rule, f, Infinity],
                 f /: D[rule[[1]], rule[[2]], NonConstants -> nonConst] := Evaluate[rule[[3]]]
@@ -78,19 +86,31 @@ FunctionalD[setup_, expr_, v : (f_[_] | {f_[_], _Integer}).., OptionsPattern[]] 
             Map[(f /: D[#[x_], f[y_], NonConstants -> nonConst] := makeObj[\[Gamma], {f, #}, {-y, x}])&, GetAllFields[setup]];
         ];
         (*Ignore fields without indices. These are usually tags*)
-        f /: D[f, f[y_], NonConstants -> nonConst] := 0;
-        (*\[Delta][#,y]&;*)
-        (*Derivative rules for Correlation functions*)
-        Map[(With[{h = #},
-            f /: D[obj_h, f[if_], NonConstants -> nonConst] :=
-                makeObj[h, Prepend[getFields[obj], f], Prepend[getIndices[obj], -if]]
-        ])&, $CorrelationFunctions];
-        (*Special derivative rule for Propagator*)
+        Map[
+            (
+                With[{h = #},
+                    f /: D[h, f[y_], NonConstants -> nonConst] := 0;
+                ]
+            )&
+            ,
+            DeleteDuplicates @ {f, AnyField}
+        ];
+        (*Then, the derivative rules for Correlation functions*)
+        Map[
+            (
+                With[{h = #},
+                    f /: D[obj_h, f[if_], NonConstants -> nonConst] := makeObj[h, Prepend[getFields[obj], f], Prepend[getIndices[obj], -if]]
+                ]
+            )&
+            ,
+            $CorrelationFunctions
+        ];
+        (*The special derivative rule for the Propagator*)
         With[{propPat = PrototypeObjectPattern[Propagator]},
-            f /: D[prop : propPat, f[if_], NonConstants -> nonConst] :=
+            f /: D[prop:propPat, f[if_], NonConstants -> nonConst] :=
                 Module[{b, a, ib, ia, ic, id, ie, ig},
-                    b  = getField[prop, 1];
-                    a  = getField[prop, 2];
+                    b = getField[prop, 1];
+                    a = getField[prop, 2];
                     ib = getIndex[prop, 1];
                     ia = getIndex[prop, 2];
                     ic = Symbol @ SymbolName @ Unique["i"];
@@ -100,7 +120,9 @@ FunctionalD[setup_, expr_, v : (f_[_] | {f_[_], _Integer}).., OptionsPattern[]] 
                     FTerm[((-1) makeObj[FMinus, {a, a}, {id, id}] makeObj[FMinus, {f, b}, {if, ib}]), makeObj[Propagator, {b, AnyField}, {ib, ic}], makeObj[GammaN, {AnyField, f, AnyField}, {-ic, -if, -id}], makeObj[Propagator, {AnyField, a}, {id, ia}]]
                 ]
         ];
-        (*No derivatives of FTerm, FEx*)
+(*No derivatives taken here of FTerm, FEx. 
+First case, just add an FDOp in that FTerm and have it recursively resolved. 
+Second case, we don't touch it at all*)
         f /: D[FTerm[a___], f[y_], NonConstants -> nonConst] := FTerm[FDOp[f[y]], a];
         f /: D[FEx[a___], f[y_], NonConstants -> nonConst] :=
             (
@@ -151,7 +173,9 @@ FunctionalD[setup_, expr_, v : (f_[_] | {f_[_], _Integer}).., OptionsPattern[]] 
         D[expr, v, NonConstants -> nonConst]
     ];
 
-FunctionalD[setup_, expr_, v : (f_[_, _] | {f_[_, _], _Integer}).., OptionsPattern[]] :=
+(*Same function as above, but this time for objects with more than one index*)
+
+FunctionalD[setup_, expr_, v : (f_[_, __] | {f_[_, __], _Integer}).., OptionsPattern[]] :=
     Internal`InheritedBlock[
         {f, nonConst, rule}
         ,
@@ -235,3 +259,74 @@ FunctionalD[setup_, FEx[___], v : (f_[__] | {f_[__], _Integer}).., OptionsPatter
         Message[FunctionalD::badArgumentFEx];
         Abort[]
     );
+
+(**********************************************************************************
+   Direct functional derivative of a single factor w.r.t. field dF = f[idx].
+   Replaces FunctionalD + InheritedBlock + D[...] for the common cases.
+   Falls back to FunctionalD for user rules or exotic expressions.
+**********************************************************************************)
+
+(*functional derivative w.r.t. multi-index field: Fall back to FunctionalD*)
+
+functionalDeriv[setup_, factor_, dF[a_, b__]] :=
+    Return[FunctionalD[setup, factor, dF[a, b]]];
+
+functionalDeriv[setup_, factor_, dF_] :=
+    Module[{f = Head[dF], idx = dF[[1]], h = Head[factor]},
+        Which[
+            h === Propagator(*Propagator: special expansion P → -FMinus * P * GammaN * P *),
+                Module[{b, a, ib, ia, ic, id},
+                    b = getField[factor, 1];
+                    a = getField[factor, 2];
+                    ib = getIndex[factor, 1];
+                    ia = getIndex[factor, 2];
+                    ic = Symbol @ SymbolName @ Unique["i"];
+                    id = Symbol @ SymbolName @ Unique["i"];
+                    FTerm[
+                        (-1) makeObj[FMinus, {a, a}, {id, id}] makeObj[FMinus, {f, b}, {idx, ib}]
+                        , (**)
+                        makeObj[Propagator, {b, AnyField}, {ib, ic}]
+                        ,
+                        makeObj[GammaN, {AnyField, f, AnyField}, {-ic, -idx, -id}]
+                        ,
+                        makeObj[Propagator, {AnyField, a}, {id, ia}]
+                    ]
+                ]
+            ,
+            MemberQ[$CorrelationFunctions, h](*Correlation functions (GammaN, S, etc.): prepend field and index*),
+                makeObj[h, Prepend[getFields[factor], f], Prepend[getIndices[factor], -idx]]
+            ,
+            f === AnyField && MemberQ[GetAllFields[setup], h] && MatchQ[factor, _[_]](*AnyField as derivative variable: any field → γ metric*),
+                makeObj[\[Gamma], {f, h}, {-idx, factor[[1]]}]
+            ,
+            h === f && MatchQ[factor, _[_]](*Same field f[x] → metric*),
+                makeObj[\[Gamma], {f, f}, {-idx, factor[[1]]}]
+            ,
+            h === AnyField && MatchQ[factor, _[_]](*AnyField[x] → γ metric with AnyField*),
+                makeObj[\[Gamma], {f, AnyField}, {-idx, factor[[1]]}]
+            ,
+            h =!= f && h =!= AnyField && MemberQ[GetAllFields[setup], h](*Derivative of other field → must be zero*),
+                0
+            ,
+            NumericQ[factor] || MemberQ[$ConstantObjects, h] || !MatchQ[factor, _[__]](*Any other symbols: Numerics, FMinus, SymmetryFactor, bare field symbols → 0*),
+                0
+            ,
+            h === Times(*Times products (e.g. FMinus * FMinus): product rule or 0 if all constant*),
+                Module[{aa = List @@ factor},
+                    FunKitDebug[1, "No direct derivative rule for ", factor, " w.r.t. ", dF, ". Falling back to full FunctionalD."];
+                    If[AllTrue[aa, (NumericQ[#] || MemberQ[$ConstantObjects, Head[#]])&],
+                        0
+                        ,
+                        (*Non-trivial Times: fall back to FunctionalD*)
+                        FunctionalD[setup, factor, dF]
+                    ]
+                ]
+            ,
+            h === FTerm(*Nested FTerm → insert FDOp*),
+                FTerm[FDOp[dF], Sequence @@ factor]
+            ,
+            FunKitDebug[1, "No direct derivative rule for ", factor, " w.r.t. ", dF, ". Falling back to full FunctionalD."];
+                True(*Fallback: use the full FunctionalD*),
+                FunctionalD[setup, factor, dF]
+        ]
+    ];

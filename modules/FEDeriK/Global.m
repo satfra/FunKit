@@ -56,66 +56,120 @@ FSetGlobalSetup[] :=
 
 FTruncate[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     FTruncate[$GlobalSetup, expr];
+
 FTruncate[expr_] :=
-    (Message[FunKit::noGlobalSetup]; Abort[]);
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
 
 FTruncateOpenIndices[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     FTruncateOpenIndices[$GlobalSetup, expr];
+
 FTruncateOpenIndices[expr_] :=
-    (Message[FunKit::noGlobalSetup]; Abort[]);
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
 
 FTakeDerivatives[expr_, derivativeList_] /; Head[$GlobalSetup] =!= Symbol :=
     FTakeDerivatives[$GlobalSetup, expr, derivativeList, "Symmetries" -> {}];
+
 FTakeDerivatives[expr_, derivativeList_, OptionsPattern[]] /; Head[$GlobalSetup] =!= Symbol :=
     FTakeDerivatives[$GlobalSetup, expr, derivativeList, "Symmetries" -> OptionValue["Symmetries"]];
+
 FTakeDerivatives[expr_, derivativeList_] :=
-    (Message[FunKit::noGlobalSetup]; Abort[]);
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
+
 FTakeDerivatives[expr_, derivativeList_, OptionsPattern[]] :=
-    (Message[FunKit::noGlobalSetup]; Abort[]);
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
 
 QMeSForm[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     QMeSForm[$GlobalSetup, expr];
+
 QMeSForm[expr_] :=
-    (Message[FunKit::noGlobalSetup]; Abort[]);
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
 
 FExpand[expr_, order_Integer] /; Head[$GlobalSetup] =!= Symbol :=
     FExpand[$GlobalSetup, expr, order];
+
 FExpand[expr_, order_Integer] :=
-    (Message[FunKit::noGlobalSetup]; Abort[]);
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
 
 DExpand[expr_, order_Integer] /; Head[$GlobalSetup] =!= Symbol :=
     DExpand[$GlobalSetup, expr, order];
+
 DExpand[expr_, order_Integer] :=
-    (Message[FunKit::noGlobalSetup]; Abort[]);
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
 
 FMakeClassicalAction[] /; Head[$GlobalSetup] =!= Symbol :=
     FMakeClassicalAction[$GlobalSetup];
+
 FMakeClassicalAction[] :=
-    (Message[FunKit::noGlobalSetup]; Abort[]);
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
 
 FMakeDSE[field_] /; Head[$GlobalSetup] =!= Symbol :=
     FMakeDSE[$GlobalSetup, field];
+
 FMakeDSE[field_] :=
-    (Message[FunKit::noGlobalSetup]; Abort[]);
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
 
 FResolveDerivatives[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     FResolveDerivatives[$GlobalSetup, expr, "Symmetries" -> {}];
+
 FResolveDerivatives[expr_, OptionsPattern[]] /; Head[$GlobalSetup] =!= Symbol :=
     FResolveDerivatives[$GlobalSetup, expr, "Symmetries" -> OptionValue["Symmetries"]];
+
 FResolveDerivatives[expr_] :=
-    (Message[FunKit::noGlobalSetup]; Abort[]);
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
+
 FResolveDerivatives[expr_, OptionsPattern[]] :=
-    (Message[FunKit::noGlobalSetup]; Abort[]);
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
 
 FResolveFDOp[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     FResolveFDOp[$GlobalSetup, expr];
+
 FResolveFDOp[expr_] :=
-    (Message[FunKit::noGlobalSetup]; Abort[]);
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
 
 FOrderFields[expr_] /; Head[$GlobalSetup] =!= Symbol :=
     FOrderFields[$GlobalSetup, expr];
+
 FOrderFields[expr_] :=
-    (Message[FunKit::noGlobalSetup]; Abort[]);
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
 
 (**********************************************************************************
     Global Variables:
@@ -149,6 +203,9 @@ $allObjects :=
 $nonCommutingObjects :=
     $nonCommutingObjects = Join[$CorrelationFunctions, {FDOp, Field}];
 
+$ConstantObjects :=
+    Join[{R, Rdot, S}, $userOrderedObjects, {\[Gamma], FMinus, SymmetryFactor}, $userObjects];
+
 $MaxDerivativeIterations = 500;
 
 $CanonicalOrdering = "c>ag>g";
@@ -160,8 +217,11 @@ Protect @@ $allObjects;
 **********************************************************************************)
 
 FAddObject::notSymbol = "The argument `1` must be a Symbol, not a `2`.";
+
 FAddIndexedObject::notSymbol = "The argument `1` must be a Symbol, not a `2`.";
+
 FAddOrderedObject::notSymbol = "The argument `1` must be a Symbol, not a `2`.";
+
 FAddCorrelationFunction::notSymbol = "The argument `1` must be a Symbol, not a `2`.";
 
 FAddObject[name_Symbol] :=
@@ -173,7 +233,10 @@ FAddObject[name_Symbol] :=
     ];
 
 FAddObject[name_] :=
-    (Message[FAddObject::notSymbol, name, Head[name]]; Abort[]);
+    (
+        Message[FAddObject::notSymbol, name, Head[name]];
+        Abort[]
+    );
 
 FShowObjects[] :=
     Print[TableForm[Sort @ $allObjects]];
@@ -188,7 +251,10 @@ FAddIndexedObject[name_Symbol] :=
     ];
 
 FAddIndexedObject[name_] :=
-    (Message[FAddIndexedObject::notSymbol, name, Head[name]]; Abort[]);
+    (
+        Message[FAddIndexedObject::notSymbol, name, Head[name]];
+        Abort[]
+    );
 
 FShowIndexedObjects[] :=
     Print[TableForm[Sort @ $indexedObjects]];
@@ -204,7 +270,10 @@ FAddOrderedObject[name_Symbol] :=
     ];
 
 FAddOrderedObject[name_] :=
-    (Message[FAddOrderedObject::notSymbol, name, Head[name]]; Abort[]);
+    (
+        Message[FAddOrderedObject::notSymbol, name, Head[name]];
+        Abort[]
+    );
 
 FShowOrderedObjects[] :=
     Print[TableForm[Sort @ $userOrderedObjects]];
@@ -222,7 +291,10 @@ FAddCorrelationFunction[name_Symbol] :=
     ];
 
 FAddCorrelationFunction[name_] :=
-    (Message[FAddCorrelationFunction::notSymbol, name, Head[name]]; Abort[]);
+    (
+        Message[FAddCorrelationFunction::notSymbol, name, Head[name]];
+        Abort[]
+    );
 
 FShowCorrelationFunctions[] :=
     Print[TableForm[Sort @ $CorrelationFunctions]];
@@ -243,7 +315,10 @@ FSetAutoBuildSymmetryList[flag_] /; BooleanQ[flag] :=
     $AutoBuildSymmetryList = flag;
 
 FSetAutoBuildSymmetryList[flag_] :=
-    (Message[FSetAutoBuildSymmetryList::notBoolean, flag]; Abort[]);
+    (
+        Message[FSetAutoBuildSymmetryList::notBoolean, flag];
+        Abort[]
+    );
 
 $AutoSimplify = True;
 
@@ -256,7 +331,10 @@ FSetAutoSimplify[flag_] /; BooleanQ[flag] :=
     $AutoSimplify = flag;
 
 FSetAutoSimplify[flag_] :=
-    (Message[FSetAutoSimplify::notBoolean, flag]; Abort[]);
+    (
+        Message[FSetAutoSimplify::notBoolean, flag];
+        Abort[]
+    );
 
 (**********************************************************************************
     An empty setup for default use, testing, etc.

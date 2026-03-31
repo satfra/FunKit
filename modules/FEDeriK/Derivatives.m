@@ -7,7 +7,7 @@
       FTakeDerivatives           -- Takes functional derivatives w.r.t. a field list
 **********************************************************************************)
 
-FResolveFDOp::nested = "The given term contains nested FDOp. Before proceeding, you need to expand these with DExpand. 
+FResolveFDOp::nested = "The given term contains nested FDOp. Before proceeding, you need to expand these with DExpand.
 Error in `1`";
 
 FResolveFDOp[setup_, expr_FEx] :=
@@ -17,13 +17,15 @@ FResolveFDOp[setup_, expr_FEx] :=
     ];
 
 (* Public wrapper: returns FEx for backward compatibility *)
+
 FResolveFDOp[setup_, term_FTerm] :=
     FEx @@ FResolveFDOpInternal[setup, term];
 
 (* Internal workhorse: returns a plain List of FTerms (no FEx wrapper) *)
+
 FResolveFDOpInternal[setup_, term_FTerm] :=
     Module[
-        {rTerm = term, FDOpPos, termsNoFDOp, dF, idx, i, obj, ind, a, dTerms, nPre, nPost, ret, cTerm, doFields, fw, bw, deriv}
+        {rTerm = term /. unreplFields[setup], FDOpPos, termsNoFDOp, dF, idx, i, obj, ind, a, dTerms, nPre, nPost, ret, cTerm, deriv}
         ,
         (*We cannot proceed if any nested FDOp are present*)
         If[MemberQ[(List @@ rTerm), FTerm[pre___, FDOp[__], post___], {1, 5}],
@@ -49,9 +51,8 @@ FResolveFDOpInternal[setup_, term_FTerm] :=
         (*commuting it past*)
         cTerm = 1;
         dTerms = Table[0, {idx, 1, nPost}];
-        doFields = replFields[setup];
         Do[
-            deriv = FunctionalD[setup, termsNoFDOp[[nPre + idx]], dF] // Expand;
+            deriv = functionalDeriv[setup, termsNoFDOp[[nPre + idx]], dF] // Expand;
             If[Head[deriv] === Plus,
                 deriv = FEx @@ (FTerm /@ deriv);
             ];
@@ -59,19 +60,25 @@ FResolveFDOpInternal[setup_, term_FTerm] :=
             FunKitDebug[5, "Performed derivative on term ", idx, ": ", dTerms[[idx]]];
             obj = ExtractObjectsWithIndex[setup, FTerm[termsNoFDOp[[nPre + idx]]]];
             obj = Select[obj, MemberQ[$nonCommutingObjects, Head[#]] || MatchQ[#, _Symbol[_]]&];
-            obj = obj /. doFields;
-            (*Commuting the next derivative past the objects in the current part.
-              Extract {field, index} pairs from each object. Bare field applications (e.g. A[si])
-              are not indexed objects, so getFields/getIndices would fail on them — handle separately.*)
+            obj = obj /. replFields[setup];
+(*Commuting the next derivative past the objects in the current part.
+  Extract {field, index} pairs from each object. Bare field applications (e.g. A[si])
+  are not indexed objects, so getFields/getIndices would fail on them — handle separately.*)
             Module[{pairs},
-                pairs = Flatten[
-                    Map[
-                        If[indexedObjectQ[#],
-                            Transpose[{getFields[#], getIndices[#]}],
-                            {{Head[#], #[[1]]}}
-                        ]&,
-                        obj
-                    ], 1];
+                pairs =
+                    Flatten[
+                        Map[
+                            If[indexedObjectQ[#],
+                                Transpose[{getFields[#], getIndices[#]}]
+                                ,
+                                {{Head[#], #[[1]]}}
+                            ]&
+                            ,
+                            obj
+                        ]
+                        ,
+                        1
+                    ];
                 cTerm = cTerm * Times @@ Map[makeObj[FMinus, {Head[dF], #[[1]]}, {dF[[1]], #[[2]]}]&, pairs];
             ];
             ,
@@ -86,7 +93,10 @@ FResolveFDOpInternal[setup_, term_FTerm] :=
     ];
 
 FResolveFDOp[setup_, expr_] :=
-    (Message[FunKit::invalidArguments, FResolveFDOp]; Abort[]);
+    (
+        Message[FunKit::invalidArguments, FResolveFDOp];
+        Abort[]
+    );
 
 (**********************************************************************************
     FResolveDerivatives : Iteratively resolve all derivative operators in an FTerm or FEx
@@ -118,7 +128,9 @@ FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
         {fw, bw} = GetSuperIndexTermTransformations[setup, ret];
         ret = BalancedMap[fw, ret];
         (*Convert to plain list of FTerms for the derivative loop*)
-        If[Head[ret] === FEx, ret = List @@ ret];
+        If[Head[ret] === FEx,
+            ret = List @@ ret
+        ];
         (*ParallelMap will incur some overhead, but it quickly pays off*)
         i = 0;
         While[
@@ -127,15 +139,19 @@ FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
             FunKitDebug[1, "Doing derivative pass ", i + 1];
             Module[{t0 = AbsoluteTime[]},
                 ret = Catenate[Map[FResolveFDOpInternal[setup, #]&, ret]];
-                If[ValueQ[$ProfileFDOp], $ProfileFDOp += AbsoluteTime[] - t0];
+                If[ValueQ[$ProfileFDOp],
+                    $ProfileFDOp += AbsoluteTime[] - t0
+                ];
             ];
-            (*If AnSEL has been loaded, use FSimplify to reduce redundant terms.
-              Skip for high-symmetry cases where the O(n^2 * |symmetries|) cost is too high. *)
+(*If AnSEL has been loaded, use FSimplify to reduce redundant terms.
+  Skip for high-symmetry cases where the O(n^2 * |symmetries|) cost is too high. *)
             If[ModuleLoaded[AnSEL] && $AutoSimplify === True && Length[ret] < 32 && Length[symmetries] <= 6,
                 Module[{t0 = AbsoluteTime[]},
                     ret = Map[ReduceIndices[setup, #]&, ret];
                     ret = List @@ FunKit`FSimplify[setup, FEx @@ ret, "Symmetries" -> symmetries];
-                    If[ValueQ[$ProfileDerivSimplify], $ProfileDerivSimplify += AbsoluteTime[] - t0];
+                    If[ValueQ[$ProfileDerivSimplify],
+                        $ProfileDerivSimplify += AbsoluteTime[] - t0
+                    ];
                 ];
             ];
             FunKitDebug[1, "Finished pass ", i + 1, ", current length: ", Length[ret]];
