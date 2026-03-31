@@ -3,6 +3,9 @@
 
     Public API:
       ReduceIndices              -- Resolves all metric/FMinus/SymmetryFactor in FTerm/FEx
+      ReduceGamma                -- Resolves only metric factors in FTerm (used by ReduceIndices)
+      ReduceIndicesLight         -- Resolves only FMinus/SymmetryFactor in FTerm/FEx (used during derivative iteration)
+      ReduceIndicesBatch         -- Batched version of ReduceIndices for Lists of FTerms (used in Truncation)
 
     Internal:
       GrassOrder                 -- Computes Grassmann ordering sign for a field pair
@@ -106,15 +109,58 @@ ReduceIndices[setup_, {}] :=
 ReduceIndices[setup_, 0] :=
     0;
 
-ReduceIndices[setup_, t_\[Gamma]] :=
-    ReduceIndices[setup, t] =
-        Module[{},
-            If[FreeQ[t, AnyField, {1, 2}],
-                Return[metric[setup, getIdxSign[t, 1] getField[t, 1], getIdxSign[t, 2] getField[t, 2]]]
-                ,
-                Return[t]
-            ]
+ReduceGamma[setup_, term_FTerm] :=
+    Module[{gPairs, closedSIndices, closed, i, both, result = term, casesGamma, t0 = AbsoluteTime[]},
+        closedSIndices = GetClosedSuperIndices[setup, term];
+        (*Pick out all metric factors*)
+        casesGamma = Cases[term, \[Gamma][__], Infinity];
+        (*..which do not contain undetermined fields...*)
+        casesGamma = Select[casesGamma, FreeQ[getFields[#], AnyField]&];
+        (*We have to exclude a particular case here: if we have two gammas, contracted with each other, and one open index each, we cannot replace both!*)
+        (*First, find all Gammas that have an overlap of one closed index:*)
+        gPairs = Subsets[casesGamma, {2}];
+        gPairs = Select[gPairs, Length[DeleteDuplicates[makePosIdx /@ Join[getIndices[#[[2]]], getIndices[#[[1]]]]]] == 3&];
+        (*Now, see which of these have a closed index in common:*)
+        closed = Map[getIndices, gPairs, {2}];
+        closed = Map[List @@ #&, Map[MemberQ[closedSIndices, makePosIdx[#]]&, closed, {3}]];
+        closed = Map[Total[Boole /@ Flatten[#]] == 2&, closed];
+        gPairs = Pick[gPairs, closed];
+        (*Remove the first of each of these from the list of replaceable Gammas*)
+        casesGamma = Complement[casesGamma, gPairs[[All, 1]]];
+        (*Now, make a truth array indicating which of the remaining gammas are closed in which index*)
+        closed = Map[MemberQ[closedSIndices, makePosIdx[#]]&, getIndices /@ casesGamma, {2}];
+        (*Finally, remove all elements from casesGamma with only open indices*)
+        casesGamma = Pick[casesGamma, Map[#[[1]] || #[[2]]&, closed]];
+        (*Next do the thing: replace the terms in question by the evaluated metric factors*)
+        FunKitDebug[5, "Found Gamma factors in FTerm: ", casesGamma];
+        FunKitDebug[5, "Closed indices: ", closed];
+        result = result /. Map[# :> metric[setup, getIdxSign[#, 1] getField[#, 1], getIdxSign[#, 2] getField[#, 2]]&, casesGamma];
+        (*replace the remaining indices. If both are up or both or down, the remaining indices change signs.*)
+        If[Length[casesGamma] > 0,
+            result =
+                result /.
+                    Table[
+                        both =
+                            If[!Xor[isNeg[getIndex[casesGamma[[i]], 1]], isNeg[getIndex[casesGamma[[i]], 2]]],
+                                -1
+                                ,
+                                1
+                            ];
+                        If[closed[[i, 1]],
+                            makePosIdx[getIndex[casesGamma[[i]], 1]] -> both * makePosIdx[getIndex[casesGamma[[i]], 2]]
+                            ,
+                            makePosIdx[getIndex[casesGamma[[i]], 2]] -> both * makePosIdx[getIndex[casesGamma[[i]], 1]]
+                        ]
+                        ,
+                        {i, 1, Length[casesGamma]}
+                    ];
         ];
+        If[ValueQ[$ReduceIndicesTime],
+            $ReduceIndicesTime += AbsoluteTime[] - t0;
+            $ReduceIndicesCount++
+        ];
+        Return[result];
+    ];
 
 ReduceIndices[setup_, term_FTerm] :=
     Module[{gPairs, closedSIndices, cases, casesOpen, closed, i, both, result = term, casesFMinus, casesSymmetry, casesGamma, t0 = AbsoluteTime[]},
@@ -182,20 +228,29 @@ ReduceIndices[setup_, term_FTerm] :=
 (* Batched ReduceIndices: processes a List of FTerms with shared FMinus/SymmetryFactor resolution.
    Collects all unique FMinus/SymmetryFactor across all terms, builds rules once, applies in one /. pass.
    Terms with γ are handled individually (γ resolution involves per-term closed-index analysis). *)
+
 ReduceIndicesBatch[setup_, terms_List] :=
-    Module[{allFMinus, allSymF, batchRules, result = terms, t0 = AbsoluteTime[]},
+    Module[
+        {allFMinus, allSymF, batchRules, result = terms, t0 = AbsoluteTime[]}
+        ,
         (*Batch FMinus + SymmetryFactor: collect unique instances, build rules, apply once*)
         allFMinus = DeleteDuplicates @ Cases[result, fm_FMinus /; FreeQ[getFields[fm], AnyField], Infinity];
         allSymF = DeleteDuplicates @ Cases[result, sf_SymmetryFactor /; FreeQ[getFields[sf], AnyField], Infinity];
-        batchRules = Join[
-            Map[# -> CommuteSign[setup, getField[#, 1], getField[#, 2]]&, allFMinus],
-            Map[# -> SymmetryFactorFromList[getFields[#]]&, allSymF]
-        ];
+        batchRules = Join[Map[# -> CommuteSign[setup, getField[#, 1], getField[#, 2]]&, allFMinus], Map[# -> SymmetryFactorFromList[getFields[#]]&, allSymF]];
         If[Length[batchRules] > 0,
             result = result /. Dispatch[batchRules]
         ];
         (*Per-term γ resolution — only for terms that actually contain γ*)
-        result = Map[If[!FreeQ[#, \[Gamma]], ReduceIndices[setup, #], #]&, result];
+        result =
+            Map[
+                If[!FreeQ[#, \[Gamma]],
+                    ReduceGamma[setup, #]
+                    ,
+                    #
+                ]&
+                ,
+                result
+            ];
         If[ValueQ[$ReduceIndicesTime],
             $ReduceIndicesTime += AbsoluteTime[] - t0;
             $ReduceIndicesCount += Length[terms]
