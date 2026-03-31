@@ -28,7 +28,7 @@ GROUPS = {
 
 # Tools to compare (column prefixes)
 TOOLS = ["FunKit", "DoFun", "QMeS"]
-COLORS = {"FunKit": "#2077B4", "QMeS": "#FF7F0E", "DoFun": "#2CA02C"}
+COLORS = {"FunKit": "#FF7F0E", "QMeS": "#2077B4", "DoFun": "#2CA02C"}
 
 # ── Script ───────────────────────────────────────────────────────────────────
 
@@ -61,7 +61,7 @@ if n_groups == 0:
 ncols = math.ceil(math.sqrt(n_groups))
 nrows = math.ceil(n_groups / ncols)
 
-fig, axes = plt.subplots(nrows, ncols, figsize=(5 * ncols, 5 * nrows), squeeze=False)
+fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3 * nrows), squeeze=False)
 axes = axes.flatten()
 
 # Hide unused subplots
@@ -103,12 +103,15 @@ for ax, (group_name, sub) in zip(axes, grouped.items()):
     ax.set_xticks(x + bar_width)
     ax.set_xticklabels(labels, rotation=30, ha="right", fontsize=8)
     ax.set_ylabel("Time (s)")
+    ax.set_yscale("log")
 
 # Single legend from first axes
 handles, lbls = axes[0].get_legend_handles_labels()
-fig.legend(handles, lbls, loc="upper right", fontsize=9)
+fig.legend(handles, lbls, loc=(0.86, 0.49), fontsize=9)
 
-fig.suptitle("Benchmark: Full Derivation Times", fontsize=13, y=1.02)
+# fig.suptitle("  ", fontsize=13, y=1.02)
 plt.tight_layout()
-plt.savefig("benchmark_plot.png", dpi=150, bbox_inches="tight")
-plt.show()
+# add some padding at the right for the legend
+plt.subplots_adjust(right=0.85)
+plt.savefig("benchmark_plot.pdf", dpi=150, bbox_inches="tight")
+# plt.show()

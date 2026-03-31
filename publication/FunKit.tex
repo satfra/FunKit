@@ -1831,6 +1831,18 @@ One can turn off usage of \cpp{powr} by setting
 %%%%%%%%%%%%%%%%%%%%
 \section{Comparisons}
 
+\begin{figure*}
+	\centering
+	%
+	\begin{minipage}{0.92\textwidth}
+		\includegraphics[width=1.07\textwidth]{benchmark_plot.pdf}
+	\end{minipage}
+	%
+	\caption{Performance comparison between \FunKit, \DoFun and \QMeS. 
+		In all cases, we measured the total time to take the derivatives and truncate the expression.
+		Especially for very large expressions with several thousand diagrams, e.g. the six-fermion flow in the NJL model, \FunKit excels.}
+\end{figure*}
+
 \begin{table*}[t]
 	\centering
 	\renewcommand{\arraystretch}{1.25}
@@ -1857,7 +1869,6 @@ One can turn off usage of \cpp{powr} by setting
 		\quad Loop-order filtering                  & \cmark  & \xmark  & \cmark \\
 		\quad Broken-symmetry phase                 & \cmark  & \xmark  & \cmark \\
 		\quad Diagram topology identification       & \cmark  & (\cmark) & \cmark \\
-		\quad Automatic diagram simplification      & \cmark  & \cmark  & \cmark \\
 		\bottomrule
 	\end{tabular}
 	\hfill
@@ -1868,22 +1879,18 @@ One can turn off usage of \cpp{powr} by setting
 		\multicolumn{4}{l}{\textit{Momentum routing \& diagrammatic rules}} \\
 		\quad One-loop momentum routing             & (\cmark) & \cmark  & \cmark \\
 		\quad Multi-loop momentum routing           & \xmark  & \xmark  & \cmark \\
-		\quad Feynman rule generation               & \cmark  & \cmark  & \cmark \\
+		\quad Feynman rule generation               & \cmark  & \xmark  & \cmark \\
 		\midrule
 		\multicolumn{4}{l}{\textit{Index \& trace contraction}} \\
-		\quad Built-in index contraction            & \cmark  & (\cmark) & \cmark \\
 		\quad FORM integration                      & (\cmark) & \xmark  & \cmark \\
 		\quad Trace caching                         & \xmark  & \xmark  & \cmark \\
 		\midrule
 		\multicolumn{4}{l}{\textit{Output \& visualisation}} \\
-		\quad Feynman diagram plots                 & \cmark  & (\cmark) & \cmark \\
-		\quad \LaTeX{} rendering                    & \xmark  & \xmark  & \cmark \\
+		\quad Diagram plots                         & \cmark  & \xmark & \cmark \\
+		\quad \LaTeX{} equation output              & \xmark  & \xmark  & \cmark \\
 		\midrule
 		\multicolumn{4}{l}{\textit{Optimized code generation}} \\
-		\quad C\texttt{++}                          & \xmark  & \xmark  & \cmark \\
-		\quad Fortran                               & \xmark  & \xmark  & \cmark \\
-		\quad Julia                                 & \xmark  & \xmark  & \cmark \\
-		\quad GPU kernel support                    & \xmark  & \xmark  & \cmark \\
+		\quad C\texttt{++} / Julia                          & \xmark  & \xmark  & \cmark \\
 		\midrule
 		\multicolumn{4}{l}{\textit{Interoperability}} \\
 		\quad FeynCalc compatibility                & (\cmark) & \xmark  & \xmark \\

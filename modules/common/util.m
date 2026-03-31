@@ -61,11 +61,16 @@ makeTemporaryFileName[] :=
 ParallelMapSerialized[f_, data_, opts___] :=
     ParallelMap[f[BinaryDeserialize @ #]&, BinarySerialize /@ data, opts];
 
-BalancedMap[f_, list_FEx] := FEx @@ BalancedMap[f, List @@ list];
+BalancedMap[f_, list_FEx] :=
+    FEx @@ BalancedMap[f, List @@ list];
+
+$ParallelSwitchByteThreshold = 20 * 10^6;
 
 BalancedMap[f_, list_List] :=
     Module[{len = Length[list], chunks, ret, mChunk},
-        If[ByteCount[list] < 20*10^6, Return[Map[f, list]]];
+        If[ByteCount[list] < $ParallelSwitchByteThreshold,
+            Return[Map[f, list]]
+        ];
         DistributeDefinitions[f];
         (*Subdivide into chunks of length 128*)
         chunks = Partition[list, UpTo[8192]];

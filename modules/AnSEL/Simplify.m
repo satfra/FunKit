@@ -355,13 +355,8 @@ TermsEqualAndSum[
                 curIdxRepl = curIdxRepl /. allIdxRepl;
                 AppendTo[allIdxRepl, curIdxRepl];
                 FunKitDebug[4, "Replacing indices: ", curIdxRepl];
-                allObjt2 = allObjt2 /. curIdxRepl;
-                memory2 = memory2 /. curIdxRepl;
-                curPos2 = curPos2 /. curIdxRepl;
-                nextPos2[[1]] = nextPos2[[1]] /. curIdxRepl;
-                t2 = t2 /. curIdxRepl;
-                sign2 = sign2 /. curIdxRepl;
-                cidxt2 = cidxt2 /. curIdxRepl;
+                {allObjt2, memory2, curPos2, nextPos2, t2, sign2, cidxt2} =
+                    {allObjt2, memory2, curPos2, nextPos2, t2, sign2, cidxt2} /. curIdxRepl;
                 nextInd2[[1]] = nextInd1[[1]];
                 (*fix the current object*)
                 {temp1, temp2} = RearrangeFields[setup, curPos1, curPos2, {nextInd1[[1]], nextInd2[[1]]}];
@@ -502,16 +497,24 @@ Returns both the sign and the reordered t2*)
                     If[ipos1 === ipos2,
                         Return[{1, t2}]
                     ];
-                    sign =
-                        If[ipos2 > ipos1,
-                            (*commute pos2 backwards*)
-                            Table[makeObj[FMinus, {nf2[[ipos2]], nf2[[ipos2 - idx]]}, {ni2[[ipos2]], ni2[[ipos2 - idx]]}], {idx, 1, ipos2 - ipos1}]
-                            ,
-                            (*commute pos2 forwards*)
-                            Table[makeObj[FMinus, {nf2[[ipos2]], nf2[[ipos2 + idx]]}, {ni2[[ipos2]], ni2[[ipos2 + idx]]}], {idx, 1, ipos1 - ipos2}]
-                        ];
-                    (*Resolve the resulting FMinus, if possible*)
-                    sign = Times @@ ReduceIndices[setup, FTerm @@ sign];
+                    If[FreeQ[nf2, AnyField],
+                        (* Fast path: resolve commutation signs directly *)
+                        sign =
+                            If[ipos2 > ipos1,
+                                Product[CommuteSign[setup, nf2[[ipos2]], nf2[[ipos2 - idx]]], {idx, 1, ipos2 - ipos1}]
+                                ,
+                                Product[CommuteSign[setup, nf2[[ipos2]], nf2[[ipos2 + idx]]], {idx, 1, ipos1 - ipos2}]
+                            ];
+                        ,
+                        (* Slow path: fields contain AnyField, must use FMinus+ReduceIndices *)
+                        sign =
+                            If[ipos2 > ipos1,
+                                Table[makeObj[FMinus, {nf2[[ipos2]], nf2[[ipos2 - idx]]}, {ni2[[ipos2]], ni2[[ipos2 - idx]]}], {idx, 1, ipos2 - ipos1}]
+                                ,
+                                Table[makeObj[FMinus, {nf2[[ipos2]], nf2[[ipos2 + idx]]}, {ni2[[ipos2]], ni2[[ipos2 + idx]]}], {idx, 1, ipos1 - ipos2}]
+                            ];
+                        sign = Times @@ ReduceIndices[setup, FTerm @@ sign];
+                    ];
                     (*Replace the indices & fields in t2*)
                     newt2 = makeObj[Head[t2], Insert[Delete[nf2, ipos2], nf2[[ipos2]], ipos1], Insert[Delete[ni2, ipos2], ni2[[ipos2]], ipos1]];
                     FunKitDebug[4, "Given ", t1, ", rearranged ", t2, " to ", newt2, " with sign ", sign];
@@ -705,8 +708,19 @@ PrecomputeTermData[setup_, term_FTerm] :=
                 ,
                 FreeQ[FMinus[__]]
             ];
-        <|"cidx" -> GetClosedSuperIndices[setup, term], "oidx" -> GetOpenSuperIndices[setup, term], "objs" -> objs|>
+        Module[{cidx = GetClosedSuperIndices[setup, term], oidx = GetOpenSuperIndices[setup, term], fieldKey},
+            fieldKey[obj_] := Head[obj] @@ Sort @ getFields[obj];
+            <|"cidx" -> cidx, "oidx" -> oidx, "objs" -> objs,
+              "fp" -> {Length[cidx], Sort @ Map[fieldKey, objs]}|>
+        ]
     ];
+
+(* Transform pre-computed data under a symmetry rule (index permutation only).
+   Valid because symmetry rules only permute open indices, not field content. *)
+TransformTermData[data_Association, rule_List] :=
+    <|"cidx" -> (data["cidx"] /. rule),
+      "oidx" -> (data["oidx"] /. rule),
+      "objs" -> (data["objs"] /. rule)|>;
 
 (* Withing a group of possibly matching FTerms, check for any possible equalities *)
 
@@ -725,17 +739,17 @@ SubFSimplify[setup_, expr_] /; Length[expr] <= 64 :=
         ,
         (* Preprocess: ReduceIndices, then re-normalize once (γ resolution may change indices) *)
         ret = ReduceIndicesBatch[setup, ret];
-        ret = OrderFields[setup, FixIndices[setup, #]& /@ ret];
+        ret = FixIndices[setup, OrderFields[setup, #]]& /@ ret;
         (* Pre-compute per-term data once *)
         termData = Map[PrecomputeTermData[setup, #]&, ret];
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
+                If[termData[[idx]]["fp"] =!= termData[[jdx]]["fp"], Continue[]];
                 red = TermsEqualAndSumPre[setup, ret[[idx]], ret[[jdx]], termData[[idx]], termData[[jdx]]];
                 FunKitDebug[3, "Compared ", idx, " and ", jdx, ", result: ", red];
                 If[red =!= False,
                     ret[[idx]] = red;
                     ret = Delete[ret, jdx];
-                    (* Recompute data for the merged term *)
                     termData[[idx]] = PrecomputeTermData[setup, ret[[idx]]];
                     termData = Delete[termData, jdx];
                     jdx--;
@@ -759,31 +773,45 @@ SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] > 64 :=
 
 SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] <= 64 :=
     Module[
-        {ret = List @@ expr, idx, jdx, kdx, red, preprocess, t2sym, termData, $profT0 = AbsoluteTime[], $profTmpSP}
+        {ret = List @@ expr, idx, jdx, kdx, red, matched, t2sym, data2sym, termData,
+         nonTrivialSym, $profT0 = AbsoluteTime[], $profTmpSP}
         ,
-        (* Preprocess for symmetry-transformed terms (which are newly created and need normalization) *)
-        preprocess = FixIndices[setup, FOrderFields[setup, ReduceIndices[setup, #]]]&;
+        (* Filter out identity symmetry — handled separately with cached data *)
+        nonTrivialSym = Select[symmetryList, #["Rule"] =!= {} || #["Factor"] =!= 1 &];
         (* Normalize the group once *)
         ret = ReduceIndicesBatch[setup, ret];
-        ret = OrderFields[setup, FixIndices[setup, #]& /@ ret];
-        (* Pre-compute per-term data once *)
+        ret = FixIndices[setup, OrderFields[setup, #]]& /@ ret;
         termData = Map[PrecomputeTermData[setup, #]&, ret];
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
-                For[kdx = 1, kdx <= Length[symmetryList], kdx++,
-                    $profTmpSP = AbsoluteTime[];
-                    t2sym = preprocess[FTerm[symmetryList[[kdx, Key["Factor"]]]] ** ret[[jdx]] /. symmetryList[[kdx, Key["Rule"]]]];
-                    $ProfileSymPreprocess += AbsoluteTime[] - $profTmpSP;
-                    red = TermsEqualAndSumPre[setup, ret[[idx]], t2sym, termData[[idx]], PrecomputeTermData[setup, t2sym]];
-                    FunKitDebug[3, "Compared ", idx, " and ", jdx, ", result: ", red];
-                    If[red =!= False,
-                        ret[[idx]] = red;
-                        ret = Delete[ret, jdx];
-                        termData[[idx]] = PrecomputeTermData[setup, ret[[idx]]];
-                        termData = Delete[termData, jdx];
-                        jdx--;
-                        kdx = Length[symmetryList] + 1;
+                (* Fingerprint is symmetry-invariant — skip pair entirely if mismatch *)
+                If[termData[[idx]]["fp"] =!= termData[[jdx]]["fp"], Continue[]];
+                matched = False;
+                (* Identity symmetry: use cached data directly *)
+                red = TermsEqualAndSumPre[setup, ret[[idx]], ret[[jdx]], termData[[idx]], termData[[jdx]]];
+                If[red =!= False, matched = True];
+                (* Non-trivial symmetries *)
+                If[!matched,
+                    For[kdx = 1, kdx <= Length[nonTrivialSym], kdx++,
+                        $profTmpSP = AbsoluteTime[];
+                        (* Transform pre-computed data directly under symmetry rule *)
+                        data2sym = TransformTermData[termData[[jdx]], nonTrivialSym[[kdx, Key["Rule"]]]];
+                        (* Build symmetry-transformed term without full preprocess *)
+                        t2sym = FTerm[nonTrivialSym[[kdx, Key["Factor"]]]] ** ret[[jdx]] /. nonTrivialSym[[kdx, Key["Rule"]]];
+                        $ProfileSymPreprocess += AbsoluteTime[] - $profTmpSP;
+                        red = TermsEqualAndSumPre[setup, ret[[idx]], t2sym, termData[[idx]], data2sym];
+                        If[red =!= False,
+                            matched = True;
+                            Break[];
+                        ];
                     ];
+                ];
+                If[matched,
+                    ret[[idx]] = red;
+                    ret = Delete[ret, jdx];
+                    termData[[idx]] = PrecomputeTermData[setup, ret[[idx]]];
+                    termData = Delete[termData, jdx];
+                    jdx--;
                 ];
             ];
         ];
@@ -829,8 +857,8 @@ FSimplify[setup_, inexpr_FEx, OptionsPattern[]] :=
             res = FSimplify[setup, MergeFExAnnotations[connectedExpr, annotations], (Sequence @@ Thread[Rule @@ {#, OptionValue[FSimplify, #]}]& @ Keys[Options[FSimplify]])];
             Return[FEx @@ Join[List @@ res, disconnectedTerms]]
         ];
-        expr = FixIndices[setup, expr];
         expr = FOrderFields[setup, expr];
+        expr = FixIndices[setup, expr];
         symmetries =
             If[KeyExistsQ[annotations, "Symmetries"],
                 annotations["Symmetries"]
