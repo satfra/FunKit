@@ -168,8 +168,8 @@ FMakeSymmetryList[setup_, {fields___}, {indices___}] :=
 
 (*Get viable starting points for a comparison of two diagrams*)
 
-StartPoints[setup_, t1_FTerm, t2_FTerm] :=
-    Module[{obj1, obj2, count, desired, sList, match1, match2, cidx1, cidx2, doFields, fieldKey},
+StartPoints[setup_, t1_FTerm, t2_FTerm, cidx1_, cidx2_] :=
+    Module[{obj1, obj2, count, desired, sList, match1, match2, doFields, fieldKey},
         doFields = replFields[setup];
 (*Get all sub-objects inside the terms. Apply replFields only to non-indexed objects
   (standalone field applications) to avoid corrupting indexed-object structure in NotationB.*)
@@ -205,8 +205,6 @@ StartPoints[setup_, t1_FTerm, t2_FTerm] :=
             FunKitDebug[4, "Failed at object head check"];
             Return[{False, Null, Null}]
         ];
-        cidx1 = GetClosedSuperIndices[setup, t1];
-        cidx2 = GetClosedSuperIndices[setup, t2];
         If[Length[cidx1] =!= Length[cidx2],
             FunKitDebug[4, "Failed at closed index count check: ", Length[cidx1], " vs ", Length[cidx2]];
             Return[{False, Null, Null}]
@@ -548,8 +546,8 @@ TermsEqualAndSumCore[setup_, t1_FTerm, t2_FTerm] :=
             (*We had the identity already above, so nothing to do here*)
             Return[False]
         ];
-        (*Get all the possible starting points for the search*)
-        startPoints = StartPoints[setup, t1, t2];
+        (*Get all the possible starting points for the search — pass pre-computed closed indices*)
+        startPoints = StartPoints[setup, t1, t2, cidxt1, cidxt2];
         If[Not[startPoints[[1]]],
             FunKitDebug[3, "    No matching StartPoints could be identified"];
             Return[False]
