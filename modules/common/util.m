@@ -75,7 +75,7 @@ BalancedMap[f_, list_List] :=
             ret[[i]] = ParallelMapSerialized[f, mChunk] // Timing;
             ret[[i]] = ret[[i, 2]];
         ];
-        Return[Flatten[ret]]
+        Return[Flatten[ret, 1]]
     ];
 
 PMap[f_, list_List] :=
