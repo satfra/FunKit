@@ -355,8 +355,7 @@ TermsEqualAndSum[
                 curIdxRepl = curIdxRepl /. allIdxRepl;
                 AppendTo[allIdxRepl, curIdxRepl];
                 FunKitDebug[4, "Replacing indices: ", curIdxRepl];
-                {allObjt2, memory2, curPos2, nextPos2, t2, sign2, cidxt2} =
-                    {allObjt2, memory2, curPos2, nextPos2, t2, sign2, cidxt2} /. curIdxRepl;
+                {allObjt2, memory2, curPos2, nextPos2, t2, sign2, cidxt2} = {allObjt2, memory2, curPos2, nextPos2, t2, sign2, cidxt2} /. curIdxRepl;
                 nextInd2[[1]] = nextInd1[[1]];
                 (*fix the current object*)
                 {temp1, temp2} = RearrangeFields[setup, curPos1, curPos2, {nextInd1[[1]], nextInd2[[1]]}];
@@ -710,17 +709,15 @@ PrecomputeTermData[setup_, term_FTerm] :=
             ];
         Module[{cidx = GetClosedSuperIndices[setup, term], oidx = GetOpenSuperIndices[setup, term], fieldKey},
             fieldKey[obj_] := Head[obj] @@ Sort @ getFields[obj];
-            <|"cidx" -> cidx, "oidx" -> oidx, "objs" -> objs,
-              "fp" -> {Length[cidx], Sort @ Map[fieldKey, objs]}|>
+            <|"cidx" -> cidx, "oidx" -> oidx, "objs" -> objs, "fp" -> {Length[cidx], Sort @ Map[fieldKey, objs]}|>
         ]
     ];
 
 (* Transform pre-computed data under a symmetry rule (index permutation only).
    Valid because symmetry rules only permute open indices, not field content. *)
+
 TransformTermData[data_Association, rule_List] :=
-    <|"cidx" -> (data["cidx"] /. rule),
-      "oidx" -> (data["oidx"] /. rule),
-      "objs" -> (data["objs"] /. rule)|>;
+    <|"cidx" -> (data["cidx"] /. rule), "oidx" -> (data["oidx"] /. rule), "objs" -> (data["objs"] /. rule)|>;
 
 (* Withing a group of possibly matching FTerms, check for any possible equalities *)
 
@@ -744,7 +741,9 @@ SubFSimplify[setup_, expr_] /; Length[expr] <= 64 :=
         termData = Map[PrecomputeTermData[setup, #]&, ret];
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
-                If[termData[[idx]]["fp"] =!= termData[[jdx]]["fp"], Continue[]];
+                If[termData[[idx]]["fp"] =!= termData[[jdx]]["fp"],
+                    Continue[]
+                ];
                 red = TermsEqualAndSumPre[setup, ret[[idx]], ret[[jdx]], termData[[idx]], termData[[jdx]]];
                 FunKitDebug[3, "Compared ", idx, " and ", jdx, ", result: ", red];
                 If[red =!= False,
@@ -773,23 +772,25 @@ SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] > 64 :=
 
 SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] <= 64 :=
     Module[
-        {ret = List @@ expr, idx, jdx, kdx, red, matched, t2sym, data2sym, termData,
-         nonTrivialSym, $profT0 = AbsoluteTime[], $profTmpSP}
+        {ret = List @@ expr, idx, jdx, kdx, red, matched, t2sym, data2sym, termData, nonTrivialSym, $profT0 = AbsoluteTime[], $profTmpSP}
         ,
         (* Filter out identity symmetry — handled separately with cached data *)
-        nonTrivialSym = Select[symmetryList, #["Rule"] =!= {} || #["Factor"] =!= 1 &];
+        nonTrivialSym = Select[symmetryList, #["Rule"] =!= {} || #["Factor"] =!= 1&];
         (* Normalize the group once *)
         ret = ReduceIndicesBatch[setup, ret];
         ret = FixIndices[setup, OrderFields[setup, #]]& /@ ret;
         termData = Map[PrecomputeTermData[setup, #]&, ret];
         For[idx = 1, idx <= Length[ret], idx++,
             For[jdx = idx + 1, jdx <= Length[ret], jdx++,
-                (* Fingerprint is symmetry-invariant — skip pair entirely if mismatch *)
-                If[termData[[idx]]["fp"] =!= termData[[jdx]]["fp"], Continue[]];
+                (* Fingerprint is symmetry-invariant — skip pair entirely if mismatch *)If[termData[[idx]]["fp"] =!= termData[[jdx]]["fp"],
+                    Continue[]
+                ];
                 matched = False;
                 (* Identity symmetry: use cached data directly *)
                 red = TermsEqualAndSumPre[setup, ret[[idx]], ret[[jdx]], termData[[idx]], termData[[jdx]]];
-                If[red =!= False, matched = True];
+                If[red =!= False,
+                    matched = True
+                ];
                 (* Non-trivial symmetries *)
                 If[!matched,
                     For[kdx = 1, kdx <= Length[nonTrivialSym], kdx++,

@@ -78,9 +78,13 @@ FTerm /: FormTracer`FormTrace[FTerm[a__], preReplRules_ : {}, postReplRules_ : {
                 expr //
                 Global`TBInsertCombinedLorentzTensors //
                 Global`UseLorentzLinearity;
-        ];
-        Block[{Print},
-            FormTracer`DisentangleLorentzStructures[True]
+            Block[{Print},
+                FormTracer`DisentangleLorentzStructures[True]
+            ]
+            ,
+            Block[{Print},
+                FormTracer`DisentangleLorentzStructures[False]
+            ];
         ];
         repl = SafeReplaceTrace[expr];
         tmpfileName = "/tmp/FS_" <> makeTemporaryFileName[];

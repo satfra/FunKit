@@ -31,7 +31,7 @@ Supports various plotting styles and customization options.
 Useful for understanding the diagrammatic structure of functional calculations.
 Integrates with Mathematica's plotting capabilities for high-quality output.";
 
-FAddTexStyles::usage = "AddTexStyles[styleRules]
+FAddTexStyles::usage = "FAddTexStyles[styleRules]
 Adds custom LaTeX styling rules for specific mathematical objects or fields.
 Allows customization of how fields, indices, and operators appear in LaTeX output.
 Style rules should be given as replacement rules (e.g., field -> \"\\mathbf{field}\").

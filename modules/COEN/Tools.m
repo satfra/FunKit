@@ -9,12 +9,6 @@
       FSetCodePrecision          -- Sets code precision ("single" or "double")
 
     Internal:
-      balancedBracesQ            -- Checks balanced parentheses in a string
-                                    (used by Cpp, CppOptimize)
-      balancedRBracesQ           -- Checks balanced square brackets in a string
-                                    (used by Cpp)
-      hasNoOperators             -- Tests if a string contains no operators
-                                    (used by Cpp)
       parallelSimplify           -- Parallel FullSimplify with automatic fallback
                                     (used by Cpp, CppOptimize, Fortran, Julia)
 
@@ -67,34 +61,11 @@ inferredPATH = RunProcess[
 SetEnvironment["PATH" -> inferredPATH];
 
 (**********************************************************************************
-    Brace detection
-**********************************************************************************)
-
-balancedBracesQ[str_String] :=
-    Module[{cases, idx},
-        If[Not @ (StringCount[str, "("] === StringCount[str, ")"]),
-            Return[False]
-        ];
-        cases = StringCases[str, "(" | ")"];
-        For[idx = 1, idx <= Length[cases], idx++,
-            If[(Count[cases[[ ;; idx]], "("] < Count[cases[[ ;; idx]], ")"]),
-                Return[False]
-            ];
-        ];
-        Return[True];
-    ];
-
-balancedRBracesQ[str_String] :=
-    StringCount[str, "["] === StringCount[str, "]"]
-
-hasNoOperators[str_String] :=
-    StringFreeQ[str, ")"] && StringFreeQ[str, "("] && StringFreeQ[str, "["] && StringFreeQ[str, "]"] && StringFreeQ[str, "*"] && StringFreeQ[str, "/"] && StringFreeQ[str, "+"] && StringFreeQ[str, "-"] && StringFreeQ[str, "%"] && StringFreeQ[str, "&"]
-
-(**********************************************************************************
     Parallel map with automatic fallback
 **********************************************************************************)
 
 (* Only use parallel evaluation when there are enough items to amortize overhead *)
+
 $codeParallelThreshold = 4;
 
 parallelSimplify[exprs_List] :=
@@ -127,6 +98,7 @@ $codeMaxKernelTerms = 500;
 
 (* Max character length of a single C++ statement (from ; to ;) before
    clang-format is disabled for that statement to avoid OOM. *)
+
 $codeFormatStatementLimit = 1000;
 
 $codeFMARestructure = True;
@@ -183,4 +155,3 @@ FSetCodePrecision[___] :=
         Message[FunKit::invalidArguments, FSetCodePrecision];
         Abort[]
     );
-

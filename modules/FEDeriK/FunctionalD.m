@@ -190,7 +190,6 @@ FunctionalD[setup_, expr_, v : (f_[_, __] | {f_[_, __], _Integer}).., OptionsPat
             {rule, $userRules}
         ];
         (*Rule for normal functional derivatives*)
-        (*f /: D[f[{f1_, f2_}, {i_, j_}], f[{f3_, f4_}, {k_, l_}], NonConstants -> nonConst] := SymmetryFactor[{f1, f2}, {k, l}] \[Gamma][{f1, f3}, {-k, -i}] \[Gamma][{f2, f4}, {-l, -j}];*)
         f /: D[f[{f1__}, {i1__}], f[{f2__}, {i2__}], NonConstants -> nonConst] := SymmetricDerivative[{f1}, {i1}, {f2}, {i2}];
         (*Rule for normal functional derivatives, but AnyField*)
         (*No derivatives of FTerm, FEx*)

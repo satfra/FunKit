@@ -18,7 +18,10 @@ The second form allows specifying custom FORM preRepl and postRepl rules.
 Integrates with FormTrace for powerful symbolic manipulation and optimization.
 Essential for handling large expressions that benefit from FORM's optimization capabilities.";
 
-FSetAlwaysExpandLorentzTensors::usage = "";
+FSetAlwaysExpandLorentzTensors::usage = "FSetAlwaysExpandLorentzTensors[bool]
+When True (default), Lorentz tensor structures are automatically expanded.
+Uses both FormTracer's DisentangleLorentzStructures[bool] and manually inserts combined Lorentz tensors.
+Accepts True or False.";
 
 FIterativelySum::usage = "FIterativelySum[list]
 FIterativelySum[list, finalSize]

@@ -1,7 +1,5 @@
 (* ::Package:: *)
 
-(* ::Input:: *)
-
 (* ::Title:: *)
 
 (*COEN - COde ENgine*)

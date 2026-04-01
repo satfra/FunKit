@@ -10,10 +10,6 @@
                                     (used by FTruncate, LTrunc, OTrunc)
       truncationList             -- Builds memoized Dispatch rules from setup
                                     (used by truncationPass)
-      insertFields               -- Replaces AnyField at index positions with a field
-                                    (used by LTrunc)
-      insertFieldsIfAnyField     -- Like insertFields but only replaces AnyField slots
-                                    (used by LTrunc)
       LTrunc                     -- Truncates closed indices recursively
                                     (used by FTruncate)
       OTrunc                     -- Truncates open indices
@@ -86,23 +82,6 @@ indices::inconsistentContractions = "The index `1` has been contracted in an inc
     `2`";
 
 indices::objectNotFound = "Could not find the expected number of objects containing the index `1` in the expression `2`. Found `3` object(s), expected `4`.";
-
-(*inside an object, find all occurences of idx and replace the fields at the respective positions with field.*)
-
-insertFields[obj_, idx_, field_Symbol] :=
-    Module[{positions},
-        positions = Flatten[Position[makePosIdx /@ getIndices[obj], makePosIdx @ idx]];
-        Fold[setField[#1, #2, field]&, obj, positions]
-    ];
-
-(*Like insertFields, but only replaces positions where the current field is AnyField.*)
-
-insertFieldsIfAnyField[obj_, idx_, field_Symbol] :=
-    Module[{positions, anyPositions},
-        positions = Flatten[Position[makePosIdx /@ getIndices[obj], makePosIdx @ idx]];
-        anyPositions = Select[positions, getField[obj, #] === AnyField&];
-        Fold[setField[#1, #2, field]&, obj, anyPositions]
-    ];
 
 (* Cache for permutation lists keyed by {head, nLegs, fixed slot->field pairs, closedAny slot list} *)
 

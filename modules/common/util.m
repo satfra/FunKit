@@ -20,6 +20,12 @@
                                     (used by Truncation, Derivatives, Tracing)
       PMap                       -- Parallel Map with serialization
                                     (used by Simplify)
+      balancedBracesQ            -- Checks balanced parentheses in a string
+                                    (used by Cpp, CppOptimize)
+      balancedRBracesQ           -- Checks balanced square brackets in a string
+                                    (used by Cpp)
+      hasNoOperators             -- Tests if a string contains no operators
+                                    (used by Cpp)
 **********************************************************************************)
 
 (*Is an index down?*)
@@ -64,7 +70,7 @@ ParallelMapSerialized[f_, data_, opts___] :=
 BalancedMap[f_, list_FEx] :=
     FEx @@ BalancedMap[f, List @@ list];
 
-$ParallelSwitchByteThreshold = 20 * 10^6;
+$ParallelSwitchByteThreshold = 2 * 10^6; (*2MB*)
 
 BalancedMap[f_, list_List] :=
     Module[{len = Length[list], chunks, ret, mChunk},
@@ -89,3 +95,25 @@ PMap[f_, list_List] :=
         ret = ParallelMapSerialized[f, list];
         Return[ret]
     ];
+
+(*String brace balancing*)
+
+balancedBracesQ[str_String] :=
+    Module[{cases, idx},
+        If[Not @ (StringCount[str, "("] === StringCount[str, ")"]),
+            Return[False]
+        ];
+        cases = StringCases[str, "(" | ")"];
+        For[idx = 1, idx <= Length[cases], idx++,
+            If[(Count[cases[[ ;; idx]], "("] < Count[cases[[ ;; idx]], ")"]),
+                Return[False]
+            ];
+        ];
+        Return[True];
+    ];
+
+balancedRBracesQ[str_String] :=
+    StringCount[str, "["] === StringCount[str, "]"]
+
+hasNoOperators[str_String] :=
+    StringFreeQ[str, ")"] && StringFreeQ[str, "("] && StringFreeQ[str, "["] && StringFreeQ[str, "]"] && StringFreeQ[str, "*"] && StringFreeQ[str, "/"] && StringFreeQ[str, "+"] && StringFreeQ[str, "-"] && StringFreeQ[str, "%"] && StringFreeQ[str, "&"]

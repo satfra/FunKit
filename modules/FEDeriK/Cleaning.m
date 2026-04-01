@@ -131,11 +131,6 @@ ReduceFTerm[setup_, term_] :=
 
 (* ::Input::Initialization:: *)
 
-(* Lightweight variant for the derivative hot loop: just filter zeros, skip FixIndices/ReduceFTerm.
-   Full ReduceFEx is deferred to after all derivatives complete. *)
-ReduceFExLight[setup_, equation_] :=
-    Select[equation, # =!= {} && # =!= FTerm[0] && # =!= 0&];
-
 ReduceFEx[setup_, equation_] :=
     Module[{reduced = equation},
         AssertFSetup[setup];

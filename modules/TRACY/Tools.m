@@ -42,9 +42,6 @@ SafeReplaceTrace[expr_] :=
 
 Protect @ $dummy;
 
-customExclusions[a_] :=
-    And @@ {a =!= List, a =!= Complex, a =!= Plus, a =!= Power, a =!= Times, a =!= Rational, a =!= Pattern, a =!= $dummy}
-
 removeFORMTracerRule :=
     Map[Head[#][__] :> $dummy[RandomInteger[10^12]]&, Values[FormTracer`Private`lorentzTensorReplacementRulesOutput // Normal]] \[Union] Map[Head[#][__] :> $dummy[RandomInteger[10^12]]&, Values[FormTracer`Private`groupTensorReplacementRulesOutput // Normal]] \[Union] Map[#[__] :> $dummy[RandomInteger[10^12]]&, FormTracer`Private`combinedTensorNames] \[Union] Map[# :> $dummy[RandomInteger[10^12]]&, Global`GetFormTracerGroupConstants[]];
 
@@ -63,22 +60,6 @@ GetAllMomenta[expr_] :=
     ];
 
 (* ::Input::Initialization:: *)
-
-ClearAll[balancedBracesQ]
-
-balancedBracesQ[str_String] :=
-    Module[{cases, idx},
-        If[Not @ (StringCount[str, "("] === StringCount[str, ")"]),
-            Return[False]
-        ];
-        cases = StringCases[str, "(" | ")"];
-        For[idx = 1, idx <= Length[cases], idx++,
-            If[(Count[cases[[ ;; idx]], "("] < Count[cases[[ ;; idx]], ")"]),
-                Return[False]
-            ];
-        ];
-        Return[True];
-    ];
 
 balancedBracketsQ[str_String] :=
     Module[{cases, idx},

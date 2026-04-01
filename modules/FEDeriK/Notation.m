@@ -76,8 +76,6 @@ FTerm /: NonCommutativeMultiply[a_, FTerm[b__]] /; NumericQ[a] :=
 NonCommutativeMultiply /: FTerm[pre___, NonCommutativeMultiply[in___], post___] :=
     FTerm[pre, in, post]
 
-(*FTerm[pre___,Times[inpre__,NonCommutativeMultiply[in___],inpost__],post___]:=FTerm[pre,inpre*inpost,in,post]*)
-
 FTerm[1, post___] :=
     FTerm[post]
 
@@ -188,10 +186,6 @@ FEx[pre__, FTerm[a_], post___] /; NumericQ[a] :=
 
 FEx[FTerm[0], post___] :=
     FEx[post];
-
-(*Sum splitting of FTerms*)
-
-(*FEx[preEq___,FTerm[preTerm___,Plus[a_,b__],postTerm___],postEq___]:=(FEx[preEq,##,postEq]&@@(FTerm[preTerm,#,postTerm]&/@{a,b}))*)
 
 (*Sums of FTerms*)
 
@@ -312,20 +306,6 @@ FEx[FTerm[f___], annotations__Rule] /; AllTrue[$allObjects, FreeQ[{f}, #, Infini
     FEx[FTerm[f]];
 
 Protect[FEx, FTerm];
-
-(**********************************************************************************
-    Expanding Plus[ ... ] inside FEx and FTerm
-**********************************************************************************)
-
-FExpand[expr_FTerm] :=
-    Module[{ret = expr},
-        Return[ret];
-    ];
-
-FExpand[expr_FEx] :=
-    Module[{ret = expr},
-        Return[ret];
-    ];
 
 (**********************************************************************************
     Splitting into prefactor and indexed objects
