@@ -100,6 +100,8 @@ FunKitForm[diag_List] /; QMeSSuperindexDiagramQ[diag] :=
                     ,(**)
                     <|"type" -> "Propagator", "indices" -> {a__}|> :> makeObj[Propagator, {a}[[All, 1]], {a}[[All, 2, 1]]]
                     ,(**)
+                    assoc_Association /; assoc["type"] === "nPoint" && assoc["spec"] === "classical" :> makeObj[S, assoc["indices"][[All, 1]], -assoc["indices"][[All, 2, 1]]]
+                    ,(**)
                     <|"type" -> "nPoint", "indices" -> {a__}, __|> :> makeObj[GammaN, {a}[[All, 1]], {a}[[All, 2, 1]]]
                 };
         Return[FTerm[pref, ##]& @@ newa]
@@ -139,6 +141,8 @@ FunKitForm[diag_] /; DoFunSuperindexDiagramQ[diag] :=
                 DoFun`DoDSERGE`V[f__] :> makeObj[GammaN, {f}[[All, 1]], {f}[[All, 2]]]
                 ,
                 DoFun`DoDSERGE`dR[f__] :> makeObj[Rdot, {f}[[All, 1]], {f}[[All, 2]]]
+                ,
+                DoFun`DoDSERGE`S[f__] :> makeObj[S, {f}[[All, 1]], -{f}[[All, 2]]]
             };
         FunKit`FEx[diag //. repl]
     ];

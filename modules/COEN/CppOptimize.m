@@ -447,6 +447,29 @@ optimizeSubKernel[expr_, sharedDefCount_Integer] :=
 (* Normalize power bases: rewrite Power[base, m] using an already-hoisted
    Power[base, n] temporary when m is a nonzero integer multiple of n *)
         {e, cseDefs} = normalizePowerBases[e, cseDefs];
+(* Topological sort: normalizePowerBases can introduce forward references
+   (e.g. _cse6 = 1/_cse7 when _cse7 = l1^2) by rewriting powers in terms
+   of later-defined temporaries.  Re-sort so each def comes after its deps. *)
+        If[Length[cseDefs] > 1,
+            cseDefs = Module[{names, nameSet, deps, visited, order, visit},
+                names = cseDefs[[All, 1]];
+                nameSet = Association @ Table[names[[i]] -> i, {i, Length[names]}];
+                deps = Map[
+                    Function[{def}, Select[Cases[def[[2]], _String, Infinity], KeyExistsQ[nameSet, #]&]],
+                    cseDefs
+                ];
+                visited = <||>;
+                order = {};
+                visit[idx_] := (
+                    If[Lookup[visited, idx, False], Return[]];
+                    visited[idx] = True;
+                    Scan[Function[{dep}, visit[nameSet[dep]]], deps[[idx]]];
+                    AppendTo[order, idx];
+                );
+                Do[visit[i], {i, 1, Length[cseDefs]}];
+                cseDefs[[order]]
+            ];
+        ];
         FunKitDebug[2, "  Power basis normalization done"];
         (* Algebraic factoring *)
         If[Length[cseDefs] > 0,

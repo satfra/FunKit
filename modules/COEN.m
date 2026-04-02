@@ -73,6 +73,10 @@ Options:
 JuliaForm::usage = "JuliaForm[expr]
 Converts a Mathematica expression into its Julia code representation.";
 
+FortranCodeForm::usage = "FortranCodeForm[expr]
+Converts a Mathematica expression into its Fortran code representation.
+Named FortranCodeForm to avoid shadowing the built-in System`FortranForm.";
+
 FormatCppCode::usage = "FormatCppCode[codeString, opts]
 Uses clang-format, if available on the system, to automatically format a given string of C++ code.
 Options:
