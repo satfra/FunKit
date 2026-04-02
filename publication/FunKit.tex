@@ -406,7 +406,9 @@ or, if already installed, import the \FunKit package with
 \mmaDef{Get}["FunKit\`{}"]
 \end{mmaCell}
 %
-The \FunKit package has no further requirements except for a Mathematica version $\geq 13.3$ and a Linux or MacOS system. Direct support for Windows is currently not available, as \FORM does not support execution on Windows systems. However, using \FunKit via WSL (Windows Subsystem for Linux) is possible.
+The \FunKit package has no further requirements except for a Mathematica version $\geq 11.0$ and a Linux or MacOS system. 
+\FunKit has not been tested with earlier Mathematica versions, but could work 
+Direct support for Windows is currently not available, as \FORM does not support execution on Windows systems. However, using \FunKit via WSL (Windows Subsystem for Linux) is possible.
 
 A Notebook containing all code written below can be found at \texttt{examples/FunKitPaper.nb} inside the repository.
 Besides the guided explanations in this work, documentation on all functions provided by \FunKit can be accessed through their usage strings, i.e.,
@@ -1524,6 +1526,7 @@ parametrization4F = \{
 %
 To keep the output concise, we have assumed momentum-independent dressings, explicitly \mathem{lambda[i]} for the \mathem{i}-th vertex.
 With all the above, the two-point function reads
+\newpage
 %
 \begin{mmaCell}{Input}
 Flow2F = \mmaDef{FTakeDerivatives}[\mmaDef{setup4F},\mmaDef{WetterichEquation},\{psibar[i1],psi[i2]\}];
@@ -1804,6 +1807,8 @@ auto DSE_kernel_AA_1Loop(const auto &l1, const auto &cos, const auto &p, const a
 	
 \end{tcolorbox}
 %
+By default, the code generation targets a register budget of 32 registers per kernel, reflecting typical GPU hardware constraints. For CPU-targeted applications, where register pressure is less restrictive, the user may adjust this setting via the \mathem{\mmaDef{FSetRegisterSize}} function.
+
 \FunKit replaces integer powers of expressions in C++ with the function \cpp{powr<n>(expr)}. This allows for a more efficient implementation of (low) integer powers than the standard \cpp{std::pow(expr,n)}. For convenience, a possible implementation of \cpp{powr} may read,
 %
 \begin{lstlisting}[language=c++,style=myStyle]
@@ -1832,6 +1837,10 @@ One can turn off usage of \cpp{powr} by setting
 \begin{mmaCell}{Input}
 	\mmaDef{FUseCppPowr}[\mmaDef{False}];
 \end{mmaCell}
+%
+Currently, the code generation of \FunKit currently targets only C++ and Julia, as these languages offer the performance characteristics required for realistic numerical applications.
+In particular, the generated code is designed for tight integration with high-performance solvers and GPU kernels, where languages such as Python would introduce prohibitive overhead. 
+Should the need arise, the modular design of \FunKit makes the addition of further backends straightforward.
 
 
 \begin{table*}[t]
@@ -1943,6 +1952,14 @@ It also has a broader scope, as it culminates in either fully traced analytic ex
 We have also described the algorithms used in \FunKit, which are optimised at every stage: parallelisation is dynamically switched on and off at every stage of the workflow to maximise performance, and the generated code is highly optimised for both CPU and GPU applications.
 
 We demonstrated the capabilities of \FunKit at the example of Yang-Mills theory, scalar field theory, a Yukawa theory and an NJL model. As for master equations, we show DSEs, the Wetterich equation, the modified STIs and dynamically reparameterised flow equations. All these examples can be found in the \FunKit repository, see also \Cref{tab:examples}.
+
+While \FunKit covers a broad range of applications, of course some limitations remain. Truncations are specified as explicit lists of field-content tuples, meaning that rule-based truncation schemes — such as retaining all operators up to a given mass dimension or derivative order — must be currently constructed manually by the~user.
+
+A fundamental challenge is the resolution of functional derivatives, which involves a product-rule expansion that can lead to rapid intermediate expression growth for large truncations.
+Although \FunKit mitigates this through in-loop simplification parallelisation and appropriate algorithm design, the scaling remains a practical bottleneck for very large systems. This is however not a problem of \FunKit, but rather of the approach itself.
+
+Also, while \FunKit generates optimised code for the integrands of functional equations, it does not provide a numerical integration framework; the user must embed the generated code into their own solver or use an existing framework such as \texttt{DiFfRG} \cite{Sattler:2024ozv}.
+Finally, direct support for Windows is currently not available, as FORM does not support native execution on Windows systems. However, using \FunKit via WSL (Windows Subsystem for Linux) is possible.
 
 \FunKit is already a basis for several on-going projects in the fQCD collaboration \cite{fQCD} involving large QCD truncations with dynamical hadronisation and other flowing reparametrisations.
 As it is embedded in the tools of the fQCD collaboration, e.g. it has become the symbolic backend of the \texttt{DiFfRG} framework \cite{Sattler:2024ozv}, \FunKit will continue to see improvements in the future.
@@ -2146,28 +2163,45 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 
 
 \begin{tcolorbox}[title=Diagrams and \LaTeX,
-title filled=false,
-colback=pastelblue!5!white,
-colframe=pastelblue,
-fonttitle=\bfseries]
-\begin{tabular}{p{4.2cm} p{11.6cm}}
-	\mathem{\mmaDef{FPrint}[setup, expr]} & 
-	\small Prints functional expressions in formatted mathematical notation using \LaTeX{} rendering with the \texttt{MaTeX} package. Returns the original expression after printing for easy chaining.
-	\\[3ex]
-	\mathem{\mmaDef{FTex}[setup, expr]} & 
-	\small Outputs a string of \LaTeX{} code for the given expression.
-	\\[3ex]
-	\mathem{\mmaDef{FPlot}[setup, expr]} & 
-	\small Prints Feynman Diagrams of the given functional expression.
-	\\[3ex]
-	\mathem{\mmaDef{FAddTexStyles}[rules...]} & 
-	\small Adds custom \LaTeX{} styling rules for specific mathematical objects or fields. Style rules should be given as replacement rules, e.g., \mathem{field -> "\\mathbf{field}"}.
-	\\[3ex]
-	\mathem{\mmaDef{FSetTexStyles}[rules...]} & 
-	\small Same as \mathem{\mmaDef{FAddTexStyles}}, but resets the list of known style rules.
-\end{tabular}
+	title filled=false,
+	colback=pastelblue!5!white,
+	colframe=pastelblue,
+	fonttitle=\bfseries]
+	\begin{tabular}{p{4.2cm} p{11.6cm}}
+		\mathem{\mmaDef{FPrint}[setup, expr]} & 
+		\small Prints functional expressions in formatted mathematical notation using \LaTeX{} rendering with the \texttt{MaTeX} package. Returns the original expression after printing for easy chaining.
+		\\[3ex]
+		\mathem{\mmaDef{FTex}[setup, expr]} & 
+		\small Outputs a string of \LaTeX{} code for the given expression.
+		\\[3ex]
+		\mathem{\mmaDef{FPlot}[setup, expr]} & 
+		\small Prints Feynman Diagrams of the given functional expression.
+		\\[3ex]
+		\mathem{\mmaDef{FAddTexStyles}[rules...]} & 
+		\small Adds custom \LaTeX{} styling rules for specific mathematical objects or fields. Style rules should be given as replacement rules, e.g., \mathem{field -> "\\mathbf{field}"}.
+		\\[3ex]
+		\mathem{\mmaDef{FSetTexStyles}[rules...]} & 
+		\small Same as \mathem{\mmaDef{FAddTexStyles}}, but resets the list of known style rules.
+	\end{tabular}
 \end{tcolorbox}
 
+
+\begin{tcolorbox}[title=Compatibility,
+	title filled=false,
+	colback=pastelblue!5!white,
+	colframe=pastelblue,
+	fonttitle=\bfseries]
+	\begin{tabular}{p{4cm} p{11.8cm}}
+		\mathem{\mmaDef{QMeSForm}[setup,expr]} & 
+		\small Converts expressions containing indexed objects (like \mathem{\mmaDef{Propagator}}, \mathem{\mmaDef{GammaN}}) to \QMeS-style notation. Uses the canonical ordering \mathem{"b>af>f"} for field arrangement.
+		\\[3ex]
+		\mathem{\mmaDef{DoFunForm}[setup,expr]} & 
+		\small Converts expressions containing indexed objects (like \mathem{\mmaDef{Propagator}}, \mathem{\mmaDef{GammaN}}) to \DoFun-style notation.
+		\\[3ex]
+		\mathem{\mmaDef{FunKitForm}[setup,expr]} & 
+		\small Transforms expressions from \QMeS-style or \DoFun-style notation to \FunKit-style notation.
+	\end{tabular}
+\end{tcolorbox}
 
 
 \begin{tcolorbox}[title=Derivatives and truncations,
@@ -2175,131 +2209,131 @@ fonttitle=\bfseries]
 	colback=pastelblue!5!white,
 	colframe=pastelblue,
 	fonttitle=\bfseries]
-\begin{tabular}{p{5.7cm} p{10.1cm}}
-	\mathem{\mmaDef{FTakeDerivatives}[setup,expr,dList]} &
-	\small Takes multiple functional derivatives of \mathem{expr} with respect to the fields in \mathem{dList}, starting from the right to the left.
-	Returns the result with all derivative operators resolved.\newline
-	\mathem{dList} must be a list of fields like \mathem{{A[i1],A[i2]}}.
-	\\[3ex]
-	\mathem{\mmaDef{FResolveDerivatives}[setup,expr]} &
-	\small Iteratively resolves all functional derivative operators \mathem{\mmaDef{FDOp}} in the expression.
-	\\[3ex]
-	\mathem{\mmaDef{FResolveFDOp}[setup,expr]} &
-	\small Resolves the right-most \mathem{\mmaDef{FDOp}} in every \mathem{\mmaDef{FTerm}}.
-	\\[3ex]
-	\mathem{\mmaDef{FTruncate}[setup,expr]} &
-	\small Truncates \mathem{expr} according to the truncation table in \mathem{setup}. Replaces undetermined \mathem{\mmaDef{AnyField}} with explicit fields and removes terms not included in the truncation.
-	Open indices are ignored and the expression must not contain unresolved \mathem{\mmaDef{FDOp}}.
-	\\[3ex]
-	\mathem{\mmaDef{FTruncateOpenIndices}[setup,expr]} &
-	\small Truncates open indices in \mathem{expr} according to the truncation tables specified in the \mathem{setup}.
-	Explicitly, a sum is taken over all possible fields for every single open-index \mathem{\mmaDef{AnyField}} in the expression.
-	\\[3ex]
-	\mathem{\mmaDef{FMakeSymmetryList}[setup,fields]} &
-	\small Returns a list of symmetries between the provided fields with indices. \mathem{fields} must be given as a list of indexed fields, e.g., \mathem{{f1[i1],...]}}.\newline
-	Any \mathem{\mmaDef{FEx}} can be annotated as \mathem{\mmaDef{FEx}[..., "Symmetries"->symmetryList]}.
-	\\[3ex]
-	\mathem{\mmaDef{FSimplify}[setup,expr]} &
-	\small Simplifies \mathem{expr} by identifying and combining terms. Optionally, one can either pass a symmetry list directly \mathem{"Symmetries"->symmetryList}, or include it in the given \mathem{\mmaDef{FEx}} - both will be taken into account.
-	\\[3ex]
-	\mathem{\mmaDef{FOrderFields}[setup,expr]} &
-	\small Orders all fields within \mathem{expr} according to the canonical ordering currently set for FunKit.
-	Normally, FunKit takes care of field ordering automatically, but this function allows manual reordering when needed.
-	\\[3ex]
-	\mathem{\mmaDef{FExpand}[setup,expr,order]} &
-	\small Expands powers of FTerm and FEx expressions up to the specified order. This is useful for expanding expressions like $(FTerm[...])^n$ into explicit sums of terms. Automatically fixes indices to ensure uniqueness after expansion.
-	\\[3ex]
-	\mathem{\mmaDef{DExpand}[setup,expr,order]} &
-	\small Expands expressions containing \mathem{\mmaDef{FDOp}} up to the specified order. Similar to \mathem{\mmaDef{FExpand}}, but specifically handles expansions involving functional derivatives.
-	\\[3ex]
-	\mathem{\mmaDef{FDisconnectedQ}[setup,expr]} &
-	\small Checks whether a given \mathem{\mmaDef{FTerm}} represents a connected or disconnected diagram. Returns \mathem{\mmaDef{True}} if it is disconnected.
-\end{tabular}
+	\begin{tabular}{p{5.7cm} p{10.1cm}}
+		\mathem{\mmaDef{FTakeDerivatives}[setup,expr,dList]} &
+		\small Takes multiple functional derivatives of \mathem{expr} with respect to the fields in \mathem{dList}, starting from the right to the left.
+		Returns the result with all derivative operators resolved.\newline
+		\mathem{dList} must be a list of fields like \mathem{{A[i1],A[i2]}}.
+		\\[3ex]
+		\mathem{\mmaDef{FResolveDerivatives}[setup,expr]} &
+		\small Iteratively resolves all functional derivative operators \mathem{\mmaDef{FDOp}} in the expression.
+		\\[3ex]
+		\mathem{\mmaDef{FResolveFDOp}[setup,expr]} &
+		\small Resolves the right-most \mathem{\mmaDef{FDOp}} in every \mathem{\mmaDef{FTerm}}.
+		\\[3ex]
+		\mathem{\mmaDef{FTruncate}[setup,expr]} &
+		\small Truncates \mathem{expr} according to the truncation table in \mathem{setup}. Replaces undetermined \mathem{\mmaDef{AnyField}} with explicit fields and removes terms not included in the truncation.
+		Open indices are ignored and the expression must not contain unresolved \mathem{\mmaDef{FDOp}}.
+		\\[3ex]
+		\mathem{\mmaDef{FTruncateOpenIndices}[setup,expr]} &
+		\small Truncates open indices in \mathem{expr} according to the truncation tables specified in the \mathem{setup}.
+		Explicitly, a sum is taken over all possible fields for every single open-index \mathem{\mmaDef{AnyField}} in the expression.
+		\\[3ex]
+		\mathem{\mmaDef{FMakeSymmetryList}[setup,fields]} &
+		\small Returns a list of symmetries between the provided fields with indices. \mathem{fields} must be given as a list of indexed fields, e.g., \mathem{{f1[i1],...]}}.\newline
+		Any \mathem{\mmaDef{FEx}} can be annotated as \mathem{\mmaDef{FEx}[..., "Symmetries"->symmetryList]}.
+		\\[3ex]
+		\mathem{\mmaDef{FSimplify}[setup,expr]} &
+		\small Simplifies \mathem{expr} by identifying and combining terms. Optionally, one can either pass a symmetry list directly \mathem{"Symmetries"->symmetryList}, or include it in the given \mathem{\mmaDef{FEx}} - both will be taken into account.
+		\\[3ex]
+		\mathem{\mmaDef{FOrderFields}[setup,expr]} &
+		\small Orders all fields within \mathem{expr} according to the canonical ordering currently set for FunKit.
+		Normally, FunKit takes care of field ordering automatically, but this function allows manual reordering when needed.
+		\\[3ex]
+		\mathem{\mmaDef{FExpand}[setup,expr,order]} &
+		\small Expands powers of FTerm and FEx expressions up to the specified order. This is useful for expanding expressions like $(FTerm[...])^n$ into explicit sums of terms. Automatically fixes indices to ensure uniqueness after expansion.
+		\\[3ex]
+		\mathem{\mmaDef{DExpand}[setup,expr,order]} &
+		\small Expands expressions containing \mathem{\mmaDef{FDOp}} up to the specified order. Similar to \mathem{\mmaDef{FExpand}}, but specifically handles expansions involving functional derivatives.
+		\\[3ex]
+		\mathem{\mmaDef{FDisconnectedQ}[setup,expr]} &
+		\small Checks whether a given \mathem{\mmaDef{FTerm}} represents a connected or disconnected diagram. Returns \mathem{\mmaDef{True}} if it is disconnected.
+	\end{tabular}
 \end{tcolorbox}
 
 
 \begin{tcolorbox}[title=Routing,
-title filled=false,
-colback=pastelblue!5!white,
-colframe=pastelblue,
-fonttitle=\bfseries]
-\begin{tabular}{p{5.2cm} p{10.6cm}}
-	\mathem{\mmaDef{FRoute}[setup, expr]} & 
-	\small Routes indices and momenta in functional expressions, organizing terms by loop order. For \mathem{\mmaDef{FTerm}}, returns an Association with keys \mathem{"Expression"} \mathem{"ExternalIndices"}, and \mathem{"LoopMomenta"}.\newline
-	For \mathem{\mmaDef{FEx}}, returns an Association with keys like \mathem{"0-Loop"}, \mathem{"1-Loop"}, etc.
-	\\[3ex]
-	\mathem{\mmaDef{FSetLoopMomentumName}[name]} & 
-	\small Sets the symbol for loop momentum variables. Must be a string (Default: \mathem{"l"}) which will then lead to momenta \mathem{l1}, \mathem{lf1}, etc
-	\\[3ex]
-	\mathem{\mmaDef{FUnroute}[setup, expr]} & 
-	\small \textbf{Experimental:} Reverses the index and momentum routing performed by FRoute, i.e., converts routed expressions back to superindex notation.
-\end{tabular}
+	title filled=false,
+	colback=pastelblue!5!white,
+	colframe=pastelblue,
+	fonttitle=\bfseries]
+	\begin{tabular}{p{5.2cm} p{10.6cm}}
+		\mathem{\mmaDef{FRoute}[setup, expr]} & 
+		\small Routes indices and momenta in functional expressions, organizing terms by loop order. For \mathem{\mmaDef{FTerm}}, returns an Association with keys \mathem{"Expression"} \mathem{"ExternalIndices"}, and \mathem{"LoopMomenta"}.\newline
+		For \mathem{\mmaDef{FEx}}, returns an Association with keys like \mathem{"0-Loop"}, \mathem{"1-Loop"}, etc.
+		\\[3ex]
+		\mathem{\mmaDef{FSetLoopMomentumName}[name]} & 
+		\small Sets the symbol for loop momentum variables. Must be a string (Default: \mathem{"l"}) which will then lead to momenta \mathem{l1}, \mathem{lf1}, etc
+		\\[3ex]
+		\mathem{\mmaDef{FUnroute}[setup, expr]} & 
+		\small \textbf{Experimental:} Reverses the index and momentum routing performed by FRoute, i.e., converts routed expressions back to superindex notation.
+	\end{tabular}
 \end{tcolorbox}
 
 
 \begin{tcolorbox}[title=Diagrammatic rules and Tracing with FORM,
-title filled=false,
-colback=pastelblue!5!white,
-colframe=pastelblue,
-fonttitle=\bfseries]
-\begin{tabular}{p{5.7cm} p{10.0cm}}
-	\mathem{\mmaDef{FMakeDiagrammaticRules}[setup]} & 
-	\small Generates a list of replacement rules that convert functional expressions into an explicit form that can be traced. The bases must be known to the \TensorBases package beforehand.
-	\\[3ex]
-	\mathem{\mmaDef{FSetSymmetricDressing}[obj,}
-	\newline\phantom{.}\hspace{4cm}\mathem{{f1,...}]} & 
-	\small Sets symmetry properties for diagrammatic dressing of objects.
-	The order of field arguments is taken to be irrelevant.
-	Alternatively, \mathem{\mmaDef{FSetSymmetricDressing}[obj, {f1,f2,...}, {1,3,...}]} allows specifying which indices should be symmetrised.
-	\\[3ex]
-	\mathem{\mmaDef{FormTrace}[expr]} & 
-	\small We extend the \mathem{\mmaDef{FormTrace}} command from \cite{Cyrol:2016zqb} to take \mathem{\mmaDef{FEx}} and \mathem{\mmaDef{FTerm}}. These are automatically traced in parallel, if possible.\newline 
-	\mathem{\mmaDef{FormTrace}[name,expr]} caches the result in a folder inside the trace cache called \mathem{name}. \newline
-	\mathem{\mmaDef{FormTrace}[expr,preReplRules,postReplRules]} and \mathem{\mmaDef{FormTrace}[name,expr,preReplRules,postReplRules]} allow for specifying  custom \FORM preRepl and postRepl rules, see \cite{Cyrol:2016zqb} and \mathem{\mmaDef{FormTrace}::\mmaCmt{usage}}.
-	\\[3ex]
-	\mathem{\mmaDef{FFormSimplify}[expr]} &
-	\small Simplifies expressions using FORM's output optimisation (O4) algorithms.
-	\mathem{\mmaDef{FFormSimplify}[expr,preReplRules,postReplRules]} allows specifying custom \FORM preRepl and postRepl rules, see \cite{Cyrol:2016zqb}.
-	\\[3ex]
-	\mathem{\mmaDef{FMakeSPFormRule}[{l1,...},p,}
-	\newline\phantom{.}\hspace{4cm}\mathem{{p1,...}]} & 
-	\small Creates a \FORM rule for a symmetric point momentum configuration.
-	The first argument is a list of loop momenta \mathem{{l1,l2,...}}.
-	The second argument \mathem{p} is the average momentum scale.
-	The third argument is a list of external leg momenta \mathem{{p1,p2,...}}. The rule projects all momenta to a symmetric configuration with average momentum \mathem{p}.
-	\\[3ex]
-	\mathem{\mmaDef{FMakeSPFiniteTFormRule}[{l1,...},}
-	\newline\phantom{.}\hspace{3.7cm}\mathem{p,{p1,...}]} & 
-	\small Creates a \FORM rule for a $(d-1)$-dimensional symmetric point configuration, i.e., a purely spatial symmetric point. Parameters are identical to the ones in \mathem{\mmaDef{FMakeSPFormRule}}.
-	\\[3ex]
-	\mathem{\mmaDef{FMakeP0Rule}[{p1,...},{prj1,...}]} & 
-	\small Creates a replacement rule to project temporal components of momentum expressions. The first argument is a list of external leg momenta \mathem{{p1,p2,...}}.
-	The second argument is a list \mathem{{prj1,prj2,...}} of values to be projected on for the temporal components of the given momenta.
-	I.e., this sets \mathem{vec[pi,0]} to the value of \mathem{prji}.
-	\\[3ex]
-	\mathem{\mmaDef{FMakeP0FormRule}[{p1,...},}
-	\newline\phantom{.}\hspace{3.75cm}\mathem{{prj1,...}]} &  
-	\small Creates a \FORM rule to project temporal components of momentum expressions.  Parameters are identical to the ones in \mathem{\mmaDef{FMakeP0Rule}}.
-	\\[3ex]
-	\mathem{\mmaDef{FClearTraceCache}[]} &
-	\small Removes all cached trace files from the trace cache directory. \mathem{\mmaDef{FClearTraceCache}[subdirectory]} removes files from a specific subdirectory within the cache.
-	\\[3ex]
-	\mathem{\mmaDef{FMakeFormMomentumExpansion}[p1,...]} &
-	\small Creates a \FORM rule to expand out any scalar products in expressions. The optional momenta arguments specify which momenta to expand.
-	Can be passed as a postRepl or preRepl rule to \mathem{\mmaDef{FormTrace}} or \mathem{\mmaDef{FFormSimplify}}. \textit{Warning:} usually, this degrades the performance of \FORM.
-	\\[3ex]
-	\mathem{\mmaDef{FMakeFiniteTFormMomentumExpansion}[}
-	\newline\phantom{.}\hspace{4.42cm}\mathem{p1,...]} &
-	\small Creates a \FORM rule to expand scalar products into spatial and temporal parts, given the momenta to expand.
-	Separates d-dimensional momenta into (d-1)-dimensional spatial parts and time components. \textit{Warning:} usually, this degrades the performance of \FORM.
-	\\[3ex]
-	\mathem{\mmaDef{FIterativelySum}[list]} &
-	\small Efficiently sums large lists of expressions by breaking them into subsets, repeatedly summing and simplifying until only a single expression remains.
-	\mathem{\mmaDef{FIterativelySum}[list, finalSize]} returns a list of specified \mathem{finalSize} with equally-sized terms. Uses parallel processing for optimal performance.
-	\\[3ex]
-	\mathem{\mmaDef{FDiagramSimplify}[expr]} &
-	\small Simplifies diagrammatic expressions by collecting terms and optimizing their structure using advanced algorithms to identify common subexpressions and factor them efficiently.
-\end{tabular}
+	title filled=false,
+	colback=pastelblue!5!white,
+	colframe=pastelblue,
+	fonttitle=\bfseries]
+	\begin{tabular}{p{5.7cm} p{10.0cm}}
+		\mathem{\mmaDef{FMakeDiagrammaticRules}[setup]} & 
+		\small Generates a list of replacement rules that convert functional expressions into an explicit form that can be traced. The bases must be known to the \TensorBases package beforehand.
+		\\[3ex]
+		\mathem{\mmaDef{FSetSymmetricDressing}[obj,}
+		\newline\phantom{.}\hspace{4cm}\mathem{{f1,...}]} & 
+		\small Sets symmetry properties for diagrammatic dressing of objects.
+		The order of field arguments is taken to be irrelevant.
+		Alternatively, \mathem{\mmaDef{FSetSymmetricDressing}[obj, {f1,f2,...}, {1,3,...}]} allows specifying which indices should be symmetrised.
+		\\[3ex]
+		\mathem{\mmaDef{FormTrace}[expr]} & 
+		\small We extend the \mathem{\mmaDef{FormTrace}} command from \cite{Cyrol:2016zqb} to take \mathem{\mmaDef{FEx}} and \mathem{\mmaDef{FTerm}}. These are automatically traced in parallel, if possible.\newline 
+		\mathem{\mmaDef{FormTrace}[name,expr]} caches the result in a folder inside the trace cache called \mathem{name}. \newline
+		\mathem{\mmaDef{FormTrace}[expr,preReplRules,postReplRules]} and \mathem{\mmaDef{FormTrace}[name,expr,preReplRules,postReplRules]} allow for specifying  custom \FORM preRepl and postRepl rules, see \cite{Cyrol:2016zqb} and \mathem{\mmaDef{FormTrace}::\mmaCmt{usage}}.
+		\\[3ex]
+		\mathem{\mmaDef{FFormSimplify}[expr]} &
+		\small Simplifies expressions using FORM's output optimisation (O4) algorithms.
+		\mathem{\mmaDef{FFormSimplify}[expr,preReplRules,postReplRules]} allows specifying custom \FORM preRepl and postRepl rules, see \cite{Cyrol:2016zqb}.
+		\\[3ex]
+		\mathem{\mmaDef{FMakeSPFormRule}[{l1,...},p,}
+		\newline\phantom{.}\hspace{4cm}\mathem{{p1,...}]} & 
+		\small Creates a \FORM rule for a symmetric point momentum configuration.
+		The first argument is a list of loop momenta \mathem{{l1,l2,...}}.
+		The second argument \mathem{p} is the average momentum scale.
+		The third argument is a list of external leg momenta \mathem{{p1,p2,...}}. The rule projects all momenta to a symmetric configuration with average momentum \mathem{p}.
+		\\[3ex]
+		\mathem{\mmaDef{FMakeSPFiniteTFormRule}[{l1,...},}
+		\newline\phantom{.}\hspace{3.7cm}\mathem{p,{p1,...}]} & 
+		\small Creates a \FORM rule for a $(d-1)$-dimensional symmetric point configuration, i.e., a purely spatial symmetric point. Parameters are identical to the ones in \mathem{\mmaDef{FMakeSPFormRule}}.
+		\\[3ex]
+		\mathem{\mmaDef{FMakeP0Rule}[{p1,...},{prj1,...}]} & 
+		\small Creates a replacement rule to project temporal components of momentum expressions. The first argument is a list of external leg momenta \mathem{{p1,p2,...}}.
+		The second argument is a list \mathem{{prj1,prj2,...}} of values to be projected on for the temporal components of the given momenta.
+		I.e., this sets \mathem{vec[pi,0]} to the value of \mathem{prji}.
+		\\[3ex]
+		\mathem{\mmaDef{FMakeP0FormRule}[{p1,...},}
+		\newline\phantom{.}\hspace{3.75cm}\mathem{{prj1,...}]} &  
+		\small Creates a \FORM rule to project temporal components of momentum expressions.  Parameters are identical to the ones in \mathem{\mmaDef{FMakeP0Rule}}.
+		\\[3ex]
+		\mathem{\mmaDef{FClearTraceCache}[]} &
+		\small Removes all cached trace files from the trace cache directory. \mathem{\mmaDef{FClearTraceCache}[subdirectory]} removes files from a specific subdirectory within the cache.
+		\\[3ex]
+		\mathem{\mmaDef{FMakeFormMomentumExpansion}[p1,...]} &
+		\small Creates a \FORM rule to expand out any scalar products in expressions. The optional momenta arguments specify which momenta to expand.
+		Can be passed as a postRepl or preRepl rule to \mathem{\mmaDef{FormTrace}} or \mathem{\mmaDef{FFormSimplify}}. \textit{Warning:} usually, this degrades the performance of \FORM.
+		\\[3ex]
+		\mathem{\mmaDef{FMakeFiniteTFormMomentumExpansion}[}
+		\newline\phantom{.}\hspace{4.42cm}\mathem{p1,...]} &
+		\small Creates a \FORM rule to expand scalar products into spatial and temporal parts, given the momenta to expand.
+		Separates d-dimensional momenta into (d-1)-dimensional spatial parts and time components. \textit{Warning:} usually, this degrades the performance of \FORM.
+		\\[3ex]
+		\mathem{\mmaDef{FIterativelySum}[list]} &
+		\small Efficiently sums large lists of expressions by breaking them into subsets, repeatedly summing and simplifying until only a single expression remains.
+		\mathem{\mmaDef{FIterativelySum}[list, finalSize]} returns a list of specified \mathem{finalSize} with equally-sized terms. Uses parallel processing for optimal performance.
+		\\[3ex]
+		\mathem{\mmaDef{FDiagramSimplify}[expr]} &
+		\small Simplifies diagrammatic expressions by collecting terms and optimizing their structure using advanced algorithms to identify common subexpressions and factor them efficiently.
+	\end{tabular}
 \end{tcolorbox}
 
 
@@ -2395,72 +2429,54 @@ fonttitle=\bfseries]
 \end{tcolorbox}
 
 
-\begin{tcolorbox}[title=Compatibility,
-title filled=false,
-colback=pastelblue!5!white,
-colframe=pastelblue,
-fonttitle=\bfseries]
-\begin{tabular}{p{4cm} p{11.8cm}}
-	\mathem{\mmaDef{QMeSForm}[setup,expr]} & 
-	\small Converts expressions containing indexed objects (like \mathem{\mmaDef{Propagator}}, \mathem{\mmaDef{GammaN}}) to \QMeS-style notation. Uses the canonical ordering \mathem{"b>af>f"} for field arrangement.
-	\\[3ex]
-	\mathem{\mmaDef{DoFunForm}[setup,expr]} & 
-	\small Converts expressions containing indexed objects (like \mathem{\mmaDef{Propagator}}, \mathem{\mmaDef{GammaN}}) to \DoFun-style notation.
-	\\[3ex]
-	\mathem{\mmaDef{FunKitForm}[setup,expr]} & 
-	\small Transforms expressions from \QMeS-style or \DoFun-style notation to \FunKit-style notation.
-\end{tabular}
-\end{tcolorbox}
-
-
 \begin{tcolorbox}[title=Global Options,
-title filled=false,
-colback=pastelblue!5!white,
-colframe=pastelblue,
-fonttitle=\bfseries]
-\begin{tabular}{p{5.2cm} p{10.6cm}}		
-	\mathem{\mmaDef{FSetGlobalSetup}[setup]} & 
-	\small Sets a global setup that is used by all FEDeriK functions when no setup is explicitly provided. 
-	This allows for calling functions like \mathem{\mmaDef{FTakeDerivatives}[expr,derivativeList]} without passing the setup each time. \mathem{\mmaDef{FSetGlobalSetup}[]} clears the global setup.
-	\\[3ex]
-	\mathem{\mmaDef{FSetAutoBuildSymmetryList}[bool]} & 
-	\small Sets whether a symmetry list should be automatically built when taking derivatives. Default is True.
-	\\[3ex]
-	\mathem{\mmaDef{FSetAutoSimplify}[bool]} & 
-	\small Sets whether automatic simplification should be applied when taking derivatives and truncating. Default is True.
-	\\[3ex]
-	\mathem{\mmaDef{FSetDebugLevel}[int]} & 
-	\small Sets the amount of debug output given by \FunKit. 
-	Default is 0, can be set up to 7. \textbf{Warning:} high values massively degrade performance.
-	\\[3ex]
-	\mathem{\mmaDef{FSetAlwaysExpandLorentzTensors}[int]} & 
-	\small Specifies whether to set or unset the option \mathem{\mmaDef{ExpandLorentzStructures}} for \FormTracer. Default is \mathem{\mmaDef{True}}.
-	\\[3ex]
-	\mathem{\mmaDef{FSetCacheDirectory}[folder]} & 
-	\small Changes the directory where traced expressions are cached.
-	\mathem{\mmaDef{FSetCacheDirectory}[]} resets the cache directory to the default \texttt{/tmp/TraceCache/}.
-	\\[3ex]
-	\mathem{\mmaDef{FSetRegisterSize}[int]} &
-	\small Sets the number of available registers for optimisation in C++ code generation. This is in particular important for calculations on the GPU, where the number of registers is very limited.	The default value is 32, but varying \mathem{\mmaDef{$availableRegisters}} can help optimise performance.
-	\\[3ex]
-	\mathem{\mmaDef{FSetNotationA}[]} &
-	\small Activates the default two-list object notation: \mathem{obj[\{f1,f2,...\},\{i1,i2,...\}]}. This is the standard \FunKit notation and is active by default at load time.
-	\\[3ex]
-	\mathem{\mmaDef{FSetNotationB}[]} &
-	\small Activates the field[index] object notation: \mathem{obj[f1[i1],f2[i2],...]}. In this notation each argument to a correlation function directly pairs its field with its index.
-	\\[3ex]
-	\mathem{\mmaDef{FSetCodeOptimization}[bool]} &
-	\small Enables (\mathem{\mmaDef{True}}, default) or disables (\mathem{\mmaDef{False}}) the C++ code optimisation pipeline.
-	\\[3ex]
-	\mathem{\mmaDef{FSetFastMath}[bool]} &
-	\small Enables CUDA fast-math intrinsics (\texttt{\_\_expf}, \texttt{\_\_logf}, etc.). Single precision only.
-	\\[3ex]
-	\mathem{\mmaDef{FSetMaxKernelTerms}[int]} &
-	\small Sets max terms per sub-kernel before splitting. Default 500.
-	\\[3ex]
-	\mathem{\mmaDef{FSetCodePrecision}[precision]} &
-	\small Sets code precision. Accepts \mathem{"single"} or \mathem{"double"}. Default \mathem{"double"}.
-\end{tabular}
+	title filled=false,
+	colback=pastelblue!5!white,
+	colframe=pastelblue,
+	fonttitle=\bfseries]
+	\begin{tabular}{p{5.2cm} p{10.6cm}}		
+		\mathem{\mmaDef{FSetGlobalSetup}[setup]} & 
+		\small Sets a global setup that is used by all FEDeriK functions when no setup is explicitly provided. 
+		This allows for calling functions like \mathem{\mmaDef{FTakeDerivatives}[expr,derivativeList]} without passing the setup each time. \mathem{\mmaDef{FSetGlobalSetup}[]} clears the global setup.
+		\\[3ex]
+		\mathem{\mmaDef{FSetAutoBuildSymmetryList}[bool]} & 
+		\small Sets whether a symmetry list should be automatically built when taking derivatives. Default is True.
+		\\[3ex]
+		\mathem{\mmaDef{FSetAutoSimplify}[bool]} & 
+		\small Sets whether automatic simplification should be applied when taking derivatives and truncating. Default is True.
+		\\[3ex]
+		\mathem{\mmaDef{FSetDebugLevel}[int]} & 
+		\small Sets the amount of debug output given by \FunKit. 
+		Default is 0, can be set up to 7. \textbf{Warning:} high values massively degrade performance.
+		\\[3ex]
+		\mathem{\mmaDef{FSetAlwaysExpandLorentzTensors}[int]} & 
+		\small Specifies whether to set or unset the option \mathem{\mmaDef{ExpandLorentzStructures}} for \FormTracer. Default is \mathem{\mmaDef{True}}.
+		\\[3ex]
+		\mathem{\mmaDef{FSetCacheDirectory}[folder]} & 
+		\small Changes the directory where traced expressions are cached.
+		\mathem{\mmaDef{FSetCacheDirectory}[]} resets the cache directory to the default \texttt{/tmp/TraceCache/}.
+		\\[3ex]
+		\mathem{\mmaDef{FSetRegisterSize}[int]} &
+		\small Sets the number of available registers for optimisation in C++ code generation. This is in particular important for calculations on the GPU, where the number of registers is very limited.	The default value is 32, but varying \mathem{\mmaDef{$availableRegisters}} can help optimise performance.
+		\\[3ex]
+		\mathem{\mmaDef{FSetNotationA}[]} &
+		\small Activates the default two-list object notation: \mathem{obj[\{f1,f2,...\},\{i1,i2,...\}]}. This is the standard \FunKit notation and is active by default at load time.
+		\\[3ex]
+		\mathem{\mmaDef{FSetNotationB}[]} &
+		\small Activates the field[index] object notation: \mathem{obj[f1[i1],f2[i2],...]}. In this notation each argument to a correlation function directly pairs its field with its index.
+		\\[3ex]
+		\mathem{\mmaDef{FSetCodeOptimization}[bool]} &
+		\small Enables (\mathem{\mmaDef{True}}, default) or disables (\mathem{\mmaDef{False}}) the C++ code optimisation pipeline.
+		\\[3ex]
+		\mathem{\mmaDef{FSetFastMath}[bool]} &
+		\small Enables CUDA fast-math intrinsics (\texttt{\_\_expf}, \texttt{\_\_logf}, etc.). Single precision only.
+		\\[3ex]
+		\mathem{\mmaDef{FSetMaxKernelTerms}[int]} &
+		\small Sets max terms per sub-kernel before splitting. Default 500.
+		\\[3ex]
+		\mathem{\mmaDef{FSetCodePrecision}[precision]} &
+		\small Sets code precision. Accepts \mathem{"single"} or \mathem{"double"}. Default \mathem{"double"}.
+	\end{tabular}
 \end{tcolorbox}
 
 \endgroup
