@@ -129,7 +129,7 @@ StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic
 
 (* ::Input::Initialization:: *)
 If[Length@PacletFind["MaTeX"]===0,
-If[$AllowInternet&&$NetworkConnected,
+If[$AllowInternet&&$NetworkConnected&&$VersionNumber>=12.0,
 ResourceFunction["MaTeXInstall"][],
 PacletInstall[$FUNKITDIR<>"/dependencies/MaTeX-1.7.10.paclet"]
 ];
