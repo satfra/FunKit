@@ -13,8 +13,17 @@ GetQMeSWetterichSetupScalar[] :=
 GetFunKitSetupScalar[] :=
   Module[{p, fields, eq, trunc},
     fields = <|"Commuting" -> {Phi[p]}, "Grassmann" -> {}|>;
-    trunc = <|Rdot -> {{Phi, Phi}}, Propagator -> {{Phi, Phi}}, GammaN -> {{Phi}, {Phi, Phi}, {Phi, Phi, Phi}, {Phi, Phi, Phi, Phi}}|>;
+    trunc = <|Rdot -> {{Phi, Phi}}, Propagator -> {{Phi, Phi}}, GammaN -> {{Phi}, {Phi, Phi}, {Phi, Phi, Phi}, {Phi, Phi, Phi, Phi}}, S -> {{Phi, Phi}, {Phi, Phi, Phi}, {Phi, Phi, Phi, Phi}}, Field -> {{}}|>;
     Return[<|"FieldSpace" -> fields, "Truncation" -> trunc|>];
+  ];
+
+GetQMeSDSESetupScalar[] :=
+  Module[{i, j, p, fields, trunc, classAct},
+    classAct = {{Phi, Phi}, {Phi, Phi, Phi}, {Phi, Phi, Phi, Phi}};
+    fields = <|"bosonic" -> {Phi[p]}, "fermionic" -> {}|>;
+    trunc = {{Phi}, {Phi, Phi}, {Phi, Phi, Phi}, {Phi, Phi, Phi, Phi}};
+    Return[<|"MasterEquation" -> <|"getDSE" -> "True", "classicalAction" -> classAct|>,
+      "FieldSpace" -> fields, "Truncation" -> trunc|>];
   ];
 
 GetDoFunSetupScalar[] :=

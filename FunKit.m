@@ -20,7 +20,7 @@
 
 
 (* ::Input::Initialization:: *)
-If[($AllowInternet&&$NetworkConnected)&&$FrontEnd=!=Null&&$Notebooks===True,
+If[($AllowInternet&&$NetworkConnected)&&$FrontEnd=!=Null,
 Module[{FCurPacletAddr,FCurPaclet,FCurVersion,
 FInstalledPaclet,FInstalledVersion},
 

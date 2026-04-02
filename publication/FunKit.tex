@@ -384,7 +384,8 @@ The current work is structured in the following way:
 \Cref{sec:Notation} introduces the notation used throughout the paper. On a first read, or for readers already acquainted with the superindex formalism, one may only skim or skip the section and only refer to it later as needed.
 Then, we introduce the basic syntax for describing functional expressions in \Cref{sec:FEDeriK} and explain how to specify a theory, truncation and how to momentum- and index-route diagrams.
 In \Cref{sec:TRACY}, the specification of tensor bases and diagrammatic expressions is explained. Therein, we also show how to trace the resulting diagrams.
-Finally, \Cref{sec:COEN} briefly shows how to generate computer code in different languages from these equations.
+\Cref{sec:COEN} briefly shows how to generate computer code in different languages from these equations.
+Finally, in \Cref{sec:comparisons}, we benchmark and compare \FunKit against other frameworks for computer algebra in functional contexts.
 
 We add green boxes throughout the text, which provide additional information on the algorithms used by \FunKit. In blue boxes, we provide quick reference overviews for the reader.
 Also, note that in \Cref{app:all_func} a full reference is provided, where all functions provided by \FunKit are listed and explained.
@@ -920,7 +921,7 @@ We describe the simplification and derivative algorithm used by \FunKit in more 
 	\begin{enumerate}
 		\item The derivative list is used to construct a symmetry list that encodes all permutations of the open superindices that give the same result. This is automatically annotated to the result later.
 		\item Starting with the right-most field in the derivative list, \mathem{\mmaDef{FDOp}}s are attached to the left of each \mathem{\mmaDef{FTerm}} in the given expression.
-		\item The expression is given to \mathem{\mmaDef{FResolveDerivatives}}, which recursively invokes \mathem{\mmaDef{FResolveSingleFDOp}}:
+		\item The expression is given to \mathem{\mmaDef{FResolveDerivatives}}, which recursively invokes \mathem{\mmaDef{FResolveFDOp}}:
 		\begin{enumerate}
 			\setlength\itemsep{0.05ex}
 			\item Identify the right-most \mathem{\mmaDef{FDOp}} in the given \mathem{\mmaDef{FTerm}}.
@@ -932,7 +933,7 @@ We describe the simplification and derivative algorithm used by \FunKit in more 
 		\item If \mathem{\mmaDef{FSetAutoSimplify}} is toggled on (default), use \mathem{\mmaDef{FSimplify}} to reduce the result.
 	\end{enumerate}
 	%
-	If the number and size of the expressions is large, \mathem{\mmaDef{FResolveDerivatives}} automatically chooses to dispatch \mathem{\mmaDef{FResolveSingleFDOp}} in parallel over the given terms.
+	If the number and size of the expressions is large, \mathem{\mmaDef{FResolveFDOp}} automatically chooses to work in parallel over the generated terms.
 	
 \end{tcolorbox}
 
@@ -1024,9 +1025,12 @@ We can now easily truncate the above expression:
 	%
 	\begin{itemize}
 		\item If no undetermined fields \mathem{\mmaDef{AnyField}} are present, apply the truncation table directly and return the result. This zeros all objects whose field content is not listed in the setup's key \mathem{"Truncation"}.
-		\item \textbf{Closed-index expansion:} For each contracted index pair, identify the two objects sharing it. If either carries \mathem{AnyField}, replace it with a sum of every non-source field in the setup, producing one branch per assignment. Apply the truncation table after each substitution to prune branches not in the truncation. Recurse until all undetermined \mathem{\mmaDef{AnyField}} are eliminated.
+		\item \textbf{Propagator truncation} (primary path): For each propagator-like object (\mathem{\mmaDef{Propagator}}, \mathem{\mmaDef{Rdot}}, \mathem{\mmaDef{R}}) with \mathem{\mmaDef{AnyField}}, enumerate its explicit field alternatives from the truncation table. 
+		Incrementally replace each unresolved propagator with the sum of its alternatives, propagate the field assignments to connected objects, and fully expand the product over the sum.
+		After each expansion step, apply the truncation table. This early pruning prevents combinatorial blowup by discarding invalid branches before subsequent propagators are expanded.
+		\item \textbf{Vertex truncation}: For terms containing no propagator-like objects, valid field assignments are instead enumerated by imposing consistency at every closed index incrementally and validating each surviving assignment against the truncation table.
 		\item \textbf{Post-processing:} Contract residual metric factors, fix index positions, and reorder fields into canonical form.
-		\item If the corresponding flag is set, invoke \mathem{\mmaDef{FSimplify}} to merge identical surviving diagrams.
+		\item If the corresponding flag is set, automatically  invoke \mathem{\mmaDef{FSimplify}} to merge identical surviving diagrams.
 	\end{itemize}
 	%
 	The dispatch table used for the truncation is memoised, so repeated lookups are $\mathcal{O}(1)$.
@@ -1791,6 +1795,7 @@ auto DSE_kernel_AA_1Loop(const auto &l1, const auto &cos, const auto &p, const a
 		\item \textbf{Interpolator hoisting (global):} Extract all calls matching patterns that could be interpolator or function calls and assign them to temporaries, eliminating redundant global-memory reads.
 		\item \textbf{Split decision (global):} If the total weighted complexity exceeds a threshold, partition the expression into sub-kernels; shared interpolators are kept in a common scope.
 		\item \textbf{Common subexpression elimination (per kernel):} We identify common sub-expressions and assign each to a \cpp{_cseN} temporary.
+		\item \textbf{Power normalisation (per kernel):} Rewrite integer powers of expressions in terms of already-hoisted temporaries, e.g.\ \cpp{powr<-4>(l1)} becomes \cpp{powr<-2>(_cse1)} when \cpp{_cse1 = powr<2>(l1)} exists.
 		\item \textbf{Algebraic factoring (per kernel):} Apply \mathem{FactorTerms} (up to three passes) to group additive terms sharing common factors.
 		\item \textbf{Transcendental hoisting (per kernel):} Hoist expensive calls (e.g. \cpp{Exp}, \cpp{Log}, \cpp{Sin}, \cpp{Cos}, \cpp{Sqrt}, \ldots) to temporaries; if both \cpp{Exp[x]} and \cpp{Exp[-x]} appear, compute one and derive the other via reciprocal.
 		\item \textbf{FMA restructuring (per kernel):} Detect \cpp{a*b + c} patterns and rewrite them as fused multiply-add groups, enabling single-instruction FMA execution.
@@ -1828,8 +1833,85 @@ One can turn off usage of \cpp{powr} by setting
 	\mmaDef{FUseCppPowr}[\mmaDef{False}];
 \end{mmaCell}
 
+
+\begin{table*}[t]
+	\centering
+	\renewcommand{\arraystretch}{1.25}
+	\begin{tabular}[t]{l c c c}
+		\toprule
+		\textbf{Feature} & \DoFun & \QMeS & \FunKit \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Master equations}} \\
+		\quad Dyson-Schwinger equations             & \cmark  & \cmark  & \cmark \\
+		\quad Flow equations (fRG)                  & \cmark  & \cmark  & \cmark \\
+		\quad (Modified) Slavnov-Taylor id.         & \xmark  & \cmark  & \cmark \\
+		\quad Composite operator equations          & \cmark  & \xmark  & \xmark \\
+		\quad Arbitrary master equations            & \xmark  & \xmark  & \cmark \\
+		\quad Multi-index func.\ derivatives        & \xmark  & \xmark  & \cmark \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Field content}} \\
+		\quad Commuting (bosonic) fields            & \cmark  & \cmark  & \cmark \\
+		\quad Grassmann (fermionic) fields          & \cmark  & \cmark  & \cmark \\
+		\quad Complex fields                        & \cmark  & \cmark  & \cmark \\
+		\quad Background / source fields            & \xmark  & (\cmark)\footnote{\QMeS supports only BRST sources} & \cmark \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Truncation \& simplification}} \\
+		\quad Vertex truncation                     & \cmark  & \cmark  & \cmark \\
+		\quad Loop-order filtering                  & \cmark  & \xmark  & \cmark \\
+		\quad Broken-symmetry phase                 & \cmark  & \xmark  & \cmark \\
+		\quad Diagram topology identification       & (\cmark)\footnote{\DoFun can identify up to two-loop}  & (\cmark)\footnote{\QMeS can identify up to one-loop} & \cmark \\
+		\bottomrule
+	\end{tabular}
+	\hfill
+	\begin{tabular}[t]{l c c c}
+		\toprule
+		\textbf{Feature} & \DoFun & \QMeS & \FunKit \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Momentum routing \& diagrammatic rules}} \\
+		\quad One-loop momentum routing             & \cmark  & \cmark  & \cmark \\
+		\quad Multi-loop momentum routing           & (\cmark)\footnote{\DoFun is confirmed to route up to two-loop}  & \xmark  & \cmark \\
+		\quad Feynman rule generation               & \cmark  & \xmark  & \cmark \\
+		\quad Tensor basis specification            & \xmark  & \xmark  & \cmark \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Index \& trace contraction}} \\
+		\quad Tracing of group structures           & \xmark  & \xmark  & \cmark \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Output \& visualisation}} \\
+		\quad Diagram plots                         & \cmark  & \xmark & \cmark \\
+		\quad \LaTeX{} equation output              & \xmark  & \xmark  & \cmark \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Optimized code generation}} \\
+		\quad C\texttt{++} / Julia                          & \xmark  & \xmark  & \cmark \\
+		\midrule
+		\multicolumn{4}{l}{\textit{Interoperability}} \\
+		\quad \texttt{FeynCalc} compatibility                & (\cmark)\footnote{\DoFun provides a utility function to safely load the \texttt{FeynCalc} package} & \xmark  & \xmark \\
+		\quad Cross-package format conversion       & \xmark  & \xmark  & \cmark \\
+		\bottomrule
+	\end{tabular}
+	\caption{Feature comparison of \DoFun (v3.0)~\cite{Huber:2019dkb,Huber:2011qr}, \QMeS (v1.2)~\cite{Pawlowski:2021tkk} and \FunKit. A \cmark{} indicates full support, (\cmark) partial or indirect support, and \xmark{} no support. All benchmarks were performed on a 16-core AMD Ryzen 9 7945HX machine.}
+	\label{tab:comparison}
+\end{table*}         
+
+
 %%%%%%%%%%%%%%%%%%%%
-\section{Comparisons}
+\section{Comparisons and Benchmarks}
+\label{sec:comparisons}
+
+In the following, we compare \FunKit with the two most widely used packages for deriving functional equations, \DoFun (v3.0)~\cite{Huber:2019dkb,Huber:2011qr} and \QMeS (v1.2)~\cite{Pawlowski:2021tkk}.                                         
+
+\Cref{tab:comparison} gives a feature-by-feature overview. All three packages support the derivation of DSEs and fRG flow equations for theories with any kind of field content. 
+Beyond this common ground, \FunKit additionally supports arbitrary user-defined master equations, multi-index functional derivatives, source fields and multi-loop momentum routing.
+It also provides utilities not present in either \DoFun or \QMeS, e.g. integration of \FORM-based tracing with caching through \FormTracer, specification of tensorial bases for diagrammatic rules through \TensorBases, \LaTeX{} equation rendering and optimised C++ and Julia code generation.
+
+Conversely, \DoFun additionally provides the derivation of composite operator equations and \DoFun also offers partial FeynCalc compatibility not yet provided by \FunKit.
+However, for interoperability, \FunKit includes explicit format conversion layers for both \DoFun and \QMeS output, allowing straightforward integration into existing pipelines and simplifying first contact for users.
+
+In \Cref{fig:benchmarks}, we show timing benchmarks for the derivation and truncation of correlation functions in four theories of increasing complexity: 
+a four-fermion (NJL-type) model, a scalar $O(N)$ model, a Yukawa theory, and a Yang--Mills theory. In each case, the total wall time for taking the functional derivatives and truncating the resulting expression is measured. These benchmarks were performed on a 16-core AMD Ryzen 9 7945HX machine, no constraints on the parallelisation have been imposed (which was handled by each library by itself).
+The benchmark scripts can be found in the \FunKit repository in the \texttt{benchmarks/} folder, together with a visualisation python script.
+
+For small expressions, such as the scalar two-point function, all three packages perform well below a tenth of a second, however, \FunKit even proves to be an order of magnitude faster.
+As the number of fields and the size of the truncation grow, however, \FunKit consistently outperforms \QMeS, while showing parity with \DoFun. With even larger expressions, \FunKit is also able to outperform \DoFun: this is particularly pronounced for expressions involving many diagrams, such as the six-fermion flow equation in the four-fermion model, or the six-scalar flow in the scalar theory, where \FunKit can be faster up to an order of magnitude.
 
 \begin{figure*}
 	\centering
@@ -1840,66 +1922,9 @@ One can turn off usage of \cpp{powr} by setting
 	%
 	\caption{Performance comparison between \FunKit, \DoFun and \QMeS. 
 		In all cases, we measured the total time to take the derivatives and truncate the expression.
-		Especially for very large expressions with several thousand diagrams, e.g. the six-fermion flow in the NJL model, \FunKit excels.}
+		Especially for very large expressions with several thousand diagrams, e.g. the six-point and four-point flows, \FunKit excels.}
+	\label{fig:benchmarks}
 \end{figure*}
-
-\begin{table*}[t]
-	\centering
-	\renewcommand{\arraystretch}{1.25}
-	\begin{tabular}[t]{l c c c}
-		\toprule
-		\textbf{Feature} & \DoFun & \QMeS & \FunKit \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Master equations}} \\
-		\quad Dyson-Schwinger equations            & \cmark  & \cmark  & \cmark \\
-		\quad Wetterich equation (fRG)              & \cmark  & \cmark  & \cmark \\
-		\quad (Modified) Slavnov-Taylor id.         & \xmark  & \cmark  & \cmark \\
-		\quad Composite operator equations          & \cmark  & \xmark  & \xmark \\
-		\quad Arbitrary master equations            & \xmark  & \xmark  & \cmark \\
-		\quad Multi-index func.\ derivatives        & \xmark  & \xmark  & \cmark \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Field content}} \\
-		\quad Commuting (bosonic) fields            & \cmark  & \cmark  & \cmark \\
-		\quad Grassmann (fermionic) fields          & \cmark  & \cmark  & \cmark \\
-		\quad Complex fields                        & \cmark  & \cmark  & \cmark \\
-		\quad Background / source fields            & \xmark  & (\cmark) & \cmark \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Truncation \& simplification}} \\
-		\quad Vertex-list truncation                & \cmark  & \cmark  & \cmark \\
-		\quad Loop-order filtering                  & \cmark  & \xmark  & \cmark \\
-		\quad Broken-symmetry phase                 & \cmark  & \xmark  & \cmark \\
-		\quad Diagram topology identification       & \cmark  & (\cmark) & \cmark \\
-		\bottomrule
-	\end{tabular}
-	\hfill
-	\begin{tabular}[t]{l c c c}
-		\toprule
-		\textbf{Feature} & \DoFun & \QMeS & \FunKit \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Momentum routing \& diagrammatic rules}} \\
-		\quad One-loop momentum routing             & (\cmark) & \cmark  & \cmark \\
-		\quad Multi-loop momentum routing           & \xmark  & \xmark  & \cmark \\
-		\quad Feynman rule generation               & \cmark  & \xmark  & \cmark \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Index \& trace contraction}} \\
-		\quad FORM integration                      & (\cmark) & \xmark  & \cmark \\
-		\quad Trace caching                         & \xmark  & \xmark  & \cmark \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Output \& visualisation}} \\
-		\quad Diagram plots                         & \cmark  & \xmark & \cmark \\
-		\quad \LaTeX{} equation output              & \xmark  & \xmark  & \cmark \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Optimized code generation}} \\
-		\quad C\texttt{++} / Julia                          & \xmark  & \xmark  & \cmark \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Interoperability}} \\
-		\quad FeynCalc compatibility                & (\cmark) & \xmark  & \xmark \\
-		\quad Cross-package format conversion       & \xmark  & \xmark  & \cmark \\
-		\bottomrule
-	\end{tabular}
-	\caption{Feature comparison of \DoFun (v3.0)~\cite{Huber:2019dkb,Huber:2011qr}, \QMeS (v1.2)~\cite{Pawlowski:2021tkk} and \FunKit. A \cmark{} indicates full support, (\cmark) partial or indirect support, and \xmark{} no support.}
-	\label{tab:comparison}
-\end{table*}         
 
 
 
@@ -1912,13 +1937,15 @@ In particular, we focus on a flexible and easy-to-use framework for deriving Dys
 
 The correctness of the \FunKit package is verified by an extensive test suite, comparing with other popular packages such as \DoFun, \QMeS and analytical expressions from the literature.
 
-In comparison to \DoFun or \QMeS, \FunKit allows both for broader applications, not being restricted to particular master equations, and has a broader scope, as it culminates in either fully traced analytic expressions or code ready for use in a numerical framework. To our knowledge, no other package provides the entire pipeline depicted in \Cref{fig:workflow}.
+In comparison to \DoFun or \QMeS, \FunKit allows both for broader applications, not being restricted to particular master equations. As an example for such an application, we have also provided an example notebook deriving flows with generalised flow equations, see \Cref{tab:examples}.
+It also has a broader scope, as it culminates in either fully traced analytic expressions or code ready for use in a numerical framework. To our knowledge, no other package provides the entire pipeline depicted in \Cref{fig:workflow}.
 
 We have also described the algorithms used in \FunKit, which are optimised at every stage: parallelisation is dynamically switched on and off at every stage of the workflow to maximise performance, and the generated code is highly optimised for both CPU and GPU applications.
 
 We demonstrated the capabilities of \FunKit at the example of Yang-Mills theory, scalar field theory, a Yukawa theory and an NJL model. As for master equations, we show DSEs, the Wetterich equation, the modified STIs and dynamically reparameterised flow equations. All these examples can be found in the \FunKit repository, see also \Cref{tab:examples}.
 
-
+\FunKit is already a basis for several on-going projects in the fQCD collaboration \cite{fQCD} involving large QCD truncations with dynamical hadronisation and other flowing reparametrisations.
+As it is embedded in the tools of the fQCD collaboration, e.g. it has become the symbolic backend of the \texttt{DiFfRG} framework \cite{Sattler:2024ozv}, \FunKit will continue to see improvements in the future.
 
 
 %%%%%%%%%%%%%%%%%%%%
@@ -1949,19 +1976,13 @@ When \FunKit is imported for the first time, all modules are automatically loade
 %
 \begin{itemize}
 	\item \FEDeriK, the {\textbf{F}unctional \textbf{E}quation \textbf{Deri}vation \textbf{K}it} is the core module of \FunKit, providing all the logic to derive functional equations. It provides the base syntax for the description of functional equations, gives facilities to perform functional derivatives and series expansions of derivative operators and fields.
-	\item \AnSEL: The Analysis and Simplification of Equations with Loops module, which provides tools to group identical diagrams.
-	\item \DiRK: The Diagram Routing Kit, containing tools for momentum- and index-routing in arbitrary multi-loop diagrams.
+	\item \AnSEL: The \textbf{An}alysis and \textbf{S}implification of \textbf{E}quations with \textbf{L}oops module, which provides tools to group identical diagrams.
+	\item \DiRK: The \textbf{Di}agram \textbf{R}outing \textbf{K}it, containing tools for momentum- and index-routing in arbitrary multi-loop diagrams.
 	\item \TensorBases: An external package to define tensor bases for correlation functions, see \cite{Braun:2025gvq}. This package will be automatically installed with FunKit, either during the installation, or when one imports \FunKit for the first time in Mathematica.
-	\item \TRACY gives a convenient interface to \FormTracer \cite{Cyrol:2016zqb} to trace out tensor structures in diagrams derived with \FunKit. \FormTracer is an external package which will be also automatically installed by \FunKit.
-	\item \DiANE: The Diagram Arts And Notation of Equations module, which provides tools to visualise diagrams and export \LaTeX code.
-	\item \COEN: The COde ENgine module, which provides tools to generate computer code in C++ or Julia from traced diagrams for further processing in a numerical framework.
+	\item \TRACY gives a convenient interface to \FormTracer \cite{Cyrol:2016zqb} to trace out tensor structures in diagrams derived with \FunKit. \FormTracer is an external package which is automatically installed by \FunKit.
+	\item \DiANE: The \textbf{Di}agram \textbf{A}rts \textbf{A}nd \textbf{N}otation of \textbf{E}quations module, which provides tools to visualise diagrams and export \LaTeX{} code.
+	\item \COEN: The \textbf{CO}de \textbf{EN}gine module, which provides tools to generate computer code in C++ or Julia from traced diagrams for further processing in a numerical framework.
 \end{itemize}
-%
-%Furthermore, there is the optional module
-%%
-%\begin{itemize}
-%	\item \SeDecA: The Simplification and Decomposition of Actions module, which provides tools to simplify functional equations and decompose actions into their vertex functions. This module is optional in the workflow.
-%\end{itemize}
 %
 The modules are located in the repository folder \texttt{FunKit/modules/}.
 Each module is split into files containing one or a few functions each in an appropriate subfolder, e.g. \texttt{FunKit/modules/FEDeriK/Notation.m} which contains all rules pertaining to \mathem{\mmaDef{FTerm}} and \mathem{\mmaDef{FEx}}.
@@ -2001,29 +2022,30 @@ Additional to unit tests, we also verify that \FunKit produces output identical 
 \begin{figure*}[t]
 	\begin{tikzpicture}[node distance=2.5cm, auto,>=latex']
 		% Nodes
-		\node [block] (FEDeriK) {\FEDeriK (syntax)};
+		\node [block] (AnSEL) {\AnSEL \\(simplification, routing)};
+		\node [block, below of=AnSEL] (DiANE) {\DiANE (visualisation)};
+		\node [block, below of=DiANE, xshift=15ex, yshift=7ex] (COEN) {\COEN (code output)};
 		
-		\node [block, below of=FEDeriK] (AnSEL) {\AnSEL (truncation)};
-		\node [block, below of=AnSEL] (DiRK) {\DiRK (routing)};
-		\node [block, right of=AnSEL, node distance=5cm, yshift=-0ex] (TensorBases) {\TensorBases};
+		\node [block, right of=AnSEL, yshift=-8ex, xshift=12ex] (FEDeriK) {\FEDeriK (syntax)};
 		
-		\node [block, below of=TensorBases] (TRACY) {\TRACY (tracing)};
+		\node [block, right of=FEDeriK, node distance=5cm, xshift=0ex] (TRACY) {\TRACY (tracing)};
+		\node [block, above of=TRACY] (TensorBases) {\TensorBases};
+		\node [block, below of=TRACY, xshift=-15ex, yshift=5ex] (DiRK) {\DiRK \\(diagrammatic rules)};
 		
-		\node [block, below of=DiRK] (DiANE) {\DiANE (visualisation)};
-		
-		\node [block, below of=TRACY] (COEN) {\COEN (code output)};
 		
 		% Arrows
 		\draw [->] (FEDeriK) -- (TRACY);
 		
 		\draw [->] (TensorBases) -- (TRACY);
 		\draw [->] (FEDeriK) -- (AnSEL);
-		\draw [->] (AnSEL) -- (DiRK);
-		\draw [->] (DiRK) -- (TRACY);
-		\draw [->] (DiRK) -- (DiANE);
-		\draw [->] (TRACY) -- (COEN);
+		\draw [->] (FEDeriK) -- (DiRK);
+		\draw [->] (FEDeriK) -- (TRACY);
+		\draw [->] (FEDeriK) -- (DiANE);
+		\draw [->] (AnSEL) -- (DiANE);
+		\draw [->] (FEDeriK) -- (COEN);
 	\end{tikzpicture}
-	\caption{Dependency structure of the submodules of \FunKit.
+	
+	\caption{Dependency structure of the submodules of \FunKit. Note that this does not reflect the user workflow one-to-one, see \Cref{fig:workflow}.
 	}
 	\label{fig:FunKit_structure}
 \end{figure*}
@@ -2038,8 +2060,6 @@ All of the listed functions that take a \mathem{setup} as the first argument can
 
 Besides the explanations in this document, \FunKit gives detailed documentation on each function in its usage string, i.e., an expression like \mathem{\mmaDef{FTakeDerivatives}::\mmaCmt{usage}} will give explanations on how to use the function.
 
-\vfill
-\newpage
 
 \begin{tcolorbox}[title=Master Equations,
 	title filled=false,
@@ -2323,7 +2343,7 @@ fonttitle=\bfseries]
 		\small Controls whether to use the \texttt{powr} function for power operations in C++ code generation.
 		\\[3ex]
 		\mathem{\mmaDef{FormatCppCode}[string]} & 
-		\small Uses \texttt{clangd}, if available on the system, to automatically format a given string of C++ code.
+		\small Uses \texttt{clang-format}, if available on the system, to automatically format a given string of C++ code.
 		\\[3ex]
 	\end{tabular}
 \end{tcolorbox}
@@ -2347,16 +2367,16 @@ fonttitle=\bfseries]
 		\mathem{\mmaDef{FAddObject}[obj]} & 
 		\small Adds an object that does not react to reordering or to functional derivatives and ignores whether indices are already contracted.
 		\\[3ex]
-		\mathem{\mmaDef{FShowCorrelationFunctions}[obj]} & 
+		\mathem{\mmaDef{FShowCorrelationFunctions}[]} & 
 		\small Shows all objects that react to reordering and functional derivatives.
 		\\[3ex]
-		\mathem{\mmaDef{FShowOrderedObjects}[obj]} & 
+		\mathem{\mmaDef{FShowOrderedObjects}[]} & 
 		\small Shows all objects that react to reordering.
 		\\[3ex]
-		\mathem{\mmaDef{FShowIndexedObjects}[obj]} & 
+		\mathem{\mmaDef{FShowIndexedObjects}[]} & 
 		\small Shows all objects that require consistently closed indices.
 		\\[3ex]
-		\mathem{\mmaDef{FShowObjects}[obj]} & 
+		\mathem{\mmaDef{FShowObjects}[]} & 
 		\small Shows all known objects.
 		\\[3ex]
 		\mathem{\mmaDef{FSetUnorderedIndices}[obj,ind]} &
