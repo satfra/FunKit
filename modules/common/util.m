@@ -65,7 +65,10 @@ makeTemporaryFileName[] :=
 (*Balanced mapping to avoid large memory consumption in parallel processing*)
 
 ParallelMapSerialized[f_, data_, opts___] :=
-    ParallelMap[f[BinaryDeserialize @ #]&, BinarySerialize /@ data, opts];
+    If[$VersionNumber >= 11.1,
+        ParallelMap[f[BinaryDeserialize @ #]&, BinarySerialize /@ data, opts],
+        ParallelMap[f, data, opts]
+    ];
 
 BalancedMap[f_, list_FEx] :=
     FEx @@ BalancedMap[f, List @@ list];

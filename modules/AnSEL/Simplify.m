@@ -236,7 +236,7 @@ StartPoints[setup_, t1_FTerm, t2_FTerm, cidx1_, cidx2_, obj1_, obj2_] :=
                     (*Otherwise, we check which object is the "rarest"*)
                     sList = Map[fieldKey, obj1];
                     count = Counts[sList];
-                    desired = Keys[count][[PositionSmallest[Values[count]][[1]]]];
+                    desired = Keys[count][[First @ Ordering[Values[count], 1]]];
                     match1 = Select[obj1, (fieldKey[#] === desired)&];
                     match2 = Select[obj2, (fieldKey[#] === desired)&];
                     (*return all possible starting points *)
@@ -671,7 +671,10 @@ TermsEqualAndSumCore[setup_, t1_FTerm, t2_FTerm, data1_Association, data2_Associ
 FTermContent[setup_, term_FTerm] :=
     Module[{objs},
         objs = FunKit`Private`ExtractObjectsWithIndex[setup, term];
-        Hash[Sort @ Map[Head[#] @@ FunKit`Private`getFields[#]&, objs], "SHA"]
+        If[$VersionNumber >= 13.0,
+            Hash[Sort @ Map[Head[#] @@ FunKit`Private`getFields[#]&, objs], "SHA256"],
+            Hash[ToString[Sort @ Map[Head[#] @@ FunKit`Private`getFields[#]&, objs], InputForm], "SHA256"]
+        ]
     ];
 
 (* Given an FEx, subdivide its FTerms into groups with identical content *)
@@ -705,7 +708,7 @@ PrecomputeTermData[setup_, term_FTerm] :=
                     ExtractObjectsWithIndex[setup, term]
                 ]
                 ,
-                FreeQ[FMinus[__]]
+                FreeQ[#, FMinus[__]]&
             ];
         Module[{cidx = GetClosedSuperIndices[setup, term], oidx = GetOpenSuperIndices[setup, term], fieldKey},
             fieldKey[obj_] := Head[obj] @@ Sort @ getFields[obj];

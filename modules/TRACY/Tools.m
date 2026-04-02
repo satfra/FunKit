@@ -188,4 +188,7 @@ NormalizeIndices[ex_] :=
     ex;
 
 makeHashFile[expr_, subdir_:""] :=
-    $TraceCacheDir <> subdir <> ToString @ Hash[NormalizeIndices @ expr, "SHA256"] <> ".m"
+    $TraceCacheDir <> subdir <> ToString @ If[$VersionNumber >= 13.0,
+        Hash[NormalizeIndices @ expr, "SHA256"],
+        Hash[ToString[NormalizeIndices @ expr, InputForm], "SHA256"]
+    ] <> ".m"

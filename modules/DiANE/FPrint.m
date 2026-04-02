@@ -178,7 +178,14 @@ MakeTexIndexList[{f__}, {i__}] :=
     Prettify closed indices
 **********************************************************************************)
 
-$availableIndices = Join[Alphabet["English"], Alphabet["English", "CommonAlphabetUpper"], Alphabet["Greek"]];
+$availableIndices = Join[
+    CharacterRange["a", "z"],
+    CharacterRange["A", "Z"],
+    {"\[Alpha]", "\[Beta]", "\[Gamma]", "\[Delta]", "\[CurlyEpsilon]",
+     "\[Zeta]", "\[Eta]", "\[Theta]", "\[Iota]", "\[Kappa]", "\[Lambda]",
+     "\[Mu]", "\[Nu]", "\[Xi]", "\[Omicron]", "\[Pi]", "\[Rho]",
+     "\[Sigma]", "\[Tau]", "\[Upsilon]", "\[Phi]", "\[Chi]", "\[Psi]", "\[Omega]"}
+];
 
 prettySuperIndices::type = "Unknown type `1`";
 
