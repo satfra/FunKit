@@ -70,7 +70,7 @@ ParallelMapSerialized[f_, data_, opts___] :=
 BalancedMap[f_, list_FEx] :=
     FEx @@ BalancedMap[f, List @@ list];
 
-$ParallelSwitchByteThreshold = 2 * 10^6; (*2MB*)
+$ParallelSwitchByteThreshold = 10 * 10^6; (*10MB*)
 
 BalancedMap[f_, list_List] :=
     Module[{len = Length[list], chunks, ret, mChunk},

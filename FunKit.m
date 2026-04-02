@@ -185,13 +185,13 @@ ModuleLoaded[FunKit]=True;
 
 (* ::Input::Initialization:: *)
 If[Head[$DistributedContexts]=!=List,$DistributedContexts={}];
-$DistributedContexts=$DistributedContexts\[Union]{$Context,"FunKit`Private`","TensorBases`","FormTracer`","FormTracer`Private`","TensorBases`","TensorBases`Private`"}
+$DistributedContexts=$DistributedContexts\[Union]{$Context,"FunKit`Private`","FormTracer`","FormTracer`Private`"}
 
 
 (* ::Input::Initialization:: *)
 Begin["`Private`"]
 If[Head[$DistributedContexts]=!=List,$DistributedContexts={}];
-$DistributedContexts=$DistributedContexts\[Union]{$Context,"FunKit`Private`","TensorBases`","FormTracer`","FormTracer`Private`","TensorBases`","TensorBases`Private`"}
+$DistributedContexts=$DistributedContexts\[Union]{$Context,"FunKit`Private`","FormTracer`","FormTracer`Private`"}
 End[]
 
 

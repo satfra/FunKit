@@ -41,3 +41,11 @@ AppendTo[benchmarks, BenchmarkCase["Yang-Mills: Ghost-gluon vertex (Wetterich)",
 (* Ghost-gluon vertex DSE *)
 
 AppendTo[benchmarks, BenchmarkDSECase["Yang-Mills: Ghost-gluon vertex DSE", cb[i1], {c[i2], A[i3]}, ymFK, ymQMeSDSE, ymDoFun, "doDSE[actionYMSymbolic,{cb,c,A}]"]];
+
+(* Four-gluon vertex flow *)
+
+AppendTo[benchmarks, BenchmarkCase["Yang-Mills: Four-gluon vertex (Wetterich)", {A[i1], A[i2], A[i3], A[i4]}, ymFK, ymQMeSWett, ymDoFun, "actionYMSymbolic,{A,A,A,A}"]];
+
+(* Four-ghost vertex flow *)
+
+AppendTo[benchmarks, BenchmarkCase["Yang-Mills: Four-ghost vertex (Wetterich)", {cb[i1], cb[i2], c[i3], c[i4]}, ymFK, ymQMeSWett, ymDoFun, "actionYMSymbolic,{cb,cb,c,c}"]];
