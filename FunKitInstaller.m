@@ -26,12 +26,6 @@ Message[FunKitInstaller::allowinternetuse];
 Abort[];
 ];
 
-(* just for backwards compatibility *)
-If[ToString[Context[URLDownload]]=!="System`",
-URLDownload=URLSave
-];
-
-
 (* ::Input::Initialization:: *)
 FunKitZipLocation="https://github.com/satfra/FunKit/archive/refs/heads/main.zip";
 FunKitInstallDir=FileNameJoin[{$UserBaseDirectory,"Applications"}];
@@ -43,7 +37,16 @@ FunKitInstaller::installationfailed="\nInstallation failed. Please read the erro
 
 Print["Downloading FunKit ..."];
 FunKitArchive=FileNameJoin[{$TemporaryDirectory,"FunKit.zip"}];
-URLDownload[FunKitZipLocation,FunKitArchive]
+If[$VersionNumber >= 11.2,
+URLDownload[FunKitZipLocation, FunKitArchive],
+Module[{data},
+data = Quiet[Import[FunKitZipLocation, "Byte"]];
+If[ListQ[data] && Length[data] > 0,
+Close[BinaryWrite[OpenWrite[FunKitArchive, BinaryFormat -> True], data]],
+Message[FunKitInstaller::zipdownloadfailed]; Abort[]
+]
+]
+]
 
 tmpFunKitImport=Import[FunKitArchive];
 If[tmpFunKitImport==="{\"error\":\"Not Found\"}"||tmpFunKitImport==="404: Not Found",
