@@ -28,7 +28,7 @@ FMakeClassicalAction[setup_] :=
                     prefac = Split[#];
                     prefac = Times @@ (1 / ((Length[#]& /@ prefac)!));
                     indices = Map[Unique["i"]&, #];
-                    FTerm[prefac, makeObj[S, #, -indices]] ** (FTerm @@ Table[Construct[#[[i]], indices[[i]]], {i, 1, Length[#]}])
+                    FTerm[prefac, makeObj[S, #, -indices]] ** (FTerm @@ Table[#[[i]][indices[[i]]], {i, 1, Length[#]}])
                 )&
                 ,
                 OrderFieldList[setup, #]& /@ setup["Truncation"][S]

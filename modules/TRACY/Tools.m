@@ -126,7 +126,7 @@ ImportAndSimplifyFORM[file_, transf_ : (#&)] :=
             ];
         tempExpr = Select[splitmath, (StringLength[#] > 0 && StringTake[#, {1}] === "w")&];
         evalExpr = splitmath[[-1]];
-        If[$FrontEnd === Null,
+        If[$FrontEnd === Null || $VersionNumber < 12.0,
             Do[
                 strExpr = getAffectedVar[tempExpr[[i]]];
                 expr = strExpr ~~ "=" ~~ ToString[mSimplify] ~~ "[" ~~ ToString[transf] ~~ "[" ~~ strExpr ~~ "]]";

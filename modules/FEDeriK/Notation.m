@@ -498,7 +498,7 @@ FSetNotationB[] :=
         getIndices[obj_] := First /@ (List @@ obj);
         getIndex[obj_, pos_] := First[obj[[pos]]];
         getIdxSign[obj_, pos_] := -2 * Boole[isNeg[getIndex[obj, pos]]] + 1;
-        makeObj[kind_Symbol, fieldList_List, indexList_List] := kind @@ MapThread[Construct, {fieldList, indexList}];
+        makeObj[kind_Symbol, fieldList_List, indexList_List] := kind @@ MapThread[#1[#2]&, {fieldList, indexList}];
         With[{getIndex$ = getIndex},
             setField[obj_, pos_Integer, field_] := ReplacePart[obj, pos -> field[getIndex$[obj, pos]]];
         ];
