@@ -91,6 +91,12 @@ StyleBox[\" \",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)
 StyleBox[\"dependencies\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
 
+If[$OperatingSystem === "Windows" && !TrueQ[Global`$UseFORMOnWindows],
+Print["FunKit: Skipping TensorBases (not available on Windows without FORM). Set Global`$UseFORMOnWindows = True before loading FunKit to override."];
+,
+If[$OperatingSystem === "Windows" && TrueQ[Global`$UseFORMOnWindows],
+Print["FunKit: Loading TensorBases on Windows -- user has set Global`$UseFORMOnWindows = True. Ensure FormTracer/FORM are available."];
+];
 TensorBasesInstalled[]:=Module[{TensorBasesDirectory},
 TensorBasesDirectory=SelectFirst[
 Join[
@@ -125,6 +131,7 @@ PrintTemporary["\!\(\*
 StyleBox[\"TensorBases\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+];
 
 
 (* ::Input::Initialization:: *)
@@ -248,18 +255,26 @@ StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"DiANE\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+If[$OperatingSystem === "Windows" && !TrueQ[Global`$UseFORMOnWindows],
+Print["FunKit: Skipping DiRK module (requires TensorBases). Set Global`$UseFORMOnWindows = True before loading FunKit to override."];
+,
 Get[$FunKitDirectory<>"modules/DiRK.m"];
 PrintTemporary["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"DiRK\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+];
+If[$OperatingSystem === "Windows" && !TrueQ[Global`$UseFORMOnWindows],
+Print["FunKit: Skipping TRACY module (requires FORM/FormTracer). Set Global`$UseFORMOnWindows = True before loading FunKit to override."];
+,
 Get[$FunKitDirectory<>"modules/TRACY.m"];
 PrintTemporary["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"TRACY\",\nFontSize->10,\nFontWeight->\"Bold\",\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\" \",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*
 StyleBox[\"loaded\",\nFontSize->10,\nFontWeight->\"Plain\",\nFontSlant->\"Italic\"]\)"];
+];
 Get[$FunKitDirectory<>"modules/COEN.m"];
 PrintTemporary["\!\(\*
 StyleBox[\"...\",\nFontSize->10,\nFontSlant->\"Italic\"]\)\!\(\*

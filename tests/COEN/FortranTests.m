@@ -4,7 +4,7 @@ tests = {};
     Setup
 **********************************************************************************)
 
-hasFortran = Run["command -v gfortran &> /dev/null"] == 0;
+hasFortran = Quiet[RunProcess[{"gfortran", "--version"}]] =!= $Failed;
 
 If[!hasFortran,
     Print["Fortran compiler not found, skipping tests."];

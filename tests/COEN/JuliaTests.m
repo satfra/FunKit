@@ -4,7 +4,7 @@ tests = {};
     Setup
 **********************************************************************************)
 
-hasJulia = Run["command -v julia &> /dev/null"] == 0;
+hasJulia = Quiet[RunProcess[{"julia", "--version"}]] =!= $Failed;
 
 If[hasJulia == "",
     Print["Julia compiler not found, skipping tests."];

@@ -11,7 +11,7 @@ tests = {};
 Import[$FunKitDirectory <> "/tests/boilerplate/setups.m"];
 
 (* Detect FORM availability for guarded tests *)
-$FORMAvailable = (Quiet[Run["which form > /dev/null 2>&1"]] === 0);
+$FORMAvailable = Quiet[RunProcess[{"form", "-v"}]] =!= $Failed;
 
 (**********************************************************************************
     cos: Orderless attribute and self-contraction
@@ -156,8 +156,8 @@ AppendTo[
     ,
     TestCreate[
         Module[{},
-            FSetCacheDirectory["/tmp/FunKitTestCache"];
-            FunKit`Private`$TraceCacheDir === "/tmp/FunKitTestCache/"
+            FSetCacheDirectory[FileNameJoin[{$TemporaryDirectory, "FunKitTestCache"}]];
+            FunKit`Private`$TraceCacheDir === FileNameJoin[{$TemporaryDirectory, "FunKitTestCache"}] <> $PathnameSeparator
         ]
         ,
         True
@@ -178,7 +178,7 @@ AppendTo[
     ,
     TestCreate[
         Module[{cacheDir},
-            FSetCacheDirectory["/tmp/FunKitTestCacheClear"];
+            FSetCacheDirectory[FileNameJoin[{$TemporaryDirectory, "FunKitTestCacheClear"}]];
             cacheDir = FunKit`Private`$TraceCacheDir;
             FClearTraceCache[];
             DirectoryQ[cacheDir]

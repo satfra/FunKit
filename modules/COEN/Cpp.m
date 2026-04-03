@@ -176,8 +176,8 @@ CppForm[expr_, OptionsPattern[]] :=
 clangFormatExists = Quiet[RunProcess[{"clang-format", "--help"}]] =!= $Failed;
 
 CreateClangFormat[path_:"./"] :=
-    If[Not @ FileExistsQ[path <> ".clang-format"],
-        Export[path <> "/.clang-format", "BasedOnStyle: LLVM
+    If[Not @ FileExistsQ[FileNameJoin[{path, ".clang-format"}]],
+        Export[FileNameJoin[{path, ".clang-format"}], "BasedOnStyle: LLVM
 UseTab: Never
 IndentWidth: 2
 TabWidth: 2
@@ -203,8 +203,8 @@ WriteCodeToFile[fileName_String, expression_String] :=
         If[clangFormatExists,
             preprocessed = wrapLargeStatementsForClangFormat[expression];
             Export[tmpfileName, preprocessed, "Text"];
-            CreateClangFormat["/tmp/"];
-            RunProcess[$SystemShell, All, "clang-format -style=file:/tmp/.clang-format " <> tmpfileName <> " > " <> tmpfileName <> "_formatted && mv " <> tmpfileName <> "_formatted " <> tmpfileName];
+            CreateClangFormat[$TemporaryDirectory];
+            Export[tmpfileName, RunProcess[{"clang-format", "-style=file:" <> FileNameJoin[{$TemporaryDirectory, ".clang-format"}], tmpfileName}, "StandardOutput"], "Text"];
             Export[tmpfileName, fixClangFormatOffIndentation[Import[tmpfileName, "Text"]], "Text"];
             ,
             Export[tmpfileName, expression, "Text"];
@@ -212,14 +212,14 @@ WriteCodeToFile[fileName_String, expression_String] :=
         If[FileExistsQ[fileName],
             If[Import[fileName, "Text"] == Import[tmpfileName, "Text"],
                 Message[WriteCodeToFile::unchanged, fileName];
-                RunProcess[$SystemShell, All, "rm " <> tmpfileName]
+                Quiet[DeleteFile[tmpfileName]]
                 ,
                 Message[WriteCodeToFile::exported, fileName];
-                RunProcess[$SystemShell, All, "mv " <> tmpfileName <> " " <> fileName]
+                RenameFile[tmpfileName, fileName]
             ]
             ,
             Message[WriteCodeToFile::exported, fileName];
-            RunProcess[$SystemShell, All, "mv " <> tmpfileName <> " " <> fileName]
+            RenameFile[tmpfileName, fileName]
         ]
     ];
 
@@ -289,24 +289,23 @@ Options[FormatCppCode] = {"Format" -> True};
 
 FormatCppCode[expression_String, OptionsPattern[]] :=
     Module[{tmpfileName1, tmpfileName2, preprocessed, output},
-        tmpfileName1 = "/tmp/in_" <> makeTemporaryFileName[];
-        tmpfileName2 = "/tmp/out_" <> makeTemporaryFileName[];
+        tmpfileName1 = FileNameJoin[{$TemporaryDirectory, "in_" <> makeTemporaryFileName[]}];
+        tmpfileName2 = FileNameJoin[{$TemporaryDirectory, "out_" <> makeTemporaryFileName[]}];
         If[clangFormatExists && TrueQ[OptionValue["Format"]],
             preprocessed = wrapLargeStatementsForClangFormat[expression];
             Export[tmpfileName1, preprocessed, "Text"];
-            (*RunProcess[$SystemShell, All, "rm /tmp/.clang-format"];*)
-            CreateClangFormat["/tmp/"];
-            RunProcess[$SystemShell, All, "clang-format -style=file:/tmp/.clang-format " <> tmpfileName1 <> " > " <> tmpfileName2];
+            CreateClangFormat[$TemporaryDirectory];
+            Export[tmpfileName2, RunProcess[{"clang-format", "-style=file:" <> FileNameJoin[{$TemporaryDirectory, ".clang-format"}], tmpfileName1}, "StandardOutput"], "Text"];
             ,
             Export[tmpfileName1, expression, "Text"];
         ];
         If[FileExistsQ[tmpfileName2],
             output = Import[tmpfileName2, "Text"];
             output = fixClangFormatOffIndentation[output];
-            RunProcess[$SystemShell, All, "rm " <> tmpfileName1 <> " " <> tmpfileName2];
+            Quiet[DeleteFile[{tmpfileName1, tmpfileName2}]];
             Return[output];
         ];
-        RunProcess[$SystemShell, All, "rm " <> tmpfileName1];
+        Quiet[DeleteFile[tmpfileName1]];
         Return[expression]
     ];
 
@@ -356,15 +355,18 @@ formatFORMCode[expr_String] :=
         Return[res];
     ];
 
+CppCodeFORM[___] /; ($OperatingSystem === "Windows" && !TrueQ[Global`$UseFORMOnWindows]) :=
+    (Message[FunKit::warning, "CppCodeFORM requires FORM/FormTracer, which is not available on Windows. Set Global`$UseFORMOnWindows = True to override."]; Abort[]);
+
 CppCodeFORM[expr_] :=
     Module[{origVars, tmpfileName, import},
         origVars = FormTracer`GetExtraVars[];
-        tmpfileName = "/tmp/FO_" <> makeTemporaryFileName[];
+        tmpfileName = FileNameJoin[{$TemporaryDirectory, "FO_" <> makeTemporaryFileName[]}];
         FormTracer`AddExtraVars @@ GetAllCustomSymbols[expr];
         FormTracer`FormTrace[expr // Rationalize, {}, {}, {tmpfileName, "O4"}];
         FormTracer`DefineExtraVars[origVars];
         import = Import[tmpfileName, "Text"];
-        RunProcess[$SystemShell, All, "rm " <> tmpfileName];
+        Quiet[DeleteFile[tmpfileName]];
         import // formatFORMCode
     ];
 

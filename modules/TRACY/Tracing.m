@@ -87,7 +87,7 @@ FTerm /: FormTracer`FormTrace[FTerm[a__], preReplRules_ : {}, postReplRules_ : {
             ];
         ];
         repl = SafeReplaceTrace[expr];
-        tmpfileName = "/tmp/FS_" <> makeTemporaryFileName[];
+        tmpfileName = FileNameJoin[{$TemporaryDirectory, "FS_" <> makeTemporaryFileName[]}];
         FormTracer`AddExtraVars @@ GetAllCustomSymbols[expr /. repl[[1]]];
         formReps = Map[#[[2]] -> #[[1]]&, FormTracer`GetExtraVarsSynonyms[]];
         FunKitDebug[2, "Custom symbols in expression: ", GetAllCustomSymbols[expr /. repl[[1]]]];
@@ -96,7 +96,7 @@ FTerm /: FormTracer`FormTrace[FTerm[a__], preReplRules_ : {}, postReplRules_ : {
         FunKitDebug[2, "FORM finished, reimporting to Mathematica."];
         result = ImportAndSimplifyFORM[tmpfileName];
         FunKitDebug[2, "Import finished."];
-        RunProcess[$SystemShell, All, "rm " <> tmpfileName];
+        Quiet[DeleteFile[tmpfileName]];
         Return[pref * result /. repl[[2]] /. formReps // Rationalize];
     ];
 
@@ -214,12 +214,12 @@ FFormSimplify[obj_, preReplRules_ : {}, postReplRules_ : {}, bracket_ : {}] :=
             ];
         FunKitDebug[3, "FFormSimplify: Adding Extra Vars ", newSymbols];
         FormTracer`AddExtraVars @@ newSymbols;
-        tmpfileName = "/tmp/FS_" <> makeTemporaryFileName[];
+        tmpfileName = FileNameJoin[{$TemporaryDirectory, "FS_" <> makeTemporaryFileName[]}];
         FormTracer`FormTrace[Rationalize[expr /. repl[[1]]], Join[{scallDef}, momRule, preReplRules], postReplRules, {tmpfileName, "O4,saIter=10000,saMinT=10,saMaxT=10000", "fortran90"}, bracket];
         ret = ImportAndSimplifyFORM[tmpfileName];
         FunKitDebug[2, "FFormSimplify: FORM finished"];
         FormTracer`DefineExtraVars[origVars];
-        RunProcess[$SystemShell, All, "rm " <> tmpfileName];
+        Quiet[DeleteFile[tmpfileName]];
         ret = (ret) /. repl[[2]] // Rationalize;
         Export[file, ret];
         Return[ret];

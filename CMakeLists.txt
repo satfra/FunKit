@@ -18,33 +18,13 @@ endif()
 # Install the Mathematica package
 # ##############################################################################
 
-if(WIN32)
-  message(FATAL_ERROR "Installation on Windows is not yet supported - on it!.")
-endif()
-
-set(WolframLanguage_wolframscript_EXE "")
-execute_process(
-  COMMAND bash -c "which wolframscript"
-  OUTPUT_VARIABLE WolframLanguage_wolframscript_EXE
-  ERROR_QUIET)
-if(WolframLanguage_wolframscript_EXE STREQUAL "")
-  execute_process(
-    COMMAND bash -c "which wolfram"
-    OUTPUT_VARIABLE WolframLanguage_wolframscript_EXE
-    ERROR_QUIET)
-endif()
-if(WolframLanguage_wolframscript_EXE STREQUAL "")
-  execute_process(
-    COMMAND bash -c "which math"
-    OUTPUT_VARIABLE WolframLanguage_wolframscript_EXE
-    ERROR_QUIET)
-endif()
+find_program(WolframLanguage_wolframscript_EXE NAMES wolframscript wolfram math)
 
 # See if the variable WolframLanguage_wolframscript_EXE is defined
 if(DEFINED ENV{WOLFRAM_SCRIPT})
   set(WolframLanguage_wolframscript_EXE $ENV{WOLFRAM_SCRIPT})
 elseif(NOT (WolframLanguage_wolframscript_EXE STREQUAL ""))
-  # nothing to do, we found it with which
+  # nothing to do, we found it with find_program
 else()
   set(WolframLanguage_wolframscript_EXE "")
 endif()
@@ -60,7 +40,11 @@ if(NOT DEFINED WolframLanguage_wolframscript_EXE
       SHA256=78ba32abdf798bc616bab7c73aac32a17bbd7b06ad9e26a6add69de8f3ae4791)
   include(${CMAKE_CURRENT_BINARY_DIR}/cmake/CPM.cmake)
   if("${CPM_SOURCE_CACHE}" STREQUAL "OFF" OR NOT DEFINED CPM_SOURCE_CACHE)
-    set(CPM_SOURCE_CACHE $ENV{HOME}/.cache/CPM)
+    if(WIN32)
+      set(CPM_SOURCE_CACHE $ENV{LOCALAPPDATA}/CPM)
+    else()
+      set(CPM_SOURCE_CACHE $ENV{HOME}/.cache/CPM)
+    endif()
   endif()
   # Get codeparser
   cpmaddpackage(
@@ -130,51 +114,89 @@ install(
 # Testing
 # ##############################################################################
 
-add_custom_target(
-  test
-  COMMAND
-    ${WolframLanguage_wolframscript_EXE} -script
-    ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m | tee
-    ${CMAKE_CURRENT_BINARY_DIR}/test.log
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m
-  COMMENT "Running tests"
-  VERBATIM)
+if(WIN32)
+  add_custom_target(
+    test
+    COMMAND
+      ${WolframLanguage_wolframscript_EXE} -script
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m
+    COMMENT "Running tests"
+    VERBATIM)
 
-# Run a single test file or directory:
-#   make test-single FILE=FEDeriK/FunctionalDTests.m
-#   make test-single FILE=FEDeriK
-# Note: $(FILE) is expanded by Make at build time, not by CMake at configure
-# time. VERBATIM is intentionally omitted so that Make resolves the variable.
-add_custom_target(
-  test-single
-  COMMAND
-    ${WolframLanguage_wolframscript_EXE} -script
-    ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m $(FILE) | tee
-    ${CMAKE_CURRENT_BINARY_DIR}/test.log
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m
-  COMMENT "Running tests")
+  add_custom_target(
+    test-single
+    COMMAND
+      ${WolframLanguage_wolframscript_EXE} -script
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m $(FILE)
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m
+    COMMENT "Running tests")
+else()
+  add_custom_target(
+    test
+    COMMAND
+      ${WolframLanguage_wolframscript_EXE} -script
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m | tee
+      ${CMAKE_CURRENT_BINARY_DIR}/test.log
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m
+    COMMENT "Running tests"
+    VERBATIM)
+
+  # Run a single test file or directory:
+  #   make test-single FILE=FEDeriK/FunctionalDTests.m
+  #   make test-single FILE=FEDeriK
+  # Note: $(FILE) is expanded by Make at build time, not by CMake at configure
+  # time. VERBATIM is intentionally omitted so that Make resolves the variable.
+  add_custom_target(
+    test-single
+    COMMAND
+      ${WolframLanguage_wolframscript_EXE} -script
+      ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m $(FILE) | tee
+      ${CMAKE_CURRENT_BINARY_DIR}/test.log
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/tests/Test.m
+    COMMENT "Running tests")
+endif()
 
 # ##############################################################################
 # Benchmarks
 # ##############################################################################
 
-add_custom_target(
-  bench
-  COMMAND
-    ${WolframLanguage_wolframscript_EXE} -script
-    ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m | tee
-    ${CMAKE_CURRENT_BINARY_DIR}/bench.log
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m
-  COMMENT "Running benchmarks"
-  VERBATIM)
+if(WIN32)
+  add_custom_target(
+    bench
+    COMMAND
+      ${WolframLanguage_wolframscript_EXE} -script
+      ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m
+    COMMENT "Running benchmarks"
+    VERBATIM)
 
-# Run a single benchmark file:
-#   make bench-single FILE=ScalarBench.m
-add_custom_target(
-  bench-single
-  COMMAND
-    ${WolframLanguage_wolframscript_EXE} -script
-    ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m $(FILE) | tee
-    ${CMAKE_CURRENT_BINARY_DIR}/bench.log
-  DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m
-  COMMENT "Running benchmark")
+  add_custom_target(
+    bench-single
+    COMMAND
+      ${WolframLanguage_wolframscript_EXE} -script
+      ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m $(FILE)
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m
+    COMMENT "Running benchmark")
+else()
+  add_custom_target(
+    bench
+    COMMAND
+      ${WolframLanguage_wolframscript_EXE} -script
+      ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m | tee
+      ${CMAKE_CURRENT_BINARY_DIR}/bench.log
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m
+    COMMENT "Running benchmarks"
+    VERBATIM)
+
+  # Run a single benchmark file:
+  #   make bench-single FILE=ScalarBench.m
+  add_custom_target(
+    bench-single
+    COMMAND
+      ${WolframLanguage_wolframscript_EXE} -script
+      ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m $(FILE) | tee
+      ${CMAKE_CURRENT_BINARY_DIR}/bench.log
+    DEPENDS ${CMAKE_CURRENT_SOURCE_DIR}/benchmarks/Benchmark.m
+    COMMENT "Running benchmark")
+endif()

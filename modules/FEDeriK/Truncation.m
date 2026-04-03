@@ -648,6 +648,38 @@ CTrunc[setup_, expr_FTerm] :=
                         ,
                         {ai, 1, Length[alts]}
                     ];
+(* Handle partially-resolved propLike objects:
+   A previous step's resolve rules fixed some AnyField slots
+   but not all — the object no longer matches origProp or any
+   concrete alt.  Find these partials and expand them. *)
+                    Module[{hd = Head[origProp], partials},
+                        partials = DeleteDuplicates @ Cases[current, p : hd[{_, _}..] /; !FreeQ[p, AnyField], {0, Infinity}];
+                        Do[
+                            If[FreeQ[current, partials[[qi]]],
+                                Continue[]
+                            ];
+                            Module[{compatible},
+                                compatible = Select[alts, And @@ MapThread[(#2[[1]] === AnyField || #1 === #2)&, {List @@ #, List @@ partials[[qi]]}]&];
+                                If[compatible =!= {},
+                                    current =
+                                        Plus @@
+                                            Map[
+                                                Module[{rules = buildCTruncResolveRules[#]},
+                                                    (current /. partials[[qi]] -> #) /. rules
+                                                ]&
+                                                ,
+                                                compatible
+                                            ];
+                                    current = Distribute[current, Plus, NonCommutativeMultiply];
+                                    current = current /. vertexKillRules;
+                                    current = current /. x_NonCommutativeMultiply /; !FreeQ[x, 0] :> 0;
+                                    current = current /. {0 + a_ :> a, 0. + a_ :> a};
+                                ];
+                            ];
+                            ,
+                            {qi, 1, Length[partials]}
+                        ];
+                    ];
                     Continue[]
                 ];
                 (*For each alternative: replace propagator AND resolve connected vertex AnyField*)
@@ -702,25 +734,18 @@ CTrunc[setup_, expr_FTerm] :=
                             ,
                             {#}
                         ];
-                    (*Convert ALL objects back from list notation — including inside nested Times/Plus.
-                      List notation: each arg is {field, index}, e.g. Prop[{A, i1}, {A, i2}].
-                      Standard notation: Prop[{A, A}, {i1, i2}].
-                      For 2-leg objects both have {_, _} as first arg; distinguish by checking
-                      that obj[[1,2]] is NOT a known field name (it's an index in list notation).*)
+(*Convert ALL objects back from list notation — including inside nested Times/Plus.
+  List notation: each arg is {field, index}, e.g. Prop[{A, i1}, {A, i2}].
+  Standard notation: Prop[{A, A}, {i1, i2}].
+  For 2-leg objects both have {_, _} as first arg; distinguish by checking
+  that obj[[1,2]] is NOT a known field name (it's an index in list notation).*)
                     Module[{allFieldNames = Join[allFields, {AnyField}]},
-                        factors = Map[
-                            Replace[#,
-                                obj_ /; objectQ[obj] && Length[obj] >= 2 && MatchQ[obj[[1]], {_, _}] && !MemberQ[allFieldNames, obj[[1, 2]]] :> fromListNotation[obj],
-                                {0, Infinity}
-                            ]&,
-                            factors
-                        ];
+                        factors = Map[Replace[#, obj_ /; objectQ[obj] && Length[obj] >= 2 && MatchQ[obj[[1]], {_, _}] && !MemberQ[allFieldNames, obj[[1, 2]]] :> fromListNotation[obj], {0, Infinity}]&, factors];
                     ];
-
                     factors = factors /. numWrap$[x_] :> x;
-                    (*Resolve remaining AnyField in FMinus/SymmetryFactor from concrete objects.
-                      Collect concrete fields from ALL indices (not just closed), since
-                      FMinus objects may reference open indices that need resolution.*)
+(*Resolve remaining AnyField in FMinus/SymmetryFactor from concrete objects.
+  Collect concrete fields from ALL indices (not just closed), since
+  FMinus objects may reference open indices that need resolution.*)
                     Do[
                         If[objectQ[factors[[pos]]],
                             Do[

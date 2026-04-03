@@ -7,10 +7,10 @@ tests = {};
 Needs["CCompilerDriver`"];
 
 CppCompiler =
-  If[Run["command -v g++ &> /dev/null"] == 0,
+  If[Quiet[RunProcess[{"g++", "--version"}]] =!= $Failed,
     "g++"
     ,
-    If[Run["command -v clang++ &> /dev/null"] == 0,
+    If[Quiet[RunProcess[{"clang++", "--version"}]] =!= $Failed,
       "clang++"
       ,
       ""

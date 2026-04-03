@@ -28,37 +28,38 @@
 
 (**********************************************************************************
     bashrc, zshrc and zshprofile sourcing to infer PATH
+    (Unix only -- on Windows, PATH is already correct from the environment)
 **********************************************************************************)
 
-haveBashrc = 0 == RunProcess[$SystemShell, All, "source ~/.bashrc"]["ExitCode"];
-
-haveZshrc = 0 == RunProcess[$SystemShell, All, "source ~/.zshrc"]["ExitCode"];
-
-haveZshProfile = 0 == RunProcess[$SystemShell, All, "source ~/.zprofile"]["ExitCode"];
-
-inferredPATH = RunProcess[
-        $SystemShell
-        ,
-        All
-        ,
-        If[haveBashrc,
-                "source ~/.bashrc;"
+If[$OperatingSystem =!= "Windows",
+    Module[{haveBashrc, haveZshrc, haveZshProfile, inferredPATH},
+        haveBashrc = 0 == RunProcess[$SystemShell, All, "source ~/.bashrc"]["ExitCode"];
+        haveZshrc = 0 == RunProcess[$SystemShell, All, "source ~/.zshrc"]["ExitCode"];
+        haveZshProfile = 0 == RunProcess[$SystemShell, All, "source ~/.zprofile"]["ExitCode"];
+        inferredPATH = RunProcess[
+                $SystemShell
                 ,
-                ""
-            ] <>
-            If[haveZshrc,
-                "source ~/.zshrc;"
+                All
                 ,
-                ""
-            ] <>
-            If[haveZshProfile,
-                "source ~/.zprofile;"
-                ,
-                ""
-            ] <> " echo $PATH"
-    ]["StandardOutput"];
-
-SetEnvironment["PATH" -> inferredPATH];
+                If[haveBashrc,
+                        "source ~/.bashrc;"
+                        ,
+                        ""
+                    ] <>
+                    If[haveZshrc,
+                        "source ~/.zshrc;"
+                        ,
+                        ""
+                    ] <>
+                    If[haveZshProfile,
+                        "source ~/.zprofile;"
+                        ,
+                        ""
+                    ] <> " echo $PATH"
+            ]["StandardOutput"];
+        SetEnvironment["PATH" -> inferredPATH];
+    ];
+];
 
 (**********************************************************************************
     Parallel map with automatic fallback
