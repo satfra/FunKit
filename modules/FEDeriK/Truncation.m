@@ -894,7 +894,7 @@ FTruncate[setup_, expr_FEx] :=
         {ret0, annotations} = SeparateFExAnnotations[expr];
         (*Take care of closed indices — CTrunc returns lists-of-lists*)
         Module[{t0 = AbsoluteTime[]},
-            ret0 = BalancedMap[CTrunc[setup, #]&, ret0];
+            ret0 = BalancedMap[LTrunc[setup, #]&, ret0];
 (*Merge: ret0 is a List where each element is a list-of-bare-lists from LTrunc.
   Flatten one level, filter empties/zeros, wrap each bare list in FTerm.*)
             ret0 =
