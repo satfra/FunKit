@@ -121,6 +121,30 @@ With[{res = FTruncate[testSetup, FEx[FTerm[1/2,
     ]]
 ];
 
+(* Field truncation: Field -> {{}} kills bare fields in NotationB *)
+
+With[{res = Module[{fieldSetup = testSetup},
+    fieldSetup["Truncation", Field] = {{}};
+    FTruncate[fieldSetup, FEx[FTerm[Phi[i1], makeObj[GammaN, {Phi, Phi}, {-i1, i2}]]]]]},
+    AppendTo[tests, TestCreate[
+        res === FEx[],
+        True,
+        TestID -> "NotationB: FTruncate Field empty key kills bare fields"
+    ]]
+];
+
+(* Field truncation: Field -> {{Phi}} keeps bare Phi fields in NotationB *)
+
+With[{res = Module[{fieldSetup = testSetup},
+    fieldSetup["Truncation", Field] = {{Phi}};
+    FTruncate[fieldSetup, FEx[FTerm[Phi[i1], makeObj[GammaN, {Phi, Phi}, {-i1, i2}]]]]]},
+    AppendTo[tests, TestCreate[
+        res =!= FEx[],
+        True,
+        TestID -> "NotationB: FTruncate Field Phi key keeps bare Phi"
+    ]]
+];
+
 (**********************************************************************************
     Restore NotationA and verify
 ***********************************************************************************)

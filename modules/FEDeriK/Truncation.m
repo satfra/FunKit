@@ -221,15 +221,13 @@ LTrunc[setup_, expr_FEx] :=
    Object-level enumeration: propagators first, then vertices smallest-to-largest. *)
 
 LTrunc[setup_, expr_FTerm] :=
-    Module[{ret = List @@ expr, closedIndices, allFields = GetNonSourceFields[setup], ignore, doFields, undoFields, a, sentinelExpr, rawObjects, rawIndices, counts, propLikeHeads, propLike = {}, vertexLike = {}, truncKeys, truncSorted, closedIndexSet, propCandidates, propCombinations, survivors, concreteFields, assignment, localRet, terms = {}, tExtract, tExpand, pos, h, s, idx, killed, hasClosedAny},
-        doFields = replFields[setup];
-        undoFields = unreplFields[setup];
-        ret = ret /. doFields;
+    Module[{ret = List @@ expr, closedIndices, allFields = GetNonSourceFields[setup], ignore, a, sentinelExpr, rawObjects, rawIndices, counts, propLikeHeads, propLike = {}, vertexLike = {}, truncKeys, truncSorted, closedIndexSet, propCandidates, propCombinations, survivors, concreteFields, assignment, localRet, terms = {}, tExtract, tExpand, pos, h, s, idx, killed, hasClosedAny},
+        ret = replFields[setup, ret];
         (*Start off with the nested FTerms — recurse into them first*)
         ret = ret /. FTerm[a__] :> LTrunc[setup, FTerm[a]];
         (*If no AnyField remains, just apply truncation and return*)
         If[FreeQ[ret, AnyField, Infinity],
-            Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
+            Return[{List @@ unreplFields[setup, truncationPassLight[setup, FTerm @@ ret]]}]
         ];
         tExtract = AbsoluteTime[];
         sentinelExpr = FTerm @@ (ret /. FTerm[__] :> ignore);
@@ -238,7 +236,7 @@ LTrunc[setup_, expr_FTerm] :=
         counts = Map[Count[rawObjects, #, {1, 5}]&, rawIndices];
         closedIndices = Pick[rawIndices, Map[Mod[#, 2] === 0&, counts]];
         If[Length[closedIndices] === 0,
-            Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
+            Return[{List @@ unreplFields[setup, truncationPassLight[setup, FTerm @@ ret]]}]
         ];
         (*Pre-compute lookup structures*)
         truncKeys = Intersection[Keys[setup["Truncation"]], $indexedObjects];
@@ -271,7 +269,7 @@ LTrunc[setup_, expr_FTerm] :=
         ];
         (*If no objects need enumeration, apply truncation and return*)
         If[propLike === {} && vertexLike === {},
-            Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
+            Return[{List @@ unreplFields[setup, truncationPassLight[setup, FTerm @@ ret]]}]
         ];
         (*Sort vertices by leg count ascending — smaller objects prune earlier*)
         vertexLike = SortBy[vertexLike, Length[getFields[#[[2]]]]&];
@@ -484,8 +482,8 @@ Falls back to expandVertices if anything is left over.*)
             $ProfileLTruncCalls++;
             $ProfileLTruncPairs += Length[propLike] + Length[vertexLike];
         ];
-        (*Return list of bare lists, with undoFields applied*)
-        Map[(# /. undoFields)&, terms]
+        (*Return list of bare lists, with unreplFields applied*)
+        Map[unreplFields[setup, #]&, terms]
     ];
 
 (* CTrunc — Kernel-level field expansion via Distribute.
@@ -521,15 +519,13 @@ CTrunc[setup_, expr_FEx] :=
     Join @@ Map[CTrunc[setup, #]&, List @@ expr];
 
 CTrunc[setup_, expr_FTerm] :=
-    Module[{ret = List @@ expr, closedIndices, allFields = GetNonSourceFields[setup], ignore, doFields, undoFields, a, sentinelExpr, rawObjects, rawIndices, counts, propLikeHeads, propLike = {}, vertexLike = {}, truncKeys, truncSorted, closedIndexSet, retL, propInfo = {}, vertexKillRules, current, survived, tExtract, tExpand, pos, h, s, hasClosedAny},
-        doFields = replFields[setup];
-        undoFields = unreplFields[setup];
-        ret = ret /. doFields;
+    Module[{ret = List @@ expr, closedIndices, allFields = GetNonSourceFields[setup], ignore, a, sentinelExpr, rawObjects, rawIndices, counts, propLikeHeads, propLike = {}, vertexLike = {}, truncKeys, truncSorted, closedIndexSet, retL, propInfo = {}, vertexKillRules, current, survived, tExtract, tExpand, pos, h, s, hasClosedAny},
+        ret = replFields[setup, ret];
         (*Recurse into nested FTerms*)
         ret = ret /. FTerm[a__] :> CTrunc[setup, FTerm[a]];
         (*Early exit if no AnyField*)
         If[FreeQ[ret, AnyField, Infinity],
-            Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
+            Return[{List @@ unreplFields[setup, truncationPassLight[setup, FTerm @@ ret]]}]
         ];
         tExtract = AbsoluteTime[];
         sentinelExpr = FTerm @@ (ret /. FTerm[__] :> ignore);
@@ -538,7 +534,7 @@ CTrunc[setup_, expr_FTerm] :=
         counts = Map[Count[rawObjects, #, {1, 5}]&, rawIndices];
         closedIndices = Pick[rawIndices, Map[Mod[#, 2] === 0&, counts]];
         If[Length[closedIndices] === 0,
-            Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
+            Return[{List @@ unreplFields[setup, truncationPassLight[setup, FTerm @@ ret]]}]
         ];
         truncKeys = Intersection[Keys[setup["Truncation"]], $indexedObjects];
         truncSorted = Association @@ Map[(# -> (Sort /@ setup["Truncation"][#]))&, truncKeys];
@@ -568,7 +564,7 @@ CTrunc[setup_, expr_FTerm] :=
             {pos, 1, Length[ret]}
         ];
         If[propLike === {} && vertexLike === {},
-            Return[{List @@ (truncationPassLight[setup, FTerm @@ ret] /. undoFields)}]
+            Return[{List @@ unreplFields[setup, truncationPassLight[setup, FTerm @@ ret]]}]
         ];
         (*If no propLike objects (DSE vertex-only case), fall back to LTrunc*)
         If[propLike === {},
@@ -777,7 +773,7 @@ CTrunc[setup_, expr_FTerm] :=
                                 factors
                             ];
                     ];
-                    factors /. undoFields
+                    unreplFields[setup, factors]
                 ]&
                 ,
                 survived
@@ -789,22 +785,20 @@ OTrunc[setup_, {}] :=
     {}
 
 OTrunc[setup_, expr_FTerm] :=
-    Module[{ret = List @@ expr, curi, allObj, openIndices, i, allFields = GetNonSourceFields[setup], idx, subObj, idxOccur, idxPos, ignore, doFields, a, undoFields},
+    Module[{ret = List @@ expr, curi, allObj, openIndices, i, allFields = GetNonSourceFields[setup], idx, subObj, idxOccur, idxPos, ignore, a},
         FunKitDebug[3, "Truncating the term (open indices) ", expr];
-        doFields = replFields[setup];
-        undoFields = unreplFields[setup];
-        ret = ret /. doFields;
+        ret = replFields[setup, ret];
         (*Start off with the nested FTerms*)
         ret = ret /. FTerm[a__] :> OTrunc[setup, FTerm[a]];
         (*Abort if there is nothing to do*)
         If[FreeQ[ret, AnyField, Infinity],
-            Return[truncationPass[setup, FTerm @@ ret] /. undoFields]
+            Return[unreplFields[setup, truncationPass[setup, FTerm @@ ret]]]
         ];
         (*Get all open indices*)
         openIndices = GetOpenSuperIndices[setup, FTerm @@ (ret /. FTerm[__] :> ignore)];
         If[Length[openIndices] === 0,
             FunKitDebug[3, "  No open indices!"];
-            Return[FTerm @@ (ret /. undoFields)]
+            Return[FTerm @@ unreplFields[setup, ret]]
             ,
             FunKitDebug[3, "  Found open indices: ", openIndices];
         ];
@@ -843,7 +837,7 @@ OTrunc[setup_, expr_FTerm] :=
                         allFields
                     ];
         ];
-        Return[truncationPass[setup, ret] /. undoFields];
+        Return[unreplFields[setup, truncationPass[setup, ret]]];
     ];
 
 FTruncateOpenIndices[setup_, expr_FEx] :=

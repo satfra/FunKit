@@ -396,6 +396,7 @@ Derivative[__][SymmetryFactor][__] :=
   D sees these as non-constant dependencies and applies the chain rule, producing spurious
   Derivative terms. These objects are opaque — their differentiation is handled by the
   product rule acting on bare fields, not by the chain rule.*)
+
 Derivative[__][S][__] :=
     0;
 
@@ -476,19 +477,17 @@ FSetNotationA[] :=
         FMinus /: Power[FMinus[{a_, b_}, {ia_, ib_}], n_Integer] /; EvenQ[n] := 1;
         FMinus /: Power[FMinus[{a_, b_}, {ia_, ib_}], n_Integer] /; OddQ[n] := FMinus[{a, b}, {ia, ib}];
         Protect[FMinus];
-        (*Field[...] exists for NotationA*)
-        If[MemberQ[DownValues[Field], Field[expr_] :> _],
-            Unprotect[Field];
-            Field[expr_] =.;
-            Protect[Field];
-        ];
         (*List notation conversion for CTrunc: NotationA objects to/from {field, index} pairs*)
-        toListNotation[obj_] /; objectQ[obj] && Length[obj] === 2 && ListQ[obj[[1]]] :=
-            Head[obj] @@ Transpose[{obj[[1]], obj[[2]]}];
+        toListNotation[obj_] /; objectQ[obj] && Length[obj] === 2 && ListQ[obj[[1]]] := Head[obj] @@ Transpose[{obj[[1]], obj[[2]]}];
         toListNotation[x_] := x;
-        fromListNotation[obj_] /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] :=
-            Head[obj][(List @@ obj)[[All, 1]], (List @@ obj)[[All, 2]]];
+        fromListNotation[obj_] /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] := Head[obj][(List @@ obj)[[All, 1]], (List @@ obj)[[All, 2]]];
         fromListNotation[x_] := x;
+        (*Clear notation-dependent memoized dispatches, keeping the base definition (which uses Pattern)*)
+        DownValues[replFieldsDispatch] = Select[DownValues[replFieldsDispatch], !FreeQ[#, Pattern]&];
+        DownValues[replFields] = Select[DownValues[replFields], !FreeQ[#, Pattern]&];
+        DownValues[unreplFieldsDispatch] = Select[DownValues[unreplFieldsDispatch], !FreeQ[#, Pattern]&];
+        DownValues[unreplFields] = Select[DownValues[unreplFields], !FreeQ[#, Pattern]&];
+        DownValues[truncationList] = Select[DownValues[truncationList], !FreeQ[#, Pattern]&];
     ];
 
 FSetNotationB[] :=
@@ -519,17 +518,17 @@ FSetNotationB[] :=
   D sees these as non-constant dependencies and applies the chain rule, producing spurious
   Derivative[1,0][FMinus][...] terms. FMinus is a sign factor and must not be differentiated.*)
         Protect[FMinus];
-        (*Field[...] does not exist for NotationB*)
-        Unprotect[Field];
-        Field[expr_] := expr;
-        Protect[Field];
         (*List notation conversion for CTrunc: NotationB objects to/from {field, index} pairs*)
-        toListNotation[obj_] /; objectQ[obj] && Length[obj] >= 1 && MatchQ[obj[[1]], _[_]] :=
-            Head[obj] @@ Map[{Head[#], First[#]}&, List @@ obj];
+        toListNotation[obj_] /; objectQ[obj] && Length[obj] >= 1 && MatchQ[obj[[1]], _[_]] := Head[obj] @@ Map[{Head[#], First[#]}&, List @@ obj];
         toListNotation[x_] := x;
-        fromListNotation[obj_] /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] :=
-            Head[obj] @@ Map[#[[1]][#[[2]]]&, List @@ obj];
+        fromListNotation[obj_] /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] := Head[obj] @@ Map[#[[1]][#[[2]]]&, List @@ obj];
         fromListNotation[x_] := x;
+        (*Clear notation-dependent memoized dispatches, keeping the base definition (which uses Pattern)*)
+        DownValues[replFieldsDispatch] = Select[DownValues[replFieldsDispatch], !FreeQ[#, Pattern]&];
+        DownValues[replFields] = Select[DownValues[replFields], !FreeQ[#, Pattern]&];
+        DownValues[unreplFieldsDispatch] = Select[DownValues[unreplFieldsDispatch], !FreeQ[#, Pattern]&];
+        DownValues[unreplFields] = Select[DownValues[unreplFields], !FreeQ[#, Pattern]&];
+        DownValues[truncationList] = Select[DownValues[truncationList], !FreeQ[#, Pattern]&];
     ];
 
 FSetNotationA[];

@@ -25,7 +25,7 @@ FResolveFDOp[setup_, term_FTerm] :=
 
 FResolveFDOpInternal[setup_, term_FTerm] :=
     Module[
-        {rTerm = term /. unreplFields[setup], FDOpPos, termsNoFDOp, dF, idx, i, obj, ind, a, dTerms, nPre, nPost, ret, cTerm, deriv}
+        {rTerm = unreplFields[setup, term], FDOpPos, termsNoFDOp, dF, idx, i, obj, ind, a, dTerms, nPre, nPost, ret, cTerm, deriv}
         ,
         (*We cannot proceed if any nested FDOp are present*)
         If[MemberQ[(List @@ rTerm), FTerm[pre___, FDOp[__], post___], {1, 5}],
@@ -60,7 +60,7 @@ FResolveFDOpInternal[setup_, term_FTerm] :=
             FunKitDebug[5, "Performed derivative on term ", idx, ": ", dTerms[[idx]]];
             obj = ExtractObjectsWithIndex[setup, FTerm[termsNoFDOp[[nPre + idx]]]];
             obj = Select[obj, MemberQ[$nonCommutingObjects, Head[#]] || MatchQ[#, _Symbol[_]]&];
-            obj = obj /. replFields[setup];
+            obj = replFields[setup, obj];
 (*Commuting the next derivative past the objects in the current part.
   Extract {field, index} pairs from each object. Bare field applications (e.g. A[si])
   are not indexed objects, so getFields/getIndices would fail on them — handle separately.*)

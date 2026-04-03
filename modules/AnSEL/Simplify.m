@@ -98,7 +98,7 @@ FBuildSymmetryList[setup_, symmetries_, derivativeList_] :=
         If[Length[derivativeList] === 0,
             Return[{}]
         ];
-        procDerList = derivativeList /. unreplFields[setup];
+        procDerList = unreplFields[setup, derivativeList];
         buildOneSymmetry[sym_] :=
             Module[{valid = True, buildCycle, pairs},
                 If[AnyTrue[sym[[ ;; -2]], Not[Head[#] === List]&],
@@ -672,7 +672,8 @@ FTermContent[setup_, term_FTerm] :=
     Module[{objs},
         objs = FunKit`Private`ExtractObjectsWithIndex[setup, term];
         If[$VersionNumber >= 13.0,
-            Hash[Sort @ Map[Head[#] @@ FunKit`Private`getFields[#]&, objs], "SHA256"],
+            Hash[Sort @ Map[Head[#] @@ FunKit`Private`getFields[#]&, objs], "SHA256"]
+            ,
             Hash[ToString[Sort @ Map[Head[#] @@ FunKit`Private`getFields[#]&, objs], InputForm], "SHA256"]
         ]
     ];
@@ -695,14 +696,14 @@ SeparateTermGroups[setup_, expr_] :=
 (* Pre-compute per-term data for the pairwise comparison loop *)
 
 PrecomputeTermData[setup_, term_FTerm] :=
-    Module[{doFields = replFields[setup], objs},
+    Module[{objs},
         objs =
             Select[
                 Map[
                     If[indexedObjectQ[#],
                         #
                         ,
-                        # /. doFields
+                        replFields[setup, #]
                     ]&
                     ,
                     ExtractObjectsWithIndex[setup, term]

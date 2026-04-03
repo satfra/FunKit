@@ -273,17 +273,21 @@ GetPartnerField[setup_, field_Symbol[i__]] :=
 **********************************************************************************)
 
 ExtractFields[setup_Association, expr_] :=
-    Module[{masked},
+    Module[
+        {masked}
+        ,
         (*Mask indexed objects — same rationale as ExtractFieldsWithIndex*)
         masked = expr /. (obj_?indexedObjectQ :> Null);
         Return @ (DeleteDuplicates[Head /@ Cases[{masked}, Alternatives @@ Map[Blank, GetAllFields[setup]], Infinity]]);
     ];
 
 ExtractFieldsWithIndex[setup_Association, expr_] :=
-    Module[{masked},
-        (*Mask indexed objects to avoid counting field[index] arguments embedded inside
-          them. In NotationB, e.g. S[A[-i1], cb[-i2], c[-i3]], the ghost fields would
-          otherwise be found by Cases at Infinity depth.*)
+    Module[
+        {masked}
+        ,
+(*Mask indexed objects to avoid counting field[index] arguments embedded inside
+  them. In NotationB, e.g. S[A[-i1], cb[-i2], c[-i3]], the ghost fields would
+  otherwise be found by Cases at Infinity depth.*)
         masked = expr /. (obj_?indexedObjectQ :> Null);
         Return @ Cases[{masked}, Alternatives @@ Map[Blank, GetAllFields[setup]], Infinity];
     ];
@@ -321,17 +325,21 @@ GetAllSuperIndices[setup_Association, expr_FEx] :=
 **********************************************************************************)
 
 (* Cached Alternatives patterns for object/field extraction — rebuilt when $indexedObjects changes *)
-$objFieldAlt[setup_] := $objFieldAlt[setup] =
-    Alternatives @@ Map[Blank[#]&, Join[$indexedObjects, GetAllFields[setup], {AnyField}]];
-$objAlt := $objAlt = Alternatives @@ Map[Blank[#]&, $indexedObjects];
-$fieldAlt[setup_] := $fieldAlt[setup] =
-    Alternatives @@ Map[Blank[#]&, Join[GetAllFields[setup], {AnyField}]];
+
+$objFieldAlt[setup_] :=
+    $objFieldAlt[setup] = Alternatives @@ Map[Blank[#]&, Join[$indexedObjects, GetAllFields[setup], {AnyField}]];
+
+$objAlt :=
+    $objAlt = Alternatives @@ Map[Blank[#]&, $indexedObjects];
+
+$fieldAlt[setup_] :=
+    $fieldAlt[setup] = Alternatives @@ Map[Blank[#]&, Join[GetAllFields[setup], {AnyField}]];
 
 ExtractObjectsWithIndex[setup_Association, expr_FTerm] :=
     Module[{iObjs, all, depth1Fields, masked},
         iObjs = $indexedObjects;
-        (*Mask FMinus and SymmetryFactor before searching: in NotationB their field[index]
-          arguments at depth 2 would otherwise be found and mistakenly kept.*)
+(*Mask FMinus and SymmetryFactor before searching: in NotationB their field[index]
+  arguments at depth 2 would otherwise be found and mistakenly kept.*)
         masked = expr /. {(h : FMinus | SymmetryFactor)[__] :> h};
         all = Cases[masked, $objFieldAlt[setup], {1, 2}];
         depth1Fields = Cases[masked, $fieldAlt[setup], {1}];
@@ -344,7 +352,9 @@ ExtractObjectsWithIndex[setup_Association, expr_FEx] :=
     ];
 
 ExtractObjectsAndIndices[setup_, expr_FTerm] :=
-    Module[{idxO, idxF, masked},
+    Module[
+        {idxO, idxF, masked}
+        ,
         (*Mask FMinus/SymmetryFactor — same rationale as ExtractObjectsWithIndex.*)
         masked = expr /. {(h : FMinus | SymmetryFactor)[__] :> h};
         idxO = Cases[masked, $objAlt, {1, 2}];
@@ -456,8 +466,8 @@ FSetSymmetricObject[_, {}] :=
 
 (* Expanding / Shortening between Field[{f}, {i...}] and f[i...] *)
 
-replFields[setup_] :=
-    replFields[setup] =
+replFieldsDispatch[setup_] :=
+    replFieldsDispatch[setup] =
         Dispatch @
             Module[{allFields, repl},
                 allFields = Join[GetAllFields[setup], {AnyField}];
@@ -465,11 +475,37 @@ replFields[setup_] :=
                 Select[repl, Not @ (((Head @ #[[1]])[None] /. #) === (Head @ #[[1]])[None])&]
             ];
 
-unreplFields[setup_] :=
-    unreplFields[setup] =
+replFields[setup_, expr_] :=
+    With[{disp = replFieldsDispatch[setup]},
+        If[Head[expr] === List,
+            Map[
+                If[indexedObjectQ[#],
+                    #
+                    ,
+                    # /. disp
+                ]&
+                ,
+                expr
+            ]
+            ,
+            If[indexedObjectQ[expr],
+                expr
+                ,
+                expr /. disp
+            ]
+        ]
+    ];
+
+unreplFieldsDispatch[setup_] :=
+    unreplFieldsDispatch[setup] =
         Dispatch @
             Module[{allFields, repl},
                 allFields = Join[GetAllFields[setup], {AnyField}];
                 repl = Thread[(makeObj[Field, {#}, {a__}]& /@ allFields) :> Evaluate[(#[a]& /@ allFields)]];
                 Select[repl, Head @ #[[1]] =!= Head @ #[[2]]&]
             ];
+
+unreplFields[setup_, expr_] :=
+    With[{disp = unreplFieldsDispatch[setup]},
+        expr /. disp
+    ];

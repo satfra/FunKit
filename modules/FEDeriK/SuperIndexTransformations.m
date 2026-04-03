@@ -31,19 +31,15 @@ fw is a list of three lists. The fw[[1]] is a list that transforms the explicit 
 
 GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
     Module[
-        {doFields, undoFields, kdx, allObj, idx, jdx, newObj, indexPosToChange, indicesToChange, newSuperIndices, repl, replForward, replBackward}
+        {kdx, allObj, idx, jdx, newObj, indexPosToChange, indicesToChange, newSuperIndices, repl, replForward, replBackward}
         ,
-        (*Get all objects and bring them in standard form*)
-        doFields = replFields[setup];
-        undoFields = unreplFields[setup];
-        (* Zip indexed objects notation-agnostically via getFields/getIndices.
-           Filter to indexedObjectQ first to avoid double-extracting NotationB embedded
-           field[index] pairs that appear at depth 2 inside indexed objects. *)
+(* Zip indexed objects notation-agnostically via getFields/getIndices.
+   Filter to indexedObjectQ first to avoid double-extracting NotationB embedded
+   field[index] pairs that appear at depth 2 inside indexed objects. *)
         Module[{allObjRaw = ExtractObjectsWithIndex[setup, term]},
-            allObj = Select[allObjRaw, indexedObjectQ] /.
-                (obj_?indexedObjectQ) :> (Head[obj])[Transpose[{getFields[obj], getIndices[obj]}]];
+            allObj = Select[allObjRaw, indexedObjectQ] /. (obj_?indexedObjectQ) :> (Head[obj])[Transpose[{getFields[obj], getIndices[obj]}]];
             (* Free field applications (e.g. background fields) are processed separately *)
-            allObj = Join[allObj, Select[allObjRaw, Not[indexedObjectQ[#]]&] /. doFields];
+            allObj = Join[allObj, replFields[setup, Select[allObjRaw, Not[indexedObjectQ[#]]&]]];
         ];
         (*We find all positions where indices are given explicitly*)
         indexPosToChange = Map[Join[Position[#[[1]], {_Symbol | Times[-1, _Symbol], _List}, {1}], Position[#[[1]], {_Symbol | Times[-1, _Symbol]}, {1}]]&, allObj];
@@ -51,14 +47,23 @@ GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
         If[Length[indexPosToChange] === 0,
             Return[{{{}, {}, {}}, {{}, {}, {}}}]
         ];
-        (*Next, we isolate the group indices and try to group according to these. If no group indices are present, we try to group by momenta.
-          Guard: skip entries with no positions to change. In NotationB bare fields have an atomic
-          first Part, so Part[atom, {}] would produce Symbol[] instead of {} — avoid this.*)
-        indicesToChange = Flatten[Table[
-            If[Length[indexPosToChange[[idx]]] > 0,
-                allObj[[idx, 1, indexPosToChange[[idx]]]],
-                {}
-            ], {idx, 1, Length[allObj]}], 1];
+(*Next, we isolate the group indices and try to group according to these. If no group indices are present, we try to group by momenta.
+  Guard: skip entries with no positions to change. In NotationB bare fields have an atomic
+  first Part, so Part[atom, {}] would produce Symbol[] instead of {} — avoid this.*)
+        indicesToChange =
+            Flatten[
+                Table[
+                    If[Length[indexPosToChange[[idx]]] > 0,
+                        allObj[[idx, 1, indexPosToChange[[idx]]]]
+                        ,
+                        {}
+                    ]
+                    ,
+                    {idx, 1, Length[allObj]}
+                ]
+                ,
+                1
+            ];
         indexPosToChange =
             PositionIndex[
                 Join[
@@ -124,24 +129,24 @@ GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
     ];
 
 GetSuperIndexTermTransformations[setup_, eq_] :=
-    Module[{repl, replForward, replBackward, doFields, undoFields, forwardFunction, backwardFunction},
-        doFields = replFields[setup];
-        undoFields = unreplFields[setup];
+    Module[{repl, replForward, replBackward, forwardFunction, backwardFunction},
         repl = Map[GetSuperIndexTermTransformationsSingleFTerm[setup, #]&, List @@ eq];
         replForward = {Join @@ repl[[All, 1, 1]], Join @@ repl[[All, 1, 2]], Join @@ repl[[All, 1, 3]]};
         replBackward = {Join @@ repl[[All, 2, 1]], Join @@ repl[[All, 2, 2]], Join @@ repl[[All, 2, 3]]};
         forwardFunction[expr_] :=
             Module[{ret},
-                ret = expr /. (obj_?indexedObjectQ) :> (Head[obj])[Transpose[{getFields[obj], getIndices[obj]}]] /. doFields;
+                ret = replFields[setup, expr /. (obj_?indexedObjectQ) :> (Head[obj])[Transpose[{getFields[obj], getIndices[obj]}]]];
                 ret = ret /. replForward[[1]] /. replForward[[3]] /. replForward[[2]];
-                ret = ret /. a_[l_List] /; MemberQ[$allObjects, a] :> makeObj[a, l[[All, 1]], l[[All, 2]]] /. undoFields;
+                ret = ret /. a_[l_List] /; MemberQ[$allObjects, a] :> makeObj[a, l[[All, 1]], l[[All, 2]]];
+                ret = unreplFields[setup, ret];
                 Return[ret];
             ];
         backwardFunction[expr_] :=
             Module[{ret},
-                ret = expr /. (obj_?indexedObjectQ) :> (Head[obj])[Transpose[{getFields[obj], getIndices[obj]}]] /. doFields;
+                ret = replFields[setup, expr /. (obj_?indexedObjectQ) :> (Head[obj])[Transpose[{getFields[obj], getIndices[obj]}]]];
                 ret = ret /. replBackward[[2]] /. replBackward[[3]] /. replBackward[[1]];
-                ret = ret /. a_[l_List] /; MemberQ[$allObjects, a] :> makeObj[a, l[[All, 1]], l[[All, 2]]] /. undoFields;
+                ret = ret /. a_[l_List] /; MemberQ[$allObjects, a] :> makeObj[a, l[[All, 1]], l[[All, 2]]];
+                ret = unreplFields[setup, ret];
                 Return[ret];
             ];
         Return[{forwardFunction, backwardFunction}];

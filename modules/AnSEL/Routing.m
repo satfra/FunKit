@@ -85,14 +85,13 @@ fermionicExtMomRouting[setup_, vertex_] :=
 (* The main routing function *)
 
 FRoute[setup_, expr_FTerm] :=
-    Module[{openIndices, closedIndices, objects, ret = ReduceFTerm[setup, ReduceIndices[setup, expr]], doFields, idx, a, indPos, assocField, subObj, subMom, subExtMom, indStruct, externalIndices, externalMomenta, kind, f, momRepl, i, mom, loopMomenta, sidx, discard, rightMomenta, closedIndex, nextObj, tmp, flag, availMomemnta},
+    Module[{openIndices, closedIndices, objects, ret = ReduceFTerm[setup, ReduceIndices[setup, expr]], idx, a, indPos, assocField, subObj, subMom, subExtMom, indStruct, externalIndices, externalMomenta, kind, f, momRepl, i, mom, loopMomenta, sidx, discard, rightMomenta, closedIndex, nextObj, tmp, flag, availMomemnta},
         AssertFSetup[setup];
         FunKitDebug[1, "FRoute: routing the sub-term ", expr];
         (*We first get all closed, open indices and all indexed objects. *)
-        doFields = replFields[setup];
         openIndices = Sort @ GetOpenSuperIndices[setup, ret];
         closedIndices = GetClosedSuperIndices[setup, ret];
-        objects = ExtractObjectsWithIndex[setup, ret] //. doFields;
+        objects = FixedPoint[replFields[setup, #]&, ExtractObjectsWithIndex[setup, ret]];
         (*If there are any undetermined fields, we cannot route indices. *)
         If[MemberQ[objects[[All, 1]], AnyField, {1, 4}],
             Message[FRoute::undeterminedFields];

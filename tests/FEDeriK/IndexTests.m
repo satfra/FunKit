@@ -292,15 +292,15 @@ AppendTo[tests, TestCreate[FunKit`Private`SuperIndicesValid[sSetup, FTerm[Phi[i1
     replFields / unreplFields Tests
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[Phi[i1] /. FunKit`Private`replFields[sSetup], Field[{Phi}, {i1}], TestID -> "replFields scalar: Phi[i1] -> Field[{Phi}, {i1}]"]];
+AppendTo[tests, TestCreate[FunKit`Private`replFields[sSetup, Phi[i1]], Field[{Phi}, {i1}], TestID -> "replFields scalar: Phi[i1] -> Field[{Phi}, {i1}]"]];
 
-AppendTo[tests, TestCreate[Field[{Phi}, {i1}] /. FunKit`Private`unreplFields[sSetup], Phi[i1], TestID -> "unreplFields scalar: Field[{Phi}, {i1}] -> Phi[i1]"]];
+AppendTo[tests, TestCreate[FunKit`Private`unreplFields[sSetup, Field[{Phi}, {i1}], Phi[i1]], TestID -> "unreplFields scalar: Field[{Phi}, {i1}] -> Phi[i1]"]];
 
-AppendTo[tests, TestCreate[(Phi[i1] /. FunKit`Private`replFields[sSetup]) /. FunKit`Private`unreplFields[sSetup], Phi[i1], TestID -> "replFields then unreplFields scalar: roundtrip"]];
+AppendTo[tests, TestCreate[FunKit`Private`unreplFields[sSetup, FunKit`Private`replFields[sSetup, Phi[i1]]], Phi[i1], TestID -> "replFields then unreplFields scalar: roundtrip"]];
 
-AppendTo[tests, TestCreate[Psi[i1] /. FunKit`Private`replFields[ySetup], Field[{Psi}, {i1}], TestID -> "replFields Yukawa: Psi[i1] -> Field[{Psi}, {i1}]"]];
+AppendTo[tests, TestCreate[FunKit`Private`replFields[ySetup, Psi[i1]], Field[{Psi}, {i1}], TestID -> "replFields Yukawa: Psi[i1] -> Field[{Psi}, {i1}]"]];
 
-AppendTo[tests, TestCreate[AnyField[i1] /. FunKit`Private`replFields[sSetup], Field[{AnyField}, {i1}], TestID -> "replFields scalar: AnyField[i1] -> Field[{AnyField}, {i1}]"]];
+AppendTo[tests, TestCreate[FunKit`Private`replFields[sSetup, AnyField[i1]], Field[{AnyField}, {i1}], TestID -> "replFields scalar: AnyField[i1] -> Field[{AnyField}, {i1}]"]];
 
 (**********************************************************************************
     Source Field Tests

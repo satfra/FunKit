@@ -92,13 +92,12 @@ FPlot::FDOp = "Cannot plot diagrams with unresolved derivative operators!";
 FPlot::noExternalField = "No object could be found for the external index `1`.";
 
 FGetDiagram[setup_, expr_FTerm] :=
-    Module[{PossibleVertices, PossibleEdges, Styles, diag, allObj, fieldObj, vertices, edges, vertexReplacements, graph, phantomVertices, edgeFields, fieldVertices, fieldEdges, fieldEdgeFields, oidx, externalVertices, vertexNames, doubledVertices, externalEdges, externalFields, idx, prefactor, doubledEdges, doFields, eWeights, addVertexSizes = {}},
+    Module[{PossibleVertices, PossibleEdges, Styles, diag, allObj, fieldObj, vertices, edges, vertexReplacements, graph, phantomVertices, edgeFields, fieldVertices, fieldEdges, fieldEdgeFields, oidx, externalVertices, vertexNames, doubledVertices, externalEdges, externalFields, idx, prefactor, doubledEdges, eWeights, addVertexSizes = {}},
         If[MemberQ[expr, FDOp[__], Infinity],
             Message[FPlot::FDOp];
             Abort[]
         ];
         diag = FUnroute[setup, expr];
-        doFields = replFields[setup];
         PossibleVertices =
             Join[
                 {GammaN, S, Rdot, Field, R, Phidot}
@@ -129,7 +128,7 @@ FGetDiagram[setup_, expr_FTerm] :=
         If[FreeQ[Keys[Styles], AnyField],
             Styles = Join[Styles, {AnyField -> {Blue, Dotted}}]
         ];
-        allObj = ExtractObjectsWithIndex[setup, diag] //. doFields;
+        allObj = FixedPoint[replFields[setup, #]&, ExtractObjectsWithIndex[setup, diag]];
         fieldObj =
             Flatten[
                 Select[allObj, Head[#] === Field&] /.
@@ -182,24 +181,25 @@ FGetDiagram[setup_, expr_FTerm] :=
         edges = Table[Style[edges[[idx]], ##]& @@ Flatten @ {edgeFields[[idx]] /. Styles}, {idx, 1, Length[edges]}];
         (*Add additional vertices for external indices*)
         externalVertices = GetOpenSuperIndices[setup, diag];
-        externalFields = Table[
-            Module[{found},
-                found = SelectFirst[allObj, MemberQ[makePosIdx /@ getIndices[#], externalVertices[[idx]]]&];
-                If[MissingQ[found],
-                    Message[FPlot::noExternalField, externalVertices[[idx]]];
-                    Abort[]
-                ];
-                found
-            ]
-            ,
-            {idx, 1, Length[externalVertices]}
-        ];
+        externalFields =
+            Table[
+                Module[{found},
+                    found = SelectFirst[allObj, MemberQ[makePosIdx /@ getIndices[#], externalVertices[[idx]]]&];
+                    If[MissingQ[found],
+                        Message[FPlot::noExternalField, externalVertices[[idx]]];
+                        Abort[]
+                    ];
+                    found
+                ]
+                ,
+                {idx, 1, Length[externalVertices]}
+            ];
         externalFields = Table[getField[externalFields[[idx]], FirstPosition[makePosIdx /@ getIndices[externalFields[[idx]]], externalVertices[[idx]]][[1]]], {idx, 1, Length[externalVertices]}];
         externalVertices = Unique /@ externalVertices;
         externalEdges = Table[MakeEdgeRule[setup, makeObj[Propagator, {GetPartnerField[setup, externalFields[[idx]]], externalFields[[idx]]}, {externalVertices[[idx]], GetOpenSuperIndices[setup, diag][[idx]] /. vertexReplacements}]], {idx, 1, Length[externalVertices]}];
         externalEdges = Table[Style[externalEdges[[idx]], ##]& @@ Flatten @ {externalFields[[idx]] /. Styles}, {idx, 1, Length[externalEdges]}];
         (*get the prefactor*)
-        prefactor = FTerm[Times @@ (diag /. doFields /. Map[Blank[#] -> 1&, Join[{Field}, $indexedObjects]])];
+        prefactor = FTerm[Times @@ (replFields[setup, diag] /. Map[Blank[#] -> 1&, Join[{Field}, $indexedObjects]])];
         prefactor = shortTexPref[setup, prefactor];
         oidx = GetOpenSuperIndices[setup, diag];
         Do[
@@ -216,7 +216,10 @@ FGetDiagram[setup_, expr_FTerm] :=
     ];
 
 FPlot[setup_, expr_] /; ($FrontEnd === Null || TrueQ[$Notebooks === False]) :=
-    (AssertFSetup[setup]; expr);
+    (
+        AssertFSetup[setup];
+        expr
+    );
 
 FPlot[setup_, expr_FTerm] :=
     Module[{},

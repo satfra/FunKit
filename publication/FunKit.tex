@@ -405,7 +405,8 @@ or, if already installed, import the \FunKit package with
 %
 The \FunKit package has no further requirements except for a Mathematica version $\geq 11.0$ and a Linux or MacOS system. \FunKit has not been tested with Mathematica versions earlier than $11.0$.
 Note that \FunKit can also run with a free WolframEngine installation.
-Direct support for Windows is currently not available, as \FORM does not support execution on Windows systems. However, using \FunKit via WSL (Windows Subsystem for Linux) is possible.
+Support for Windows is currently only partially available, as \FORM does not support execution on Windows systems. All parts of \FunKit involving tracing group structures and creating diagrammatic rules are thus unavailable by default on Windows. If the user is able to provide a working \FormTracer installation, one can set \mathem{\mmaDef{$UseFORMOnWindows}=True} before loading the package to enable all functionality.
+Otherwise, using \FunKit via WSL (Windows Subsystem for Linux) allows to use the full feature~set.
 
 A Notebook containing all code written below can be found at \texttt{examples/FunKitPaper.nb} inside the repository.
 Besides the guided explanations in this work, documentation on all functions provided by \FunKit can be accessed through their usage strings, i.e.,
@@ -422,7 +423,7 @@ Inside a notebook, a brief overview can be accessed using \mathem{\mmaDef{FInfo[
 We also provide several example notebooks where the derivation of certain theories with several functional master equations is shown, which we list in~\Cref{tab:examples}.
 
 %
-\begin{table*}[b]
+\begin{table*}[t]
 	\begin{tcolorbox}[title=Available example notebooks,
 		title filled=false,
 		colback=pastelblue!5!white,

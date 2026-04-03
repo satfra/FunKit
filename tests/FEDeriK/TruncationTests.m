@@ -237,6 +237,50 @@ AppendTo[
 ];
 
 (**********************************************************************************
+    Field truncation: bare fields killed or kept based on Field key
+**********************************************************************************)
+
+(* Field -> {{}} means no bare fields survive — Phi[i1] next to GammaN should be killed *)
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{expr, result, fieldSetup},
+            fieldSetup = scalarSetup;
+            fieldSetup["Truncation", Field] = {{}};
+            expr = FEx[FTerm[Phi[i1], GammaN[{Phi, Phi}, {-i1, i2}]]];
+            result = FTruncate[fieldSetup, expr];
+            result === FEx[]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FTruncate Field: empty Field key kills bare fields"
+    ]
+];
+
+(* Field -> {{Phi}} means bare Phi fields survive *)
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{expr, result, fieldSetup},
+            fieldSetup = scalarSetup;
+            fieldSetup["Truncation", Field] = {{Phi}};
+            expr = FEx[FTerm[Phi[i1], GammaN[{Phi, Phi}, {-i1, i2}]]];
+            result = FTruncate[fieldSetup, expr];
+            result =!= FEx[]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FTruncate Field: Phi in Field key keeps bare Phi"
+    ]
+];
+
+(**********************************************************************************
     FTruncateOpenIndices
 **********************************************************************************)
 
