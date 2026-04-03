@@ -1301,7 +1301,7 @@ parameterizations=\{
 	\mmaDef{dressing}[GammaN,\{A,A,A\},1,\{p1_,p2_,p3_\}]:>ZA3[Sqrt[(sp[p1,p1]+sp[p2,p2]+sp[p3,p3])/3]],
 	\mmaDef{dressing}[GammaN,\{A,cb,c\},1,\{p1_,p2_,p3_\}]:>ZAcbc[Sqrt[(sp[p1,p1]+sp[p2,p2]+sp[p3,p3])/3]],
 	lf1->l1,
-	sp[l1,l1]:>l1^2, sp[p1,p1]:>p^2, sp[l1,p1]:>cospl1 l1 p1,
+	sp[l1,l1]:>l1^2, sp[p1,p1]:>p^2, sp[l1,p1]:>cospl1 l1 p,
 	cos[p,l1]->cospl1,
  \};
 parametrize[expr_]:=\mmaDef{UseLorentzLinearity}[expr//.parameterizations]//.parameterizations//\mmaDef{Simplify};
@@ -1312,32 +1312,27 @@ In the above, we have parametrised all \mathem{\mmaDef{dressing}} functions and 
 \begin{mmaCell}{Input}
 \mmaDef{MakeJuliaFunction}[
   \mmaDef{Total}@\mmaDef{DSEAAResult1L}//\mmaDef{parametrize},
-  "Parameters" -> \{"l1", "cos", "p", "Nc", "gS", "ZA", "Zc", "ZA3", "ZAcbc", "ZA4"\},
-  "Name" -> "DSE_kernel_AA_1Loop",
-  "Body" -> "cospl1 = cos"
+  "Parameters" -> \{"l1", "cospl1", "p", "Nc", "gS", "ZA", "Zc", "ZA3", "ZAcbc", "ZA4"\},
+  "Name" -> "DSE_kernel_AA_1Loop"
  ]
 \end{mmaCell}
 %
 \begin{mmaCell}{Output}
-function DSE_kernel_AA_1Loop(l1, cos, p, Nc, gS, ZA, Zc, ZA3, ZAcbc, ZA4)
-  cospl1 = cos
+function DSE_kernel_AA_1Loop(l1, cospl1, p, Nc, gS, ZA, Zc, ZA3, ZAcbc, ZA4)
   _interp1 = ZA(sqrt(l1^2))
-  _interp2 = ZA(sqrt(l1^2 + p^2 + 2*cospl1*l1*p1))
-  _interp3 = ZA3(sqrt(0.6666666666666666)*sqrt(l1^2 + p^2 + cospl1*l1*p1))
-  _interp4 = ZAcbc(sqrt(0.6666666666666666)*sqrt(l1^2 + p^2 + cospl1*l1*p1))
+  _interp2 = ZA(sqrt(l1^2 + 2*cospl1*l1*p + p^2))
+  _interp3 = ZA3(sqrt(0.6666666666666666)*sqrt(l1^2 + cospl1*l1*p + p^2))
+  _interp4 = ZAcbc(sqrt(0.6666666666666666)*sqrt(l1^2 + cospl1*l1*p + p^2))
   _interp5 = Zc(sqrt(l1^2))
-  _interp6 = Zc(sqrt(l1^2 + p^2 + 2*cospl1*l1*p1))
-  _cse1 = p^2
-  _cse2 = 1/_cse1
-  _cse3 = cospl1^2
-  _cse4 = p1^2
-  _cse5 = -(_cse3*_cse4)
-  _cse7 = l1^2
-  _cse6 = 1/_cse7
-  _cse8 = 2*cospl1*l1*p1
-  _cse9 = _cse1 + _cse7 + _cse8
-  _cse10 = _cse1 + _cse5
-  _cse11 = 1/_interp1
+  _interp6 = Zc(sqrt(l1^2 + 2*cospl1*l1*p + p^2))
+  _cse1 = cospl1^2
+  _cse2 = -1 + _cse1
+  _cse4 = l1^2
+  _cse3 = 1/_cse4
+  _cse5 = 2*cospl1*l1*p
+  _cse6 = p^2
+  _cse7 = _cse4 + _cse5 + _cse6
+  _cse8 = 1/_interp1
   return fma(-6,(_cse1^2*_cse10*_cse11*_cse2*_cse6*_interp3*gS*Nc)/(_cse9^2*_interp2),fma(-16,(_cse1*_cse10*_cse11*_cse2*_cse6*_cse7*_interp3*gS*Nc)/(_cse9^2*_interp2),fma(-2,(_cse10*_cse11*_cse2*_cse3*_cse4*_cse6*_cse7*_interp3*gS*Nc)/(_cse9^2*_interp2),fma(-6,(_cse10*_cse11*_cse2*_cse6*_cse7^2*_interp3*gS*Nc)/(_cse9^2*_interp2),fma(-1,(_cse10*_cse2*_interp4*gS*Nc)/(_cse9*_interp5*
     _interp6),fma(7,_cse1*_cse11*_cse2*_cse6*gS^2*Nc,fma(_cse11,_cse2*_cse5*_cse6*gS^2*Nc,fma(-12,(_cse1*_cse10*_cse11*_cse2*_cse6*_interp3*cospl1*gS*l1*Nc*p1)/(_cse9^2*_interp2),fma(-12,(_cse10*_cse11*_cse2*_cse6*_interp3*cospl1*gS*l1^3*Nc*p1)/(_cse9^2*_interp2),0)))))))))/3.
 end
@@ -1351,35 +1346,31 @@ Furthermore, we add \cpp{using namespace std;} manually at the start of the func
 \begin{mmaCell}{Input}
 \mmaDef{MakeCppFunction}[
 \mmaDef{Total}@\mmaDef{DSEAAResult1L}//\mmaDef{parametrize},
-    "Parameters" -> \{"l1", "cos", "p", "Nc", "gS", "ZA", "Zc", "ZA3", "ZAcbc", "ZA4"\},
+    "Parameters" -> \{"l1", "cospl1", "p", "Nc", "gS", "ZA", "Zc", "ZA3", "ZAcbc", "ZA4"\},
     "Name" -> "DSE_kernel_AA_1Loop",
-    "Body" -> "using namespace std; const auto &cospl1 = cos;"
+    "Body" -> "using namespace std;"
  ]
 \end{mmaCell}
 %
 \begin{mmaCell}{Output}
-auto DSE_kernel_AA_1Loop(const auto &l1, const auto &cos, const auto &p, const auto &Nc, const auto &gS, const auto &ZA, const auto &Zc,
+auto DSE_kernel_AA_1Loop(const auto &l1, const auto &cospl1, const auto &p, const auto &Nc, const auto &gS, const auto &ZA, const auto &Zc,
                          const auto &ZA3, const auto &ZAcbc, const auto &ZA4)
 \{
   using namespace std;
-  const auto &cospl1 = cos;
-  const auto _interp1 = ZA(sqrt(powr<2>(l1)));
-  const auto _interp2 = ZA(sqrt(powr<2>(l1) + powr<2>(p) + 2. * cospl1 * l1 * p1));
-  const auto _interp3 = ZA3(0.816496580927726 * sqrt(powr<2>(l1) + powr<2>(p) + cospl1 * l1 * p1));
-  const auto _interp4 = ZAcbc(0.816496580927726 * sqrt(powr<2>(l1) + powr<2>(p) + cospl1 * l1 * p1));
-  const auto _interp5 = Zc(sqrt(powr<2>(l1)));
-  const auto _interp6 = Zc(sqrt(powr<2>(l1) + powr<2>(p) + 2. * cospl1 * l1 * p1));
-  const auto _cse1 = powr<2>(p);
-  const auto _cse2 = powr<-1>(_cse1);
-  const auto _cse3 = powr<2>(cospl1);
-  const auto _cse4 = powr<2>(p1);
-  const auto _cse5 = -_cse3 * _cse4;
-  const auto _cse7 = powr<2>(l1);
-  const auto _cse6 = powr<-1>(_cse7);
-  const auto _cse8 = 2. * cospl1 * l1 * p1;
-  const auto _cse9 = _cse1 + _cse7 + _cse8;
-  const auto _cse10 = _cse1 + _cse5;
-  const auto _cse11 = powr<-1>(_interp1); // clang-format off
+  const auto \_interp1 = ZA(sqrt(powr<2>(l1)));
+  const auto \_interp2 = ZA(sqrt(powr<2>(l1) + 2. * cospl1 * l1 * p + powr<2>(p)));
+  const auto \_interp3 = ZA3(0.816496580927726 * sqrt(powr<2>(l1) + cospl1 * l1 * p + powr<2>(p)));
+  const auto \_interp4 = ZAcbc(0.816496580927726 * sqrt(powr<2>(l1) + cospl1 * l1 * p + powr<2>(p)));
+  const auto \_interp5 = Zc(sqrt(powr<2>(l1)));
+  const auto \_interp6 = Zc(sqrt(powr<2>(l1) + 2. * cospl1 * l1 * p + powr<2>(p)));
+  const auto \_cse1 = powr<2>(cospl1);
+  const auto \_cse2 = -1. + \_cse1;
+  const auto \_cse4 = powr<2>(l1);
+  const auto \_cse3 = powr<-1>(\_cse4);
+  const auto \_cse5 = 2. * cospl1 * l1 * p;
+  const auto \_cse6 = powr<2>(p);
+  const auto \_cse7 = \_cse4 + \_cse5 + \_cse6;
+  const auto \_cse8 = powr<-1>(\_interp1); // clang-format off
 
   return 0.3333333333333333 *
     fma(-6., powr<2>(_cse1) * _cse10 * _cse11 * _cse2 * _cse6 *

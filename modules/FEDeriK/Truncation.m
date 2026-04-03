@@ -214,7 +214,7 @@ LTrunc[setup_, expr_] :=
     );
 
 LTrunc[setup_, expr_FEx] :=
-    Join @@ Map[LTrunc[setup, #]&, List @@ expr];
+    Join @@ Map[CTrunc[setup, #]&, List @@ expr];
 
 (* LTrunc returns a list of bare lists (each = one surviving term's factors).
    FTruncate handles wrapping back into FTerm/FEx after BalancedMap.
@@ -702,21 +702,30 @@ CTrunc[setup_, expr_FTerm] :=
                             ,
                             {#}
                         ];
-                    (*Convert ALL objects back from list notation — including inside nested Times/Plus*)
-                    Module[{convertBack},
-                        convertBack[obj_] /; objectQ[obj] && MatchQ[obj[[1]], {_, _}] := fromListNotation[obj];
-                        convertBack[Times[args__]] := Times @@ Map[convertBack, {args}];
-                        convertBack[Plus[args__]] := Plus @@ Map[convertBack, {args}];
-                        convertBack[x_] := x;
-                        factors = Map[convertBack, factors];
+                    (*Convert ALL objects back from list notation — including inside nested Times/Plus.
+                      List notation: each arg is {field, index}, e.g. Prop[{A, i1}, {A, i2}].
+                      Standard notation: Prop[{A, A}, {i1, i2}].
+                      For 2-leg objects both have {_, _} as first arg; distinguish by checking
+                      that obj[[1,2]] is NOT a known field name (it's an index in list notation).*)
+                    Module[{allFieldNames = Join[allFields, {AnyField}]},
+                        factors = Map[
+                            Replace[#,
+                                obj_ /; objectQ[obj] && Length[obj] >= 2 && MatchQ[obj[[1]], {_, _}] && !MemberQ[allFieldNames, obj[[1, 2]]] :> fromListNotation[obj],
+                                {0, Infinity}
+                            ]&,
+                            factors
+                        ];
                     ];
+
                     factors = factors /. numWrap$[x_] :> x;
-                    (*Resolve remaining AnyField in FMinus/SymmetryFactor from concrete objects — same as LTrunc*)
+                    (*Resolve remaining AnyField in FMinus/SymmetryFactor from concrete objects.
+                      Collect concrete fields from ALL indices (not just closed), since
+                      FMinus objects may reference open indices that need resolution.*)
                     Do[
                         If[objectQ[factors[[pos]]],
                             Do[
                                 Module[{idx = makePosIdx[getIndex[factors[[pos]], s]]},
-                                    If[KeyExistsQ[closedIndexSet, idx] && getField[factors[[pos]], s] =!= AnyField && !KeyExistsQ[concreteFields, idx],
+                                    If[getField[factors[[pos]], s] =!= AnyField && !KeyExistsQ[concreteFields, idx],
                                         AssociateTo[concreteFields, idx -> getField[factors[[pos]], s]]
                                     ];
                                 ];
