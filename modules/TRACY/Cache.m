@@ -40,7 +40,7 @@ FClearTraceCache::invalidPath = "The subdirectory path \"`1`\" is invalid. It mu
 
 FClearTraceCache[str_String] :=
     Module[{},
-        If[StringContainsQ[str, ".."] || StringMatchQ[str, ("/" | "\\" | LetterCharacter ~~ ":") ~~ ___],
+        If[StringContainsQ[str, ".."] || StringMatchQ[str, ("/" | "\\" | (LetterCharacter ~~ ":")) ~~ ___],
             Message[FClearTraceCache::invalidPath, str];
             Abort[]
         ];

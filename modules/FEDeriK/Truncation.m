@@ -214,7 +214,7 @@ LTrunc[setup_, expr_] :=
     );
 
 LTrunc[setup_, expr_FEx] :=
-    Join @@ Map[CTrunc[setup, #]&, List @@ expr];
+    Join @@ Map[LTrunc[setup, #]&, List @@ expr];
 
 (* LTrunc returns a list of bare lists (each = one surviving term's factors).
    FTruncate handles wrapping back into FTerm/FEx after BalancedMap.
@@ -657,15 +657,29 @@ CTrunc[setup_, expr_FTerm] :=
                             Module[{compatible},
                                 compatible = Select[alts, And @@ MapThread[(#2[[1]] === AnyField || #1 === #2)&, {List @@ #, List @@ partials[[qi]]}]&];
                                 If[compatible =!= {},
-                                    current =
-                                        Plus @@
-                                            Map[
-                                                Module[{rules = buildCTruncResolveRules[#]},
-                                                    (current /. partials[[qi]] -> #) /. rules
-                                                ]&
-                                                ,
-                                                compatible
-                                            ];
+(*Split current into terms that contain the partial and terms that do not.
+  Resolve rules must only be applied to the terms WITH the partial,
+  otherwise they leak into unrelated branches and corrupt AnyField slots
+  that should be resolved by a different alternative later.*)
+                                    Module[{withPartial, withoutPartial},
+                                        If[Head[current] === Plus,
+                                            withPartial = Plus @@ Select[List @@ current, !FreeQ[#, partials[[qi]]]&];
+                                            withoutPartial = Plus @@ Select[List @@ current, FreeQ[#, partials[[qi]]]&];
+                                            ,
+                                            withPartial = current;
+                                            withoutPartial = 0;
+                                        ];
+                                        current =
+                                            withoutPartial +
+                                            Plus @@
+                                                Map[
+                                                    Module[{rules = buildCTruncResolveRules[#]},
+                                                        (withPartial /. partials[[qi]] -> #) /. rules
+                                                    ]&
+                                                    ,
+                                                    compatible
+                                                ];
+                                    ];
                                     current = Distribute[current, Plus, NonCommutativeMultiply];
                                     current = current /. vertexKillRules;
                                     current = current /. x_NonCommutativeMultiply /; !FreeQ[x, 0] :> 0;
