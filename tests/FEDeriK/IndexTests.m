@@ -294,7 +294,7 @@ AppendTo[tests, TestCreate[FunKit`Private`SuperIndicesValid[sSetup, FTerm[Phi[i1
 
 AppendTo[tests, TestCreate[FunKit`Private`replFields[sSetup, Phi[i1]], Field[{Phi}, {i1}], TestID -> "replFields scalar: Phi[i1] -> Field[{Phi}, {i1}]"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`unreplFields[sSetup, Field[{Phi}, {i1}], Phi[i1]], TestID -> "unreplFields scalar: Field[{Phi}, {i1}] -> Phi[i1]"]];
+AppendTo[tests, TestCreate[FunKit`Private`unreplFields[sSetup, Field[{Phi}, {i1}]], Phi[i1], TestID -> "unreplFields scalar: Field[{Phi}, {i1}] -> Phi[i1]"]];
 
 AppendTo[tests, TestCreate[FunKit`Private`unreplFields[sSetup, FunKit`Private`replFields[sSetup, Phi[i1]]], Phi[i1], TestID -> "replFields then unreplFields scalar: roundtrip"]];
 

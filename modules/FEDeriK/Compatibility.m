@@ -62,10 +62,16 @@ QMeSNaming[setup_, obj_ /; orderedObjectQ[obj]] :=
     ];
 
 QMeSForm[setup_, expr_] :=
-    (AssertFSetup[setup]; Map[QMeSNaming[setup, #]&, expr, {1, 3}] //. {FEx :> List, FTerm :> Times});
+    (
+        AssertFSetup[setup];
+        Map[QMeSNaming[setup, #]&, expr, {1, 3}] //. {FEx :> List, FTerm :> Times}
+    );
 
 QMeSForm[setup_, expr_Association] :=
-    (AssertFSetup[setup]; AssociationMap[QMeSForm[setup, #]&, expr]);
+    (
+        AssertFSetup[setup];
+        AssociationMap[QMeSForm[setup, #]&, expr]
+    );
 
 (* Transforming QMeS to FunKit *)
 
@@ -96,13 +102,13 @@ FunKitForm[diag_List] /; QMeSSuperindexDiagramQ[diag] :=
         newa =
             newa //.
                 {
-                    <|"type" -> "Regulatordot", "indices" -> {a__}|> :> makeObj[Rdot, {a}[[All, 1]], {a}[[All, 2, 1]]]
+                    <|"type" -> "Regulatordot", "indices" -> {a__}|> :> makeObj[Rdot, {a}[[All, 1]], -{a}[[All, 2, 1]]]
                     ,(**)
                     <|"type" -> "Propagator", "indices" -> {a__}|> :> makeObj[Propagator, {a}[[All, 1]], {a}[[All, 2, 1]]]
                     ,(**)
-                    assoc_Association /; assoc["type"] === "nPoint" && assoc["spec"] === "classical" :> makeObj[S, assoc["indices"][[All, 1]], -assoc["indices"][[All, 2, 1]]]
+                    <|"type" -> "nPoint", "indices" -> {a__}, "nPoint" -> _, "spec" -> "classical"|> :> makeObj[S, {a}[[All, 1]], -{a}[[All, 2, 1]]]
                     ,(**)
-                    <|"type" -> "nPoint", "indices" -> {a__}, __|> :> makeObj[GammaN, {a}[[All, 1]], {a}[[All, 2, 1]]]
+                    <|"type" -> "nPoint", "indices" -> {a__}, "nPoint" -> _, "spec" -> "none"|> :> makeObj[GammaN, {a}[[All, 1]], -{a}[[All, 2, 1]]]
                 };
         Return[FTerm[pref, ##]& @@ newa]
     ];
@@ -154,4 +160,7 @@ FunKitForm[diag_] /; DoFunSuperindexDiagramQ[diag] :=
 DoFunForm::notImplemented = "DoFunForm is not yet implemented.";
 
 DoFunForm[args___] :=
-    (Message[DoFunForm::notImplemented]; Abort[]);
+    (
+        Message[DoFunForm::notImplemented];
+        Abort[]
+    );

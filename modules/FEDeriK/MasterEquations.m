@@ -22,17 +22,21 @@ FMakeClassicalAction[setup_] :=
             Message[FMakeClassicalAction::noTruncation];
             Abort[]
         ];
-        FEx @@
-            Map[
-                (
-                    prefac = Split[#];
-                    prefac = Times @@ (1 / ((Length[#]& /@ prefac)!));
-                    indices = Map[Unique["i"]&, #];
-                    FTerm[prefac, makeObj[S, #, -indices]] ** (FTerm @@ Table[#[[i]][indices[[i]]], {i, 1, Length[#]}])
-                )&
-                ,
-                OrderFieldList[setup, #]& /@ setup["Truncation"][S]
-            ]
+        FOrderFields[
+            setup
+            ,
+            FEx @@
+                Map[
+                    (
+                        prefac = Split[#];
+                        prefac = Times @@ (1 / ((Length[#]& /@ prefac)!));
+                        indices = Map[Unique["i"]&, #];
+                        FTerm[prefac, makeObj[S, Reverse @ #, -Reverse @ indices]] ** (FTerm @@ Table[#[[i]][indices[[i]]], {i, 1, Length[#]}])
+                    )&
+                    ,
+                    OrderFieldList[setup, #]& /@ setup["Truncation"][S]
+                ]
+        ]
     ];
 
 (**********************************************************************************
@@ -91,11 +95,13 @@ FMakeDSE[setup_, field_] :=
             ReduceIndices[setup, #]&;
         (*Separate powers out into factors in the FTerm. Need this to insert FDOp in the next step*)
         dS = dS //. Times[pre___, f1_[id1_], post___] :> NonCommutativeMultiply[pre, f1[id1], post];
-        (*Insert \[Phi]^a->\[CapitalPhi]^a+G^ab\[Delta]/\[Delta]\[CapitalPhi]^b
-          Use Replace at level {2} (FTerm arguments) to avoid replacing field[index]
-          patterns inside indexed objects in NotationB.*)
+(*Insert \[Phi]^a->\[CapitalPhi]^a+G^ab\[Delta]/\[Delta]\[CapitalPhi]^b
+  Use Replace at level {2} (FTerm arguments) to avoid replacing field[index]
+  patterns inside indexed objects in NotationB.*)
         dS =
-            Replace[dS,
+            Replace[
+                dS
+                ,
                 Map[
                     #[id_] :>
                         Module[{i},
@@ -104,13 +110,15 @@ FMakeDSE[setup_, field_] :=
                         ]&
                     ,
                     GetAllFields[setup]
-                ],
+                ]
+                ,
                 {2}
             ];
         dS //
         FResolveDerivatives[setup, #]& //
         If[ModuleLoaded[AnSEL] && $AutoSimplify === True,
-            FunKit`FSimplify[setup, #],
+            FunKit`FSimplify[setup, #]
+            ,
             #
         ]&
     ];

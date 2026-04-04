@@ -261,7 +261,9 @@ CreateFormSet[] :=
         If[FileExistsQ[Directory[] <> "/form.set"],
             Return[]
         ];
-        session = StartExternalSession[{"Python", "Evaluator" -> <|"Dependencies" -> {"formtools-formset"}, "EnvironmentName" -> "FunKit"|>}];
-        ExternalEvaluate[session, {"import formset", "formset.main(['-o','" <> Directory[] <> "/form.set" <> "','-p','100'])"}];
-        DeleteObject[session];
+        If[$VersionNumber >= 14.1,
+            session = StartExternalSession[{"Python", "Evaluator" -> <|"Dependencies" -> {"formtools-formset"}, "EnvironmentName" -> "FunKit"|>}];
+            ExternalEvaluate[session, {"import formset", "formset.main(['-o','" <> Directory[] <> "/form.set" <> "','-p','100'])"}];
+            DeleteObject[session];
+        ];
     ];

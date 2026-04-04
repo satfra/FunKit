@@ -832,3 +832,60 @@ AppendTo[
         TestID -> "FSimplify disconnected: different second component must not merge"
     ]
 ];
+
+(**********************************************************************************
+    Section 11: FSimplify — non-loop and loop term cancellation — 2 tests
+**********************************************************************************)
+
+(* Bug 1: Non-loop terms with implicit vs explicit coefficient should cancel *)
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{setup, result},
+            setup = GetFunKitSetupScalar[];
+            result = FSimplify[setup, FEx[FTerm[S[{Phi, Phi}, {-i2, -i1}]], FTerm[-1, S[{Phi, Phi}, {-i2, -i1}]]]];
+            result === FEx[]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FSimplify: non-loop terms with implicit coefficient cancel"
+    ]
+];
+
+(* Bug 2: Loop terms with identical topology but different index naming
+   should be identified and cancel.
+   Both have: S[AAAA] + 3 Propagator[AA] + 2 GammaN[AAA], same topology,
+   but open indices at different positions within all-A vertices. *)
+
+AppendTo[
+    tests
+    ,
+    TestCreate[
+        Module[{setup, t1, t2, result},
+            setup = GetFunKitSetupYangMills[];
+            t1 = FTerm[1/2, S[{A, A, A, A}, {-i2, -a903, -a904, -a905}],
+                Propagator[{A, A}, {a903, a906}],
+                GammaN[{A, A, A}, {-i1, -a907, -a906}],
+                Propagator[{A, A}, {a908, a907}],
+                Propagator[{A, A}, {a904, a909}],
+                GammaN[{A, A, A}, {-a910, -a909, -a908}],
+                Propagator[{A, A}, {a905, a910}]];
+            t2 = FTerm[-(1/2), S[{A, A, A, A}, {-i911, -i912, -i913, -i2}],
+                Propagator[{A, A}, {i914, i911}],
+                GammaN[{A, A, A}, {-i915, -i914, -i1}],
+                Propagator[{A, A}, {i916, i915}],
+                Propagator[{A, A}, {i917, i912}],
+                GammaN[{A, A, A}, {-i918, -i917, -i916}],
+                Propagator[{A, A}, {i913, i918}]];
+            result = FSimplify[setup, FEx[t1, t2]];
+            result === FEx[]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FSimplify: loop terms with branching and different index naming cancel"
+    ]
+];

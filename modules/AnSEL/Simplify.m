@@ -560,22 +560,14 @@ TermsEqualAndSumCore[setup_, t1_FTerm, t2_FTerm, data1_Association, data2_Associ
             $ProfileTermsEqualSuccess++;
             Return @ FTerm[2, t1]
         ];
-        If[Length[t1] >= 2 && Length[t2] >= 2,
-            If[t1[[2 ;; ]] === t2[[2 ;; ]] && FreeQ[{t1[[1]]}, Alternatives @@ $indexedObjects, Infinity],
-                $ProfileTermsEqual += AbsoluteTime[] - $profT0;
-                $ProfileTermsEqualSuccess++;
-                Return @ FTerm[t1[[1]] + t2[[1]], t1[[2 ;; ]]]
-            ];
-            If[t1[[2 ;; ]] === t2[[1 ;; ]] && FreeQ[{t1[[1]]}, Alternatives @@ $indexedObjects, Infinity],
-                $ProfileTermsEqual += AbsoluteTime[] - $profT0;
-                $ProfileTermsEqualSuccess++;
-                Return @ FTerm[t1[[1]] + 1, t1[[2 ;; ]]]
-            ];
-            If[t1[[1 ;; ]] === t2[[2 ;; ]] && FreeQ[{t1[[1]]}, Alternatives @@ $indexedObjects, Infinity],
-                $ProfileTermsEqual += AbsoluteTime[] - $profT0;
-                $ProfileTermsEqualSuccess++;
-                Return @ FTerm[1 + t2[[1]], t1[[1 ;; ]]]
-            ];
+        {fac1, terms1} = SplitPrefactor[setup, t1];
+        {fac2, terms2} = SplitPrefactor[setup, t2];
+        If[terms1 === terms2,
+            factor = fac1 + fac2;
+            $ProfileTermsEqual += AbsoluteTime[] - $profT0;
+            $ProfileTermsEqualSuccess++;
+            If[factor === 0, Return[FTerm[0]]];
+            Return[FTerm[factor, terms1]]
         ];
         (* Use pre-computed data *)
         cidxt1 = data1["cidx"];

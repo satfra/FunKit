@@ -43,7 +43,7 @@ FixIndices[setup_, expr_FTerm] :=
             Abort[]
         ];
         indices = GetClosedSuperIndices[setup, ret];
-        newIndices = Map[Symbol @ SymbolName @ Unique[StringReplace[ToString[#], i : DigitCharacter.. :> ""]]&, indices];
+        newIndices = Map[Symbol @ SymbolName @ Unique["ci"]&, indices];
         replacements = Thread[indices -> newIndices];
         If[ValueQ[$FixIndicesTime], $FixIndicesTime += AbsoluteTime[] - t0; $FixIndicesCount++];
         Return[ret /. replacements];

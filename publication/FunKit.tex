@@ -760,7 +760,27 @@ This will yield a rather large expression, which we can visualise using the \mat
 In the above, $(-1)^{ab}$ is the fermionic minus sign as defined in \labelcref{eq:fminus}, represented in \FunKit as \mmaInlineCell{Input}{\mmaDef{FMinus}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{a,b\}]}. Note additionally that, $\gamma_{ab}$ is represented as \mmaInlineCell{Input}{\mmaDef{\(\pmb{\gamma}\)}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{-a,-b\}]}, see also \Cref{tab:notation} for an overview of the notation.
 
 \FunKit has automatically simplified the diagrams resulting from the above derivation. For finer control, the functions \mathem{\mmaDef{FResolveFDOp}} and \mathem{\mmaDef{FSimplify}} allow resolving derivatives and simplifying expressions step by step. In general, however, we recommend using \mathem{\mmaDef{FTakeDerivatives}}, as it provides the most automated workflow and generates additional simplification hints such as symmetry properties of the derivatives.
-We describe the simplification and derivative algorithm used by \FunKit in more detail in the green boxes below.
+We describe the simplification and derivative algorithms used by \FunKit in more detail in the green boxes below.
+
+
+\begin{tcolorbox}[title=Algorithm details: Diagram simplification,
+	title filled=false,
+	colback=pastelgreen!5!white,
+	colframe=pastelgreen!73!black,
+	fonttitle=\bfseries]
+	
+	With \mathem{\mmaDef{FSimplify}} we introduce an algorithm for the simplification of large sums of diagrams. \mathem{\mmaDef{FSimplify}} can detect identical diagrams and performs the following steps to find all matches and sum them:
+	%
+	\begin{enumerate}
+		\item All Diagrams with exactly the same content of objects and the same set of open indices are grouped together.
+		\item Each group is then processed in parallel: Pairs of diagrams are sequentially built and compared.
+		\item The comparison of two diagrams is performed by traversing the graphs of both at the same time and checking for identity.
+		\item If symmetries of open indices are provided, all permutations (with possible prefactors, e.g. minus signs for fermionic permutations) are also explored.
+		\item If the graphs are identical, they are merged. When merging, the second diagram is prepended with a factor containing all signs needed to give it precisely the same index ordering and structure as the first diagram.
+	\end{enumerate}
+	
+\end{tcolorbox}
+
 
 \begin{tcolorbox}[title=Algorithm details: Derivatives,
 	title filled=false,
@@ -787,29 +807,6 @@ We describe the simplification and derivative algorithm used by \FunKit in more 
 	%
 	If the number and size of the expressions is large, \mathem{\mmaDef{FResolveFDOp}} automatically chooses to work in parallel over the generated terms.
 	
-\end{tcolorbox}
-
-\vfill 
-
-\newpage
-
-
-\begin{tcolorbox}[title=Algorithm details: Diagram simplification,
-	title filled=false,
-	colback=pastelgreen!5!white,
-	colframe=pastelgreen!73!black,
-	fonttitle=\bfseries]
-
-	With \mathem{\mmaDef{FSimplify}} we introduce an algorithm for the simplification of large sums of diagrams. \mathem{\mmaDef{FSimplify}} can detect identical diagrams and performs the following steps to find all matches and sum them:
-	%
-	\begin{enumerate}
-		\item All Diagrams with exactly the same content of objects and the same set of open indices are grouped together.
-		\item Each group is then processed in parallel: Pairs of diagrams are sequentially built and compared.
-		\item The comparison of two diagrams is performed by traversing the graphs of both at the same time and checking for identity.
-		\item If symmetries of open indices are provided, all permutations (with possible prefactors, e.g. minus signs for fermionic permutations) are also explored.
-		\item If the graphs are identical, they are merged. When merging, the second diagram is prepended with a factor containing all signs needed to give it precisely the same index ordering and structure as the first diagram.
-	\end{enumerate}
-
 \end{tcolorbox}
 
 
@@ -1491,7 +1488,7 @@ As the number of fields and the size of the truncation grow, however, \FunKit co
 		\quad Dyson-Schwinger equations             & \cmark  & \cmark  & \cmark \\
 		\quad Flow equations (fRG)                  & \cmark  & \cmark  & \cmark \\
 		\quad (Modified) Slavnov-Taylor id.         & \xmark  & \cmark  & \cmark \\
-		\quad Composite operator equations          & \cmark  & \xmark  & \xmark \\
+		\quad Composite operator equations          & \cmark  & \xmark  & (\cmark)\footnote{Although \FunKit does not provide these natively, they can be easily implemented by hand by constructing the objects with \texttt{FDOp}.} \\
 		\quad Arbitrary master equations            & \xmark  & \xmark  & \cmark \\
 		\quad Multi-index func.\ derivatives        & \xmark  & \xmark  & \cmark \\
 		\midrule
@@ -1554,6 +1551,17 @@ As the number of fields and the size of the truncation grow, however, \FunKit co
 \end{figure*}
 
 
+%%%%%%%%%%%%%%%%%%%%
+\section{Limitations and Important Notices}
+
+While \FunKit covers a broad range of applications, of course some limitations remain. Truncations are specified as explicit lists of field-content tuples, meaning that rule-based truncation schemes — such as retaining all operators up to a given mass dimension or derivative order — must be currently constructed manually by the~user.
+
+A fundamental challenge is the resolution of functional derivatives, which involves a product-rule expansion that can lead to rapid intermediate expression growth for large truncations.
+Although \FunKit mitigates this through in-loop simplification parallelisation and appropriate algorithm design, the scaling remains a practical bottleneck for very large systems. This is however not a problem of \FunKit, but rather of the approach itself.
+
+Also, while \FunKit generates optimised code for the integrands of functional equations, it does not provide a numerical integration framework; the user must embed the generated code into their own solver or use an existing framework such as \texttt{DiFfRG} \cite{Sattler:2024ozv}.
+Finally, direct support for Windows is currently not available, as FORM does not support native execution on Windows systems. However, using \FunKit via WSL (Windows Subsystem for Linux) is possible.
+
 
 %%%%%%%%%%%%%%%%%%%%
 \section{Conclusions}
@@ -1570,14 +1578,6 @@ It also has a broader scope, as it culminates in either fully traced analytic ex
 We have also described the algorithms used in \FunKit, which are optimised at every stage: parallelisation is dynamically switched on and off at every stage of the workflow to maximise performance, and the generated code is highly optimised for both CPU and GPU applications.
 
 We demonstrated the capabilities of \FunKit at the example of Yang-Mills theory, scalar field theory, a Yukawa theory and an NJL model. As for master equations, we show DSEs, the Wetterich equation, the modified STIs and dynamically reparameterised flow equations. All these examples can be found in the \FunKit repository, see also \Cref{tab:examples}.
-
-While \FunKit covers a broad range of applications, of course some limitations remain. Truncations are specified as explicit lists of field-content tuples, meaning that rule-based truncation schemes — such as retaining all operators up to a given mass dimension or derivative order — must be currently constructed manually by the~user.
-
-A fundamental challenge is the resolution of functional derivatives, which involves a product-rule expansion that can lead to rapid intermediate expression growth for large truncations.
-Although \FunKit mitigates this through in-loop simplification parallelisation and appropriate algorithm design, the scaling remains a practical bottleneck for very large systems. This is however not a problem of \FunKit, but rather of the approach itself.
-
-Also, while \FunKit generates optimised code for the integrands of functional equations, it does not provide a numerical integration framework; the user must embed the generated code into their own solver or use an existing framework such as \texttt{DiFfRG} \cite{Sattler:2024ozv}.
-Finally, direct support for Windows is currently not available, as FORM does not support native execution on Windows systems. However, using \FunKit via WSL (Windows Subsystem for Linux) is possible.
 
 \FunKit is already a basis for several on-going projects in the fQCD collaboration \cite{fQCD} involving large QCD truncations with dynamical hadronisation and other flowing reparametrisations.
 As it is embedded in the tools of the fQCD collaboration, e.g. it has become the symbolic backend of the \texttt{DiFfRG} framework \cite{Sattler:2024ozv}, \FunKit will continue to see improvements in the future.
@@ -1708,7 +1708,24 @@ where $\textrm{Sym}_{a_1a_2\ldots}$ is the symmetry factor from arbitrary permut
 \begin{align}
 	\textrm{Sym}_{\phi_1\phi_2\phi_3q_4q_5\bar{q}_5} = \frac{1}{3!}\frac{1}{2!}\frac{1}{1!}\,.
 \end{align}
-
+%
+When building a DSE, \FunKit assumes the following form of a classical action:
+%
+\begin{align}
+	S[\phi] = \sum_{\{i_1\ldots i_n\} \in \text{Trunc}(S)} S_{i_n\ldots i_1} \phi^{i_1}\phi^{i_n}\,,
+\end{align}
+%
+where $\text{Trunc}(S)$ represents the set of all (ordered) correlation functions included in the truncation list for $S$.
+As an example, this results in a classical action for the Yang-Mills theory that reads
+%
+\begin{align}
+	S_\textrm{YM} &= S_{A^{i_1}A^{i_1}}A^{i_1}A^{i_2} + S_{c^{i_2}\bar{c}^{i_1}}\bar{c}^{i_1}c^{i_2}
+	\notag\\[0.5ex]
+	&\qquad + S_{A^{i_3}A^{i_2}A^{i_1}}A^{i_1}A^{i_2}A^{i_3} + S_{A^{i_4}A^{i_3}A^{i_2}A^{i_1}}A^{i_1}A^{i_2}A^{i_3}A^{i_4} + S_{A^{i_3}c^{i_2}\bar{c}^{i_1}}\bar{c}^{i_1}c^{i_2}A^{i_3}\,.
+\end{align}
+%
+This is identical with how \QMeS defines its classical action.
+However, \DoFun adds an additional minus sign for fermionic vertices \cite{Huber:2011qr} when constructing the classical action - special care to this should be taken by users when comparing or porting existing \DoFun code to \FunKit.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \section{NJL Model Example}

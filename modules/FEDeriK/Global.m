@@ -120,7 +120,7 @@ DExpand[expr_, order_Integer] :=
 FMakeClassicalAction[] /; Head[$GlobalSetup] =!= Symbol :=
     FMakeClassicalAction[$GlobalSetup];
 
-FMakeClassicalAction[] :=
+FMakeClassicalAction[] /; Head[$GlobalSetup] === Symbol :=
     (
         Message[FunKit::noGlobalSetup];
         Abort[]
