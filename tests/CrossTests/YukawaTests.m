@@ -8,6 +8,7 @@ Import[$FunKitDirectory <> "/tests/boilerplate/setups.m"];
     QMeS
 **********************************************************************************)
 
+sFunKitSetup = GetFunKitSetupScalar[];
 sQMeSSetup = GetQMeSWetterichSetupScalar[];
 
 (**** Propagator ****)
@@ -18,7 +19,7 @@ QMeSdiag2Idx = DeriveFunctionalEquation[sQMeSSetup, QMeSdList2, "OutputLevel" ->
 
 QMeSdiag2Idx = ReduceIdenticalFlowDiagrams[QMeSdiag2Idx, QMeSdList2];
 
-QMeSRes2 = FunKitForm[QMeSdiag2Idx];
+QMeSRes2 = FunKitForm[sFunKitSetup, QMeSdiag2Idx];
 
 (**** Three-Point ****)
 
@@ -28,7 +29,7 @@ QMeSdiag3Idx = DeriveFunctionalEquation[sQMeSSetup, QMeSdList3, "OutputLevel" ->
 
 QMeSdiag3Idx = ReduceIdenticalFlowDiagrams[QMeSdiag3Idx, QMeSdList3];
 
-QMeSRes3 = FunKitForm[QMeSdiag3Idx];
+QMeSRes3 = FunKitForm[sFunKitSetup, QMeSdiag3Idx];
 
 (**** Four-Point ****)
 
@@ -38,7 +39,7 @@ QMeSdiag4Idx = DeriveFunctionalEquation[sQMeSSetup, QMeSdList4, "OutputLevel" ->
 
 QMeSdiag4Idx = ReduceIdenticalFlowDiagrams[QMeSdiag4Idx, QMeSdList4];
 
-QMeSRes4 = FunKitForm[QMeSdiag4Idx];
+QMeSRes4 = FunKitForm[sFunKitSetup, QMeSdiag4Idx];
 
 (**********************************************************************************
     DoFun
@@ -50,25 +51,23 @@ DoFunSetup = GetDoFunSetupScalar[];
 
 DoFundiag2Idx = wrapDoFun[DoFunSetup <> "doRGE[actionONSymbolic,{Phi,Phi}]"];
 
-DoFunRes2 = FunKitForm[DoFundiag2Idx]
+DoFunRes2 = FunKitForm[sFunKitSetup, DoFundiag2Idx]
 
 (**** Three-Point ****)
 
 DoFundiag3Idx = wrapDoFun[DoFunSetup <> "doRGE[actionONSymbolic,{Phi,Phi,Phi}]"];
 
-DoFunRes3 = FunKitForm[DoFundiag3Idx];
+DoFunRes3 = FunKitForm[sFunKitSetup, DoFundiag3Idx];
 
 (**** Four-Point ****)
 
 DoFundiag4Idx = wrapDoFun[DoFunSetup <> "doRGE[actionONSymbolic,{Phi,Phi,Phi,Phi}]"];
 
-DoFunRes4 = FunKitForm[DoFundiag4Idx];
+DoFunRes4 = FunKitForm[sFunKitSetup, DoFundiag4Idx];
 
 (**********************************************************************************
     FunKit
 **********************************************************************************)
-
-sFunKitSetup = GetFunKitSetupScalar[];
 
 FSetGlobalSetup[sFunKitSetup];
 

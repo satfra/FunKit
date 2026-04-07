@@ -34,16 +34,21 @@ FClearFDRules::usage = "FClearFDRules[]
 Clears all custom functional derivative rules added with FAddFDRule.";
 
 QMeSForm::usage = "QMeSForm[setup, expr]
-Converts expressions containing indexed objects (like Propagator, GammaN) to QMeS-style notation.
-Transforms correlation functions to symbolic forms suitable for further processing.
+Converts FunKit expressions to QMeS-style notation.
+For superindex input: produces QMeS native Association format (inverse of FunKitForm).
+For routed input (FEx, FTerm, or Association): produces QMeS named-symbol format.
 Uses the canonical ordering 'c>ag>g' for field arrangement.";
 
 DoFunForm::usage = "DoFunForm[setup, expr]
-Transforms expressions from FunKit-style notation to DoFun-style notation.";
+Transforms expressions from FunKit-style notation to DoFun-style notation.
+For superindex input: produces DoFun symbolic format (op[P[...], V[...], ...]).
+For routed input (FEx, FTerm, or Association): produces DoFun algebraic format.";
 
 FunKitForm::usage = "FunKitForm[expr]
 Transforms expressions from QMeS-style or DoFun-style notation to FunKit-style notation.
-This involves replacing indexed objects with their FunKit equivalents and adjusting the overall structure.";
+Handles QMeS native Association format and DoFun symbolic (op[...]) format.
+FunKitForm[setup, expr] also handles QMeS named-symbol format (requires setup for field name parsing).
+DoFun algebraic format (with explicit->False) is detected automatically without setup.";
 
 FExpand::usage = "FExpand[setup, expr, order]
 Expands powers of FTerm and FEx expressions up to the specified order.

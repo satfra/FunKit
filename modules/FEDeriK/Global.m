@@ -99,6 +99,24 @@ QMeSForm[expr_] :=
         Abort[]
     );
 
+DoFunForm[expr_] /; Head[$GlobalSetup] =!= Symbol :=
+    DoFunForm[$GlobalSetup, expr];
+
+DoFunForm[expr_] :=
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
+
+FunKitForm[expr_] /; Head[$GlobalSetup] =!= Symbol :=
+    FunKitForm[$GlobalSetup, expr];
+
+FunKitForm[expr_] :=
+    (
+        Message[FunKit::noGlobalSetup];
+        Abort[]
+    );
+
 FExpand[expr_, order_Integer] /; Head[$GlobalSetup] =!= Symbol :=
     FExpand[$GlobalSetup, expr, order];
 

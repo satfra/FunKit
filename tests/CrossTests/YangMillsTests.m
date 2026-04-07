@@ -24,7 +24,7 @@ QMeSdListAA = {A[i1], A[i2]};
 
 QMeSdiagAADSE = DeriveFunctionalEquation[ymQMeSDSESetup, QMeSdListAA, "OutputLevel" -> "SuperindexDiagrams"];
 
-QMeSResAADSE = FunKitForm[QMeSdiagAADSE];
+QMeSResAADSE = FunKitForm[ymFunKitSetup, QMeSdiagAADSE];
 
 (* Ghost-gluon vertex DSE: cb DSE differentiated by c and A *)
 
@@ -32,7 +32,7 @@ QMeSdListAcbc = {cb[i1], c[i2], A[i3]};
 
 QMeSdiagAcbcDSE = DeriveFunctionalEquation[ymQMeSDSESetup, QMeSdListAcbc, "OutputLevel" -> "SuperindexDiagrams"];
 
-QMeSResAcbcDSE = FunKitForm[QMeSdiagAcbcDSE];
+QMeSResAcbcDSE = FunKitForm[ymFunKitSetup, QMeSdiagAcbcDSE];
 
 (* Ghost propagator DSE *)
 
@@ -40,7 +40,7 @@ QMeSdListcbc = {cb[i1], c[i2]};
 
 QMeSdiagcbcDSE = DeriveFunctionalEquation[ymQMeSDSESetup, QMeSdListcbc, "OutputLevel" -> "SuperindexDiagrams"];
 
-QMeSRescbcDSE = FunKitForm[QMeSdiagcbcDSE];
+QMeSRescbcDSE = FunKitForm[ymFunKitSetup, QMeSdiagcbcDSE];
 
 (**********************************************************************************
     QMeS — Wetterich flow
@@ -54,7 +54,7 @@ QMeSdiagAA2 = DeriveFunctionalEquation[ymQMeSWettSetup, QMeSdListAA2, "OutputLev
 
 QMeSdiagAA2 = ReduceIdenticalFlowDiagrams[QMeSdiagAA2, QMeSdListAA2];
 
-QMeSResAA2 = FunKitForm[QMeSdiagAA2];
+QMeSResAA2 = FunKitForm[ymFunKitSetup, QMeSdiagAA2];
 
 (* Ghost propagator flow *)
 
@@ -64,7 +64,7 @@ QMeSdiagcbc2 = DeriveFunctionalEquation[ymQMeSWettSetup, QMeSdListcbc2, "OutputL
 
 QMeSdiagcbc2 = ReduceIdenticalFlowDiagrams[QMeSdiagcbc2, QMeSdListcbc2];
 
-QMeSRescbc2 = FunKitForm[QMeSdiagcbc2];
+QMeSRescbc2 = FunKitForm[ymFunKitSetup, QMeSdiagcbc2];
 
 (* Ghost-gluon vertex flow *)
 
@@ -74,7 +74,7 @@ QMeSdiagAcbc2 = DeriveFunctionalEquation[ymQMeSWettSetup, QMeSdListAcbc2, "Outpu
 
 QMeSdiagAcbc2 = ReduceIdenticalFlowDiagrams[QMeSdiagAcbc2, QMeSdListAcbc2];
 
-QMeSResAcbc2 = FunKitForm[QMeSdiagAcbc2];
+QMeSResAcbc2 = FunKitForm[ymFunKitSetup, QMeSdiagAcbc2];
 
 (* Three-gluon vertex flow *)
 
@@ -84,7 +84,7 @@ QMeSdiagAAA = DeriveFunctionalEquation[ymQMeSWettSetup, QMeSdListAAA, "OutputLev
 
 QMeSdiagAAA = ReduceIdenticalFlowDiagrams[QMeSdiagAAA, QMeSdListAAA];
 
-QMeSResAAA = FunKitForm[QMeSdiagAAA];
+QMeSResAAA = FunKitForm[ymFunKitSetup, QMeSdiagAAA];
 
 (* Four-gluon vertex flow *)
 
@@ -94,7 +94,7 @@ QMeSdiagAAAA = DeriveFunctionalEquation[ymQMeSWettSetup, QMeSdListAAAA, "OutputL
 
 QMeSdiagAAAA = ReduceIdenticalFlowDiagrams[QMeSdiagAAAA, QMeSdListAAAA];
 
-QMeSResAAAA = FunKitForm[QMeSdiagAAAA];
+QMeSResAAAA = FunKitForm[ymFunKitSetup, QMeSdiagAAAA];
 
 (**********************************************************************************
     DoFun — DSE
@@ -104,13 +104,13 @@ QMeSResAAAA = FunKitForm[QMeSdiagAAAA];
 
 DoFundiagAADSE = wrapDoFun[ymDoFunSetup <> "doDSE[actionYMSymbolic,{A,A}]"];
 
-DoFunResAADSE = FunKitForm[DoFundiagAADSE];
+DoFunResAADSE = FunKitForm[ymFunKitSetup, DoFundiagAADSE];
 
 (* Ghost propagator DSE *)
 
 DoFundiagcbcDSE = wrapDoFun[ymDoFunSetup <> "doDSE[actionYMSymbolic,{cb,c}]"];
 
-DoFunRescbcDSE = FunKitForm[DoFundiagcbcDSE];
+DoFunRescbcDSE = FunKitForm[ymFunKitSetup, DoFundiagcbcDSE];
 
 (**********************************************************************************
     DoFun — Wetterich flow
@@ -120,25 +120,25 @@ DoFunRescbcDSE = FunKitForm[DoFundiagcbcDSE];
 
 DoFundiagAA2 = wrapDoFun[ymDoFunSetup <> "doRGE[actionYMSymbolic,{A,A}]"];
 
-DoFunResAA2 = FunKitForm[DoFundiagAA2];
+DoFunResAA2 = FunKitForm[ymFunKitSetup, DoFundiagAA2];
 
 (* Ghost propagator flow *)
 
 DoFundiagcbc2 = wrapDoFun[ymDoFunSetup <> "doRGE[actionYMSymbolic,{cb,c}]"];
 
-DoFunRescbc2 = FunKitForm[DoFundiagcbc2];
+DoFunRescbc2 = FunKitForm[ymFunKitSetup, DoFundiagcbc2];
 
 (* Ghost-gluon vertex flow *)
 
 DoFundiagAcbc2 = wrapDoFun[ymDoFunSetup <> "doRGE[actionYMSymbolic,{cb, c, A}]"];
 
-DoFunResAcbc2 = FunKitForm[DoFundiagAcbc2];
+DoFunResAcbc2 = FunKitForm[ymFunKitSetup, DoFundiagAcbc2];
 
 (* Three-gluon vertex flow *)
 
 DoFundiagAAA = wrapDoFun[ymDoFunSetup <> "doRGE[actionYMSymbolic,{A,A,A}]"];
 
-DoFunResAAA = FunKitForm[DoFundiagAAA];
+DoFunResAAA = FunKitForm[ymFunKitSetup, DoFundiagAAA];
 
 (**********************************************************************************
     FunKit — DSE (with AutoSimplify disabled for raw diagram counts)

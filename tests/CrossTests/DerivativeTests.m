@@ -8,6 +8,7 @@ Import[$FunKitDirectory <> "/tests/boilerplate/setups.m"];
     QMeS
 **********************************************************************************)
 
+yFunKitSetup = GetFunKitSetupYukawa[];
 yQMeSSetup = GetQMeSWetterichSetupYukawa[];
 
 (**** Fermion Propagator ****)
@@ -18,7 +19,7 @@ QMeSdiagF2Idx = DeriveFunctionalEquation[yQMeSSetup, QMeSdListF2, "OutputLevel" 
 
 QMeSdiagF2Idx = ReduceIdenticalFlowDiagrams[QMeSdiagF2Idx, QMeSdListF2];
 
-QMeSResF2 = FunKitForm[QMeSdiagF2Idx];
+QMeSResF2 = FunKitForm[yFunKitSetup, QMeSdiagF2Idx];
 
 (**** Scalar Propagator ****)
 
@@ -28,7 +29,7 @@ QMeSdiagS2Idx = DeriveFunctionalEquation[yQMeSSetup, QMeSdListS2, "OutputLevel" 
 
 QMeSdiagS2Idx = ReduceIdenticalFlowDiagrams[QMeSdiagS2Idx, QMeSdListS2];
 
-QMeSResS2 = FunKitForm[QMeSdiagS2Idx];
+QMeSResS2 = FunKitForm[yFunKitSetup, QMeSdiagS2Idx];
 
 (**** Yukawa vertex ****)
 
@@ -38,7 +39,7 @@ QMeSdiagYukIdx = DeriveFunctionalEquation[yQMeSSetup, QMeSdListYuk, "OutputLevel
 
 QMeSdiagYukIdx = ReduceIdenticalFlowDiagrams[QMeSdiagYukIdx, QMeSdListYuk];
 
-QMeSResYuk = FunKitForm[QMeSdiagYukIdx];
+QMeSResYuk = FunKitForm[yFunKitSetup, QMeSdiagYukIdx];
 
 (**********************************************************************************
     DoFun
@@ -50,25 +51,23 @@ DoFunSetup = GetDoFunSetupYukawa[];
 
 DoFundiagF2Idx = wrapDoFun[DoFunSetup <> "doRGE[actionYukawaSymbolic,{Psi,Psibar}]"];
 
-DoFunResF2 = FunKitForm[DoFundiagF2Idx];
+DoFunResF2 = FunKitForm[yFunKitSetup, DoFundiagF2Idx];
 
 (**** Scalar Propagator ****)
 
 DoFundiagS2Idx = wrapDoFun[DoFunSetup <> "doRGE[actionYukawaSymbolic,{Phi,Phi}]"];
 
-DoFunResS2 = FunKitForm[DoFundiagS2Idx];
+DoFunResS2 = FunKitForm[yFunKitSetup, DoFundiagS2Idx];
 
 (**** Yukawa vertex ****)
 
 DoFundiagYukIdx = wrapDoFun[DoFunSetup <> "doRGE[actionYukawaSymbolic,{Psi,Psibar,Phi}]"];
 
-DoFunResYuk = FunKitForm[DoFundiagYukIdx];
+DoFunResYuk = FunKitForm[yFunKitSetup, DoFundiagYukIdx];
 
 (**********************************************************************************
     FunKit
 **********************************************************************************)
-
-yFunKitSetup = GetFunKitSetupYukawa[];
 
 FSetGlobalSetup[yFunKitSetup];
 

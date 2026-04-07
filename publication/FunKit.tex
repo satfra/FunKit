@@ -250,21 +250,21 @@ Both the tracing and code generation can also be used independently and in combi
 \section{Introduction}
 \label{sec:Introduction}
 
-Functional computations, utilising e.g. the functional Renormalisation Group (fRG) or Dyson-Schwinger equations (DSE), allow for the direct calculation of non-perturbative aspects of quantum field theories. They have been utilised with great success in a broad range of physical situations from quantum gravity to QCD to ultracold atoms. For some reviews and introductions to the topic see, e.g., \cite{Roberts:2000aa,Maris:2003vk,Pawlowski:2005xe,Gies:2006wv,Delamotte:2007pf,Rosten:2010vm,Metzner_2012,Fischer:2018sdj,Dupuis:2020fhh,Fu:2022gou}.
+Functional computations, utilising e.g. the functional Renormalisation Group (fRG) or Dyson-Schwinger equations (DSE), allow for the direct calculation of non-perturbative aspects of quantum field theories. They have been utilised with great success in a broad range of physical situations from quantum gravity to QCD to ultracold atoms. For some reviews and introductions to the topic see, e.g., \cite{Roberts:2000aa,Maris:2003vk,Pawlowski:2005xe,Gies:2006wv,Delamotte:2007pf,Rosten:2010vm,Metzner_2012,Fischer:2018sdj,Dupuis:2020fhh,Fu:2022gou,Fischer:2026uni}.
 
-Such functional approaches require the derivation of closed expressions for all vertices occurring in the theory, or a chosen truncation thereof. Typically, expressions for all vertices can be obtained by taking functional derivatives of a given master equation, for example the Wetterich equation \cite{Wetterich:1992yh}, DSEs \cite{Dyson1, Schwinger1, Schwinger2} or Ward-Takahashi Identities.
-This allows a non-perturbative access to all correlation functions of the theory while maintaining a finite amount of loops in the exact expressions for each vertex. However, the equations for each correlation function rely on other correlation functions of higher order - thus, an infinite tower of functional equations ensues, which has to be truncated while maintaining all relevant physics.
+Such functional approaches require the derivation of closed expressions for a set of vertices of a given theory. Expressions for all vertices can be obtained by taking functional derivatives of a given master equation, for example the Wetterich equation \cite{Wetterich:1992yh}, DSEs \cite{Dyson1, Schwinger1, Schwinger2} or derived from symmetry properties.
+Such an approach allows a non-perturbative access to all correlation functions of the theory while maintaining a finite amount of loops in the exact expressions for each vertex. However, an infinite tower of functional equations ensues, which has to be truncated while maintaining all relevant physics.
 
 Many physical systems require sophisticated truncations to reach sometimes even qualitative reliability. Thus, the resulting diagrammatic expressions quickly grow very large, and computer-algebraic treatments thereof become a necessity.
+For QCD or even just Yang-Mills theory, one obtains flow equations or DSEs which cannot be reliably calculated by hand even when using small truncations.
 Additionally, new approaches to functional methods, e.g. spectral fRG flows \cite{Braun:2022mgx} or flowing reparametrisations in fRG, Polchinski or Wegner flows \cite{Ihssen:2023nqd, Ihssen:2024ihp}, require different diagrammatic building blocks that cannot be easily achieved with already established software for automated analytic functional derivations.
-Furthermore, for QCD or even just Yang-Mills theory, one obtains flow equations or DSEs which cannot be reliably calculated by hand even when using small truncations.
 
 There are already a number of powerful libraries available for the computer-algebraic derivation of functional equations. Among these are \DoFun \cite{Alkofer:2008nt,Huber:2011qr,Huber:2019dkb} and \QMeS \cite{Pawlowski:2021tkk}, which concern themselves with the derivation of functional equations from master equations but are restricted to specific master equations. 
 The \FormTracer \cite{Cyrol:2016zqb} and the \TensorBases packages \cite{Braun:2025gvq} provide tools to trace the tensorial structure of the resulting diagrams using the symbolic language of \FORM~\cite{Ruijl:2017dtg}.
-For a general guide to the derivation of functional equations, also using the aforementioned tools, we guide the reader to the recent review \cite{Huber:2025cbd}.
+For a general guide to the derivation of functional equations, also using the aforementioned tools, we direct the reader to the recent review \cite{Huber:2025cbd}.
 
-With \FunKit, we aim to provide a convenient comprehensive solution for the derivation of arbitrary functional equations.
-To this end, we provide a complete pipeline to allow for the specification of the theory, the taking of functional derivatives, diagram simplification, the specification of interaction bases, tracing of tensor structures, and the export to C++, Julia or Fortran code for numerical evaluation.
+With \FunKit, we aim to provide a fast and convenient comprehensive solution for the derivation of arbitrary functional equations.
+We provide a complete pipeline to allow for the specification of the theory, the taking of functional derivatives, diagram simplification, the specification of interaction bases, tracing of tensor structures, and the export to C++, Julia or Fortran code for numerical evaluation.
 
 To trace tensor structures, \FunKit builds on \texttt{FormTracer} and \texttt{TensorBases}, while functional derivatives and diagram comparisons are implemented in a reliable manner by using a super-index notation, making it possible to handle any given (user-specified) master equation.
 
@@ -440,7 +440,8 @@ We also provide several example notebooks where the derivation of certain theori
 			\texttt{examples/ScalarTheory.nb} & Minimal scalar-field examples: DSEs and flow equations. \\[1ex]
 			\texttt{examples/Yukawa.nb} & Example setup and derivations for a Yukawa model: DSEs and flow equations.  \\[1ex]
 			\texttt{examples/FlowingReparametrisation.nb} & Example setup and derivations for fRG equations in a Yukawa model with flowing reparametrisation.\\
-			\bottomrule
+			\texttt{examples/CompositeOperators.nb} & Derivation of correlation functions of a two-fermion composite.
+			%\bottomrule
 		\end{tabular}
 	\end{tcolorbox}
 	\caption{Overview of example notebooks included in the \FunKit repository.}
@@ -567,7 +568,7 @@ Sums of functional equations are represented using the \mathem{\mmaDef{FEx}} tag
 As an example, we take the generalised flow equation
 %
 \begin{equation}
-	\partial_t \Gamma = -\dot\Phi^a\Gamma_a + \frac{1}{2}G^{ac}\left(\gamma_c^{\phantom{c}b}\partial_t + \frac{\delta\dot{\Phi}^b}{\delta\Phi^c}\right){R}_{ab}
+	\partial_t \Gamma = -\dot\Phi^a\Gamma_a + \frac{1}{2}G^{ac}\left(\gamma_c^{\phantom{c}b}\partial_t + 2\frac{\delta\dot{\Phi}^b}{\delta\Phi^c}\right){R}_{ab}
 	\,,
 \end{equation}
 %
@@ -664,7 +665,7 @@ Normal multiplication immediately yields an error, as the factors in a given \ma
 			\mathem{\mmaDef{SymmetryFactor}[...]} & $\textrm{Sym}_{a_1a_2\ldots}$ &
 			The symmetry factor $\textrm{Sym}_{a_1a_2\ldots}$ that arises in \labelcref{eq:symDeriv} is represented as \mathem{\mmaDef{SymmetryFactor}[{\mmaDef{AnyField},\mmaDef{AnyField},...},{a1,a2,...}]}.\\
 			%
-			\bottomrule
+			%\bottomrule
 			%
 		\end{tabular}
 	\end{tcolorbox}
@@ -1454,29 +1455,6 @@ In particular, the generated code is designed for tight integration with high-pe
 Should the need arise, the modular design of \FunKit makes the addition of further backends straightforward.
 
 
-%%%%%%%%%%%%%%%%%%%%
-\section{Comparisons and Benchmarks}
-\label{sec:comparisons}
-
-In the following, we compare \FunKit with the two most widely used packages for deriving functional equations, \DoFun (v3.0)~\cite{Huber:2019dkb,Huber:2011qr} and \QMeS (v1.2)~\cite{Pawlowski:2021tkk}.                                         
-
-\Cref{tab:comparison} gives a feature-by-feature overview. All three packages support the derivation of DSEs and fRG flow equations for theories with any kind of field content. 
-Beyond this common ground, \FunKit additionally supports arbitrary user-defined master equations, multi-index functional derivatives, source fields and multi-loop momentum routing.
-Conversely, \DoFun additionally provides the derivation of composite operator equations.
-
-\FunKit also provides utilities not present in either \DoFun or \QMeS, e.g. integration of \FORM-based tracing with caching through \FormTracer, specification of tensorial bases for diagrammatic rules through \TensorBases, \LaTeX{} equation rendering and optimised C++, Julia and Fortran code generation.
-
-For interoperability, \FunKit includes explicit format conversion layers for both \DoFun and \QMeS output, allowing straightforward integration into existing pipelines and simplifying first contact for users.
-
-In \Cref{fig:benchmarks}, we show timing benchmarks for the derivation and truncation of correlation functions in four theories of increasing complexity: 
-a four-fermion (NJL-type) model, a scalar $O(N)$ model, a Yukawa theory, and a Yang--Mills theory. In each case, the total wall time for taking the functional derivatives and truncating the resulting expression is measured. These benchmarks were performed on a 16-core AMD Ryzen 9 7945HX machine, no constraints on the parallelisation have been imposed (which was handled by each library by itself).
-The benchmark scripts can be found in the \FunKit repository in the \texttt{benchmarks/} folder, together with a visualisation python script.
-
-For small expressions, such as the scalar two-point function, all three packages perform well below a tenth of a second, however, \FunKit even proves to be an order of magnitude faster.
-As the number of fields and the size of the truncation grow, however, \FunKit consistently outperforms \QMeS, while showing parity with \DoFun. With even larger expressions, \FunKit is also able to outperform \DoFun: this is particularly pronounced for expressions involving many diagrams, such as the six-fermion flow equation in the four-fermion model, or the six-scalar flow in the scalar theory, where \FunKit can be faster up to an order of magnitude.
-
-
-
 \begin{table*}[t]
 	\centering
 	\renewcommand{\arraystretch}{1.25}
@@ -1488,7 +1466,7 @@ As the number of fields and the size of the truncation grow, however, \FunKit co
 		\quad Dyson-Schwinger equations             & \cmark  & \cmark  & \cmark \\
 		\quad Flow equations (fRG)                  & \cmark  & \cmark  & \cmark \\
 		\quad (Modified) Slavnov-Taylor id.         & \xmark  & \cmark  & \cmark \\
-		\quad Composite operator equations          & \cmark  & \xmark  & (\cmark)\footnote{Although \FunKit does not provide these natively, they can be easily implemented by hand by constructing the objects with \texttt{FDOp}.} \\
+		\quad Composite operator equations          & \cmark  & \xmark  & (\cmark)\footnote{Although \FunKit does not provide these natively, they can be easily implemented by hand by constructing the objects with \texttt{FDOp}, see the provided example in \Cref{tab:examples}.} \\
 		\quad Arbitrary master equations            & \xmark  & \xmark  & \cmark \\
 		\quad Multi-index func.\ derivatives        & \xmark  & \xmark  & \cmark \\
 		\midrule
@@ -1502,7 +1480,7 @@ As the number of fields and the size of the truncation grow, however, \FunKit co
 		\quad Vertex truncation                     & \cmark  & \cmark  & \cmark \\
 		\quad Loop-order filtering                  & \cmark  & \xmark  & \cmark \\
 		\quad Broken-symmetry phase                 & \cmark  & \xmark  & \cmark \\
-		\quad Diagram topology identification       & (\cmark)\footnote{\DoFun can identify up to two-loop}  & (\cmark)\footnote{\QMeS can identify up to one-loop} & \cmark \\
+		\quad Diagram topology identification       & (\cmark)\footnote{\DoFun can identify diagrams up to two-loop.}  & (\cmark)\footnote{\QMeS can identify diagrams up to one-loop.} & \cmark \\
 		\bottomrule
 	\end{tabular}
 	\hfill
@@ -1512,7 +1490,7 @@ As the number of fields and the size of the truncation grow, however, \FunKit co
 		\midrule
 		\multicolumn{4}{l}{\textit{Momentum routing \& diagrammatic rules}} \\
 		\quad One-loop momentum routing             & \cmark  & \cmark  & \cmark \\
-		\quad Multi-loop momentum routing           & (\cmark)\footnote{\DoFun is confirmed to route up to two-loop}  & \xmark  & \cmark \\
+		\quad Multi-loop momentum routing           & (\cmark)\footnote{\DoFun is confirmed to route diagrams up to two-loop.}  & \xmark  & \cmark \\
 		\quad Feynman rule generation               & \cmark  & \xmark  & \cmark \\
 		\quad Tensor basis specification            & \xmark  & \xmark  & \cmark \\
 		\midrule
@@ -1527,7 +1505,7 @@ As the number of fields and the size of the truncation grow, however, \FunKit co
 		\quad C\texttt{++} / Julia / Fortran                 & \xmark  & \xmark  & \cmark \\
 		\midrule
 		\multicolumn{4}{l}{\textit{Interoperability}} \\
-		\quad \texttt{FeynCalc} compatibility                & (\cmark)\footnote{\DoFun provides a utility function to safely load the \texttt{FeynCalc} package} & \xmark  & \xmark \\
+		\quad \texttt{FeynCalc} compatibility                & (\cmark)\footnote{\DoFun provides a utility function to safely load the \texttt{FeynCalc} package.} & \xmark  & \xmark \\
 		\quad Cross-package format conversion       & \xmark  & \xmark  & \cmark \\
 		\bottomrule
 	\end{tabular}
@@ -1535,6 +1513,31 @@ As the number of fields and the size of the truncation grow, however, \FunKit co
 	\label{tab:comparison}
 \end{table*}         
 
+
+
+
+%%%%%%%%%%%%%%%%%%%%
+\section{Comparisons and Benchmarks}
+\label{sec:comparisons}
+
+In the following, we compare \FunKit with the two most widely used packages for deriving functional equations, \DoFun (v3.0)~\cite{Huber:2019dkb,Huber:2011qr} and \QMeS (v1.2)~\cite{Pawlowski:2021tkk}.                                         
+
+\Cref{tab:comparison} gives a feature-by-feature overview. All three packages support the derivation of DSEs and fRG flow equations for theories with any kind of field content. 
+Beyond this common ground, \FunKit additionally supports arbitrary user-defined master equations, multi-index functional derivatives, source fields and multi-loop momentum routing.
+Conversely, \DoFun additionally provides the derivation of composite operator equations -- however, these can be readily implemented in \FunKit using expressions with explicit \mathem{\mmaDef{FDOp}}, showing the strength of the vocabulary used by \FunKit. This is explicitly shown in the example \texttt{examples/CompositeOperators.nb}.
+
+\FunKit also provides utilities not present in either \DoFun or \QMeS, e.g. integration of \FORM-based tracing with caching through \FormTracer, specification of tensorial bases for diagrammatic rules through \TensorBases, \LaTeX{} equation rendering and optimised C++, Julia and Fortran code generation.
+
+Another special feature of \FunKit is the ability to identify any topologically identical connected diagrams at any loop order. To do so, \FunKit traverses graphs in any possible sequence of paths to establish topological identity and relative signs, see also the green box above for Simplification.
+
+Furthermore, for interoperability \FunKit includes explicit format conversion layers for both \DoFun and \QMeS output, allowing straightforward integration into existing pipelines and simplifying first contact for users.
+
+In \Cref{fig:benchmarks}, we show timing benchmarks for the derivation and truncation of correlation functions in four theories of increasing complexity: 
+a four-fermion (NJL-type) model, a scalar $O(N)$ model, a Yukawa theory, and a Yang--Mills theory. In each case, the total wall time for taking the functional derivatives and truncating the resulting expression is measured. These benchmarks were performed on a 16-core AMD Ryzen 9 7945HX machine, no constraints on the parallelisation have been imposed (which was handled by each library by itself).
+The benchmark scripts can be found in the \FunKit repository in the \texttt{benchmarks/} folder, together with a visualisation python script.
+
+For small expressions, such as the scalar two-point function, all three packages perform well below a tenth of a second, however, \FunKit even proves to be an order of magnitude faster.
+As the number of fields and the size of the truncation grow, however, \FunKit consistently outperforms \QMeS, while showing parity with \DoFun. With even larger expressions, \FunKit is also able to outperform \DoFun: this is particularly pronounced for expressions involving many diagrams, such as the six-fermion flow equation in the four-fermion model, or the six-scalar flow in the scalar theory, where \FunKit can be faster up to an order of magnitude.
 
 
 \begin{figure*}
@@ -1552,18 +1555,6 @@ As the number of fields and the size of the truncation grow, however, \FunKit co
 
 
 %%%%%%%%%%%%%%%%%%%%
-\section{Limitations and Important Notices}
-
-While \FunKit covers a broad range of applications, of course some limitations remain. Truncations are specified as explicit lists of field-content tuples, meaning that rule-based truncation schemes — such as retaining all operators up to a given mass dimension or derivative order — must be currently constructed manually by the~user.
-
-A fundamental challenge is the resolution of functional derivatives, which involves a product-rule expansion that can lead to rapid intermediate expression growth for large truncations.
-Although \FunKit mitigates this through in-loop simplification parallelisation and appropriate algorithm design, the scaling remains a practical bottleneck for very large systems. This is however not a problem of \FunKit, but rather of the approach itself.
-
-Also, while \FunKit generates optimised code for the integrands of functional equations, it does not provide a numerical integration framework; the user must embed the generated code into their own solver or use an existing framework such as \texttt{DiFfRG} \cite{Sattler:2024ozv}.
-Finally, direct support for Windows is currently not available, as FORM does not support native execution on Windows systems. However, using \FunKit via WSL (Windows Subsystem for Linux) is possible.
-
-
-%%%%%%%%%%%%%%%%%%%%
 \section{Conclusions}
 
 In this work, we have presented \FunKit, a Mathematica package for the derivation and processing of functional equations in quantum field theory.
@@ -1578,6 +1569,11 @@ It also has a broader scope, as it culminates in either fully traced analytic ex
 We have also described the algorithms used in \FunKit, which are optimised at every stage: parallelisation is dynamically switched on and off at every stage of the workflow to maximise performance, and the generated code is highly optimised for both CPU and GPU applications.
 
 We demonstrated the capabilities of \FunKit at the example of Yang-Mills theory, scalar field theory, a Yukawa theory and an NJL model. As for master equations, we show DSEs, the Wetterich equation, the modified STIs and dynamically reparameterised flow equations. All these examples can be found in the \FunKit repository, see also \Cref{tab:examples}.
+
+While \FunKit covers a broad range of applications, of course some limitations remain.
+A fundamental challenge is the resolution of functional derivatives, which involves a product-rule expansion that can lead to rapid intermediate expression growth for large truncations.
+Although \FunKit mitigates this through in-loop simplification parallelisation and appropriate algorithm design, the scaling remains a practical bottleneck for very large systems. This is however not a problem specifically of \FunKit, but rather of the approach itself.
+Also, while \FunKit generates optimised code for the integrands of functional equations, it does not provide a numerical integration framework; the user must embed the generated code into their own solver or use an existing framework such as \texttt{DiFfRG} \cite{Sattler:2024ozv}.
 
 \FunKit is already a basis for several on-going projects in the fQCD collaboration \cite{fQCD} involving large QCD truncations with dynamical hadronisation and other flowing reparametrisations.
 As it is embedded in the tools of the fQCD collaboration, e.g. it has become the symbolic backend of the \texttt{DiFfRG} framework \cite{Sattler:2024ozv}, \FunKit will continue to see improvements in the future.
@@ -1688,7 +1684,13 @@ and, using right-derivatives,
 	\,.
 \end{align}
 %
-We can take a derivative $\frac{\delta}{\delta\Phi^f}$ of \labelcref{eq:propInvLeft}, contract the equation with $G$ from the right, and use \labelcref{eq:propInvRight} to obtain the rule given in \labelcref{eq:derivG}.
+We can take a derivative $\frac{\delta}{\delta\Phi^f}$ of \labelcref{eq:propInvLeft}, contract the equation with $G$ from the right, and use \labelcref{eq:propInvRight} to obtain the rule
+%
+\begin{align}\label{eq:derivG}
+	\left(\frac{\delta}{\delta \Phi^f}G^{ba}\right)
+	&= (-1)(-1)^{bf}(-1)^{dd}\, G^{bc}\Gamma_{cfd}G^{da}\,,
+\end{align}
+%
 In the above, $(-1)^{bf}$ comes from commuting the derivative past the first index $b$.
 
 Furthermore, one can take also derivatives with respect to functions with multiple superindices, which is used e.g. in the derivation of nPI equations. The derivative for such objects reads
@@ -2001,7 +2003,7 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 		\small The Wetterich equation for the functional Renormalisation Group, ${\partial_t \Gamma = (1/2) G^{ab} (\partial_t R)_{ab}}$.
 		\\[3ex]
 		\mathem{\mmaDef{GeneralizedFlowEquation}} & 
-		\small The generalised fRG flow equation with flowing field reparametrisation $\dot\Phi$, ${\partial_t \Gamma = -\dot\Phi^a\Gamma_a + \frac{1}{2}G^{ac}(\gamma_c^{\phantom{c}b}\partial_t + \frac{\delta\dot{\Phi}^b}{\delta\Phi^c}){R}_{ab}}$.
+		\small The generalised fRG flow equation with flowing field reparametrisation $\dot\Phi$, ${\partial_t \Gamma = -\dot\Phi^a\Gamma_a + \frac{1}{2}G^{ac}(\gamma_c^{\phantom{c}b}\partial_t + 2\frac{\delta\dot{\Phi}^b}{\delta\Phi^c}){R}_{ab}}$.
 		\\[3ex]
 		\mathem{\mmaDef{FEmptySetup}} & 
 		\small Not a master equation, but an empty setup with no fields or truncation tables defined. Useful for deriving fully abstract equations.

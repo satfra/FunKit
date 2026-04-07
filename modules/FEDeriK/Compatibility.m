@@ -4,23 +4,58 @@
     Public API:
       FunKitForm                 -- Converts QMeS/DoFun expressions to FunKit form
       QMeSForm                   -- Converts FunKit expressions to QMeS notation
-      DoFunForm                  -- Converts FunKit to DoFun notation (not yet impl.)
+      DoFunForm                  -- Converts FunKit to DoFun notation
 
     Internal:
       QMeSNaming                 -- Renames a single object to QMeS convention
-                                    (used by QMeSForm)
+                                    (used by QMeSForm for routed output)
       QMeSSuperindexDiagramQ     -- Tests if a list is a QMeS superindex diagram
                                     (used by FunKitForm)
-      DoFunSuperindexDiagramQ    -- Tests if an expression is a DoFun diagram
+      DoFunSuperindexDiagramQ    -- Tests if an expression is a DoFun superindex diagram
+                                    (used by FunKitForm)
+      DoFunAlgebraicDiagramQ     -- Tests if a list is a DoFun algebraic diagram
+                                    (used by FunKitForm)
+      QMeSNamedDiagramQ          -- Tests if a list is a QMeS named-symbol diagram
                                     (used by FunKitForm)
 **********************************************************************************)
 
-FunKitForm[expr_List] :=
-    FEx @@ Map[FunKitForm, expr];
+FunKitForm::parseError = "Cannot parse field names from QMeS symbol name `1`.";
+
+FunKitForm::indexMismatch = "Index count mismatch for QMeS symbol `1`: got `2` indices, expected `3` (superindex) or `4` (routed).";
 
 (**********************************************************************************
-    QMeS Compatibility
+    Detection helpers: superindex vs routed
 **********************************************************************************)
+
+routedObjectQ[obj_ /; orderedObjectQ[obj]] :=
+    AnyTrue[getIndices[obj], Head[#] === List&];
+
+routedObjectQ[___] :=
+    False;
+
+routedFTermQ[fterm_FTerm] :=
+    AnyTrue[Select[List @@ fterm, orderedObjectQ], routedObjectQ];
+
+routedFTermQ[___] :=
+    False;
+
+routedFExQ[fex_FEx] :=
+    Module[{terms},
+        terms = Select[List @@ fex, Head[#] === FTerm&];
+        If[Length[terms] === 0,
+            Return[False]
+        ];
+        routedFTermQ[terms[[1]]]
+    ];
+
+routedFExQ[___] :=
+    False;
+
+(**********************************************************************************
+    QMeS Compatibility: FunKit -> QMeS
+**********************************************************************************)
+
+(* Named-symbol conversion for routed output *)
 
 QMeSNaming[setup_, expr_] :=
     expr;
@@ -61,11 +96,106 @@ QMeSNaming[setup_, obj_ /; orderedObjectQ[obj]] :=
         Return[prefactor * Symbol[prefix <> fieldPart][indexPart]];
     ];
 
-QMeSForm[setup_, expr_] :=
+(* Native Association format for superindex output *)
+
+qmeSNativeObject[setup_, obj_ /; orderedObjectQ[obj]] :=
+    Module[{transf, prefactor, head, mfields, mindices, typeStr, specStr, nPointVal, indices},
+        Block[{$CanonicalOrdering},
+            $CanonicalOrdering = "c>ag>g";
+            transf = OrderObject[setup, obj];
+        ];
+        prefactor = 1;
+        If[MatchQ[transf, Times[-1, a_]],
+            prefactor = -1;
+            transf = -transf;
+        ];
+        head = Head[transf];
+        mfields = getFields[transf];
+        mindices = getIndices[transf];
+        Switch[head,
+            Propagator,
+                indices = MapThread[{#1, {#2}}&, {mfields, mindices}];
+                {prefactor, <|"type" -> "Propagator", "indices" -> indices|>}
+            ,
+            Rdot,
+                indices = MapThread[{#1, {-#2}}&, {mfields, mindices}];
+                {prefactor, <|"type" -> "Regulatordot", "indices" -> indices|>}
+            ,
+            GammaN,
+                indices = MapThread[{#1, {-#2}}&, {mfields, mindices}];
+                {prefactor, <|"type" -> "nPoint", "indices" -> indices, "nPoint" -> Length[mfields], "spec" -> "none"|>}
+            ,
+            S,
+                indices = MapThread[{#1, {-#2}}&, {mfields, mindices}];
+                {prefactor, <|"type" -> "nPoint", "indices" -> indices, "nPoint" -> Length[mfields], "spec" -> "classical"|>}
+        ]
+    ];
+
+qmeSNativeTerm[setup_, fterm_FTerm] :=
+    Module[{elems, objects, coeffs, converted, totalPrefactor},
+        elems = List @@ fterm;
+        objects = Select[elems, orderedObjectQ];
+        coeffs = Select[elems, (!orderedObjectQ[#])&];
+        converted = Map[qmeSNativeObject[setup, #]&, objects];
+        totalPrefactor = Times @@ coeffs * Times @@ converted[[All, 1]];
+        Prepend[converted[[All, 2]], "Prefactor" -> {totalPrefactor}]
+    ];
+
+(* QMeSForm: superindex input -> QMeS native Association format *)
+
+QMeSForm[setup_, obj_ /; orderedObjectQ[obj] && !routedObjectQ[obj]] :=
     (
         AssertFSetup[setup];
-        Map[QMeSNaming[setup, #]&, expr, {1, 3}] //. {FEx :> List, FTerm :> Times}
+        qmeSNativeObject[setup, obj]
     );
+
+QMeSForm[setup_, fterm_FTerm] /; !routedFTermQ[fterm] :=
+    (
+        AssertFSetup[setup];
+        qmeSNativeTerm[setup, fterm]
+    );
+
+QMeSForm[setup_, fex_FEx] /; !routedFExQ[fex] :=
+    (
+        AssertFSetup[setup];
+        Map[qmeSNativeTerm[setup, #]&, SeparateFExAnnotations[fex][[1]]]
+    );
+
+(* QMeSForm: routed input -> QMeS named-symbol format *)
+
+QMeSForm[setup_, obj_ /; orderedObjectQ[obj] && routedObjectQ[obj]] :=
+    (
+        AssertFSetup[setup];
+        QMeSNaming[setup, obj]
+    );
+
+QMeSForm[setup_, fterm_FTerm] /; routedFTermQ[fterm] :=
+    (
+        AssertFSetup[setup];
+        Map[QMeSNaming[setup, #]&, fterm, {1, 3}] //. {FTerm :> Times}
+    );
+
+QMeSForm[setup_, fex_FEx] /; routedFExQ[fex] :=
+    (
+        AssertFSetup[setup];
+        Map[QMeSNaming[setup, #]&, fex, {1, 3}] //. {FEx :> List, FTerm :> Times}
+    );
+
+(* QMeSForm: routed Association input *)
+
+QMeSForm[setup_, assoc_Association] /; isLoopAssociation[assoc] :=
+    (
+        AssertFSetup[setup];
+        QMeSForm[setup, assoc["Expression"]]
+    );
+
+QMeSForm[setup_, assoc_Association] /; isRoutedAssociation[assoc] :=
+    (
+        AssertFSetup[setup];
+        Map[QMeSForm[setup, #]&, assoc]
+    );
+
+(* QMeSForm: generic Association fallback *)
 
 QMeSForm[setup_, expr_Association] :=
     (
@@ -73,7 +203,9 @@ QMeSForm[setup_, expr_Association] :=
         AssociationMap[QMeSForm[setup, #]&, expr]
     );
 
-(* Transforming QMeS to FunKit *)
+(**********************************************************************************
+    QMeS -> FunKit: superindex (native Association format)
+**********************************************************************************)
 
 QMeSSuperindexDiagramQ[__] :=
     False;
@@ -95,7 +227,7 @@ QMeSSuperindexDiagramQ[l_List] :=
         Return[True];
     ];
 
-FunKitForm[diag_List] /; QMeSSuperindexDiagramQ[diag] :=
+FunKitForm[setup_, diag_List] /; QMeSSuperindexDiagramQ[diag] :=
     Module[{pref, newa},
         pref = diag[[1, 2, 1]];
         newa = diag[[2 ;; ]];
@@ -113,9 +245,139 @@ FunKitForm[diag_List] /; QMeSSuperindexDiagramQ[diag] :=
         Return[FTerm[pref, ##]& @@ newa]
     ];
 
+FunKitForm[setup_, expr_List] /; AllTrue[expr, QMeSSuperindexDiagramQ] :=
+    FEx @@ Map[FunKitForm[setup, #]&, expr];
+
 (**********************************************************************************
-    DoFun Compatibility
+    QMeS -> FunKit: routed (named-symbol format)
 **********************************************************************************)
+
+QMeSNamedDiagramQ[expr_List] :=
+    Module[{},
+        If[Length[expr] === 0,
+            Return[False]
+        ];
+        AnyTrue[
+            expr
+            ,
+            Module[{factors},
+                factors =
+                    If[Head[#] === Times,
+                        List @@ #
+                        ,
+                        If[Length[#] === 1 && Head[#[[1]]] === Times,
+                            List @@ #[[1]]
+                            ,
+                            {#}
+                        ]
+                    ];
+                AnyTrue[factors, MatchQ[#, _Symbol[_List]] && StringMatchQ[SymbolName[Head[#]], ("G" | "\[CapitalGamma]" | "Rdot" | "S") ~~ __]&]
+            ]&
+        ]
+    ];
+
+QMeSNamedDiagramQ[___] :=
+    False;
+
+parseFieldNames[setup_, str_String] :=
+    Module[{allFields, fieldNames, sorted, result = {}, remaining = str},
+        allFields = GetAllFields[setup];
+        fieldNames = Map[ToString, allFields];
+        sorted = SortBy[fieldNames, -StringLength[#]&];
+        While[
+            StringLength[remaining] > 0
+            ,
+            Module[{matched = False},
+                Do[
+                    If[StringStartsQ[remaining, fn],
+                        AppendTo[result, Symbol[fn]];
+                        remaining = StringDrop[remaining, StringLength[fn]];
+                        matched = True;
+                        Break[];
+                    ];
+                    ,
+                    {fn, sorted}
+                ];
+                If[!matched,
+                    Message[FunKitForm::parseError, str];
+                    Abort[]
+                ];
+            ];
+        ];
+        result
+    ];
+
+reverseQMeSNaming[setup_, sym_Symbol[indices_List]] :=
+    Module[{name, prefix, head, fieldStr, fields, nFields, slotsPerField, result, pos},
+        name = SymbolName[sym];
+        (* Identify prefix and head *)
+        {prefix, head} =
+            Which[
+                StringStartsQ[name, "\[CapitalGamma]"],
+                    {"\[CapitalGamma]", GammaN}
+                ,
+                StringStartsQ[name, "Rdot"],
+                    {"Rdot", Rdot}
+                ,
+                StringStartsQ[name, "G"],
+                    {"G", Propagator}
+                ,
+                True,
+                    {StringTake[name, 1], S}
+            ];
+        fieldStr = StringDrop[name, StringLength[prefix]];
+        fields = parseFieldNames[setup, fieldStr];
+        nFields = Length[fields];
+        slotsPerField = Map[Length[FieldSetupIndices[setup, #]]&, fields];
+        pos = 1;
+        result =
+            Table[
+                Module[{nSlots = slotsPerField[[i]], chunk},
+                    chunk = indices[[pos ;; pos + nSlots - 1]];
+                    pos += nSlots;
+                    If[nSlots === 1,
+                        {chunk[[1]]}
+                        ,
+                        {chunk[[1]], chunk[[2 ;; ]]}
+                    ]
+                ]
+                ,
+                {i, 1, nFields}
+            ];
+        makeObj[head, fields, result]
+    ];
+
+FunKitForm[setup_, expr_List] /; QMeSNamedDiagramQ[expr] :=
+    Module[{},
+        AssertFSetup[setup];
+        FEx @@
+            Map[
+                Module[{factors, numericPart, symbolicParts, objects},
+                    factors =
+                        If[Head[#] === Times,
+                            List @@ #
+                            ,
+                            If[Length[#] === 1 && Head[#[[1]]] === Times,
+                                List @@ #[[1]]
+                                ,
+                                {#}
+                            ]
+                        ];
+                    numericPart = Select[factors, NumericQ];
+                    symbolicParts = Select[factors, MatchQ[#, _Symbol[_List]]&];
+                    objects = Map[reverseQMeSNaming[setup, #]&, symbolicParts];
+                    FTerm @@ Join[numericPart, objects]
+                ]&
+                ,
+                expr
+            ]
+    ];
+
+(**********************************************************************************
+    DoFun Compatibility: FunKit -> DoFun
+**********************************************************************************)
+
+(* Superindex detection *)
 
 DoFunSuperindexDiagramQ[expr_DoFun`DoDSERGE`op] :=
     True;
@@ -134,7 +396,25 @@ DoFunSuperindexDiagramQ[expr_] :=
         Return[AllTrue[l, DoFunSuperindexDiagramQ]];
     ];
 
-FunKitForm[diag_] /; DoFunSuperindexDiagramQ[diag] :=
+(* Algebraic detection *)
+
+DoFunAlgebraicDiagramQ[expr_List] :=
+    Module[{},
+        If[Length[expr] === 0,
+            Return[False]
+        ];
+        (* Algebraic format has P/V/S/dR with field-application args and a trailing Rule (explicit->...) *)
+        AnyTrue[expr, Not @ FreeQ[#, (DoFun`DoDSERGE`P | DoFun`DoDSERGE`V | DoFun`DoDSERGE`S | DoFun`DoDSERGE`dR)[___, _Rule]]&]
+    ];
+
+DoFunAlgebraicDiagramQ[___] :=
+    False;
+
+(**********************************************************************************
+    DoFun -> FunKit: superindex (symbolic format)
+**********************************************************************************)
+
+FunKitForm[setup_, diag_] /; DoFunSuperindexDiagramQ[diag] :=
     Module[{repl},
         repl =
             {
@@ -154,13 +434,171 @@ FunKitForm[diag_] /; DoFunSuperindexDiagramQ[diag] :=
     ];
 
 (**********************************************************************************
-    DoFunForm: Reverse transformation from FunKit to DoFun notation (not yet implemented)
+    DoFun -> FunKit: algebraic (routed format)
 **********************************************************************************)
 
-DoFunForm::notImplemented = "DoFunForm is not yet implemented.";
+doFunArgToRoutedIdx[arg_] :=
+    Module[{elems},
+        elems = List @@ arg;
+        If[Length[elems] === 1,
+            {elems[[1]]}
+            ,
+            {elems[[1]], elems[[2 ;; ]]}
+        ]
+    ];
 
-DoFunForm[args___] :=
+FunKitForm[setup_, expr_List] /; DoFunAlgebraicDiagramQ[expr] :=
+    Module[{repl},
+        repl =
+            {
+                DoFun`DoDSERGE`P[f__, _Rule] :> makeObj[Propagator, Head /@ {f}, doFunArgToRoutedIdx /@ {f}]
+                ,
+                DoFun`DoDSERGE`V[f__, _Rule] :> makeObj[GammaN, Head /@ {f}, doFunArgToRoutedIdx /@ {f}]
+                ,
+                DoFun`DoDSERGE`dR[f__, _Rule] :> makeObj[Rdot, Head /@ {f}, doFunArgToRoutedIdx /@ {f}]
+                ,
+                DoFun`DoDSERGE`S[f__, _Rule] :>
+                    Module[{fields = Head /@ {f}, indices = doFunArgToRoutedIdx /@ {f}},
+                        makeObj[S, fields, Map[ReplacePart[#, 1 -> -#[[1]]]&, indices]]
+                    ]
+            };
+        FEx @@
+            Map[
+                Module[{factors, converted},
+                    converted = # //. repl;
+                    If[Head[converted] === Times,
+                        FTerm @@ (List @@ converted)
+                        ,
+                        FTerm[converted]
+                    ]
+                ]&
+                ,
+                expr
+            ]
+    ];
+
+(**********************************************************************************
+    DoFunForm: superindex -> DoFun symbolic format
+**********************************************************************************)
+
+doFunObject[obj_Propagator] :=
+    DoFun`DoDSERGE`P @@ Transpose[{getFields[obj], getIndices[obj]}];
+
+doFunObject[obj_GammaN] :=
+    DoFun`DoDSERGE`V @@ Transpose[{getFields[obj], getIndices[obj]}];
+
+doFunObject[obj_Rdot] :=
+    DoFun`DoDSERGE`dR @@ Transpose[{getFields[obj], getIndices[obj]}];
+
+doFunObject[obj_S] :=
+    DoFun`DoDSERGE`S @@ Transpose[{getFields[obj], -getIndices[obj]}];
+
+doFunTerm[fterm_FTerm] :=
+    Module[{elems, objects, coeffs},
+        elems = List @@ fterm;
+        objects = Select[elems, orderedObjectQ];
+        coeffs = Select[elems, (!orderedObjectQ[#])&];
+        If[objects === {},
+            Times @@ coeffs
+            ,
+            Times @@ coeffs * DoFun`DoDSERGE`op @@ Map[doFunObject, objects]
+        ]
+    ];
+
+DoFunForm[setup_, obj_ /; orderedObjectQ[obj] && !routedObjectQ[obj]] :=
     (
-        Message[DoFunForm::notImplemented];
-        Abort[]
+        AssertFSetup[setup];
+        doFunObject[obj]
+    );
+
+DoFunForm[setup_, fterm_FTerm] /; !routedFTermQ[fterm] :=
+    (
+        AssertFSetup[setup];
+        doFunTerm[fterm]
+    );
+
+DoFunForm[setup_, fex_FEx] /; !routedFExQ[fex] :=
+    (
+        AssertFSetup[setup];
+        Plus @@ Map[doFunTerm, SeparateFExAnnotations[fex][[1]]]
+    );
+
+(**********************************************************************************
+    DoFunForm: routed -> DoFun algebraic format
+**********************************************************************************)
+
+routedIdxToDoFunArg[field_, idx_List] :=
+    field[Sequence @@ Flatten[idx]];
+
+doFunAlgebraicObject[obj_Propagator] :=
+    Module[{fields = getFields[obj], indices = getIndices[obj]},
+        DoFun`DoDSERGE`P[Sequence @@ MapThread[routedIdxToDoFunArg, {fields, indices}], Global`explicit -> False]
+    ];
+
+doFunAlgebraicObject[obj_GammaN] :=
+    Module[{fields = getFields[obj], indices = getIndices[obj]},
+        DoFun`DoDSERGE`V[Sequence @@ MapThread[routedIdxToDoFunArg, {fields, indices}], Global`explicit -> False]
+    ];
+
+doFunAlgebraicObject[obj_Rdot] :=
+    Module[{fields = getFields[obj], indices = getIndices[obj]},
+        DoFun`DoDSERGE`dR[Sequence @@ MapThread[routedIdxToDoFunArg, {fields, indices}], Global`explicit -> False]
+    ];
+
+doFunAlgebraicObject[obj_S] :=
+    Module[{fields = getFields[obj], indices = getIndices[obj], negIndices},
+        negIndices = Map[ReplacePart[#, 1 -> -#[[1]]]&, indices];
+        DoFun`DoDSERGE`S[Sequence @@ MapThread[routedIdxToDoFunArg, {fields, negIndices}], Global`explicit -> False]
+    ];
+
+doFunAlgebraicTerm[fterm_FTerm] :=
+    Module[{elems, objects, coeffs},
+        elems = List @@ fterm;
+        objects = Select[elems, orderedObjectQ];
+        coeffs = Select[elems, (!orderedObjectQ[#])&];
+        If[objects === {},
+            Times @@ coeffs
+            ,
+            Times @@ coeffs * Times @@ Map[doFunAlgebraicObject, objects]
+        ]
+    ];
+
+DoFunForm[setup_, obj_ /; orderedObjectQ[obj] && routedObjectQ[obj]] :=
+    (
+        AssertFSetup[setup];
+        doFunAlgebraicObject[obj]
+    );
+
+DoFunForm[setup_, fterm_FTerm] /; routedFTermQ[fterm] :=
+    (
+        AssertFSetup[setup];
+        doFunAlgebraicTerm[fterm]
+    );
+
+DoFunForm[setup_, fex_FEx] /; routedFExQ[fex] :=
+    (
+        AssertFSetup[setup];
+        Map[doFunAlgebraicTerm, SeparateFExAnnotations[fex][[1]]]
+    );
+
+(* DoFunForm: routed Association input *)
+
+DoFunForm[setup_, assoc_Association] /; isLoopAssociation[assoc] :=
+    (
+        AssertFSetup[setup];
+        DoFunForm[setup, assoc["Expression"]]
+    );
+
+DoFunForm[setup_, assoc_Association] /; isRoutedAssociation[assoc] :=
+    (
+        AssertFSetup[setup];
+        Map[DoFunForm[setup, #]&, assoc]
+    );
+
+(* DoFunForm: generic Association fallback *)
+
+DoFunForm[setup_, expr_Association] :=
+    (
+        AssertFSetup[setup];
+        AssociationMap[DoFunForm[setup, #]&, expr]
     );

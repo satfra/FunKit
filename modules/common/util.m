@@ -66,7 +66,8 @@ makeTemporaryFileName[] :=
 
 ParallelMapSerialized[f_, data_, opts___] :=
     If[$VersionNumber >= 11.1,
-        ParallelMap[f[BinaryDeserialize @ #]&, BinarySerialize /@ data, opts],
+        ParallelMap[f[BinaryDeserialize @ #]&, BinarySerialize /@ data, opts]
+        ,
         ParallelMap[f, data, opts]
     ];
 

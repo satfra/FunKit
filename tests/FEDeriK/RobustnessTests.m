@@ -168,17 +168,6 @@ AppendTo[tests, TestCreate[
 ]];
 
 (**********************************************************************************
-    D4: DoFunForm stub should abort with not-implemented message
-**********************************************************************************)
-
-AppendTo[tests, TestCreate[
-    CheckAbort[FunKit`DoFunForm[testSetup, FEx[FTerm[1]]], "AbortTriggered"],
-    "AbortTriggered",
-    {FunKit`DoFunForm::notImplemented},
-    TestID -> "D4: DoFunForm should abort as not implemented"
-]];
-
-(**********************************************************************************
     C1-C4: AssertFSetup validation
     Passing a non-setup value should abort.
 **********************************************************************************)
