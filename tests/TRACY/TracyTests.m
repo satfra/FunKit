@@ -20,7 +20,7 @@ $FORMAvailable = Quiet[RunProcess[{"form", "-v"}]] =!= $Failed;
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         cos[p, p]
         ,
         1
@@ -32,7 +32,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         cos[p2, p1] === cos[p1, p2]
         ,
         True
@@ -48,7 +48,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{result},
             (* FIterativelySum calls FFormSimplify internally; for numeric input
                the total should equal 15 regardless of intermediate simplification *)
@@ -65,7 +65,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         FIterativelySum[{42}]
         ,
         {42}
@@ -77,7 +77,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{result},
             result = FIterativelySum[Range[8], 2];
             Length[result] === 2
@@ -92,7 +92,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{result},
             (* finalSize equal to input length should return input unchanged *)
             result = FIterativelySum[{1, 2, 3}, 3];
@@ -112,7 +112,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{g, expr, result},
             (* Build a simple expression with symbolic coupling structure *)
             expr = g[1] * x + g[1] * y + g[2] * z;
@@ -134,7 +134,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{},
             FMakeFormMomentumExpansion[];
             (* After init, the standard rules should be an empty list *)
@@ -154,7 +154,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{},
             FSetCacheDirectory[FileNameJoin[{$TemporaryDirectory, "FunKitTestCache"}]];
             FunKit`Private`$TraceCacheDir === FileNameJoin[{$TemporaryDirectory, "FunKitTestCache"}] <> $PathnameSeparator
@@ -176,7 +176,7 @@ FSetCacheDirectory[];
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{cacheDir},
             FSetCacheDirectory[FileNameJoin[{$TemporaryDirectory, "FunKitTestCacheClear"}]];
             cacheDir = FunKit`Private`$TraceCacheDir;
@@ -203,7 +203,7 @@ If[$FORMAvailable,
     AppendTo[
         tests
         ,
-        TestCreate[
+        VerificationTest[
             Module[{result},
                 result = FFormSimplify[a + b + c];
                 (* Should return a simplified expression, not $Failed or $Aborted *)
@@ -220,7 +220,7 @@ If[$FORMAvailable,
     AppendTo[
         tests
         ,
-        TestCreate[
+        VerificationTest[
             Module[{result1, result2},
                 result1 = FFormSimplify[x^2 + 2 x y + y^2];
                 result2 = FFormSimplify[x^2 + 2 x y + y^2];
@@ -237,7 +237,7 @@ If[$FORMAvailable,
     AppendTo[
         tests
         ,
-        TestCreate[
+        VerificationTest[
             Module[{rules},
                 rules = FMakeP0Rule[{p1, p2}, {p10, p20}];
                 (* Should produce replacement rules for vec[p1,0] and vec[p2,0] *)
@@ -254,7 +254,7 @@ If[$FORMAvailable,
     AppendTo[
         tests
         ,
-        TestCreate[
+        VerificationTest[
             Module[{code},
                 code = FMakeSPFormRule[{l1}, p, {p1, p2}];
                 (* Should return a list of strings containing ProjSP *)
@@ -271,7 +271,7 @@ If[$FORMAvailable,
     AppendTo[
         tests
         ,
-        TestCreate[
+        VerificationTest[
             Module[{code},
                 code = FMakeFiniteTFormMomentumExpansion[l1, p1];
                 MatchQ[code, {_String ..}] && StringContainsQ[code[[1]], "ExpandFiniteT"]
@@ -287,7 +287,7 @@ If[$FORMAvailable,
     AppendTo[
         tests
         ,
-        TestCreate[
+        VerificationTest[
             Module[{code},
                 code = FMakeSPFiniteTFormRule[{l1}, p, {p1, p2}];
                 MatchQ[code, {_String ..}] && StringContainsQ[code[[1]], "ProjSPFiniteT"]
@@ -303,7 +303,7 @@ If[$FORMAvailable,
     AppendTo[
         tests
         ,
-        TestCreate[
+        VerificationTest[
             Module[{code},
                 code = FMakeP0FormRule[{p1, p2}, {p10, p20}];
                 MatchQ[code, {_String ..}] && StringContainsQ[code[[1]], "ProjP0"]

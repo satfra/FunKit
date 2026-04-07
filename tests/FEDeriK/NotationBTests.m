@@ -57,7 +57,7 @@ Module[{setup, classAct, sVertex, fields},
     sVertex = Cases[classAct, _S, {2}][[1]];
     fields = FunKit`Private`getFields[sVertex];
     (* In NotationB, getFields on S-vertices should return field symbols, not {List, List} *)
-    AppendTo[tests, TestCreate[
+    AppendTo[tests, VerificationTest[
         And @@ (MatchQ[#, _Symbol]& /@ fields),
         True,
         TestID -> "NotationB: FMakeClassicalAction S-vertex fields are symbols"
@@ -76,13 +76,13 @@ Module[{setup, dse, derived},
     ]];
     FunKit`FSetGlobalSetup[setup];
     dse = FunKit`FMakeDSE[Phi[i1]];
-    AppendTo[tests, TestCreate[
+    AppendTo[tests, VerificationTest[
         Head[dse],
         FEx,
         TestID -> "NotationB: Scalar FMakeDSE produces FEx"
     ]];
     derived = FunKit`FTakeDerivatives[dse, {Phi[i2]}];
-    AppendTo[tests, TestCreate[
+    AppendTo[tests, VerificationTest[
         Head[derived],
         FEx,
         TestID -> "NotationB: Scalar FTakeDerivatives produces FEx"
@@ -95,13 +95,13 @@ Module[{setup, dse, derived},
     setup = GetYangMillsSetup[];
     FunKit`FSetGlobalSetup[setup];
     dse = FunKit`FMakeDSE[A[i1]];
-    AppendTo[tests, TestCreate[
+    AppendTo[tests, VerificationTest[
         Head[dse],
         FEx,
         TestID -> "NotationB: Yang-Mills FMakeDSE produces FEx"
     ]];
     derived = FunKit`FTakeDerivatives[dse, {A[i2]}];
-    AppendTo[tests, TestCreate[
+    AppendTo[tests, VerificationTest[
         Head[derived],
         FEx,
         TestID -> "NotationB: Yang-Mills FTakeDerivatives produces FEx"

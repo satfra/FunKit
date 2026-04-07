@@ -19,7 +19,7 @@ yukawaSetup = GetFunKitSetupYukawa[];
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result, closedBefore, closedAfter},
             (* Build a term with non-canonical closed indices (x, y instead of i1, i2) *)
             expr = FTerm[Propagator[{Phi, Phi}, {x, y}], Propagator[{Phi, Phi}, {-y, -x}]];
@@ -42,7 +42,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FEx[
                 FTerm[Propagator[{Phi, Phi}, {x, y}], Propagator[{Phi, Phi}, {-y, -x}]],
@@ -65,7 +65,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         FunKit`Private`FDOpCount[FTerm[FDOp[Phi[i1]], Propagator[{Phi, Phi}, {i2, i3}]]]
         ,
         1
@@ -77,7 +77,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         FunKit`Private`FDOpCount[FTerm[Propagator[{Phi, Phi}, {i1, i2}]]]
         ,
         0
@@ -89,7 +89,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         FunKit`Private`FDOpCount[FTerm[FDOp[Phi[i1]], FDOp[Phi[i2]]]]
         ,
         2
@@ -105,7 +105,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             (* A term with numeric factors that should be merged *)
             expr = FTerm[2, 3, Propagator[{Phi, Phi}, {i1, -i1}]];
@@ -126,7 +126,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FEx[FTerm[0], FTerm[Propagator[{Phi, Phi}, {i1, -i1}]]];
             result = FunKit`Private`ReduceFEx[scalarSetup, expr];

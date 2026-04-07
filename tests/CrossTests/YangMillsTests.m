@@ -240,7 +240,7 @@ FunKitcountAADSE = Length[Select[List @@ FunKitResAADSERaw, Head[#] === FTerm&]]
    than FunKit/DoFun (includes field permutations), so count comparison
    is only meaningful against DoFun. *)
 
-AppendTo[tests, TestCreate[FunKitcountcbcDSE, DoFuncountcbcDSE, TestID -> "Yang-Mills diagram count (FunKit vs DoFun): Ghost propagator DSE"]];
+AppendTo[tests, VerificationTest[FunKitcountcbcDSE, DoFuncountcbcDSE, TestID -> "Yang-Mills diagram count (FunKit vs DoFun): Ghost propagator DSE"]];
 
 (**********************************************************************************
     Comparison: FunKit vs QMeS — DSE
@@ -248,15 +248,15 @@ AppendTo[tests, TestCreate[FunKitcountcbcDSE, DoFuncountcbcDSE, TestID -> "Yang-
 
 resultAADSEQF = FSimplify[FEx[FunKitResAADSE, FTerm[-1, QMeSResAADSE]], "Symmetries" -> symsAA];
 
-AppendTo[tests, TestCreate[resultAADSEQF, FEx[], TestID -> "Verify Yang-Mills DSE (QMeS): Gluon propagator"]];
+AppendTo[tests, VerificationTest[resultAADSEQF, FEx[], TestID -> "Verify Yang-Mills DSE (QMeS): Gluon propagator"]];
 
 resultAcbcDSEQF = FSimplify[FEx[FunKitResAcbcDSE, FTerm[-1, QMeSResAcbcDSE]], "Symmetries" -> symsAcbc];
 
-AppendTo[tests, TestCreate[resultAcbcDSEQF, FEx[], TestID -> "Verify Yang-Mills DSE (QMeS): Ghost-gluon vertex"]];
+AppendTo[tests, VerificationTest[resultAcbcDSEQF, FEx[], TestID -> "Verify Yang-Mills DSE (QMeS): Ghost-gluon vertex"]];
 
 resultcbcDSEQF = FSimplify[FEx[FunKitRescbcDSE, FTerm[-1, QMeSRescbcDSE]], "Symmetries" -> symscbc];
 
-AppendTo[tests, TestCreate[resultcbcDSEQF, FEx[], TestID -> "Verify Yang-Mills DSE (QMeS): Ghost propagator"]];
+AppendTo[tests, VerificationTest[resultcbcDSEQF, FEx[], TestID -> "Verify Yang-Mills DSE (QMeS): Ghost propagator"]];
 
 (**********************************************************************************
     Comparison: FunKit vs DoFun — DSE
@@ -269,23 +269,23 @@ AppendTo[tests, TestCreate[resultcbcDSEQF, FEx[], TestID -> "Verify Yang-Mills D
 
 resultAA2QF = FSimplify[FEx[FunKitResAA2, FTerm[-1, QMeSResAA2]], "Symmetries" -> symsAA];
 
-AppendTo[tests, TestCreate[resultAA2QF, FEx[], TestID -> "Verify Yang-Mills flow (QMeS): Gluon propagator"]];
+AppendTo[tests, VerificationTest[resultAA2QF, FEx[], TestID -> "Verify Yang-Mills flow (QMeS): Gluon propagator"]];
 
 resultcbc2QF = FSimplify[FEx[FunKitRescbc2, FTerm[-1, QMeSRescbc2]], "Symmetries" -> symscbc];
 
-AppendTo[tests, TestCreate[resultcbc2QF, FEx[], TestID -> "Verify Yang-Mills flow (QMeS): Ghost propagator"]];
+AppendTo[tests, VerificationTest[resultcbc2QF, FEx[], TestID -> "Verify Yang-Mills flow (QMeS): Ghost propagator"]];
 
 resultAcbc2QF = FSimplify[FEx[FunKitResAcbc2, FTerm[-1, QMeSResAcbc2]], "Symmetries" -> symsAcbc2];
 
-AppendTo[tests, TestCreate[resultAcbc2QF, FEx[], TestID -> "Verify Yang-Mills flow (QMeS): Ghost-gluon vertex"]];
+AppendTo[tests, VerificationTest[resultAcbc2QF, FEx[], TestID -> "Verify Yang-Mills flow (QMeS): Ghost-gluon vertex"]];
 
 resultAAAQF = FSimplify[FEx[FunKitResAAA, FTerm[-1, QMeSResAAA]], "Symmetries" -> symsAAA];
 
-AppendTo[tests, TestCreate[resultAAAQF, FEx[], TestID -> "Verify Yang-Mills flow (QMeS): Three-gluon vertex"]];
+AppendTo[tests, VerificationTest[resultAAAQF, FEx[], TestID -> "Verify Yang-Mills flow (QMeS): Three-gluon vertex"]];
 
 resultAAAAQF = FSimplify[FEx[FunKitResAAAA, FTerm[-1, QMeSResAAAA]], "Symmetries" -> symsAAAA];
 
-AppendTo[tests, TestCreate[resultAAAAQF, FEx[], TestID -> "Verify Yang-Mills flow (QMeS): Four-gluon vertex"]];
+AppendTo[tests, VerificationTest[resultAAAAQF, FEx[], TestID -> "Verify Yang-Mills flow (QMeS): Four-gluon vertex"]];
 
 (**********************************************************************************
     Comparison: FunKit vs DoFun — Wetterich flow
@@ -293,8 +293,8 @@ AppendTo[tests, TestCreate[resultAAAAQF, FEx[], TestID -> "Verify Yang-Mills flo
 
 resultAA2DF = FSimplify[FEx[FunKitResAA2, FTerm[-1, DoFunResAA2]], "Symmetries" -> symsAA];
 
-AppendTo[tests, TestCreate[resultAA2DF, FEx[], TestID -> "Verify Yang-Mills flow (DoFun): Gluon propagator"]];
+AppendTo[tests, VerificationTest[resultAA2DF, FEx[], TestID -> "Verify Yang-Mills flow (DoFun): Gluon propagator"]];
 
 resultcbc2DF = FSimplify[FEx[FunKitRescbc2, FTerm[-1, DoFunRescbc2]], "Symmetries" -> symscbc];
 
-AppendTo[tests, TestCreate[resultcbc2DF, FEx[], TestID -> "Verify Yang-Mills flow (DoFun): Ghost propagator"]];
+AppendTo[tests, VerificationTest[resultcbc2DF, FEx[], TestID -> "Verify Yang-Mills flow (DoFun): Ghost propagator"]];

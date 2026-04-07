@@ -20,7 +20,7 @@ ySetup = GetFunKitSetupYukawa[];
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FEx[FTerm[1/2, Propagator[{AnyField, AnyField}, {i1, i2}], Rdot[{AnyField, AnyField}, {-i2, -i1}]]];
             result = FTruncate[srcSetup, expr];
@@ -44,7 +44,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FEx[FTerm[GammaN[{J, Phi}, {-i1, -i2}]]];
             result = FTruncate[srcSetup, expr];
@@ -60,7 +60,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FEx[FTerm[GammaN[{J}, {-i1}]]];
             result = FTruncate[srcSetup, expr];
@@ -82,7 +82,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, derived, result},
             expr = FEx[FTerm[GammaN[{Phi}, {-i1}]]];
             derived = FTakeDerivatives[srcSetup, expr, {J[i2]}];
@@ -106,7 +106,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FEx[FTerm[1/2, Propagator[{AnyField, AnyField}, {i1, i2}], Rdot[{AnyField, AnyField}, {-i2, -i1}]]];
             result = FTruncate[ySetup, expr];
@@ -119,9 +119,9 @@ AppendTo[
     ]
 ];
 
-AppendTo[tests, TestCreate[FunKit`Private`GetNonSourceFields[ySetup], FunKit`Private`GetAllFields[ySetup], TestID -> "Backward compat: GetNonSourceFields equals GetAllFields without sources"]];
+AppendTo[tests, VerificationTest[FunKit`Private`GetNonSourceFields[ySetup], FunKit`Private`GetAllFields[ySetup], TestID -> "Backward compat: GetNonSourceFields equals GetAllFields without sources"]];
 
-AppendTo[tests, TestCreate[FunKit`Private`GetAllSourceFields[ySetup], {}, TestID -> "Backward compat: GetAllSourceFields empty for setup without source keys"]];
+AppendTo[tests, VerificationTest[FunKit`Private`GetAllSourceFields[ySetup], {}, TestID -> "Backward compat: GetAllSourceFields empty for setup without source keys"]];
 
 (**********************************************************************************
     Basic scalar FTruncate (closed indices)
@@ -134,7 +134,7 @@ scalarSetup = GetFunKitSetupScalar[];
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FEx[FTerm[1/2, Propagator[{Phi, Phi}, {i1, i2}], Rdot[{Phi, Phi}, {-i2, -i1}]]];
             result = FTruncate[scalarSetup, expr];
@@ -152,7 +152,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FEx[FTerm[GammaN[{Phi, Phi, Phi, Phi, Phi}, {-i1, -i2, -i3, -i4, -i5}]]];
             result = FTruncate[scalarSetup, expr];
@@ -171,7 +171,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[
             {expr, result}
             ,
@@ -194,7 +194,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[
             {expr, result}
             ,
@@ -222,7 +222,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result, annots},
             expr = FEx[FTerm[Propagator[{Phi, Phi}, {i1, i2}]], "TestKey" -> "testval"];
             result = FTruncate[scalarSetup, expr];
@@ -245,7 +245,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result, fieldSetup},
             fieldSetup = scalarSetup;
             fieldSetup["Truncation", Field] = {{}};
@@ -265,7 +265,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result, fieldSetup},
             fieldSetup = scalarSetup;
             fieldSetup["Truncation", Field] = {{Phi}};
@@ -289,7 +289,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FEx[FTerm[GammaN[{AnyField}, {-i1}]]];
             result = FTruncateOpenIndices[scalarSetup, expr];
@@ -308,7 +308,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FEx[FTerm[GammaN[{Phi, AnyField}, {-i1, -i2}]]];
             result = FTruncateOpenIndices[scalarSetup, expr];

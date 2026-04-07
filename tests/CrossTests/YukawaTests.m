@@ -102,11 +102,11 @@ result3QF = FEx[FunKitRes3, FTerm[-1, QMeSRes3]] // FSimplify;
 
 result4QF = FEx[FunKitRes4, FTerm[-1, QMeSRes4]] // FSimplify;
 
-AppendTo[tests, TestCreate[result2QF, FEx[], TestID -> "Verify scalar field theory (QMeS): Propagator flow"]];
+AppendTo[tests, VerificationTest[result2QF, FEx[], TestID -> "Verify scalar field theory (QMeS): Propagator flow"]];
 
-AppendTo[tests, TestCreate[result3QF, FEx[], TestID -> "Verify scalar field theory (QMeS): Three-point flow"]];
+AppendTo[tests, VerificationTest[result3QF, FEx[], TestID -> "Verify scalar field theory (QMeS): Three-point flow"]];
 
-AppendTo[tests, TestCreate[result4QF, FEx[], TestID -> "Verify scalar field theory (QMeS): Four-point flow"]];
+AppendTo[tests, VerificationTest[result4QF, FEx[], TestID -> "Verify scalar field theory (QMeS): Four-point flow"]];
 
 result2DF = FEx[FunKitRes2, FTerm[-1, DoFunRes2]] // FSimplify;
 
@@ -114,8 +114,8 @@ result3DF = FEx[FunKitRes3, FTerm[-1, DoFunRes3]] // FSimplify;
 
 result4DF = FEx[FunKitRes4, FTerm[-1, DoFunRes4]] // FSimplify;
 
-AppendTo[tests, TestCreate[result2DF, FEx[], TestID -> "Verify scalar field theory (DoFun): Propagator flow"]];
+AppendTo[tests, VerificationTest[result2DF, FEx[], TestID -> "Verify scalar field theory (DoFun): Propagator flow"]];
 
-AppendTo[tests, TestCreate[result3DF, FEx[], TestID -> "Verify scalar field theory (DoFun): Three-point flow"]];
+AppendTo[tests, VerificationTest[result3DF, FEx[], TestID -> "Verify scalar field theory (DoFun): Three-point flow"]];
 
-AppendTo[tests, TestCreate[result4DF, FEx[], TestID -> "Verify scalar field theory (DoFun): Four-point flow"]];
+AppendTo[tests, VerificationTest[result4DF, FEx[], TestID -> "Verify scalar field theory (DoFun): Four-point flow"]];

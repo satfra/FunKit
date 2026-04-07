@@ -1573,6 +1573,7 @@ We demonstrated the capabilities of \FunKit at the example of Yang-Mills theory,
 While \FunKit covers a broad range of applications, of course some limitations remain.
 A fundamental challenge is the resolution of functional derivatives, which involves a product-rule expansion that can lead to rapid intermediate expression growth for large truncations.
 Although \FunKit mitigates this through in-loop simplification parallelisation and appropriate algorithm design, the scaling remains a practical bottleneck for very large systems. This is however not a problem specifically of \FunKit, but rather of the approach itself.
+The simplification algorithm of \FunKit currently only accepts connected diagrams. Passing disconnected diagrams to \mathem{\mmaDef{FSimplify}} will cause it to return the input without processing. Simplification of disconnected diagrams will be implemented in a future version of \FunKit.
 Also, while \FunKit generates optimised code for the integrands of functional equations, it does not provide a numerical integration framework; the user must embed the generated code into their own solver or use an existing framework such as \texttt{DiFfRG} \cite{Sattler:2024ozv}.
 
 \FunKit is already a basis for several on-going projects in the fQCD collaboration \cite{fQCD} involving large QCD truncations with dynamical hadronisation and other flowing reparametrisations.
@@ -1635,7 +1636,7 @@ From the definition of the metric \labelcref{eq:metric}, we can directly infer t
 	\,,
 \end{align}
 %
-We briefly note that, as a consequence, $\gamma^{a}_{\phantom{a}c}\gamma^{c}_{\phantom{c}d} = \delta^{ad}$.
+We briefly note that, as a consequence, $\gamma^{a}_{\phantom{a}c}\gamma^{c}_{\phantom{c}d} = \delta^{a}_d$.
 
 With the metric in hand, any field derivative can be directly expressed using the metric, and one easily derives that
 %
@@ -1726,7 +1727,12 @@ As an example, this results in a classical action for the Yang-Mills theory that
 	&\qquad + S_{A^{i_3}A^{i_2}A^{i_1}}A^{i_1}A^{i_2}A^{i_3} + S_{A^{i_4}A^{i_3}A^{i_2}A^{i_1}}A^{i_1}A^{i_2}A^{i_3}A^{i_4} + S_{A^{i_3}c^{i_2}\bar{c}^{i_1}}\bar{c}^{i_1}c^{i_2}A^{i_3}\,.
 \end{align}
 %
-This is identical with how \QMeS defines its classical action.
+This is identical with how \QMeS defines its classical action. Furthermore, it is consistent with simply following our convention that
+%
+\begin{align}
+	S_{i_1\ldots i_n} = \frac{\delta}{\delta\Phi^{i_1}}\cdots\frac{\delta}{\delta\Phi^{i_n}}S[\Phi]\,.
+\end{align}
+%
 However, \DoFun adds an additional minus sign for fermionic vertices \cite{Huber:2011qr} when constructing the classical action - special care to this should be taken by users when comparing or porting existing \DoFun code to \FunKit.
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%

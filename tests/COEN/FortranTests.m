@@ -35,11 +35,11 @@ Export[execFile1, code1, "Text"];
 
 compile1 = RunProcess[{"gfortran", "-ffree-form", "-o", execPath1, execFile1}];
 
-AppendTo[tests, TestCreate[compile1["ExitCode"], 0, TestID -> "Verify compilation of basic Fortran function"]];
+AppendTo[tests, VerificationTest[compile1["ExitCode"], 0, TestID -> "Verify compilation of basic Fortran function"]];
 
 output1 = If[compile1["ExitCode"] === 0, RunProcess[{execPath1}], <|"StandardOutput" -> ""|>];
 
-AppendTo[tests, TestCreate[StringTrim[output1["StandardOutput"]], "42", TestID -> "Verify return value of basic Fortran function"]];
+AppendTo[tests, VerificationTest[StringTrim[output1["StandardOutput"]], "42", TestID -> "Verify return value of basic Fortran function"]];
 
 (**********************************************************************************
     Testing typical arithmetic operations in Fortran functions
@@ -65,14 +65,14 @@ Export[execFile2, code2, "Text"];
 
 compile2 = RunProcess[{"gfortran", "-ffree-form", "-o", execPath2, execFile2}];
 
-AppendTo[tests, TestCreate[compile2["ExitCode"], 0, TestID -> "Verify compilation of Fortran function with arithmetic operations"]];
+AppendTo[tests, VerificationTest[compile2["ExitCode"], 0, TestID -> "Verify compilation of Fortran function with arithmetic operations"]];
 
 output2 = If[compile2["ExitCode"] === 0, RunProcess[{execPath2}], <|"StandardOutput" -> ""|>];
 
 expectedVal = N[expr /. a -> 1.5, 15];
 fortranVal = ToExpression[StringTrim[output2["StandardOutput"]]];
 
-AppendTo[tests, TestCreate[Abs[fortranVal - expectedVal] < 1*^-8, True, TestID -> "Verify return value of Fortran function with arithmetic operations"]];
+AppendTo[tests, VerificationTest[Abs[fortranVal - expectedVal] < 1*^-8, True, TestID -> "Verify return value of Fortran function with arithmetic operations"]];
 
 (**********************************************************************************
     Optimization pipeline test: CSE variables appear in output
@@ -82,7 +82,7 @@ ClearAll[a, b]
 exprOpt = Sin[a + b]^2 + Cos[a + b]^3 + Sin[a + b]*Log[b + 1] + Cos[a + b]*Exp[b];
 
 fortranCodeOpt = FortranCode[exprOpt];
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     StringContainsQ[fortranCodeOpt, "fkcse"] || StringContainsQ[fortranCodeOpt, "fkinterp"],
     True,
     TestID -> "Optimization pipeline produces CSE variables for Fortran"
@@ -112,14 +112,14 @@ Export[execFileOpt, codeOpt, "Text"];
 
 compileOpt = RunProcess[{"gfortran", "-ffree-form", "-o", execPathOpt, execFileOpt}];
 
-AppendTo[tests, TestCreate[compileOpt["ExitCode"], 0, TestID -> "Verify compilation of optimized Fortran function"]];
+AppendTo[tests, VerificationTest[compileOpt["ExitCode"], 0, TestID -> "Verify compilation of optimized Fortran function"]];
 
 outputOpt = If[compileOpt["ExitCode"] === 0, RunProcess[{execPathOpt}], <|"StandardOutput" -> ""|>];
 
 expectedOptVal = N[exprOpt /. {a -> 1.2, b -> 0.7}, 15];
 fortranOptVal = ToExpression[StringTrim[outputOpt["StandardOutput"]]];
 
-AppendTo[tests, TestCreate[Abs[fortranOptVal - expectedOptVal] < 1*^-8, True, TestID -> "Optimized Fortran function returns correct value"]];
+AppendTo[tests, VerificationTest[Abs[fortranOptVal - expectedOptVal] < 1*^-8, True, TestID -> "Optimized Fortran function returns correct value"]];
 
 (**********************************************************************************
     Simple expression: plain return, no CSE
@@ -128,13 +128,13 @@ AppendTo[tests, TestCreate[Abs[fortranOptVal - expectedOptVal] < 1*^-8, True, Te
 ClearAll[x, y]
 simpleCode = FortranCode[x + y];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     StringStartsQ[simpleCode, "kernel"],
     True,
     TestID -> "Simple expression produces plain result assignment without definitions"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     !StringContainsQ[simpleCode, "fkcse"] && !StringContainsQ[simpleCode, "fkinterp"],
     True,
     TestID -> "Simple expression produces no CSE variables"

@@ -20,7 +20,7 @@ scalarSetup = GetFunKitSetupScalar[];
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             (* A simple FTerm raised to a power — the kind FExpand is designed to handle *)
             expr = FTerm[Power[FTerm[Propagator[{Phi, Phi}, {i1, i2}]], 2]];
@@ -39,7 +39,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FTerm[Power[FTerm[Propagator[{Phi, Phi}, {i1, i2}]], 2]];
             result = FExpand[scalarSetup, expr, 0];
@@ -57,7 +57,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FEx[
                 FTerm[Power[FTerm[Propagator[{Phi, Phi}, {i1, i2}]], 2]],
@@ -82,7 +82,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             (* A term with FDOp raised to a power *)
             expr = FTerm[Power[FTerm[FDOp[Phi[i1]]], 2]];
@@ -101,7 +101,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FTerm[Power[FTerm[FDOp[Phi[i1]]], 2]];
             result = DExpand[scalarSetup, expr, 0];
@@ -119,7 +119,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{expr, result},
             expr = FEx[FTerm[Power[FTerm[FDOp[Phi[i1]]], 2]]];
             result = DExpand[scalarSetup, expr, 1];

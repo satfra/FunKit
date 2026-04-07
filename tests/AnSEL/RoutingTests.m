@@ -49,7 +49,7 @@ yukawaVertexFlow =
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{result},
             result = FRoute[scalarSetup, scalar2ptFlow];
             Head[result] === Association && KeyExistsQ[result, "1-Loop"]
@@ -64,7 +64,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{result, oneLoop},
             result = FRoute[scalarSetup, scalar2ptFlow];
             oneLoop = result["1-Loop"];
@@ -80,7 +80,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{result, oneLoop},
             result = FRoute[scalarSetup, scalar2ptFlow];
             oneLoop = result["1-Loop"];
@@ -100,7 +100,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{result},
             result = FRoute[scalarSetup, scalar4ptFlow];
             Head[result] === Association && KeyExistsQ[result, "1-Loop"]
@@ -119,7 +119,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{term, result},
             term = (List @@ scalar2ptFlow)[[1]];
             result = FRoute[scalarSetup, term];
@@ -139,7 +139,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{result, oneLoop, extIdx},
             result = FRoute[scalarSetup, scalar2ptFlow];
             oneLoop = result["1-Loop"];
@@ -161,7 +161,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{result},
             result = FRoute[yukawaSetup, yukawaVertexFlow];
             Head[result] === Association && KeyExistsQ[result, "1-Loop"]
@@ -176,7 +176,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{result, oneLoop},
             result = FRoute[yukawaSetup, yukawa2ptFlow];
             oneLoop = result["1-Loop"];
@@ -196,7 +196,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{result, oneLoop, expr},
             FSetLoopMomentumName["q"];
             result = FRoute[scalarSetup, scalar2ptFlow];

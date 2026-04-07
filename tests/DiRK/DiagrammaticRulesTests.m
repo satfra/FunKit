@@ -15,7 +15,7 @@ Import[$FunKitDirectory <> "/tests/boilerplate/setups.m"];
    prematurely and triggers TensorBases errors on unmatched patterns.
    Use FreeQ on Hold @@ {rule} to inspect structure safely. *)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{ymSetup, rules},
         ymSetup = <|
             "FieldSpace" -> <|"Commuting" -> {A[p, {mu, a}]}, "Grassmann" -> {{cb[p, {a}], c[p, {a}]}}|>,
@@ -33,7 +33,7 @@ AppendTo[tests, TestCreate[
     TestID -> "FMakeDiagrammaticRules: YM generates exactly 3 rules"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{ymSetup, rules},
         ymSetup = <|
             "FieldSpace" -> <|"Commuting" -> {A[p, {mu, a}]}, "Grassmann" -> {{cb[p, {a}], c[p, {a}]}}|>,
@@ -51,7 +51,7 @@ AppendTo[tests, TestCreate[
     TestID -> "FMakeDiagrammaticRules: YM Propagator rule contains dressing"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{ymSetup, rules},
         ymSetup = <|
             "FieldSpace" -> <|"Commuting" -> {A[p, {mu, a}]}, "Grassmann" -> {{cb[p, {a}], c[p, {a}]}}|>,
@@ -69,7 +69,7 @@ AppendTo[tests, TestCreate[
     TestID -> "FMakeDiagrammaticRules: YM Propagator rule uses InverseProp (default DerivePropagators)"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{ymSetup, rules},
         ymSetup = <|
             "FieldSpace" -> <|"Commuting" -> {A[p, {mu, a}]}, "Grassmann" -> {{cb[p, {a}], c[p, {a}]}}|>,
@@ -87,7 +87,7 @@ AppendTo[tests, TestCreate[
     TestID -> "FMakeDiagrammaticRules: YM vertex rules contain dressing"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{ymSetup, rules},
         ymSetup = <|
             "FieldSpace" -> <|"Commuting" -> {A[p, {mu, a}]}, "Grassmann" -> {{cb[p, {a}], c[p, {a}]}}|>,
@@ -109,7 +109,7 @@ AppendTo[tests, TestCreate[
     FMakeDiagrammaticRules: DerivePropagators -> False
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{ymSetup, rules},
         ymSetup = <|
             "FieldSpace" -> <|"Commuting" -> {A[p, {mu, a}]}, "Grassmann" -> {{cb[p, {a}], c[p, {a}]}}|>,
@@ -131,7 +131,7 @@ AppendTo[tests, TestCreate[
     FSetSymmetricDressing: full symmetrization
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{},
         FSetSymmetricDressing[GammaN, {A, A, A}];
         dressing[GammaN, {A, A, A}, 1, {c, b, a}] === dressing[GammaN, {A, A, A}, 1, {a, b, c}]
@@ -144,7 +144,7 @@ AppendTo[tests, TestCreate[
     FSetSymmetricDressing: partial index symmetrization
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{},
         FSetSymmetricDressing[GammaN, {A, cb, c}, {1, 3}];
         dressing[GammaN, {A, cb, c}, 1, {z, b, a}] === dressing[GammaN, {A, cb, c}, 1, {a, b, z}]

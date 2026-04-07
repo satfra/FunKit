@@ -57,7 +57,7 @@ Do[
                     "Parameters" -> {"l1", "p", "k", "cosl1p1", "cosl1p2", "cosl1p3"}
                 ]
             ];
-            AppendTo[tests, TestCreate[
+            AppendTo[tests, VerificationTest[
                 StringQ[body],
                 True,
                 TestID -> "FlowA4[" <> ToString[elem] <> "] optimize=" <> ToString[lvl] <> " generates valid code (took " <> ToString[NumberForm[timing, 3]] <> "s)"
@@ -113,12 +113,12 @@ int main () {
 }
 ", "FunKitFlowA4Test", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
 
-AppendTo[tests, TestCreate[execCompile =!= $Failed, True, TestID -> "FlowA4[1] compiles to executable"]];
+AppendTo[tests, VerificationTest[execCompile =!= $Failed, True, TestID -> "FlowA4[1] compiles to executable"]];
 
 If[execCompile =!= $Failed,
     outputCompile = Import["!" <> QuoteFile[execCompile], "Text"];
     numericOutputCompile = Quiet @ Read[StringToStream[outputCompile], Number];
-    AppendTo[tests, TestCreate[
+    AppendTo[tests, VerificationTest[
         NumberQ[numericOutputCompile],
         True,
         TestID -> "FlowA4[1] produces numeric output"
@@ -151,7 +151,7 @@ int main () {
     If[execLvl =!= $Failed,
         outputLvl = Import["!" <> QuoteFile[execLvl], "Text"];
         numericOutputLvl = Quiet @ Read[StringToStream[outputLvl], Number];
-        AppendTo[tests, TestCreate[
+        AppendTo[tests, VerificationTest[
             NumberQ[numericOutputLvl] && Abs[numericOutputLvl - numericOutputCompile] < 1*^-8,
             True,
             TestID -> "FlowA4[1] optimize=" <> ToString[lvl] <> " matches default output"

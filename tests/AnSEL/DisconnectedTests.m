@@ -9,7 +9,7 @@ Import[$FunKitDirectory <> "/tests/boilerplate/setups.m"];
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup},
             setup = GetFunKitSetupScalar[];
             FDisconnectedQ[setup, FTerm[1, Propagator[{Phi, Phi}, {i1, i2}]]]
@@ -25,7 +25,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup},
             setup = GetFunKitSetupScalar[];
             FDisconnectedQ[setup, FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], Propagator[{Phi, Phi}, {i2, i3}]]]
@@ -41,7 +41,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup},
             setup = GetFunKitSetupScalar[];
             FDisconnectedQ[setup, FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], Propagator[{Phi, Phi}, {i3, i4}]]]
@@ -57,7 +57,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup},
             setup = GetFunKitSetupScalar[];
             FDisconnectedQ[setup, FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], GammaN[{Phi, Phi}, {i1, i2}]]]
@@ -73,7 +73,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup},
             setup = GetFunKitSetupScalar[];
             FDisconnectedQ[setup, FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], GammaN[{Phi, Phi}, {i1, i2}],
@@ -90,7 +90,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup},
             setup = GetFunKitSetupScalar[];
             FDisconnectedQ[setup, FTerm[1, GammaN[{Phi, Phi, Phi, Phi}, {i1, i2, i3, i4}]]]
@@ -106,7 +106,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup},
             setup = GetFunKitSetupScalar[];
             FDisconnectedQ[setup, FTerm[Phi[i1], Propagator[{Phi, Phi}, {i1, i2}], Phi[i2]]]
@@ -122,7 +122,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup},
             setup = GetFunKitSetupScalar[];
             FDisconnectedQ[setup, FTerm[Phi[i1], Propagator[{Phi, Phi}, {i1, i2}], Phi[i2],
@@ -143,7 +143,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, connected, disconnected},
             setup = GetFunKitSetupScalar[];
             connected = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], GammaN[{Phi, Phi}, {i1, i2}]];
@@ -162,7 +162,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2},
             setup = GetFunKitSetupScalar[];
             t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], GammaN[{Phi, Phi}, {i1, i2}]];
@@ -184,7 +184,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup},
             setup = GetFunKitSetupYukawa[];
             FDisconnectedQ[setup, FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], GammaN[{Phi, Phi}, {i1, i2}],

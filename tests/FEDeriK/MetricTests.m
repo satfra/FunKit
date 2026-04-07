@@ -9,7 +9,7 @@ Import[$FunKitDirectory <> "/tests/boilerplate/setups.m"];
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{ySet = GetFunKitSetupYukawa[]},
             FunKit`Private`ReduceIndices[ySet, FTerm[FMinus[{Phi, Psi}, {i1, i2}]]]
         ]
@@ -23,7 +23,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{ySet = GetFunKitSetupYukawa[]},
             FunKit`Private`ReduceIndices[ySet, FTerm[FMinus[{Phi, Phi}, {i1, i2}]]]
         ]
@@ -37,7 +37,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{ySet = GetFunKitSetupYukawa[]},
             FunKit`Private`ReduceIndices[ySet, FTerm[FMinus[{Psi, Psibar}, {i1, i2}]]]
         ]
@@ -51,7 +51,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{ySet = GetFunKitSetupYukawa[]},
             FunKit`Private`ReduceIndices[ySet, FTerm[FMinus[{Psi, Psi}, {i1, i2}]]]
         ]
@@ -69,7 +69,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{ySet = GetFunKitSetupYukawa[]},
             FunKit`Private`ReduceIndices[ySet, FTerm[AnyField[-i1], \[Gamma][{Psi, Psi}, {i1, i2}], AnyField[-i2]]]
         ]
@@ -83,7 +83,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{ySet = GetFunKitSetupYukawa[]},
             FunKit`Private`ReduceIndices[ySet, FTerm[AnyField[-i1], \[Gamma][{Psi, Psibar}, {i1, i2}], AnyField[-i2]]]
         ]
@@ -97,7 +97,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{ySet = GetFunKitSetupYukawa[]},
             FunKit`Private`ReduceIndices[ySet, FTerm[AnyField[-i1], \[Gamma][{Psibar, Psibar}, {i1, i2}], AnyField[-i2]]]
         ]
@@ -111,7 +111,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{ySet = GetFunKitSetupYukawa[]},
             FunKit`Private`ReduceIndices[ySet, FTerm[AnyField[-i1], \[Gamma][{Psibar, Psi}, {i1, i2}], AnyField[-i2]]]
         ]

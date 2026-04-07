@@ -57,9 +57,9 @@ int main(){
 
 output1 = Import["!" <> QuoteFile[exec1], "Text"];
 
-AppendTo[tests, TestCreate[exec1 =!= $Failed, True, TestID -> "Verify compilation of basic C++ function"]];
+AppendTo[tests, VerificationTest[exec1 =!= $Failed, True, TestID -> "Verify compilation of basic C++ function"]];
 
-AppendTo[tests, TestCreate[output1, "42", TestID -> "Verify return value of basic C++ function"]];
+AppendTo[tests, VerificationTest[output1, "42", TestID -> "Verify return value of basic C++ function"]];
 
 (**********************************************************************************
     Testing typical arithmetic operations in C++ functions    
@@ -86,9 +86,9 @@ output2 = Import["!" <> QuoteFile[exec2], "Text"];
 
 expected = ToString[NumberForm[expr /. a -> 1.5, 10]];
 
-AppendTo[tests, TestCreate[exec2 =!= $Failed, True, TestID -> "Verify compilation of C++ function with arithmetic operations"]];
+AppendTo[tests, VerificationTest[exec2 =!= $Failed, True, TestID -> "Verify compilation of C++ function with arithmetic operations"]];
 
-AppendTo[tests, TestCreate[output2, expected, TestID -> "Verify return value of C++ function with arithmetic operations"]];
+AppendTo[tests, VerificationTest[output2, expected, TestID -> "Verify return value of C++ function with arithmetic operations"]];
 
 (**********************************************************************************
     Optimization enabled (True) produces valid C++ code
@@ -113,9 +113,9 @@ int main () {
 
 outputOpt = Import["!" <> QuoteFile[execOpt], "Text"];
 
-AppendTo[tests, TestCreate[execOpt =!= $Failed, True, TestID -> "Verify compilation with optimization enabled"]];
+AppendTo[tests, VerificationTest[execOpt =!= $Failed, True, TestID -> "Verify compilation with optimization enabled"]];
 
-AppendTo[tests, TestCreate[outputOpt, expected, TestID -> "Verify numerical agreement with optimization enabled"]];
+AppendTo[tests, VerificationTest[outputOpt, expected, TestID -> "Verify numerical agreement with optimization enabled"]];
 
 (**********************************************************************************
     Optimization disabled (False) produces valid C++ code
@@ -140,9 +140,9 @@ int main () {
 
 outputNoOpt = Import["!" <> QuoteFile[execNoOpt], "Text"];
 
-AppendTo[tests, TestCreate[execNoOpt =!= $Failed, True, TestID -> "Verify compilation with optimization disabled"]];
+AppendTo[tests, VerificationTest[execNoOpt =!= $Failed, True, TestID -> "Verify compilation with optimization disabled"]];
 
-AppendTo[tests, TestCreate[outputNoOpt, expected, TestID -> "Verify numerical agreement with optimization disabled"]];
+AppendTo[tests, VerificationTest[outputNoOpt, expected, TestID -> "Verify numerical agreement with optimization disabled"]];
 
 (**********************************************************************************
     FMA helper (needed by all tests below since all passes now run)
@@ -182,9 +182,9 @@ output6 = Import["!" <> QuoteFile[exec6], "Text"];
 
 expectedLarge = ToString[NumberForm[largeExpr /. a -> 1.5, 10]];
 
-AppendTo[tests, TestCreate[exec6 =!= $Failed, True, TestID -> "Verify compilation of large expression with sub-kernels"]];
+AppendTo[tests, VerificationTest[exec6 =!= $Failed, True, TestID -> "Verify compilation of large expression with sub-kernels"]];
 
-AppendTo[tests, TestCreate[output6, expectedLarge, TestID -> "Verify numerical agreement of large expression with sub-kernels"]];
+AppendTo[tests, VerificationTest[output6, expectedLarge, TestID -> "Verify numerical agreement of large expression with sub-kernels"]];
 
 (**********************************************************************************
     FMA-enabled optimization produces valid C++ code
@@ -210,9 +210,9 @@ int main () {
 
 output7 = Import["!" <> QuoteFile[exec7], "Text"];
 
-AppendTo[tests, TestCreate[exec7 =!= $Failed, True, TestID -> "Verify compilation with FMA optimization"]];
+AppendTo[tests, VerificationTest[exec7 =!= $Failed, True, TestID -> "Verify compilation with FMA optimization"]];
 
-AppendTo[tests, TestCreate[output7, expected, TestID -> "Verify numerical agreement with FMA optimization"]];
+AppendTo[tests, VerificationTest[output7, expected, TestID -> "Verify numerical agreement with FMA optimization"]];
 
 (**********************************************************************************
     FMA detection: verify fma() appears in output
@@ -222,7 +222,7 @@ Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFMARestructure =
     fmaTestCode = CppCode[a * b + c * d + e];
 ];
 
-AppendTo[tests, TestCreate[StringContainsQ[fmaTestCode, "fma("], True, TestID -> "Verify FMA detection in optimized output"]];
+AppendTo[tests, VerificationTest[StringContainsQ[fmaTestCode, "fma("], True, TestID -> "Verify FMA detection in optimized output"]];
 
 (**********************************************************************************
     Fast-math intrinsics emission
@@ -232,15 +232,15 @@ Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFastMath = True,
     fastMathCode = CppCode[Exp[x] + Log[x]];
 ];
 
-AppendTo[tests, TestCreate[StringContainsQ[fastMathCode, "__expf("], True, TestID -> "Verify __expf in fast-math output"]];
-AppendTo[tests, TestCreate[StringContainsQ[fastMathCode, "__logf("], True, TestID -> "Verify __logf in fast-math output"]];
+AppendTo[tests, VerificationTest[StringContainsQ[fastMathCode, "__expf("], True, TestID -> "Verify __expf in fast-math output"]];
+AppendTo[tests, VerificationTest[StringContainsQ[fastMathCode, "__logf("], True, TestID -> "Verify __logf in fast-math output"]];
 
 (* Fast-math should NOT emit intrinsics when precision is double *)
 Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFastMath = True, FunKit`Private`$codePrecision = "double"},
     noFastMathCode = CppCode[Exp[x] + Log[x]];
 ];
 
-AppendTo[tests, TestCreate[StringFreeQ[noFastMathCode, "__expf("], True, TestID -> "Verify no __expf when precision is double"]];
+AppendTo[tests, VerificationTest[StringFreeQ[noFastMathCode, "__expf("], True, TestID -> "Verify no __expf when precision is double"]];
 
 (**********************************************************************************
     Sub-kernel splitting
@@ -252,8 +252,8 @@ Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms =
     splitCode = CppCode[largeExprSplit];
 ];
 
-AppendTo[tests, TestCreate[StringContainsQ[splitCode, "// subkernel 1"], True, TestID -> "Verify sub-kernel splitting produces multiple blocks"]];
-AppendTo[tests, TestCreate[StringContainsQ[splitCode, "// subkernel 2"], True, TestID -> "Verify sub-kernel splitting produces at least 2 blocks"]];
+AppendTo[tests, VerificationTest[StringContainsQ[splitCode, "// subkernel 1"], True, TestID -> "Verify sub-kernel splitting produces multiple blocks"]];
+AppendTo[tests, VerificationTest[StringContainsQ[splitCode, "// subkernel 2"], True, TestID -> "Verify sub-kernel splitting produces at least 2 blocks"]];
 
 (**********************************************************************************
     Transcendental hoisting
@@ -263,4 +263,4 @@ Block[{FunKit`Private`$codeOptimize = True},
     tranCode = CppCode[Exp[a + b * c] + 2 * Exp[a + b * c]];
 ];
 
-AppendTo[tests, TestCreate[StringContainsQ[tranCode, "_tran"], True, TestID -> "Verify transcendental hoisting creates _tran variables"]];
+AppendTo[tests, VerificationTest[StringContainsQ[tranCode, "_tran"], True, TestID -> "Verify transcendental hoisting creates _tran variables"]];

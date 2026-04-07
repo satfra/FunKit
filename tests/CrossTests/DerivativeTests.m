@@ -102,16 +102,16 @@ resultS2QF = FEx[FunKitResS2, FTerm[-1, QMeSResS2]] // FSimplify;
 
 resultYukQF = FEx[FunKitResYuk, FTerm[-1, QMeSResYuk]] // FSimplify;
 
-AppendTo[tests, TestCreate[resultF2QF, FEx[], TestID -> "Verify Yukawa theory (QMeS): Fermion propagator flow"]];
+AppendTo[tests, VerificationTest[resultF2QF, FEx[], TestID -> "Verify Yukawa theory (QMeS): Fermion propagator flow"]];
 
-AppendTo[tests, TestCreate[resultS2QF, FEx[], TestID -> "Verify Yukawa theory (QMeS): Scalar propagator flow"]];
+AppendTo[tests, VerificationTest[resultS2QF, FEx[], TestID -> "Verify Yukawa theory (QMeS): Scalar propagator flow"]];
 
-AppendTo[tests, TestCreate[resultYukQF, FEx[], TestID -> "Verify Yukawa theory (QMeS): Yukawa vertex flow"]];
+AppendTo[tests, VerificationTest[resultYukQF, FEx[], TestID -> "Verify Yukawa theory (QMeS): Yukawa vertex flow"]];
 
 resultF2DF = FEx[FunKitResF2, FTerm[-1, DoFunResF2]] // FSimplify;
 
 resultS2DF = FEx[FunKitResS2, FTerm[-1, DoFunResS2]] // FSimplify;
 
-AppendTo[tests, TestCreate[resultF2DF, FEx[], TestID -> "Verify Yukawa theory (DoFun): Fermion propagator flow"]];
+AppendTo[tests, VerificationTest[resultF2DF, FEx[], TestID -> "Verify Yukawa theory (DoFun): Fermion propagator flow"]];
 
-AppendTo[tests, TestCreate[resultS2DF, FEx[], TestID -> "Verify Yukawa theory (DoFun): Scalar propagator flow"]];
+AppendTo[tests, VerificationTest[resultS2DF, FEx[], TestID -> "Verify Yukawa theory (DoFun): Scalar propagator flow"]];

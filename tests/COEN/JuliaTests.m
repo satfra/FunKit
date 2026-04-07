@@ -27,9 +27,9 @@ execFile1 = Export[$TemporaryDirectory <> "/FunKitJuliaTest1.jl", code1, "Text"]
 
 output1 = RunProcess[{"julia", execFile1}];
 
-AppendTo[tests, TestCreate[output1["StandardError"], "", TestID -> "Verify correctness of basic Julia function"]];
+AppendTo[tests, VerificationTest[output1["StandardError"], "", TestID -> "Verify correctness of basic Julia function"]];
 
-AppendTo[tests, TestCreate[output1["StandardOutput"], "42", TestID -> "Verify return value of basic Julia function"]];
+AppendTo[tests, VerificationTest[output1["StandardOutput"], "42", TestID -> "Verify return value of basic Julia function"]];
 
 (**********************************************************************************
     Testing typical arithmetic operations in Julia functions    
@@ -49,9 +49,9 @@ output2 = RunProcess[{"julia", execFile2}]
 
 expected = ToString[NumberForm[expr /. a -> 1.5, 10]];
 
-AppendTo[tests, TestCreate[output2["StandardError"], "", TestID -> "Verify correctness of Julia function with arithmetic operations"]];
+AppendTo[tests, VerificationTest[output2["StandardError"], "", TestID -> "Verify correctness of Julia function with arithmetic operations"]];
 
-AppendTo[tests, TestCreate[output2["StandardOutput"], expected, TestID -> "Verify return value of Julia function with arithmetic operations"]];
+AppendTo[tests, VerificationTest[output2["StandardOutput"], expected, TestID -> "Verify return value of Julia function with arithmetic operations"]];
 
 (**********************************************************************************
     Optimization pipeline test: CSE variables appear in output, result still correct
@@ -63,7 +63,7 @@ exprOpt = Sin[a + b]^2 + Cos[a + b]^3 + Sin[a + b]*Log[b + 1] + Cos[a + b]*Exp[b
 
 (* Verify the code contains at least one optimizer-generated variable *)
 juliaCodeOpt = JuliaCode[exprOpt];
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     StringContainsQ[juliaCodeOpt, "_cse"] || StringContainsQ[juliaCodeOpt, "_interp"],
     True,
     TestID -> "Optimization pipeline produces CSE variables for Julia"
@@ -81,8 +81,8 @@ outputOpt = RunProcess[{"julia", execFileOpt}];
 
 expectedOpt = ToString[NumberForm[N[exprOpt /. {a -> 1.2, b -> 0.7}, 10], 10]];
 
-AppendTo[tests, TestCreate[outputOpt["StandardError"], "", TestID -> "Optimization pipeline produces no Julia runtime errors"]];
-AppendTo[tests, TestCreate[outputOpt["StandardOutput"], expectedOpt, TestID -> "Optimized Julia function returns correct value"]];
+AppendTo[tests, VerificationTest[outputOpt["StandardError"], "", TestID -> "Optimization pipeline produces no Julia runtime errors"]];
+AppendTo[tests, VerificationTest[outputOpt["StandardOutput"], expectedOpt, TestID -> "Optimized Julia function returns correct value"]];
 
 (**********************************************************************************
     $codeOptimize = False: plain expression path produces just a return statement
@@ -94,13 +94,13 @@ AppendTo[tests, TestCreate[outputOpt["StandardOutput"], expectedOpt, TestID -> "
 ClearAll[x, y]
 simpleCode = JuliaCode[x + y];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     StringStartsQ[simpleCode, "return"],
     True,
     TestID -> "Simple expression produces plain return statement without definitions"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     !StringContainsQ[simpleCode, "_cse"] && !StringContainsQ[simpleCode, "_interp"],
     True,
     TestID -> "Simple expression produces no CSE variables"

@@ -16,7 +16,7 @@ Import[$FunKitDirectory <> "/tests/boilerplate/setups.m"];
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{t1, t2, setup},
             setup = GetFunKitSetupScalar[];
             t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], Propagator[{Phi, Phi}, {i2, i3}]];
@@ -33,7 +33,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{t1, t2, setup},
             setup = GetFunKitSetupScalar[];
             t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], Propagator[{Phi, Phi}, {i2, i3}]];
@@ -50,7 +50,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{t1, t2, setup},
             setup = GetFunKitSetupScalar[];
             t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}]];
@@ -67,7 +67,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{t1, t2, setup},
             setup = GetFunKitSetupYukawa[];
             t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}]];
@@ -88,7 +88,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2, res},
             setup = GetFunKitSetupScalar[];
             t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], Propagator[{Phi, Phi}, {i2, i3}]];
@@ -106,7 +106,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2, res},
             setup = GetFunKitSetupScalar[];
             t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], Propagator[{Phi, Phi}, {i2, i3}]];
@@ -124,7 +124,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2},
             setup = GetFunKitSetupScalar[];
             t1 = FTerm[3, Propagator[{Phi, Phi}, {i1, i2}]];
@@ -141,7 +141,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2},
             setup = GetFunKitSetupScalar[];
             t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], Propagator[{Phi, Phi}, {i2, i3}]];
@@ -158,7 +158,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2},
             setup = GetFunKitSetupScalar[];
             t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], Propagator[{Phi, Phi}, {i2, i3}], Propagator[{Phi, Phi}, {i3, i4}]];
@@ -175,7 +175,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2},
             setup = GetFunKitSetupScalar[];
             t1 = FTerm[1, Propagator[{Phi, Phi}, {i1, i2}], Propagator[{Phi, Phi}, {i2, i3}], GammaN[{Phi, Phi}, {-i3, -i1}]];
@@ -196,7 +196,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2, res},
             setup = GetFunKitSetupYukawa[];
             t1 = FTerm[1, Propagator[{Psi, Psibar}, {i1, i2}], GammaN[{Psi, Psibar, Phi}, {-i1, -i3, -i4}], GammaN[{Psi, Psibar, Phi}, {-i5, -i2, -i6}], Propagator[{Psi, Psibar}, {i3, i5}], Propagator[{Phi, Phi}, {i4, i6}]];
@@ -214,7 +214,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2, res},
             setup = GetFunKitSetupYukawa[];
             t1 = FTerm[1, Propagator[{Psi, Psibar}, {i1, i2}], GammaN[{Psi, Psibar, Phi}, {-i1, -i3, -i4}], GammaN[{Psi, Psibar, Phi}, {-i5, -i2, -i6}], Propagator[{Psi, Psibar}, {i3, i5}], Propagator[{Phi, Phi}, {i4, i6}]];
@@ -232,7 +232,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2},
             setup = GetFunKitSetupFourFermion[];
             t1 = FTerm[GammaN[{Psibar, Psibar, Psi, Psi}, {-i1, -i2, -i3, -i4}], Propagator[{Psi, Psibar}, {i1, i3}], Propagator[{Psi, Psibar}, {i2, i4}]];
@@ -249,7 +249,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2, res},
             setup = GetFunKitSetupFourFermion[];
             t1 = FTerm[GammaN[{Psibar, Psibar, Psi, Psi}, {-i1, -i2, -i3, -i4}], Propagator[{Psi, Psibar}, {i1, i3}], Propagator[{Psi, Psibar}, {i2, i4}]];
@@ -271,7 +271,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, result},
             setup = GetFunKitSetupScalar[];
             FSetGlobalSetup[setup];
@@ -291,7 +291,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, result},
             setup = GetFunKitSetupScalar[];
             FSetGlobalSetup[setup];
@@ -311,7 +311,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, result1, result2},
             setup = GetFunKitSetupScalar[];
             FSetGlobalSetup[setup];
@@ -332,7 +332,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, singleTerm, result},
             setup = GetFunKitSetupScalar[];
             singleTerm = FEx[FTerm[1, Propagator[{Phi, Phi}, {i2, i1}]]];
@@ -348,7 +348,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, emptyEx, result},
             setup = GetFunKitSetupScalar[];
             emptyEx = FEx[];
@@ -368,7 +368,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, result},
             setup = GetFunKitSetupYukawa[];
             FSetGlobalSetup[setup];
@@ -388,7 +388,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, result},
             setup = GetFunKitSetupYukawa[];
             FSetGlobalSetup[setup];
@@ -408,7 +408,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, result},
             setup = GetFunKitSetupYukawa[];
             FSetGlobalSetup[setup];
@@ -432,7 +432,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, eq1, eq2},
             setup = GetFunKitSetupFourFermion[];
             eq1 = FTerm[GammaN[{Psibar, Psibar, Psi, Psi}, {-i1, -i2, -i3, -i4}], Propagator[{Psi, Psibar}, {i1, i3}], Propagator[{Psi, Psibar}, {i2, i4}]];
@@ -449,7 +449,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, eq1, eq2},
             setup = GetFunKitSetupFourFermion[];
             eq1 = FTerm[GammaN[{Psibar, Psibar, Psi, Psi}, {-i1, -i2, -i3, -i4}], Propagator[{Psi, Psibar}, {i1, i3}], Propagator[{Psi, Psibar}, {i2, i4}]];
@@ -466,7 +466,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, result},
             setup = GetFunKitSetupFourFermion[];
             FSetGlobalSetup[setup];
@@ -486,7 +486,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, result},
             setup = GetFunKitSetupFourFermion[];
             FSetGlobalSetup[setup];
@@ -506,7 +506,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, result1, result2},
             setup = GetFunKitSetupFourFermion[];
             FSetGlobalSetup[setup];
@@ -531,7 +531,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, symmetries},
             setup = GetFunKitSetupScalar[];
             symmetries = FMakeSymmetryList[setup, {Phi[i1], Phi[i2]}];
@@ -547,7 +547,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, symmetries},
             setup = GetFunKitSetupScalar[];
             symmetries = FMakeSymmetryList[setup, {Phi[i1], Phi[i2], Phi[i3]}];
@@ -563,7 +563,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, symmetries},
             setup = GetFunKitSetupFourFermion[];
             symmetries = FMakeSymmetryList[setup, {Psi[i1], Psi[i2]}];
@@ -579,7 +579,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, symmetries},
             setup = GetFunKitSetupYukawa[];
             symmetries = FMakeSymmetryList[setup, {Phi[i1], Phi[i2], Psi[i3], Psi[i4]}];
@@ -595,7 +595,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, symmetries},
             setup = GetFunKitSetupYukawa[];
             symmetries = FMakeSymmetryList[setup, {Psi[i1], Psibar[i2]}];
@@ -611,7 +611,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         CheckAbort[
             Module[{setup},
                 setup = GetFunKitSetupScalar[];
@@ -634,7 +634,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{result, setup},
             setup = GetFunKitSetupScalar[];
             result = FunKit`Private`FBuildSymmetryList[setup, {{{1, 2}, 1}}, {Phi[i1], Phi[i2]}];
@@ -650,7 +650,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{result, setup},
             setup = GetFunKitSetupScalar[];
             result = FunKit`Private`FBuildSymmetryList[setup, {{{1, 2, 3}, 1}}, {Phi[i1], Phi[i2], Phi[i3]}];
@@ -666,7 +666,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         CheckAbort[
             Module[{result, setup},
                 setup = GetFunKitSetupScalar[];
@@ -685,7 +685,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup},
             setup = GetFunKitSetupScalar[];
             FunKit`Private`FBuildSymmetryList[setup, {}, {Phi[i1], Phi[i2]}]
@@ -704,7 +704,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, resultNoSym, resultWithSym},
             setup = GetFunKitSetupScalar[];
             FSetGlobalSetup[setup];
@@ -730,7 +730,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, resultNoSym, resultWithSym},
             setup = GetFunKitSetupFourFermion[];
             FSetGlobalSetup[setup];
@@ -769,7 +769,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2, result},
             setup = GetFunKitSetupScalar[];
             (* Two separate tadpole loops — no shared index between the two Propagator-GammaN pairs *)
@@ -792,7 +792,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, disconnected, connected, result},
             setup = GetFunKitSetupScalar[];
             (* Disconnected: two separate tadpole loops *)
@@ -816,7 +816,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2, result},
             setup = GetFunKitSetupScalar[];
             (* Both share a Propagator-GammaN 2-point loop, but the second component differs *)
@@ -842,7 +842,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, result},
             setup = GetFunKitSetupScalar[];
             result = FSimplify[setup, FEx[FTerm[S[{Phi, Phi}, {-i2, -i1}]], FTerm[-1, S[{Phi, Phi}, {-i2, -i1}]]]];
@@ -863,7 +863,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{setup, t1, t2, result},
             setup = GetFunKitSetupYangMills[];
             t1 = FTerm[1/2, S[{A, A, A, A}, {-i2, -a903, -a904, -a905}],

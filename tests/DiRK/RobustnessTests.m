@@ -8,7 +8,7 @@ Import[$FunKitDirectory <> "/tests/boilerplate/setups.m"];
 
 FunKit`FSetGlobalSetup[];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FMakeDiagrammaticRules[], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::noGlobalSetup},
@@ -19,14 +19,14 @@ AppendTo[tests, TestCreate[
     DiRK: AssertFSetup tests (D2)
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FMakeDiagrammaticRules[42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`Private`FSetupQ::association},
     TestID -> "D2: FMakeDiagrammaticRules with non-Association setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FMakeDiagrammaticRules["not a setup"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`Private`FSetupQ::association},
@@ -37,7 +37,7 @@ AppendTo[tests, TestCreate[
     DiRK: Missing FeynmanRules key (D3)
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[
         FunKit`FMakeDiagrammaticRules[
             <|"FieldSpace" -> <|"Commuting" -> {Phi[p]}, "Grassmann" -> {}|>|>
@@ -53,14 +53,14 @@ AppendTo[tests, TestCreate[
     DiRK: Catch-all tests (E3, E4)
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetSymmetricDressing[42, 42, 42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
     TestID -> "E3: FSetSymmetricDressing with wrong args should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FMakeDiagrammaticRules[42, 42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},

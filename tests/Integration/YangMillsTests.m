@@ -7,6 +7,6 @@ Module[{fields, truncation, bases, setup, dseA, dseAA},
     setup = <|"FieldSpace" -> fields, "Truncation" -> truncation, "FeynmanRules" -> bases|>;
     dseA = FMakeDSE[setup, A[i1]];
     dseAA = FTruncate[setup, FTakeDerivatives[setup, dseA, {A[i2]}]];
-    AppendTo[tests, TestCreate[Length[dseA] > 4 && Head[dseA] === FEx, True, TestID -> "YangMills integration test: dseA has been generated"]];
-    AppendTo[tests, TestCreate[Length[dseAA] > 4 && Head[dseAA] === FEx, True, TestID -> "YangMills integration test: dseAA has been generated"]];
+    AppendTo[tests, VerificationTest[Length[dseA] > 4 && Head[dseA] === FEx, True, TestID -> "YangMills integration test: dseA has been generated"]];
+    AppendTo[tests, VerificationTest[Length[dseAA] > 4 && Head[dseAA] === FEx, True, TestID -> "YangMills integration test: dseAA has been generated"]];
 ];

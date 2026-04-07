@@ -1,8 +1,3 @@
-(* TestCreate was introduced in 12.0; alias to VerificationTest for older versions *)
-If[$VersionNumber < 12.0 && !ValueQ[TestCreate],
-    TestCreate = VerificationTest;
-];
-
 $mDir = SelectFirst[Join[{FileNameJoin[{$UserBaseDirectory, "Applications", "FunKit"}], FileNameJoin[{$BaseDirectory, "Applications", "FunKit"}], FileNameJoin[{$InstallationDirectory, "AddOns", "Applications", "FunKit"}], FileNameJoin[{$InstallationDirectory, "AddOns", "Packages", "FunKit"}], FileNameJoin[{$InstallationDirectory, "AddOns", "ExtraPackages", "FunKit"}]}, Select[$Path, StringContainsQ[#, "FunKit"]&]], DirectoryQ[#]&] <> "/";
 
 (* Take care of dependencies *)

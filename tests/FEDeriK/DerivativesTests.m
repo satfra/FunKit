@@ -14,7 +14,7 @@ yukawaSetup = GetFunKitSetupYukawa[];
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{res = FResolveFDOp[scalarSetup, FTerm[GammaN[{Phi, Phi}, {i1, i2}]]]},
             Head[res] === FEx && FreeQ[res, FDOp, Infinity]
         ]
@@ -30,7 +30,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         FResolveFDOp[scalarSetup, FTerm[GammaN[{Phi}, {-i1}], FDOp[Phi[i2]]]]
         ,
         FEx[]
@@ -44,7 +44,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{res = FResolveFDOp[scalarSetup, FTerm[FDOp[Phi[k]], GammaN[{Phi}, {-i1}], GammaN[{Phi}, {-i2}]]]},
             FreeQ[res, FDOp, Infinity] && Length[res] === 2
         ]
@@ -61,7 +61,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{res = FTakeDerivatives[yukawaSetup, FEx[FTerm[GammaN[{Psi, Psibar, Phi}, {i1, i2, i3}]]], {Phi[k]}]},
             Head[res] === FEx && Not @ FreeQ[res, GammaN[{_, _, _, _}, _], Infinity]
         ]
@@ -77,7 +77,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         CheckAbort[FResolveFDOp[scalarSetup, 42], "AbortTriggered"]
         ,
         "AbortTriggered"
@@ -95,7 +95,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{res = FResolveDerivatives[scalarSetup, FEx[FTerm[GammaN[{Phi, Phi}, {i1, i2}]]]]},
             Head[res] === FEx && FreeQ[res, FDOp, Infinity]
         ]
@@ -111,7 +111,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         CheckAbort[FResolveDerivatives[scalarSetup, 42], "AbortTriggered"]
         ,
         "AbortTriggered"
@@ -129,7 +129,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{res = FTakeDerivatives[scalarSetup, FEx[FTerm[GammaN[{Phi, Phi}, {i1, i2}]]], {Phi[k]}]},
             Head[res] === FEx && Not @ FreeQ[res, GammaN[{Phi, Phi, Phi}, _], Infinity]
         ]
@@ -145,7 +145,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{res = FTakeDerivatives[scalarSetup, FEx[FTerm[GammaN[{Phi, Phi, Phi}, {i1, i2, i3}]]], {Phi[k], Phi[l]}]},
             Head[res] === FEx && Not @ FreeQ[res, GammaN[{Phi, Phi, Phi, Phi, Phi}, _], Infinity]
         ]
@@ -161,7 +161,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{res = FTakeDerivatives[scalarSetup, FEx[FTerm[GammaN[{Phi}, {-i1}]]], {Phi[k]}]},
             Head[res] === FEx && Not @ FreeQ[res, GammaN[{Phi, Phi}, _], Infinity]
         ]
@@ -177,7 +177,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{res = FTakeDerivatives[scalarSetup, FEx[FTerm[GammaN[{Phi, Phi, Phi, Phi}, {i1, i2, i3, i4}]]], {Phi[k], Phi[l], Phi[m]}]},
             FreeQ[res, FDOp, Infinity]
         ]

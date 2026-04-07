@@ -6,7 +6,7 @@ Import[$FunKitDirectory <> "/tests/boilerplate/setups.m"];
     COEN: FSetRegisterSize catch-all (E10)
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetRegisterSize["not a number"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
@@ -14,14 +14,14 @@ AppendTo[tests, TestCreate[
 ]];
 
 (* Test that valid integer works *)
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     (FunKit`FSetRegisterSize[64]; True),
     True,
     TestID -> "FSetRegisterSize with valid integer should succeed"
 ]];
 
 (* Reset to default *)
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     (FunKit`FSetRegisterSize[32]; True),
     True,
     TestID -> "FSetRegisterSize reset to default should succeed"
@@ -31,7 +31,7 @@ AppendTo[tests, TestCreate[
     COEN: FormatCppCode catch-all (E11)
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FormatCppCode[42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
@@ -42,7 +42,7 @@ AppendTo[tests, TestCreate[
     COEN: MakeCppClass catch-all (E12)
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`MakeCppClass[42, 42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
@@ -53,7 +53,7 @@ AppendTo[tests, TestCreate[
     COEN: MakeCppHeader catch-all (E13)
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`MakeCppHeader[42, 42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
@@ -64,14 +64,14 @@ AppendTo[tests, TestCreate[
     COEN: prepParam catch-all (F2)
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`Private`prepParam[42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`Private`prepParam::invalid},
     TestID -> "F2: prepParam with integer should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`Private`prepParam[{1, 2}], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`Private`prepParam::invalid},
@@ -79,13 +79,13 @@ AppendTo[tests, TestCreate[
 ]];
 
 (* Test that valid inputs work *)
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Head[FunKit`Private`prepParam["x"]],
     Association,
     TestID -> "prepParam with string should return Association"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Head[FunKit`Private`prepParam[<|"Name" -> "x", "Type" -> "double"|>]],
     Association,
     TestID -> "prepParam with Association should return Association"
@@ -95,27 +95,27 @@ AppendTo[tests, TestCreate[
     COEN: FSetCodeOptimization validation
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetCodeOptimization["not a boolean"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
     TestID -> "FSetCodeOptimization with non-boolean should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetCodeOptimization[42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
     TestID -> "FSetCodeOptimization with integer should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     (FunKit`FSetCodeOptimization[True]; True),
     True,
     TestID -> "FSetCodeOptimization with True should succeed"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     (FunKit`FSetCodeOptimization[False]; True),
     True,
     TestID -> "FSetCodeOptimization with False should succeed"
@@ -128,21 +128,21 @@ FunKit`FSetCodeOptimization[True];
     COEN: FSetFastMath validation
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetFastMath[42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
     TestID -> "FSetFastMath with integer should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetFastMath["yes"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
     TestID -> "FSetFastMath with string should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     (FunKit`FSetFastMath[True]; True),
     True,
     TestID -> "FSetFastMath with True should succeed"
@@ -154,21 +154,21 @@ FunKit`FSetFastMath[False];
     COEN: FSetMaxKernelTerms validation
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetMaxKernelTerms[-1], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
     TestID -> "FSetMaxKernelTerms with negative value should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetMaxKernelTerms["not a number"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
     TestID -> "FSetMaxKernelTerms with string should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     (FunKit`FSetMaxKernelTerms[200]; True),
     True,
     TestID -> "FSetMaxKernelTerms with valid integer should succeed"
@@ -180,27 +180,27 @@ FunKit`FSetMaxKernelTerms[500];
     COEN: FSetCodePrecision validation
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetCodePrecision["invalid"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
     TestID -> "FSetCodePrecision with invalid string should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetCodePrecision[42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
     TestID -> "FSetCodePrecision with integer should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     (FunKit`FSetCodePrecision["single"]; True),
     True,
     TestID -> "FSetCodePrecision with single should succeed"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     (FunKit`FSetCodePrecision["double"]; True),
     True,
     TestID -> "FSetCodePrecision with double should succeed"
@@ -210,7 +210,7 @@ AppendTo[tests, TestCreate[
     COEN: CppForm basic test
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Head[FunKit`CppForm[x + y]],
     String,
     TestID -> "CppForm should return a string"

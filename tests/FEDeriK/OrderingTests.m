@@ -9,7 +9,7 @@ Import[$FunKitDirectory <> "/tests/boilerplate/setups.m"];
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{yFunKitSetup},
             FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];
@@ -25,7 +25,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{yFunKitSetup},
             FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];
@@ -41,7 +41,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{yFunKitSetup},
             FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];
@@ -57,7 +57,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{yFunKitSetup},
             FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];
@@ -73,7 +73,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{yFunKitSetup},
             FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];
@@ -89,7 +89,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{yFunKitSetup},
             FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];
@@ -105,7 +105,7 @@ AppendTo[
 AppendTo[
     tests
     ,
-    TestCreate[
+    VerificationTest[
         Module[{yFunKitSetup},
             FSetCanonicalOrdering["c>ag>g"];
             yFunKitSetup = GetFunKitSetupYukawa[];

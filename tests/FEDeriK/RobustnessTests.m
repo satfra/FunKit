@@ -11,77 +11,77 @@ Import[$FunKitDirectory <> "/tests/boilerplate/setups.m"];
 
 FunKit`FSetGlobalSetup[];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FTruncate[FEx[FTerm[1]]], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::noGlobalSetup},
     TestID -> "A2: FTruncate without global setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FTruncateOpenIndices[FEx[FTerm[1]]], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::noGlobalSetup},
     TestID -> "A2: FTruncateOpenIndices without global setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FTakeDerivatives[FEx[FTerm[1]], {Phi}], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::noGlobalSetup},
     TestID -> "A2: FTakeDerivatives without global setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`QMeSForm[FEx[FTerm[1]]], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::noGlobalSetup},
     TestID -> "A2: QMeSForm without global setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FExpand[FEx[FTerm[1]], 2], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::noGlobalSetup},
     TestID -> "A2: FExpand without global setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`DExpand[FEx[FTerm[1]], 2], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::noGlobalSetup},
     TestID -> "A2: DExpand without global setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FMakeClassicalAction[], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::noGlobalSetup},
     TestID -> "A2: FMakeClassicalAction without global setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FMakeDSE[Phi], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::noGlobalSetup},
     TestID -> "A2: FMakeDSE without global setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FResolveDerivatives[FEx[FTerm[1]]], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::noGlobalSetup},
     TestID -> "A2: FResolveDerivatives without global setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FResolveFDOp[FEx[FTerm[1]]], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::noGlobalSetup},
     TestID -> "A2: FResolveFDOp without global setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FOrderFields[FEx[FTerm[1]]], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::noGlobalSetup},
@@ -94,35 +94,35 @@ AppendTo[tests, TestCreate[
 
 testSetup = GetFunKitSetupScalar[];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FTruncate[testSetup, "not an FEx"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FTruncate::wrongExpr},
     TestID -> "A1: FTruncate with wrong type should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FTruncateOpenIndices[testSetup, "not an FEx"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FTruncate::wrongExpr},
     TestID -> "A1: FTruncateOpenIndices with wrong type should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FResolveFDOp[testSetup, "not an FEx or FTerm"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
     TestID -> "A1: FResolveFDOp with wrong type should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FExpand[testSetup, "not an FTerm", 2], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
     TestID -> "A1: FExpand with wrong type should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`DExpand[testSetup, "not an FTerm", 2], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FunKit::invalidArguments},
@@ -133,14 +133,14 @@ AppendTo[tests, TestCreate[
     B1: FSetCanonicalOrdering should abort on invalid input
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`Private`FSetCanonicalOrdering[99], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`Private`CanonicalOrdering::unknownInteger},
     TestID -> "B1: FSetCanonicalOrdering with invalid integer should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`Private`FSetCanonicalOrdering["invalid"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`Private`CanonicalOrdering::unknownString},
@@ -149,7 +149,7 @@ AppendTo[tests, TestCreate[
 
 (* Verify valid orderings still work *)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{},
         FunKit`Private`FSetCanonicalOrdering["c>ag>g"];
         FunKit`Private`$CanonicalOrdering
@@ -158,7 +158,7 @@ AppendTo[tests, TestCreate[
     TestID -> "B1: FSetCanonicalOrdering with valid string should succeed"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{},
         FunKit`Private`FSetCanonicalOrdering[1];
         FunKit`Private`$CanonicalOrdering
@@ -172,28 +172,28 @@ AppendTo[tests, TestCreate[
     Passing a non-setup value should abort.
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FExpand["not a setup", FTerm[1], 2], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`Private`FSetupQ::association},
     TestID -> "C1: FExpand with invalid setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`DExpand["not a setup", FTerm[1], 2], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`Private`FSetupQ::association},
     TestID -> "C1: DExpand with invalid setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FResolveFDOp["not a setup", FEx[FTerm[1]]], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`Private`FSetupQ::association},
     TestID -> "C2: FResolveFDOp with invalid setup should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FOrderFields["not a setup", FEx[FTerm[1]]], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`Private`FSetupQ::association},
@@ -208,21 +208,21 @@ FunKit`Private`FSetCanonicalOrdering["c>ag>g"];
     A3: FSetUnorderedIndices catch-all
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetUnorderedIndices[Propagator, -1], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FSetUnorderedIndices::invalidArgs},
     TestID -> "A3: FSetUnorderedIndices with negative n should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetUnorderedIndices[FooBarNotRegistered, 2], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FSetUnorderedIndices::invalidArgs},
     TestID -> "A3: FSetUnorderedIndices with unregistered object should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{},
         FunKit`FSetUnorderedIndices[Propagator, 1];
         FunKit`Private`$unorderedIndices[Propagator]
@@ -235,7 +235,7 @@ AppendTo[tests, TestCreate[
     A4: FSetSymmetricObject empty fields catch-all
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetSymmetricObject[GammaN, {}], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FSetSymmetricObject::emptyFields},
@@ -247,28 +247,28 @@ AppendTo[tests, TestCreate[
     catch-alls for non-Symbol arguments
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FAddObject["NotASymbol"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FAddObject::notSymbol},
     TestID -> "A5: FAddObject with string should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FAddIndexedObject["NotASymbol"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FAddIndexedObject::notSymbol},
     TestID -> "A5: FAddIndexedObject with string should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FAddOrderedObject[42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FAddOrderedObject::notSymbol},
     TestID -> "A5: FAddOrderedObject with integer should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FAddCorrelationFunction["NotASymbol"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FAddCorrelationFunction::notSymbol},
@@ -279,14 +279,14 @@ AppendTo[tests, TestCreate[
     A6: FSetAutoSimplify/FSetAutoBuildSymmetryList Boolean validation
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetAutoSimplify[42], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FSetAutoSimplify::notBoolean},
     TestID -> "A6: FSetAutoSimplify with non-Boolean should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FSetAutoBuildSymmetryList["yes"], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FSetAutoBuildSymmetryList::notBoolean},
@@ -295,7 +295,7 @@ AppendTo[tests, TestCreate[
 
 (* Verify valid usage still works *)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{},
         FunKit`FSetAutoSimplify[False];
         FunKit`Private`$AutoSimplify
@@ -304,7 +304,7 @@ AppendTo[tests, TestCreate[
     TestID -> "A6: FSetAutoSimplify with False should succeed"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{},
         FunKit`FSetAutoSimplify[];
         FunKit`Private`$AutoSimplify
@@ -313,7 +313,7 @@ AppendTo[tests, TestCreate[
     TestID -> "A6: FSetAutoSimplify with no args should default to True"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{},
         FunKit`FSetAutoBuildSymmetryList[False];
         FunKit`Private`$AutoBuildSymmetryList
@@ -322,7 +322,7 @@ AppendTo[tests, TestCreate[
     TestID -> "A6: FSetAutoBuildSymmetryList with False should succeed"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{},
         FunKit`FSetAutoBuildSymmetryList[];
         FunKit`Private`$AutoBuildSymmetryList
@@ -335,7 +335,7 @@ AppendTo[tests, TestCreate[
     D1: FTruncate/FTruncateOpenIndices FTerm convenience overloads
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{result},
         result = FunKit`FTruncate[testSetup, FTerm[GammaN[{Phi, Phi}, {i1, i2}]]];
         Head[result]
@@ -344,7 +344,7 @@ AppendTo[tests, TestCreate[
     TestID -> "D1: FTruncate with FTerm should return FEx"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{result},
         result = FunKit`FTruncateOpenIndices[testSetup, FTerm[GammaN[{Phi, Phi}, {i1, i2}]]];
         Head[result]
@@ -357,7 +357,7 @@ AppendTo[tests, TestCreate[
     D2: NormalizeSuperIndices FEx overload
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{result},
         result = FunKit`Private`NormalizeSuperIndices[testSetup, FEx[FTerm[GammaN[{Phi, Phi}, {i1, i2}]]]];
         Head[result]
@@ -370,14 +370,14 @@ AppendTo[tests, TestCreate[
     D3: FExpand/DExpand missing order catch-all
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FExpand[testSetup, FTerm[1]], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FExpand::missingOrder},
     TestID -> "D3: FExpand without order should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`DExpand[testSetup, FTerm[1]], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`DExpand::missingOrder},
@@ -388,14 +388,14 @@ AppendTo[tests, TestCreate[
     G1: FieldOrderLess crash on unrecognized fields
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`Private`FieldOrderLess[testSetup, UnknownFieldXYZ, Phi], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`Private`FieldOrderLess::unknownField},
     TestID -> "G1: FieldOrderLess with unrecognized first field should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`Private`FieldOrderLess[testSetup, Phi, UnknownFieldXYZ2], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`Private`FieldOrderLess::unknownField},
@@ -404,7 +404,7 @@ AppendTo[tests, TestCreate[
 
 (* Positive test: FieldOrderLess with valid fields should work *)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     BooleanQ[FunKit`Private`FieldOrderLess[testSetup, Phi, Phi]],
     True,
     TestID -> "G1: FieldOrderLess with valid fields should return Boolean"
@@ -423,7 +423,7 @@ testSetupDSE = Module[{p},
       "Truncation" -> <|S -> {{Phi, Phi}, {Phi, Phi, Phi, Phi}}, Rdot -> {{Phi, Phi}}, Propagator -> {{Phi, Phi}}, GammaN -> {{Phi}, {Phi, Phi}, {Phi, Phi, Phi}, {Phi, Phi, Phi, Phi}}|>|>
 ];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{result},
         result = FunKit`FMakeClassicalAction[testSetupDSE];
         Head[result]
@@ -438,13 +438,13 @@ AppendTo[tests, TestCreate[
 
 testSetupYukawa = GetFunKitSetupYukawa[];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     FunKit`Private`GetPartnerField[testSetupYukawa, Psi],
     Psibar,
     TestID -> "G4: GetPartnerField should find partner of Psi"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     FunKit`Private`GetPartnerField[testSetupYukawa, Psibar],
     Psi,
     TestID -> "G4: GetPartnerField should find partner of Psibar"
@@ -452,7 +452,7 @@ AppendTo[tests, TestCreate[
 
 (* For a field without a partner, GetPartnerField should return the field itself *)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     FunKit`Private`GetPartnerField[testSetupYukawa, Phi],
     Phi,
     TestID -> "G4: GetPartnerField for field without partner should return same field"
@@ -469,7 +469,7 @@ f2Setup = Module[{p},
       "Truncation" -> <||>|>
 ];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{result},
         result = FunKit`FTruncate[f2Setup, FEx[FTerm[1]]];
         Head[result]
@@ -479,7 +479,7 @@ AppendTo[tests, TestCreate[
     TestID -> "F2: FTruncate with empty truncation should warn but not abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{result},
         result = FunKit`FTruncateOpenIndices[f2Setup, FEx[FTerm[1]]];
         Head[result]
@@ -493,14 +493,14 @@ AppendTo[tests, TestCreate[
     C5: FAddFDRule catch-all for wrong arity
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FAddFDRule[obj, wrt], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FAddFDRule::invalidArgs},
     TestID -> "C5: FAddFDRule with 2 args should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FAddFDRule[obj], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FAddFDRule::invalidArgs},
@@ -509,7 +509,7 @@ AppendTo[tests, TestCreate[
 
 (* Positive test: 3 args should work *)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{},
         FunKit`FClearFDRules[];
         FunKit`FAddFDRule[myObj, myWrt, myRes];
@@ -527,14 +527,14 @@ FunKit`FClearFDRules[];
     C6: FExpand/DExpand negative order check
 **********************************************************************************)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`FExpand[testSetup, FTerm[1], -1], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`FExpand::negativeOrder},
     TestID -> "C6: FExpand with negative order should abort"
 ]];
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     CheckAbort[FunKit`DExpand[testSetup, FTerm[1], -2], "AbortTriggered"],
     "AbortTriggered",
     {FunKit`DExpand::negativeOrder},
@@ -543,7 +543,7 @@ AppendTo[tests, TestCreate[
 
 (* Positive test: order 0 should work *)
 
-AppendTo[tests, TestCreate[
+AppendTo[tests, VerificationTest[
     Module[{result},
         result = FunKit`FExpand[testSetup, FTerm[1], 0];
         Head[result]
