@@ -20,6 +20,17 @@
       $standardFORMmomentumRules -- Current FORM momentum expansion rules
 **********************************************************************************)
 
+FormTracer`FormTrace::invalidResult = "FORM tracing returned an invalid result containing `1`. The result will not be cached.";
+
+validateTraceResult[result_] :=
+    Module[{poison},
+        poison = Select[{Null, $Failed, $Aborted}, !FreeQ[result, #]&];
+        If[Length[poison] > 0,
+            Message[FormTracer`FormTrace::invalidResult, poison];
+            Abort[]
+        ];
+    ];
+
 Unprotect[FEx, FTerm, FormTracer`FormTrace];
 
 FEx /: FormTracer`FormTrace[name_String, FEx[a__], preReplRules_ : {}, postReplRules_ : {}, bracket_ : {}] :=
@@ -46,6 +57,7 @@ FTerm /: FormTracer`FormTrace[file_String, FTerm[a__], preReplRules_ : {}, postR
             Return[result]
         ];
         result = FormTracer`FormTrace[FTerm[a], preReplRules, postReplRules, bracket];
+        validateTraceResult[result];
         Export[file, result];
         Return[result];
     ];
@@ -221,6 +233,7 @@ FFormSimplify[obj_, preReplRules_ : {}, postReplRules_ : {}, bracket_ : {}] :=
         FormTracer`DefineExtraVars[origVars];
         Quiet[DeleteFile[tmpfileName]];
         ret = (ret) /. repl[[2]] // Rationalize;
+        validateTraceResult[ret];
         Export[file, ret];
         Return[ret];
     ];
