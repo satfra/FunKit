@@ -23,9 +23,9 @@
 
 (* ::Input::Initialization:: *)
 
-SetAttributes[cos, Orderless];
+SetAttributes[Global`cos, Orderless];
 
-cos[p_, p_] :=
+Global`cos[p_, p_] :=
     1;
 
 SetAttributes[Evaluate[Head @ Global`TBInsertOutputNaming[Global`TBsp[p1, p2]]], Orderless];

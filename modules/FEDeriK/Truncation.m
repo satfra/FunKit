@@ -626,7 +626,7 @@ CTrunc[setup_, expr_FTerm] :=
                             hd[b : {_, _}..] /; FreeQ[{b}[[All, 1]], AnyField] && !MemberQ[truncSorted[hd], Sort[{b}[[All, 1]]]] :> 0
                         ]&
                         ,
-                        Select[truncKeys, !MemberQ[propLikeHeads, #]&]
+                        truncKeys
                     ];
         (*Incremental Distribute: one propagator at a time, pre-resolve + batch kill*)
         current = NonCommutativeMultiply @@ retL;

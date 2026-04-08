@@ -770,7 +770,7 @@ We describe the simplification and derivative algorithms used by \FunKit in more
 	colframe=pastelgreen!73!black,
 	fonttitle=\bfseries]
 	
-	With \mathem{\mmaDef{FSimplify}} we introduce an algorithm for the simplification of large sums of diagrams. \mathem{\mmaDef{FSimplify}} can detect identical diagrams and performs the following steps to find all matches and sum them:
+	With \mathem{\mmaDef{FSimplify}} we introduce an algorithm for the simplification of large sums of connected diagrams. \mathem{\mmaDef{FSimplify}} can detect identical diagrams and performs the following steps to find all matches and sum~them:
 	%
 	\begin{enumerate}
 		\item All Diagrams with exactly the same content of objects and the same set of open indices are grouped together.
@@ -875,7 +875,7 @@ We can now easily truncate the above expression:
 	%
 	\begin{itemize}
 		\item If no undetermined fields \mathem{\mmaDef{AnyField}} are present, apply the truncation table directly and return the result. This zeros all objects whose field content is not listed in the setup's key \mathem{"Truncation"}.
-		\item \textbf{Propagator truncation} (primary path): For each propagator-like object (\mathem{\mmaDef{Propagator}}, \mathem{\mmaDef{Rdot}}, \mathem{\mmaDef{R}}) with \mathem{\mmaDef{AnyField}}, enumerate its explicit field alternatives from the truncation table. 
+		\item \textbf{Propagator truncation}: For each propagator-like object (\mathem{\mmaDef{Propagator}}, \mathem{\mmaDef{Rdot}}, \mathem{\mmaDef{R}}) with \mathem{\mmaDef{AnyField}}, enumerate its explicit field alternatives from the truncation table. 
 		Incrementally replace each unresolved propagator with the sum of its alternatives, propagate the field assignments to connected objects, and fully expand the product over the sum.
 		After each expansion step, apply the truncation table. This early pruning prevents combinatorial blowup by discarding invalid branches before subsequent propagators are expanded.
 		\item \textbf{Vertex truncation}: For terms containing no propagator-like objects, valid field assignments are instead enumerated by imposing consistency at every closed index incrementally and validating each surviving assignment against the truncation table.
@@ -923,7 +923,9 @@ As an example, we consider here the DSE for the gluon two-point function. In gen
 \end{align}
 %
 and it can be readily obtained in \FunKit by using the \mathem{\mmaDef{FMakeDSE}[...]}, providing a setup and a field that is inserted for the superindex $c$.
-To obtain an equation for the gluon two-point function, we choose $c = A^a_{\mu}$ and take a further functional derivative with respect to $A$ (note that we don't provide a setup, as a global one has been specified before): 
+Note that \mathem{\mmaDef{FMakeDSE}} can be readily constructed also by the user: First, $\delta S / \delta \phi^c$ can be directly created from a given classical action, e.g. using \mathem{\mmaDef{FMakeClassicalAction}}. Next, all fields can be replaced with the rule \mathem{f[a_]->\mmaDef{FEx}[\mmaDef{FTerm}[f[a]],\mmaDef{FTerm}[\mmaDef{Propagator}[{f,\mmaDef{AnyField}},{a,b}],\mmaDef{FDOp}[\mmaDef{AnyField}[b]]]]}. Finally, one can resolve all derivative operators with \mathem{\mmaDef{FResolveDerivatives}}. This is precisely what the convenience function \mathem{\mmaDef{FMakeDSE}} internally does.
+
+Now, to obtain an equation for the gluon two-point function, we choose $c = A^a_{\mu}$ and take a further functional derivative with respect to $A$ (note that we don't provide a setup, as a global one has been specified before): 
 
 \begin{mmaCell}{Input}
 gluonDSE = \mmaDef{FTakeDerivatives}[\mmaDef{FMakeDSE}[A[i1]], \{A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FRoute};
