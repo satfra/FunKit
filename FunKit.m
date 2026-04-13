@@ -25,7 +25,7 @@ Module[{FCurPacletAddr,FCurPaclet,FCurVersion,
 FInstalledPaclet,FInstalledVersion},
 
 FCurPacletAddr="https://github.com/satfra/FunKit/raw/refs/heads/main/PacletInfo.m";
-FCurPaclet=TimeConstrained[Import[FCurPacletAddr],2,$Failed];
+FCurPaclet=CheckAbort[TimeConstrained[Import[FCurPacletAddr],2,$Failed],$Failed];
 
 If[FCurPaclet=!=$Failed,
 FCurPaclet=(List@@FCurPaclet)[[1]];

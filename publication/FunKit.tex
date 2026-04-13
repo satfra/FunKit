@@ -85,6 +85,9 @@
 \newcommand{\imag}{\text{i}}
 \newcommand{\norm}[1]{\left\lVert#1\right\rVert}
 
+% Left-align wide output (equations / diagrams) that would overflow a centred equation*
+\newcommand{\wideleft}[1]{\makebox[\linewidth][l]{\hspace{3.0em}#1}}
+
 %%%%%%%%%%%%% Mathematica code %%%%%%%%%%%%%
 \usepackage{mmacells}
 \mmaDefineMathReplacement[≤]{<=}{\leq}
@@ -363,16 +366,14 @@ This workflow is also shown in \Cref{fig:workflow} and precisely corresponds to 
 \mmaDef{FTakeDerivatives}[\mmaDef{WetterichEquation},\{Phi[i1],Phi[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FPlot}//\mmaDef{FRoute}//\mmaDef{FPrint};
 \end{mmaCell}
 %
-\vspace{-3.5ex}
+\vspace{-1.5ex}
+\noindent\hspace{3.0em}\includegraphics[width=0.35\linewidth]{diagram_0}
 \begin{equation*}
-\put(-210,0){\includegraphics[width=0.35\linewidth]{diagram_0}}
-\put(-218,-32){
-	$\footnotesize
+\wideleft{\footnotesize$%
 	\begin{aligned}\  &\int_{l_1}G_{\phi^{a}\phi^{a}}(l_1,-l_1)\,\Gamma_{\phi^{c}\phi^{a}\phi^{d}}(l_1-p_1,-l_1,p_1)\,G_{\phi^{c}\phi^{c}}(l_1-p_1,p_1-l_1)\,\Gamma_{\phi^{a}\phi^{c}\phi^{d}}(l_1,p_1-l_1,-p_1)\,G_{\phi^{a}\phi^{a}}(l_1,-l_1)\,\partial_t R_{\phi^{a}\phi^{a}}(-l_1,l_1)
 		\\ &\,+\,\int_{l_1}\left(-\frac{1}{2}\,G_{\phi^{a}\phi^{a}}(l_1,-l_1)\,\Gamma_{\phi^{a}\phi^{a}\phi^{c}\phi^{c}}(l_1,-l_1,-p_1,p_1)\,G_{\phi^{a}\phi^{a}}(l_1,-l_1)\,\partial_t R_{\phi^{a}\phi^{a}}(-l_1,l_1)\right)
 	\end{aligned}
-	$
-}
+$}
 \end{equation*}
 %
 This showcases already the overall workflow of \FunKit, as described in the following sections and shown in~\Cref{fig:workflow}.
@@ -746,17 +747,15 @@ This will yield a rather large expression, which we can visualise using the \mat
 \end{mmaCell}
 \vspace{-2.5ex}
 \begin{equation*}
-	\put(-218,0){
-		$\footnotesize
+\wideleft{\footnotesize$%
 		\begin{aligned}\  &\Big(\,\frac{1}{2} (-1)^{A^{i_1}a} (-1)^{A^{i_2}a} (-1)^{cc} (-1)^{ee}
 			\\&\,\,+\frac{1}{2} (-1)^{A^{i_1}f} (-1)^{A^{i_2}f} (-1)^{af} (-1)^{bA^{i_1}} (-1)^{ba} (-1)^{bb} (-1)^{cA^{i_1}} (-1)^{cb} (-1)^{dA^{i_2}} (-1)^{dc} (-1)^{dd} (-1)^{eA^{i_2}} (-1)^{ed} (-1)^{fe}\,\Big)
 			\\&\,\quad\times\,G^{ab}\,\Gamma_{bA^{i_1}c}\,G^{cd}\,\Gamma_{dA^{i_2}e}\,G^{ef}\,\partial_t R_{af}
 			\\ &\,+\,\left(-\frac{1}{2} (-1)^{A^{i_1}a} (-1)^{A^{i_1}b} (-1)^{A^{i_2}a} (-1)^{cc}\,G^{ab}\,\Gamma_{A^{i_1}bA^{i_2}c}\,G^{cd}\,\partial_t R_{ad}\right)
 		\end{aligned}
-		$
-	}
-	\put(-210,-95){\includegraphics[width=0.35\linewidth]{diagram_1}}
+$}
 \end{equation*}
+\noindent\hspace{3.0em}\includegraphics[width=0.35\linewidth]{diagram_1}\\
 %
 In the above, $(-1)^{ab}$ is the fermionic minus sign as defined in \labelcref{eq:fminus}, represented in \FunKit as \mmaInlineCell{Input}{\mmaDef{FMinus}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{a,b\}]}. Note additionally that, $\gamma_{ab}$ is represented as \mmaInlineCell{Input}{\mmaDef{\(\pmb{\gamma}\)}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{-a,-b\}]}, see also \Cref{tab:notation} for an overview of the notation.
 
@@ -832,10 +831,8 @@ The truncation for \mathem{\mmaDef{Field}} is left empty and \FunKit will set al
 Next, we modify the setup as
 %
 \begin{mmaCell}{Input}
-\mmaDef{setup} = <|
-  "FieldSpace" -> \mmaDef{fields},
-  "Truncation" -> \mmaDef{truncation}
- |>;
+\mmaDef{setup} = <|"FieldSpace" -> \mmaDef{fields},
+          "Truncation" -> \mmaDef{truncation}|>;
 \mmaDef{FSetGlobalSetup}[\mmaDef{setup}];
 \mmaDef{FSetTexStyles}[cb -> "{\textbackslash\textbackslash}bar\{c\}"];
 \end{mmaCell}
@@ -847,24 +844,18 @@ We can now easily truncate the above expression:
 \begin{mmaCell}{Input}
 \mmaDef{FTakeDerivatives}[\mmaDef{wEq},\{A[i1],A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FPrint}//\mmaDef{FPlot};
 \end{mmaCell}
-\vspace{-2.5ex}
+\vspace{-1.5ex}
 \begin{equation*}
-	\put(-215,0){\footnotesize
-	$
+\wideleft{\footnotesize$%
 	\begin{aligned}\  &\left(-2\,G^{c^{a}\bar{c}^{b}}\,\Gamma_{A^{i_1}\bar{c}^{c}c^{a}}\,G^{c^{d}\bar{c}^{c}}\,\Gamma_{A^{i_2}\bar{c}^{e}c^{d}}\,G^{c^{f}\bar{c}^{e}}\,\partial_t R_{\bar{c}^{b}c^{f}}\right)
 		\\ &\,+\,G^{A^{a}A^{b}}\,\Gamma_{A^{c}A^{b}A^{i_1}}\,G^{A^{c}A^{d}}\,\Gamma_{A^{e}A^{d}A^{i_2}}\,G^{A^{e}A^{f}}\,\partial_t R_{A^{f}A^{a}}
 		\\ &\,+\,\left(-\frac{1}{2}\,G^{A^{a}A^{b}}\,\Gamma_{A^{c}A^{b}A^{i_2}A^{i_1}}\,G^{A^{c}A^{d}}\,\partial_t R_{A^{d}A^{a}}\right)
 	\end{aligned}
-	$
-	}
-	\put(-215,-75){\includegraphics[width=0.65\linewidth]{diagram_3}}
+$}
 \end{equation*}
+\vspace{-1ex}
+\noindent\hspace{3.0em}\includegraphics[width=0.65\linewidth]{diagram_3}\\
 %
-
-\vfill
-\newpage
-
-
 \begin{tcolorbox}[title=Algorithm details: Truncation,
 	title filled=false,
 	colback=pastelgreen!5!white,
@@ -899,16 +890,14 @@ momenta.
 \end{mmaCell}
 \vspace{-2.ex}
 \begin{equation*}
-\put(-220,0){\footnotesize\medmuskip=0mu
-	$\footnotesize
+\wideleft{\footnotesize\medmuskip=0mu$%
 	\begin{aligned}\  &\int_{l_1^{\text{(f)}}}\Big(-2\,G_{c^{a}\bar{c}^{b}}(l_1^{\text{(f)}},-l_1^{\text{(f)}})\,\Gamma_{A^{m}\bar{c}^{c}c^{a}}(p_1,l_1^{\text{(f)}}-p_1,-l_1^{\text{(f)}})\,G_{c^{e}\bar{c}^{c}}(l_1^{\text{(f)}}-p_1,p_1-l_1^{\text{(f)}})\,\Gamma_{A^{n}\bar{c}^{g}c^{e}}(-p_1,l_1^{\text{(f)}},p_1-l_1^{\text{(f)}})\,\times
 		\\[-1ex]&\hspace{10cm}
 		\,G_{c^{i}\bar{c}^{g}}(l_1^{\text{(f)}},-l_1^{\text{(f)}})\,\partial_t R_{\bar{c}^{b}c^{i}}(l_1^{\text{(f)}},-l_1^{\text{(f)}})\Big)
 		\\ &\,+\,\int_{l_1}G_{A^{a}A^{b}}(l_1,-l_1)\,\Gamma_{A^{c}A^{a}A^{m}}(l_1-p_1,-l_1,p_1)\,G_{A^{e}A^{c}}(l_1-p_1,p_1-l_1)\,\Gamma_{A^{n}A^{g}A^{e}}(-p_1,l_1,p_1-l_1)\,G_{A^{i}A^{g}}(l_1,-l_1)\,\partial_t R_{A^{i}A^{b}}(-l_1,l_1)
 		\\ &\,+\,\int_{l_1}\left(-\frac{1}{2}\,G_{A^{a}A^{b}}(l_1,-l_1)\,\Gamma_{A^{i}A^{c}A^{a}A^{j}}(-p_1,l_1,-l_1,p_1)\,G_{A^{e}A^{c}}(l_1,-l_1)\,\partial_t R_{A^{e}A^{b}}(-l_1,l_1)\right)
 	\end{aligned}
-	$
-}
+$}
 \end{equation*}
 %
 Note in the above that \mathem{\mmaDef{FRoute}} marks loop momenta that are purely fermionic, here $l_1^{(f)}$. 
@@ -938,11 +927,7 @@ gluonDSE = \mmaDef{FTakeDerivatives}[\mmaDef{FMakeDSE}[A[i1]], \{A[i2]\}]//\mmaD
 \end{mmaCell}
 \vspace{-3.0ex}
 \begin{equation*}
-\put(-212,0){\footnotesize
-	$
-	S_{A^{a}A^{b}}(-p_1,p_1)
-	$
-}
+\wideleft{\footnotesize$S_{A^{a}A^{b}}(-p_1,p_1)$}
 \end{equation*}
 \vspace{-4.0ex}
 \begin{mmaCell}{Output}
@@ -956,17 +941,16 @@ gluonDSE = \mmaDef{FTakeDerivatives}[\mmaDef{FMakeDSE}[A[i1]], \{A[i2]\}]//\mmaD
 \{i1->\{p1,\{v1,c1\}\},i2->\{-p1,\{v2,c2\}\}\}
 \end{mmaCell}
 \vspace{-2.0ex}
-\begin{equation*}\medmuskip=0mu
-	\put(-212,0){\footnotesize
-		$
+\begin{equation*}
+\wideleft{\footnotesize\medmuskip=0mu$%
 		\begin{aligned}\    &\int_{l_1}\left(-\frac{1}{2}\,S_{A^{a}A^{b}A^{i}}(-l_1-p_1,l_1,p_1)\,G_{A^{c}A^{a}}(-l_1-p_1,l_1+p_1)\,\Gamma_{A^{e}A^{c}A^{j}}(-l_1,l_1+p_1,-p_1)\,G_{A^{b}A^{e}}(-l_1,l_1)\right)
 			\\ &\,+\,\int_{l_1}\frac{1}{2}\,S_{A^{a}A^{b}A^{e}A^{f}}(l_1,-l_1,-p_1,p_1)\,G_{A^{b}A^{a}}(l_1,-l_1)
 			\\ &\,+\,\int_{l_1^{\text{(f)}}}\left(-S_{A^{i}\bar{c}^{a}c^{b}}(p_1,-l_1^{\text{(f)}}-p_1,l_1^{\text{(f)}})\,G_{c^{c}\bar{c}^{a}}(-l_1^{\text{(f)}}-p_1,l_1^{\text{(f)}}+p_1)\,\Gamma_{A^{j}\bar{c}^{e}c^{c}}(-p_1,-l_1^{\text{(f)}},l_1^{\text{(f)}}+p_1)\,G_{c^{b}\bar{c}^{e}}(-l_1^{\text{(f)}},l_1^{\text{(f)}})\right)
 		\end{aligned}
-		$
-	}
-\put(-210,-80){\includegraphics[width=0.55\linewidth]{diagram_4}}
+$}
 \end{equation*}
+\vspace{-1.0ex}
+\noindent\hspace{3.0em}\includegraphics[width=0.55\linewidth]{diagram_4}\\[1ex]
 %
 The output of \mathem{\mmaDef{FRoute}} returns an association with keys as \mathem{"0-Loop"}, \mathem{"1-Loop"}, and so on, where all diagrams are grouped that have the same number of loops. Each of these elements is again an association that holds all necessary information about the result.
 The respective keys are:
@@ -1192,10 +1176,8 @@ Similarly, the above calculation can be also performed for all other diagrams ap
 \begin{mmaCell}{Input}
 DSEAcbc = \mmaDef{FTakeDerivatives}[\mmaDef{FMakeDSE}[A[i1]], \{cb[i2],c[i3]\}]//\mmaDef{FTruncate}//\mmaDef{FPlot}//\mmaDef{FRoute};
 \end{mmaCell}
-\vspace{-3.0ex}
-\begin{equation*}
-	\put(-208,0){\includegraphics[width=0.7\linewidth]{diagram_8}}
-\end{equation*}
+\vspace{-1.0ex}
+\noindent\hspace{3.0em}\includegraphics[width=0.7\linewidth]{diagram_8}\\[1ex]
 %
 In the following, we trace the third diagram of the above.
 In many situations, the symmetric-point approximation can be a good momentum configuration to obtain a reduced system of correlation functions. Specifically, if angular dependencies can be assumed to be mild, a system of symmetric-point diagrams defines a closed system of diagrams in DSE or fRG applications, see also \cite{Ihssen:2024miv} and \cite{Eichmann:2014xya, Eichmann:2015nra, Eichmann:2025etg} for more explicit treatments of 3- to 5-point~functions.
@@ -1854,10 +1836,8 @@ Flow2F = \mmaDef{FTakeDerivatives}[\mmaDef{setup4F},\mmaDef{WetterichEquation},\
 Flow2FTrunc = \mmaDef{FTruncate}[\mmaDef{setup4F}, Flow2F];
 \mmaDef{FPlot}[\mmaDef{setup4F}, Flow2FTrunc];
 \end{mmaCell}
-\vspace{-3.0ex}
-\begin{equation*}
-\put(-208,0){\includegraphics[width=0.19\linewidth]{diagram_6}}
-\end{equation*}
+\vspace{-1.5ex}
+\noindent\hspace{3.0em}\includegraphics[width=0.19\linewidth]{diagram_6}\\[1ex]
 %
 After routing and tracing, we obtain the flow equation as
 %
@@ -1882,10 +1862,8 @@ Flow4F = \mmaDef{FTakeDerivatives}[\mmaDef{setup4F},\mmaDef{WetterichEquation},\
 Flow4FTrunc = \mmaDef{FTruncate}[\mmaDef{setup4F},Flow4F];
 \mmaDef{FPlot}[\mmaDef{setup4F},Flow4FTrunc]
 \end{mmaCell}
-\vspace{-2.2ex}
-\begin{equation*}
-\put(-208,0){\includegraphics[width=0.52\linewidth]{diagram_7}}
-\end{equation*}
+\vspace{-1.5ex}
+\noindent\hspace{3.0em}\includegraphics[width=0.52\linewidth]{diagram_7}
 
 \begin{mmaCell}{Input}
 Flow4FRouted = \mmaDef{FRoute}[\mmaDef{setup4F},\mmaDef{Flow4FTrunc}];
@@ -2078,30 +2056,6 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 		\\[3ex]
 		\mathem{\mmaDef{InverseProp}} &
 		\small Special object, with notation as for indexed objects, that represents the Full inverse propagator $(G^{-1})^{ab} = \Gamma^{ab} + \textrm{other}$, where additional terms may arise due to a modification of the Legendre transformation, as usually done in an fRG context. 
-	\end{tabular}
-\end{tcolorbox}
-
-
-\begin{tcolorbox}[title=Diagrams and \LaTeX,
-	title filled=false,
-	colback=pastelblue!5!white,
-	colframe=pastelblue,
-	fonttitle=\bfseries]
-	\begin{tabular}{p{4.2cm} p{11.6cm}}
-		\mathem{\mmaDef{FPrint}[setup, expr]} & 
-		\small Prints functional expressions in formatted mathematical notation using \LaTeX{} rendering with the \texttt{MaTeX} package. Returns the original expression after printing for easy chaining.
-		\\[3ex]
-		\mathem{\mmaDef{FTex}[setup, expr]} & 
-		\small Outputs a string of \LaTeX{} code for the given expression.
-		\\[3ex]
-		\mathem{\mmaDef{FPlot}[setup, expr]} & 
-		\small Prints Feynman Diagrams of the given functional expression.
-		\\[3ex]
-		\mathem{\mmaDef{FAddTexStyles}[rules...]} & 
-		\small Adds custom \LaTeX{} styling rules for specific mathematical objects or fields. Style rules should be given as replacement rules, e.g., \mathem{field -> "\\mathbf{field}"}.
-		\\[3ex]
-		\mathem{\mmaDef{FSetTexStyles}[rules...]} & 
-		\small Same as \mathem{\mmaDef{FAddTexStyles}}, but resets the list of known style rules.
 	\end{tabular}
 \end{tcolorbox}
 
@@ -2322,7 +2276,7 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 		\small Adds an object that reacts to reordering and to functional derivatives.
 		\\[3ex]
 		\mathem{\mmaDef{FAddOrderedObject}[obj]} & 
-		\small Adds an object that does reacts to reordering but not to functional derivatives.
+		\small Adds an object that reacts to reordering but not to functional derivatives.
 		\\[3ex]
 		\mathem{\mmaDef{FAddIndexedObject}[obj]} & 
 		\small Adds an object that does not react to reordering or to functional derivatives.
@@ -2354,6 +2308,30 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 		\\[3ex]
 		\mathem{\mmaDef{FClearFDRules}[]} & 
 		\small Clears all custom functional derivative rules added with \mathem{\mmaDef{FAddFDRule}}.
+	\end{tabular}
+\end{tcolorbox}
+
+
+\begin{tcolorbox}[title=Diagrams and \LaTeX,
+	title filled=false,
+	colback=pastelblue!5!white,
+	colframe=pastelblue,
+	fonttitle=\bfseries]
+	\begin{tabular}{p{4.2cm} p{11.6cm}}
+		\mathem{\mmaDef{FPrint}[setup, expr]} & 
+		\small Prints functional expressions in formatted mathematical notation using \LaTeX{} rendering with the \texttt{MaTeX} package. Returns the original expression after printing for easy chaining.
+		\\[3ex]
+		\mathem{\mmaDef{FTex}[setup, expr]} & 
+		\small Outputs a string of \LaTeX{} code for the given expression.
+		\\[3ex]
+		\mathem{\mmaDef{FPlot}[setup, expr]} & 
+		\small Prints Feynman Diagrams of the given functional expression.
+		\\[3ex]
+		\mathem{\mmaDef{FAddTexStyles}[rules...]} & 
+		\small Adds custom \LaTeX{} styling rules for specific mathematical objects or fields. Style rules should be given as replacement rules, e.g., \mathem{field -> "\\mathbf{field}"}.
+		\\[3ex]
+		\mathem{\mmaDef{FSetTexStyles}[rules...]} & 
+		\small Same as \mathem{\mmaDef{FAddTexStyles}}, but resets the list of known style rules.
 	\end{tabular}
 \end{tcolorbox}
 
