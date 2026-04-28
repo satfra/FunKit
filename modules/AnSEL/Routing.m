@@ -85,7 +85,7 @@ fermionicExtMomRouting[setup_, vertex_] :=
 (* The main routing function *)
 
 FRoute[setup_, expr_FTerm] :=
-    Module[{openIndices, closedIndices, objects, ret = ReduceFTerm[setup, ReduceIndices[setup, expr]], idx, a, indPos, assocField, subObj, subMom, subExtMom, indStruct, externalIndices, externalMomenta, kind, f, momRepl, i, mom, loopMomenta, sidx, discard, rightMomenta, closedIndex, nextObj, tmp, flag, availMomemnta},
+    Module[{openIndices, closedIndices, objects, ret = ReduceFTerm[setup, ReduceIndices[setup, expr]], idx, a, indPos, assocField, subObj, subMom, subExtMom, indStruct, externalIndices, externalMomenta, kind, f, momRepl, i, mom, loopMomenta, sidx, discard, rightMomenta, closedIndex, nextObj, tmp, flag, availMomenta, frozenMomenta = {}},
         AssertFSetup[setup];
         FunKitDebug[1, "FRoute: routing the sub-term ", expr];
         (*We first get all closed, open indices and all indexed objects. *)
@@ -183,7 +183,10 @@ Momentum conservation is already enforced here, i.e. \!\(
                 indStruct =
                     Map[
                         If[MatchQ[#, _Symbol],
-                            Symbol[SymbolName[#] <> ToString[idx]]
+                            (* Strip Module-local "$nnn" suffix so that user-named field
+                               indices (e.g. p, a from Module[{p,a},...] in a setup helper)
+                               yield clean externals p1, a1 rather than p$120491. *)
+                            Symbol[StringSplit[SymbolName[#], "$"][[1]] <> ToString[idx]]
                             ,
                             #
                         ]&
@@ -210,6 +213,47 @@ Momentum conservation is already enforced here, i.e. \!\(
         externalMomenta = Values[externalIndices][[All, 1]];
         FunKitDebug[2, "  FRoute: Determined external momenta as ", externalMomenta];
         (*Now, we do the momentum routing. We iterate over all objects in subObj and fully resolve them.*)
+
+        If[$routingAlgorithm === "Regulator",
+            (*In the regulator routing algorithm, we never route through regulators. We resolve momentum conservation
+              at every Rdot first, reducing each Rdot's two legs to a {l, -l} pure-loop pair, then mark the surviving
+              loop momentum as frozen so the main conservation loop below never picks it as a solve-for variable. This
+              prevents external momenta from leaking into the regulator via chained substitutions at other vertices.*)
+            Module[{rdotPositions, ridx, rdotPos, rdotMoms, rdotMomRepl, freezeMom, otherMom},
+                rdotPositions = Flatten @ Position[objects, x_ /; Head[x] === Rdot, {1}, Heads -> False];
+                FunKitDebug[3, "  FRoute Regulator: found Rdot objects at positions ", rdotPositions];
+                Do[
+                    rdotPos = rdotPositions[[ridx]];
+                    rdotMoms = getIndices[objects[[rdotPos]]][[All, 1]];
+                    If[Length[rdotMoms] < 2,
+                        Continue[]
+                    ];
+                    If[Total[rdotMoms] =!= 0,
+                        otherMom = FirstCase[rdotMoms, loopMomentum[__, _], Missing[], Infinity];
+                        If[!MissingQ[otherMom],
+                            rdotMomRepl = solveLinearMomConservation[Total[rdotMoms], otherMom];
+                            FunKitDebug[3, "    FRoute Regulator: resolving Rdot conservation as ", rdotMomRepl];
+                            objects = objects /. rdotMomRepl;
+                            ret = ret /. rdotMomRepl;
+                        ];
+                    ];
+                    freezeMom = FirstCase[
+                        getIndices[objects[[rdotPos]]][[All, 1]],
+                        loopMomentum[__, _],
+                        Missing[],
+                        Infinity
+                    ];
+                    If[!MissingQ[freezeMom],
+                        AppendTo[frozenMomenta, freezeMom];
+                        FunKitDebug[3, "    FRoute Regulator: frozen loop momentum on Rdot is ", freezeMom];
+                    ];
+                    ,
+                    {ridx, 1, Length[rdotPositions]}
+                ];
+                frozenMomenta = DeleteDuplicates[frozenMomenta];
+            ];
+        ];
+
         Do[
             subObj = objects[[idx]];
             subMom = getIndices[subObj][[All, 1]];
@@ -241,11 +285,11 @@ Momentum conservation is already enforced here, i.e. \!\(
                     Continue[]
                 ];
                 FunKitDebug[3, "      FRoute: No external momenta"];
-                (*Grab the first loopMomentum that is fermionic*)
-                mom = Select[availMomenta, MatchQ[#, loopMomentum[_, True]]&];
+                (*Grab the first loopMomentum that is fermionic; in Regulator mode skip frozen ones so external momenta don't leak via substitution*)
+                mom = Select[availMomenta, MatchQ[#, loopMomentum[_, True]] && Not @ MemberQ[frozenMomenta, #]&];
                 If[Length[mom] === 0,
                     (*Otherwise, we have no (purely) fermionic loop momenta, so just grab the first bosonic one*)
-                    mom = Select[availMomenta, MatchQ[#, loopMomentum[_, False]]&];
+                    mom = Select[availMomenta, MatchQ[#, loopMomentum[_, False]] && Not @ MemberQ[frozenMomenta, #]&];
                 ];
                 If[Length[mom] === 0,
                     Message[FRoute::noLoopMomentum, subObj];
@@ -271,14 +315,14 @@ Momentum conservation is already enforced here, i.e. \!\(
                 availMomenta = makePosIdx /@ Flatten[{availMomenta //. {Plus[a_, b__] :> List[a, b], Times[a_loopMomentum, b__] :> List[a, b]}}];
                 availMomenta = Select[availMomenta, MatchQ[#, loopMomentum[__, _]]&];
                 FunKitDebug[5, "        available loop momenta =  ", availMomenta];
-                (*Grab one of the momenta which is a loopMomentum *)
+                (*Grab one of the momenta which is a loopMomentum; in Regulator mode skip frozen ones so external momenta don't leak via substitution*)
                 If[flag,
-                    mom = Select[availMomenta, MatchQ[#, loopMomentum[_, True]]&];
+                    mom = Select[availMomenta, MatchQ[#, loopMomentum[_, True]] && Not @ MemberQ[frozenMomenta, #]&];
                 ];
                 If[Not @ flag || Length[mom] === 0,
-                    mom = Select[availMomenta, MatchQ[#, loopMomentum[_, False]]&];
+                    mom = Select[availMomenta, MatchQ[#, loopMomentum[_, False]] && Not @ MemberQ[frozenMomenta, #]&];
                     If[Length[mom] === 0,
-                        mom = Select[availMomenta, MatchQ[#, loopMomentum[_, True]]&];
+                        mom = Select[availMomenta, MatchQ[#, loopMomentum[_, True]] && Not @ MemberQ[frozenMomenta, #]&];
                     ];
                 ];
                 If[Length[mom] === 0,
@@ -295,6 +339,9 @@ Momentum conservation is already enforced here, i.e. \!\(
                     subObj = subObj /. rightMomenta;
                     objects = objects /. rightMomenta;
                     ret = ret /. rightMomenta;
+                    (*Keep frozenMomenta in sync — Regulator-mode prologue may have stored
+                      a fermionic-tagged frozen momentum that just got re-tagged to bosonic here.*)
+                    frozenMomenta = frozenMomenta /. rightMomenta;
                     momRepl = solveLinearMomConservation[Total[getIndices[subObj][[All, 1]]], mom];
                 ];
                 objects = objects /. momRepl;

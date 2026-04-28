@@ -22,6 +22,19 @@
     Variables:
       $standardVertexStyles      -- Default vertex shape definitions
       $standardVertexSize        -- Default vertex size definitions
+
+    DiagramStyling setup sub-keys (all optional):
+      "Vertices"      -- Extra heads to treat as vertices (in addition to
+                         GammaN, S, Rdot, Field, R, Phidot)
+      "Edges"         -- Extra heads to treat as edges (in addition to Propagator)
+      "EdgeStyles"    -- Rules field -> {graphics directives} styling the
+                         propagator line carrying that field; paired fields
+                         inherit automatically; AnyField defaults to
+                         {Blue, Dotted} if not given
+      "VertexStyles"  -- Rules head -> Graphics[...] overriding the vertex
+                         shape for built-in or custom heads
+      "VertexSizes"   -- Rules head -> numericSize overriding the vertex size
+                         for built-in or custom heads
 **********************************************************************************)
 
 MakeEdgeRule[setup_, obj_] :=
@@ -92,7 +105,7 @@ FPlot::FDOp = "Cannot plot diagrams with unresolved derivative operators!";
 FPlot::noExternalField = "No object could be found for the external index `1`.";
 
 FGetDiagram[setup_, expr_FTerm] :=
-    Module[{PossibleVertices, PossibleEdges, Styles, diag, allObj, fieldObj, vertices, edges, vertexReplacements, graph, phantomVertices, edgeFields, fieldVertices, fieldEdges, fieldEdgeFields, oidx, externalVertices, vertexNames, doubledVertices, externalEdges, externalFields, idx, prefactor, doubledEdges, eWeights, addVertexSizes = {}},
+    Module[{PossibleVertices, PossibleEdges, EdgeStyles, VertexStyles, VertexSizes, diag, allObj, fieldObj, vertices, edges, vertexReplacements, graph, phantomVertices, edgeFields, fieldVertices, fieldEdges, fieldEdgeFields, oidx, externalVertices, vertexNames, doubledVertices, externalEdges, externalFields, idx, prefactor, doubledEdges, eWeights, addVertexSizes = {}},
         If[MemberQ[expr, FDOp[__], Infinity],
             Message[FPlot::FDOp];
             Abort[]
@@ -118,16 +131,37 @@ FGetDiagram[setup_, expr_FTerm] :=
                     {}
                 ]
             ];
-        Styles =
-            If[KeyExistsQ[setup, "DiagramStyling"] && KeyExistsQ[setup["DiagramStyling"], "Styles"],
-                setup["DiagramStyling"]["Styles"]
+        EdgeStyles =
+            If[KeyExistsQ[setup, "DiagramStyling"] && KeyExistsQ[setup["DiagramStyling"], "EdgeStyles"],
+                setup["DiagramStyling"]["EdgeStyles"]
                 ,
                 Thread[(# -> ColorData[97, "ColorList"][[1 ;; Length[#]]])& @ DeleteDuplicates[GetAllFields[setup] /. Map[#[[1]] -> #[[2]]&, GetFieldPairs[setup]]]]
             ];
-        Styles = Join[Styles, Map[GetPartnerField[setup, #[[1]]] -> #[[2]]&, Select[Styles, HasPartnerField[setup, #[[1]]]&]]];
-        If[FreeQ[Keys[Styles], AnyField],
-            Styles = Join[Styles, {AnyField -> {Blue, Dotted}}]
+        EdgeStyles = Join[EdgeStyles, Map[GetPartnerField[setup, #[[1]]] -> #[[2]]&, Select[EdgeStyles, HasPartnerField[setup, #[[1]]]&]]];
+        If[FreeQ[Keys[EdgeStyles], AnyField],
+            EdgeStyles = Join[EdgeStyles, {AnyField -> {Blue, Dotted}}]
         ];
+        (*User-supplied vertex shapes/sizes win over the built-ins via rule order in /. *)
+        VertexStyles =
+            Join[
+                If[KeyExistsQ[setup, "DiagramStyling"] && KeyExistsQ[setup["DiagramStyling"], "VertexStyles"],
+                    setup["DiagramStyling"]["VertexStyles"]
+                    ,
+                    {}
+                ]
+                ,
+                $standardVertexStyles
+            ];
+        VertexSizes =
+            Join[
+                If[KeyExistsQ[setup, "DiagramStyling"] && KeyExistsQ[setup["DiagramStyling"], "VertexSizes"],
+                    setup["DiagramStyling"]["VertexSizes"]
+                    ,
+                    {}
+                ]
+                ,
+                $standardVertexSize
+            ];
         allObj = FixedPoint[replFields[setup, #]&, ExtractObjectsWithIndex[setup, diag]];
         fieldObj =
             Flatten[
@@ -171,14 +205,14 @@ FGetDiagram[setup_, expr_FTerm] :=
         fieldVertices = Select[fieldObj, (Head[#] === Field)&];
         fieldVertices = Map[Head[#] @@ ((makePosIdx /@ getIndices[#] /. vertexReplacements) // DeleteDuplicates)&, fieldVertices];
         fieldEdges = Select[fieldObj, (Head[#] =!= Field)&];
-        fieldEdgeFields = Table[SelectFirst[getFields[fieldEdges[[idx]]], MemberQ[Styles, #, Infinity]&], {idx, 1, Length[fieldEdges]}];
+        fieldEdgeFields = Table[SelectFirst[getFields[fieldEdges[[idx]]], MemberQ[EdgeStyles, #, Infinity]&], {idx, 1, Length[fieldEdges]}];
         fieldEdges = Map[MakeEdgeRule[setup, #]&, fieldEdges /. vertexReplacements];
-        fieldEdges = Table[Style[fieldEdges[[idx]], ##]& @@ Flatten @ {fieldEdgeFields[[idx]] /. Styles}, {idx, 1, Length[fieldEdges]}];
+        fieldEdges = Table[Style[fieldEdges[[idx]], ##]& @@ Flatten @ {fieldEdgeFields[[idx]] /. EdgeStyles}, {idx, 1, Length[fieldEdges]}];
         (*prepare edges*)
         edges = Select[allObj, MemberQ[PossibleEdges, Head[#]] && Length[getIndices[#]] === 2&];
-        edgeFields = Table[SelectFirst[getFields[edges[[idx]]], MemberQ[Styles, #, Infinity]&], {idx, 1, Length[edges]}];
+        edgeFields = Table[SelectFirst[getFields[edges[[idx]]], MemberQ[EdgeStyles, #, Infinity]&], {idx, 1, Length[edges]}];
         edges = Map[MakeEdgeRule[setup, #]&, edges /. vertexReplacements];
-        edges = Table[Style[edges[[idx]], ##]& @@ Flatten @ {edgeFields[[idx]] /. Styles}, {idx, 1, Length[edges]}];
+        edges = Table[Style[edges[[idx]], ##]& @@ Flatten @ {edgeFields[[idx]] /. EdgeStyles}, {idx, 1, Length[edges]}];
         (*Add additional vertices for external indices*)
         externalVertices = GetOpenSuperIndices[setup, diag];
         externalFields =
@@ -197,7 +231,7 @@ FGetDiagram[setup_, expr_FTerm] :=
         externalFields = Table[getField[externalFields[[idx]], FirstPosition[makePosIdx /@ getIndices[externalFields[[idx]]], externalVertices[[idx]]][[1]]], {idx, 1, Length[externalVertices]}];
         externalVertices = Unique /@ externalVertices;
         externalEdges = Table[MakeEdgeRule[setup, makeObj[Propagator, {GetPartnerField[setup, externalFields[[idx]]], externalFields[[idx]]}, {externalVertices[[idx]], GetOpenSuperIndices[setup, diag][[idx]] /. vertexReplacements}]], {idx, 1, Length[externalVertices]}];
-        externalEdges = Table[Style[externalEdges[[idx]], ##]& @@ Flatten @ {externalFields[[idx]] /. Styles}, {idx, 1, Length[externalEdges]}];
+        externalEdges = Table[Style[externalEdges[[idx]], ##]& @@ Flatten @ {externalFields[[idx]] /. EdgeStyles}, {idx, 1, Length[externalEdges]}];
         (*get the prefactor*)
         prefactor = FTerm[Times @@ (replFields[setup, diag] /. Map[Blank[#] -> 1&, Join[{Field}, $indexedObjects]])];
         prefactor = shortTexPref[setup, prefactor];
@@ -211,7 +245,7 @@ FGetDiagram[setup_, expr_FTerm] :=
         ];
         vertexNames = DeleteDuplicates @ Flatten[List @@ #& /@ vertices];
         eWeights = Join[Map[1&, edges], Map[1&, externalEdges], Map[1&, fieldEdges], Map[0.5&, doubledEdges]];
-        graph = Graph[Join[vertexNames, externalVertices, fieldVertices[[All, 1]]], Join[edges, externalEdges, fieldEdges, doubledEdges], EdgeWeight -> eWeights, VertexShape -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. $standardVertexStyles)], Thread[externalVertices -> Map[Graphics @ Style[Disk[{0, 0}, 0.0], Gray]&, externalVertices]], Thread[fieldVertices[[All, 1]] -> (fieldVertices[[All, 0]] /. $standardVertexStyles)]], VertexSize -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. $standardVertexSize)], addVertexSizes], GraphLayout -> {"SpringElectricalEmbedding", "EdgeWeighted" -> False}, PerformanceGoal -> "Quality", ImageSize -> Small, EdgeStyle -> Arrowheads[{{.07, .6}}]];
+        graph = Graph[Join[vertexNames, externalVertices, fieldVertices[[All, 1]]], Join[edges, externalEdges, fieldEdges, doubledEdges], EdgeWeight -> eWeights, VertexShape -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. VertexStyles)], Thread[externalVertices -> Map[Graphics @ Style[Disk[{0, 0}, 0.0], Gray]&, externalVertices]], Thread[fieldVertices[[All, 1]] -> (fieldVertices[[All, 0]] /. VertexStyles)]], VertexSize -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. VertexSizes)], addVertexSizes], GraphLayout -> {"SpringElectricalEmbedding", "EdgeWeighted" -> False}, PerformanceGoal -> "Quality", ImageSize -> Small, EdgeStyle -> Arrowheads[{{.07, .6}}]];
         {prefactor, Graph[graph, EdgeShapeFunction -> {x_ \[DirectedEdge] x_ :> arcFunc[graph, 20.0], x_ \[UndirectedEdge] x_ :> arcFuncUn[graph, 20.0]}]}
     ];
 

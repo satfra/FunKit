@@ -748,8 +748,8 @@ specify one of both.\
 Cell[BoxData[
  RowBox[{
   RowBox[{"diagramStyling", "=", 
-   RowBox[{"<|", "\[IndentingNewLine]", 
-    RowBox[{"\"\<Styles\>\"", "->", 
+   RowBox[{"<|", "\[IndentingNewLine]",
+    RowBox[{"\"\<EdgeStyles\>\"", "->",
      RowBox[{"{", 
       RowBox[{
        RowBox[{"A", "->", 

@@ -211,3 +211,113 @@ AppendTo[
         TestID -> "FSetLoopMomentumName: custom name q used in routing result"
     ]
 ];
+
+(**********************************************************************************
+    FSetRoutingAlgorithm["Regulator"]: regulator carries pure loop momentum {l, -l}
+    (no external momenta leak into Rdot via chained vertex conservation)
+**********************************************************************************)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{result, expr, rdotInstances},
+            FSetRoutingAlgorithm["Regulator"];
+            result = FRoute[scalarSetup, scalar4ptFlow];
+            FSetRoutingAlgorithm["Default"];
+            expr = result["1-Loop"]["Expression"];
+            rdotInstances = Cases[expr, _Rdot, Infinity];
+            Length[rdotInstances] > 0 && FreeQ[rdotInstances, p1] && FreeQ[rdotInstances, p2] && FreeQ[rdotInstances, p3]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute Regulator: scalar 4-point Rdot is free of external momenta"
+    ]
+];
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{result, expr, rdotInstances},
+            FSetRoutingAlgorithm["Regulator"];
+            result = FRoute[yukawaSetup, yukawaVertexFlow];
+            FSetRoutingAlgorithm["Default"];
+            expr = result["1-Loop"]["Expression"];
+            rdotInstances = Cases[expr, _Rdot, Infinity];
+            Length[rdotInstances] > 0 && FreeQ[rdotInstances, p1] && FreeQ[rdotInstances, p2] && FreeQ[rdotInstances, p3]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute Regulator: Yukawa vertex Rdot is free of external momenta (fermionic)"
+    ]
+];
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{result},
+            FSetRoutingAlgorithm["Regulator"];
+            result = FRoute[scalarSetup, scalar4ptFlow];
+            FSetRoutingAlgorithm["Default"];
+            Head[result] === Association && KeyExistsQ[result, "1-Loop"] && Length[result["1-Loop"]["LoopMomenta"]] === 1
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute Regulator: scalar 4-point still yields valid 1-loop association"
+    ]
+];
+
+(* Behavioural assertion: in Regulator mode, every Rdot's two leg-momenta sum to zero
+   AND involve no external momentum — i.e. the regulator carries a pure loop pair {x, -x}. *)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{result, expr, rdotInstances, momPairs, externalSyms},
+            FSetRoutingAlgorithm["Regulator"];
+            result = FRoute[yukawaSetup, yukawaVertexFlow];
+            FSetRoutingAlgorithm["Default"];
+            expr = result["1-Loop"]["Expression"];
+            rdotInstances = Cases[expr, _Rdot, Infinity];
+            (* NotationA: Rdot[{fields}, {leg1Idx, leg2Idx}], each legIdx is {momentum, grpIdx, ...}. *)
+            momPairs = (#[[2, All, 1]])& /@ rdotInstances;
+            externalSyms = {p1, p2, p3};
+            Length[momPairs] > 0 &&
+                AllTrue[momPairs, Simplify[Total[#]] === 0&] &&
+                AllTrue[momPairs, FreeQ[#, Alternatives @@ externalSyms]&]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute Regulator: Yukawa vertex Rdot legs sum to zero and have no external momenta"
+    ]
+];
+
+(* Discriminating sanity: Default mode for the Yukawa vertex flow DOES leak p1 (or p2)
+   into at least one Rdot — confirms Regulator mode is doing meaningful work, not
+   passing vacuously. *)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{result, expr, rdotInstances},
+            (* Default mode — explicitly assert no algorithm change is in effect *)
+            FSetRoutingAlgorithm["Default"];
+            result = FRoute[yukawaSetup, yukawaVertexFlow];
+            expr = result["1-Loop"]["Expression"];
+            rdotInstances = Cases[expr, _Rdot, Infinity];
+            Or @@ (Not @ FreeQ[rdotInstances, #]& /@ {p1, p2, p3})
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute Default sanity: Yukawa vertex Rdot does carry external momenta"
+    ]
+];

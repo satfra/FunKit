@@ -48,6 +48,13 @@ FSimplify[setup, expr, \"Symmetries\" -> symmetries] allows specifying symmetrie
 Significantly reduces the number of terms in complex functional calculations.
 Essential for making large diagrammatic expressions manageable.";
 
+FSetRoutingAlgorithm::usage = "FSetRoutingAlgorithm[algorithm]
+Sets the algorithm used for routing indices and momenta in FRoute.
+Options for algorithm include:
+- \"Default\": Routes momenta such, that fermionic momenta are routed through fermionic lines.
+- \"Regulator\": Never routes momenta through regulators.";
+
+
 loopMomentum::usage = "loopMomentum[momentum, isGrassmann]
 Internal representation for loop momentum variables during the routing process.
 The first argument is the momentum symbol, the second indicates whether it's Grassmann (True) or commuting (False).

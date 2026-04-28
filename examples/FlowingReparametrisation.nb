@@ -878,7 +878,7 @@ Cell[BoxData[{
   RowBox[{"diagramStyling", "=", 
    RowBox[{"<|", "\[IndentingNewLine]", 
     RowBox[{
-     RowBox[{"\"\<Styles\>\"", "->", 
+     RowBox[{"\"\<EdgeStyles\>\"", "->",
       RowBox[{"{", 
        RowBox[{
         RowBox[{"\[CapitalPi]", "->", 

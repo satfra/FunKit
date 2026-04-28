@@ -108,3 +108,24 @@ FSetLoopMomentumName[___] :=
         Message[FunKit::invalidArguments, FSetLoopMomentumName];
         Abort[]
     );
+
+FSetRoutingAlgorithm[algorithm_String] :=
+    Module[{},
+        Switch[algorithm,
+            "Default",
+                $routingAlgorithm = "Default",
+            "Regulator",
+                $routingAlgorithm = "Regulator",
+            _,
+                Message[FunKit::invalidArguments, FSetRoutingAlgorithm];
+                Abort[]
+        ]
+    ];
+
+FSetRoutingAlgorithm[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetRoutingAlgorithm];
+        Abort[]
+    );
+
+FSetRoutingAlgorithm["Default"];

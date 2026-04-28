@@ -73,3 +73,51 @@ AppendTo[tests, VerificationTest[
     True,
     TestID -> "FSetTexStyles with valid rule should succeed"
 ]];
+
+(**********************************************************************************
+    DiANE: DiagramStyling VertexStyles / VertexSizes overrides
+**********************************************************************************)
+
+(* A minimal tadpole-like FTerm with a 4-point GammaN vertex and one propagator loop. *)
+tadpoleFTerm = FTerm[1/2,
+    Propagator[{Phi, Phi}, {-i1, -i2}],
+    GammaN[{Phi, Phi, Phi, Phi}, {i1, i2, -ex1, -ex2}]
+];
+
+AppendTo[tests, VerificationTest[
+    Module[{marker, s, graph, shapeRules},
+        marker = Graphics[{Red, Disk[{0, 0}, 1]}];
+        s = Append[testSetup, "DiagramStyling" -> <|
+            "VertexStyles" -> {GammaN -> marker}
+        |>];
+        graph = FunKit`Private`FGetDiagram[s, tadpoleFTerm][[2]];
+        shapeRules = VertexShape /. Options[graph, VertexShape];
+        MemberQ[shapeRules, _ -> marker]
+    ],
+    True,
+    TestID -> "DiagramStyling: VertexStyles overrides built-in GammaN shape"
+]];
+
+AppendTo[tests, VerificationTest[
+    Module[{s, graph, sizeRules},
+        s = Append[testSetup, "DiagramStyling" -> <|
+            "VertexSizes" -> {GammaN -> 0.42}
+        |>];
+        graph = FunKit`Private`FGetDiagram[s, tadpoleFTerm][[2]];
+        sizeRules = VertexSize /. Options[graph, VertexSize];
+        MemberQ[sizeRules, _ -> 0.42]
+    ],
+    True,
+    TestID -> "DiagramStyling: VertexSizes overrides built-in GammaN size"
+]];
+
+AppendTo[tests, VerificationTest[
+    Module[{graph, sizeRules},
+        (* No DiagramStyling at all: built-in GammaN size (0.15) must still apply. *)
+        graph = FunKit`Private`FGetDiagram[testSetup, tadpoleFTerm][[2]];
+        sizeRules = VertexSize /. Options[graph, VertexSize];
+        MemberQ[sizeRules, _ -> 0.15]
+    ],
+    True,
+    TestID -> "DiagramStyling: built-in VertexSize fallback preserved when key absent"
+]];
