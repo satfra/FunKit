@@ -82,7 +82,116 @@ fermionicExtMomRouting[setup_, vertex_] :=
         Return[Mod[factor, 2] === 1];
     ];
 
+(* Partition an FTerm into connected components by BFS over shared closed
+   superindices. Items with no indices (numeric coefficients, scalar factors)
+   are absorbed into the first component so that multiplying the components
+   reproduces the original coefficient. Mirrors the logic of FDisconnectedQ
+   in modules/AnSEL/Disconnected.m. *)
+
+partitionFTermByConnectivity[setup_, ft_FTerm] :=
+    Module[{items, indexedItems, scalarItems, allFields, depth1Fields, idxO, idxF, indexedPos, scalarPos, closedIdx, idxSets, visited, queue, cur, idx, pos, components, compMembers},
+        items = List @@ ft;
+        allFields = Join[GetAllFields[setup], {AnyField}];
+        depth1Fields = Cases[ft, Alternatives @@ Map[Blank[#]&, allFields], {1}];
+        idxO = Cases[ft, Alternatives @@ Map[Blank[#]&, $indexedObjects], {1, 2}];
+        idxF = Select[Cases[ft, Alternatives @@ Map[Blank[#]&, allFields], {1}], MemberQ[depth1Fields, #]&];
+        indexedItems = Join[idxO, idxF];
+        indexedPos = Flatten @ Map[Position[items, #, {1}, 1]&, indexedItems];
+        scalarPos = Complement[Range[Length[items]], indexedPos];
+        scalarItems = items[[scalarPos]];
+        If[Length[indexedItems] <= 1,
+            Return[{ft}]
+        ];
+        closedIdx = GetClosedSuperIndices[setup, ft];
+        idxSets = objectIndices /@ indexedItems;
+        components = {};
+        visited = <||>;
+        While[Length[visited] < Length[indexedItems],
+            cur = First @ Complement[Range[Length[indexedItems]], Keys[visited]];
+            compMembers = {cur};
+            AssociateTo[visited, cur -> True];
+            queue = {cur};
+            While[Length[queue] > 0,
+                cur = First[queue];
+                queue = Rest[queue];
+                Do[
+                    If[!KeyExistsQ[visited, pos] && Length[Intersection[idxSets[[cur]], idxSets[[pos]], closedIdx]] > 0,
+                        AssociateTo[visited, pos -> True];
+                        AppendTo[queue, pos];
+                        AppendTo[compMembers, pos];
+                    ]
+                    ,
+                    {pos, 1, Length[indexedItems]}
+                ];
+            ];
+            AppendTo[components, Sort[compMembers]];
+        ];
+        If[Length[components] == 1,
+            Return[{ft}]
+        ];
+        components = SortBy[components, First];
+        Return[
+            MapIndexed[
+                If[#2[[1]] === 1,
+                    FTerm @@ Join[scalarItems, indexedItems[[#1]]]
+                    ,
+                    FTerm @@ indexedItems[[#1]]
+                ]&
+                ,
+                components
+            ]
+        ]
+    ];
+
 (* The main routing function *)
+
+(* Disconnected fast path: split the term into connected components, route
+   each independently, then merge. Each component is routed in isolation so
+   per-vertex momentum conservation holds locally; externals/loops in
+   subsequent components are renumbered to avoid collisions. *)
+
+FRoute[setup_, expr_FTerm] /; FDisconnectedQ[setup, expr] :=
+    Module[{components, mergedTerm = FTerm[], mergedExt = {}, mergedLoops = {}, extOffset = 0, loopOffset = 0, comp, routed, extNew, loopNew, nExt, nLoops, renameRules, k, routedTerm, newExtPairs, newLoopMoms},
+        FunKitDebug[1, "FRoute: term is disconnected, splitting into connected components"];
+        components = partitionFTermByConnectivity[setup, expr];
+        FunKitDebug[2, "  FRoute: ", Length[components], " components"];
+        Do[
+            comp = components[[i]];
+            routed = FRoute[setup, comp];
+            extNew = routed["ExternalIndices"];
+            loopNew = routed["LoopMomenta"];
+            nExt = Length[extNew];
+            nLoops = Length[loopNew];
+            (* Rename only the independent base momenta: p1..p_(N-1) for externals
+               (leg N is -(sum of others) and follows automatically through the
+               substitution) and l1..l_M for loops (all loops are independent). *)
+            renameRules =
+                Join[
+                    Table[
+                        Symbol["p" <> ToString[k]] -> Symbol["p" <> ToString[extOffset + k]]
+                        ,
+                        {k, 1, nExt - 1}
+                    ]
+                    ,
+                    Table[
+                        Symbol[$loopMomentumName <> ToString[k]] -> Symbol[$loopMomentumName <> ToString[loopOffset + k]]
+                        ,
+                        {k, 1, nLoops}
+                    ]
+                ];
+            routedTerm = First @ routed["Expression"];
+            mergedTerm = mergedTerm ** (routedTerm /. renameRules);
+            newExtPairs = (extNew /. renameRules);
+            mergedExt = Join[mergedExt, newExtPairs];
+            newLoopMoms = loopNew /. renameRules;
+            mergedLoops = Join[mergedLoops, newLoopMoms];
+            extOffset += Max[nExt - 1, 0];
+            loopOffset += nLoops;
+            ,
+            {i, 1, Length[components]}
+        ];
+        Return[<|"Expression" -> FEx[mergedTerm], "ExternalIndices" -> Sort @ mergedExt, "LoopMomenta" -> Sort @ mergedLoops|>]
+    ];
 
 FRoute[setup_, expr_FTerm] :=
     Module[{openIndices, closedIndices, objects, ret = ReduceFTerm[setup, ReduceIndices[setup, expr]], idx, a, indPos, assocField, subObj, subMom, subExtMom, indStruct, externalIndices, externalMomenta, kind, f, momRepl, i, mom, loopMomenta, sidx, discard, rightMomenta, closedIndex, nextObj, tmp, flag, availMomenta, frozenMomenta = {}},

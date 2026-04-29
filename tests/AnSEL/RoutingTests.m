@@ -321,3 +321,112 @@ AppendTo[
         TestID -> "FRoute Default sanity: Yukawa vertex Rdot does carry external momenta"
     ]
 ];
+
+(**********************************************************************************
+    FRoute: disconnected FTerms — the term is split into connected components,
+    each routed independently with its own external momenta, then merged.
+**********************************************************************************)
+
+(* Two disjoint scalar propagators: each leg pair gets its own conserved
+   momentum (p1, -p1) and (p2, -p2). *)
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{result, ext, expr, propMoms},
+            result = FRoute[scalarSetup,
+                FTerm[Propagator[{Phi, Phi}, {i1, i2}], Propagator[{Phi, Phi}, {i3, i4}]]
+            ];
+            ext = result["ExternalIndices"];
+            expr = result["Expression"];
+            propMoms = Cases[expr, Propagator[_, momPair_] :> momPair[[All, 1]], Infinity];
+            And[
+                Length[ext] === 4,
+                Length[result["LoopMomenta"]] === 0,
+                AllTrue[propMoms, Simplify[Total[#]] === 0&]
+            ]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute disconnected: two scalar propagators route to (p1,-p1)+(p2,-p2)"
+    ]
+];
+
+(* The original failing case from the CompositeOperators.nb work: two disjoint
+   fermion propagators. *)
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{result, expr, propMoms},
+            result = FRoute[yukawaSetup,
+                FTerm[Propagator[{Psi, Psibar}, {i12, i11}], Propagator[{Psi, Psibar}, {i22, i21}]]
+            ];
+            expr = result["Expression"];
+            propMoms = Cases[expr, Propagator[_, momPair_] :> momPair[[All, 1]], Infinity];
+            And[
+                Length[result["ExternalIndices"]] === 4,
+                Length[result["LoopMomenta"]] === 0,
+                AllTrue[propMoms, Simplify[Total[#]] === 0&]
+            ]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute disconnected: two fermion propagators (CompositeOperators repro)"
+    ]
+];
+
+(* Three disjoint propagators: confirm the renumbering keeps externals collision-free
+   and momenta locally conserved on every component. *)
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{result, ext, expr, propMoms, momSymbols},
+            result = FRoute[scalarSetup,
+                FTerm[
+                    Propagator[{Phi, Phi}, {i1, i2}],
+                    Propagator[{Phi, Phi}, {i3, i4}],
+                    Propagator[{Phi, Phi}, {i5, i6}]
+                ]
+            ];
+            ext = result["ExternalIndices"];
+            expr = result["Expression"];
+            propMoms = Cases[expr, Propagator[_, momPair_] :> momPair[[All, 1]], Infinity];
+            momSymbols = DeleteDuplicates @ Cases[propMoms, _Symbol, Infinity];
+            And[
+                Length[ext] === 6,
+                Length[result["LoopMomenta"]] === 0,
+                AllTrue[propMoms, Simplify[Total[#]] === 0&],
+                Sort[momSymbols] === {p1, p2, p3}
+            ]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute disconnected: three scalar propagators get distinct externals"
+    ]
+];
+
+(* Sanity: a single connected propagator is unchanged by the disconnected guard. *)
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{guarded, plain},
+            guarded = FRoute[scalarSetup, FTerm[Propagator[{Phi, Phi}, {i1, i2}]]];
+            plain = guarded["Expression"];
+            And[
+                Length[guarded["ExternalIndices"]] === 2,
+                Length[guarded["LoopMomenta"]] === 0,
+                MatchQ[plain, FEx[FTerm[Propagator[{Phi, Phi}, _]]]]
+            ]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute disconnected guard: connected single propagator unchanged"
+    ]
+];

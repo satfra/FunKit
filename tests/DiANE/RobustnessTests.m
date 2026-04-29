@@ -121,3 +121,39 @@ AppendTo[tests, VerificationTest[
     True,
     TestID -> "DiagramStyling: built-in VertexSize fallback preserved when key absent"
 ]];
+
+(**********************************************************************************
+    DiANE: DiagramStyling ExternalIndexLabels — phantom-vertex labels for
+    external legs.
+**********************************************************************************)
+
+(* By default external legs of a diagram should be labelled with their
+   open super-index. tadpoleFTerm has two open indices ex1, ex2. *)
+AppendTo[tests, VerificationTest[
+    Module[{graph, labels, displayed},
+        graph = FunKit`Private`FGetDiagram[testSetup, tadpoleFTerm][[2]];
+        labels = VertexLabels /. Options[graph, VertexLabels];
+        displayed = Cases[labels, (_ -> Placed[label_, _]) :> First @ Cases[{label}, s_String, Infinity]];
+        And[
+            ListQ[labels],
+            Length[labels] === 2,
+            Sort[displayed] === {"ex1", "ex2"}
+        ]
+    ],
+    True,
+    TestID -> "DiagramStyling: external legs default-labelled with super-index"
+]];
+
+(* Explicit "ExternalIndexLabels" -> False removes labels. *)
+AppendTo[tests, VerificationTest[
+    Module[{s, graph, labels},
+        s = Append[testSetup, "DiagramStyling" -> <|
+            "ExternalIndexLabels" -> False
+        |>];
+        graph = FunKit`Private`FGetDiagram[s, tadpoleFTerm][[2]];
+        labels = VertexLabels /. Options[graph, VertexLabels];
+        labels === None || labels === {} || labels === Automatic
+    ],
+    True,
+    TestID -> "DiagramStyling: ExternalIndexLabels -> False suppresses labels"
+]];

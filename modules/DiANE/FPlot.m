@@ -35,6 +35,8 @@
                          shape for built-in or custom heads
       "VertexSizes"   -- Rules head -> numericSize overriding the vertex size
                          for built-in or custom heads
+      "ExternalIndexLabels" -- Boolean (default True): label phantom vertices
+                         at external legs with their open super-index
 **********************************************************************************)
 
 MakeEdgeRule[setup_, obj_] :=
@@ -105,7 +107,7 @@ FPlot::FDOp = "Cannot plot diagrams with unresolved derivative operators!";
 FPlot::noExternalField = "No object could be found for the external index `1`.";
 
 FGetDiagram[setup_, expr_FTerm] :=
-    Module[{PossibleVertices, PossibleEdges, EdgeStyles, VertexStyles, VertexSizes, diag, allObj, fieldObj, vertices, edges, vertexReplacements, graph, phantomVertices, edgeFields, fieldVertices, fieldEdges, fieldEdgeFields, oidx, externalVertices, vertexNames, doubledVertices, externalEdges, externalFields, idx, prefactor, doubledEdges, eWeights, addVertexSizes = {}},
+    Module[{PossibleVertices, PossibleEdges, EdgeStyles, VertexStyles, VertexSizes, ShowExternalIndexLabels, diag, allObj, fieldObj, vertices, edges, vertexReplacements, graph, phantomVertices, edgeFields, fieldVertices, fieldEdges, fieldEdgeFields, oidx, externalVertices, externalIndexLabels, vertexLabelRules, vertexNames, doubledVertices, externalEdges, externalFields, idx, prefactor, doubledEdges, eWeights, addVertexSizes = {}},
         If[MemberQ[expr, FDOp[__], Infinity],
             Message[FPlot::FDOp];
             Abort[]
@@ -161,6 +163,12 @@ FGetDiagram[setup_, expr_FTerm] :=
                 ]
                 ,
                 $standardVertexSize
+            ];
+        ShowExternalIndexLabels =
+            If[KeyExistsQ[setup, "DiagramStyling"] && KeyExistsQ[setup["DiagramStyling"], "ExternalIndexLabels"],
+                TrueQ[setup["DiagramStyling"]["ExternalIndexLabels"]]
+                ,
+                True
             ];
         allObj = FixedPoint[replFields[setup, #]&, ExtractObjectsWithIndex[setup, diag]];
         fieldObj =
@@ -229,7 +237,14 @@ FGetDiagram[setup_, expr_FTerm] :=
                 {idx, 1, Length[externalVertices]}
             ];
         externalFields = Table[getField[externalFields[[idx]], FirstPosition[makePosIdx /@ getIndices[externalFields[[idx]]], externalVertices[[idx]]][[1]]], {idx, 1, Length[externalVertices]}];
+        externalIndexLabels = externalVertices;
         externalVertices = Unique /@ externalVertices;
+        vertexLabelRules =
+            If[ShowExternalIndexLabels,
+                MapThread[#1 -> Placed[Style[ToString[#2], 9, Background -> White], Above]&, {externalVertices, externalIndexLabels}]
+                ,
+                {}
+            ];
         externalEdges = Table[MakeEdgeRule[setup, makeObj[Propagator, {GetPartnerField[setup, externalFields[[idx]]], externalFields[[idx]]}, {externalVertices[[idx]], GetOpenSuperIndices[setup, diag][[idx]] /. vertexReplacements}]], {idx, 1, Length[externalVertices]}];
         externalEdges = Table[Style[externalEdges[[idx]], ##]& @@ Flatten @ {externalFields[[idx]] /. EdgeStyles}, {idx, 1, Length[externalEdges]}];
         (*get the prefactor*)
@@ -245,7 +260,7 @@ FGetDiagram[setup_, expr_FTerm] :=
         ];
         vertexNames = DeleteDuplicates @ Flatten[List @@ #& /@ vertices];
         eWeights = Join[Map[1&, edges], Map[1&, externalEdges], Map[1&, fieldEdges], Map[0.5&, doubledEdges]];
-        graph = Graph[Join[vertexNames, externalVertices, fieldVertices[[All, 1]]], Join[edges, externalEdges, fieldEdges, doubledEdges], EdgeWeight -> eWeights, VertexShape -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. VertexStyles)], Thread[externalVertices -> Map[Graphics @ Style[Disk[{0, 0}, 0.0], Gray]&, externalVertices]], Thread[fieldVertices[[All, 1]] -> (fieldVertices[[All, 0]] /. VertexStyles)]], VertexSize -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. VertexSizes)], addVertexSizes], GraphLayout -> {"SpringElectricalEmbedding", "EdgeWeighted" -> False}, PerformanceGoal -> "Quality", ImageSize -> Small, EdgeStyle -> Arrowheads[{{.07, .6}}]];
+        graph = Graph[Join[vertexNames, externalVertices, fieldVertices[[All, 1]]], Join[edges, externalEdges, fieldEdges, doubledEdges], EdgeWeight -> eWeights, VertexShape -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. VertexStyles)], Thread[externalVertices -> Map[Graphics @ Style[Disk[{0, 0}, 0.0], Gray]&, externalVertices]], Thread[fieldVertices[[All, 1]] -> (fieldVertices[[All, 0]] /. VertexStyles)]], VertexSize -> Join[Thread[vertices[[All, 1]] -> (vertices[[All, 0]] /. VertexSizes)], addVertexSizes], VertexLabels -> vertexLabelRules, GraphLayout -> {"SpringElectricalEmbedding", "EdgeWeighted" -> False}, PerformanceGoal -> "Quality", ImageSize -> Small, EdgeStyle -> Arrowheads[{{.07, .6}}], PlotRangePadding -> Scaled[0.12], ImagePadding -> {{20, 20}, {20, 20}}];
         {prefactor, Graph[graph, EdgeShapeFunction -> {x_ \[DirectedEdge] x_ :> arcFunc[graph, 20.0], x_ \[UndirectedEdge] x_ :> arcFuncUn[graph, 20.0]}]}
     ];
 
