@@ -99,13 +99,13 @@ ModuleLoaded[AnSEL] = True;
 
 Get[$FunKitDirectory <> "modules/AnSEL/Global.m"];
 
+(* Disconnected diagram check + connectivity partitioning *)
+
+Get[$FunKitDirectory <> "modules/AnSEL/Disconnected.m"];
+
 (* Routing *)
 
 Get[$FunKitDirectory <> "modules/AnSEL/Routing.m"];
-
-(* Disconnected diagram check *)
-
-Get[$FunKitDirectory <> "modules/AnSEL/Disconnected.m"];
 
 (* Simplification *)
 

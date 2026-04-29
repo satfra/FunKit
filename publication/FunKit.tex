@@ -251,22 +251,22 @@ Both the tracing and code generation can also be used independently and in combi
 
 
 %%%%%%%%%%%%%%%%%%%
-\vspace{-0.1cm}
-{\bf PROGRAM SUMMARY}\\\vspace{-0.2cm}
+\vspace{-0.2cm}
+{\bf PROGRAM SUMMARY}\\\vspace{-0.3cm}
 
 \begin{small}
 	\noindent
-	{\em Program Title:}  FunKit \\
+	{\em Program Title:} \FunKit \\
 	{\em Developer's respository link}:  \url{https://github.com/satfra/FunKit} \\
 	{\em Licensing provisions:} GPLv3                                   \\
 	{\em Programming language:} Mathematica                                  \\
 	{\em Computer:}  Linux, MacOS, partially Windows                           \\
 	{\em Nature of problem:} Derive functional equations in QFTs with any given master equation, from specification of theory and master equation, to executable code.\\
-	{\em Solution method:} Implementation of a vocabulary that can handle a wide range of functional expressions including Grassmann fields and functional derivatives. Use of \FormTracer \cite{Cyrol:2016zqb} and \TensorBases\cite{Geissel:2024nmx} to allow for tracing of group structures of resulting diagrams. \\
-	{\em Unusual features:} Full pipeline for typical tasks in computer algebra for functional methods. Algorithms for arbitrary numbers of loops and master equations fully definable by the user. \\
+	{\em Solution method:} Full pipeline for typical tasks in computer algebra for functional methods. Implementation of a vocabulary that can handle a wide range of functional expressions including Grassmann fields and functional derivatives. Use of \FormTracer \cite{Cyrol:2016zqb} and \TensorBases\cite{Geissel:2024nmx} to allow for tracing of group structures of resulting diagrams. \\
+	{\em Unusual features:} Fully user-extensible vocabulary: arbitrary master equations, custom indexed objects, and custom functional-derivative rules. Multi-index derivatives, multi-loop momentum and group routing, source fields, and topological identification of any diagrams. Cached \FORM-based tracing and register-budgeted C++/Julia/Fortran code generation suitable for CPU and GPU solvers. Format-conversion layers to and from \DoFun and \QMeS.	\\
 \end{small}
 
-\vspace{-0.5cm}
+\vspace{-0.7cm}
 %\tableofcontents
 
 
@@ -354,10 +354,10 @@ Furthermore, its modular architecture and high test coverage also make \FunKit  
 	\label{fig:workflow}
 \end{figure*}
 
-To see what \FunKit does, consider how one would derive the flow equation for the two-point function in a scalar~theory:
+To see what \FunKit does, take the derivation of the flow equation of a two-point function in a scalar~theory, which usually includes the following steps:
 %
 \begin{enumerate}
-	\setlength\itemsep{0.05ex}
+	\setlength\itemsep{0.02ex}
 	\item Write down all fields used and the vertex truncation of the theory.
 	\item Take two functional derivatives of the Wetterich equation with respect to two scalar fields.
 	\item Discard any diagrams that include vertices not in the truncation.
@@ -367,7 +367,7 @@ To see what \FunKit does, consider how one would derive the flow equation for th
 With \FunKit, these steps translate to certain calls to \FunKit's functions that do this for you:
 %
 \begin{enumerate}
-	\setlength\itemsep{0.05ex}
+	\setlength\itemsep{0.02ex}
 	\item Define a \textit{setup} that specifies your field space and truncation.
 	\item Use the function \mathem{\mmaDef{FTakeDerivatives}} to take derivatives with respect to two fields.
 	\item Use \mathem{\mmaDef{FTruncate}} to discard any diagrams that include vertices not in the truncation.
@@ -398,7 +398,7 @@ This workflow is also shown in \Cref{fig:workflow} and precisely corresponds to 
 $}
 \end{equation*}
 %
-This showcases already the overall workflow of \FunKit, as described in the following sections and shown in~\Cref{fig:workflow}.
+The above code showcases already the overall workflow of \FunKit, which will be described in greater detail within the following sections.
 
 The current work is structured in the following way:
 \Cref{sec:Notation} briefly introduces the notation used throughout the paper, for more detailed explanations, see \Cref{app:notation_details}.
@@ -408,46 +408,11 @@ In \Cref{sec:TRACY}, the specification of tensor bases and diagrammatic expressi
 With \Cref{sec:YMExample}, we showcase a full example using \FunKit, with the full source code provided, from the derivation of Yang-Mills theory fRG flows, until the numerical evaluation.
 Finally, in \Cref{sec:comparisons}, we benchmark and compare \FunKit against other frameworks for computer algebra in functional contexts.
 
-We add green boxes throughout the text that provide additional information on the algorithms used by \FunKit. In blue boxes, we provide quick reference overviews for the reader.
-Also, note that in \Cref{app:all_func} a full reference is provided, where all functions provided by \FunKit are listed and explained.
+We add green boxes throughout the text that provide additional information on the algorithms used by \FunKit. In blue boxes, we provide quick reference overviews for the reader. Also, note that in \Cref{app:all_func} a full reference is provided, where all functions provided by \FunKit are listed and explained.
 
 
-%%%%%%%%%%%%%%%%%%%%%%
-\subsection*{Installation \& Examples}
-
-To follow the code examples in the following sections, one may install the package from inside a Mathematica notebook using
 %
-\begin{mmaCell}{Input}
-\mmaDef{Import}["https://raw.githubusercontent.com/satfra/FunKit/main/FunKitInstaller.m"]
-\end{mmaCell}
-%
-or, if already installed, import the \FunKit package with
-%
-\begin{mmaCell}{Input}
-\mmaDef{Get}["FunKit\`{}"]
-\end{mmaCell}
-%
-\FunKit's source code an examples are available in a GitHub repository \cite{FunKitRepo}.
-The \FunKit package has no further requirements except for either a Mathematica version $\geq 11.0$ or a corresponding free WolframEngine installation.
-While Linux and MacOS are fully supported, \FunKit on Windows has only partial feature support, as \FORM does not support execution on Windows systems. All parts of \FunKit involving tracing group structures and creating diagrammatic rules are thus unavailable by default on Windows. If the user is able to provide a working \FormTracer installation, one can set \mathem{\mmaDef{$UseFORMOnWindows}=True} before loading the package to enable all functionality.
-It is recommended to use \FunKit via WSL (Windows Subsystem for Linux), which also allows one to utilise the full feature~set.
-
-A Notebook containing all code written below can be found at \texttt{examples/FunKitPaper.nb} inside the repository.
-Besides the guided explanations in this work, documentation on all functions provided by \FunKit can be accessed through their usage strings, i.e.,
-%
-\begin{mmaCell}{Input}
-\mmaDef{FEx}::\mmaCmt{usage}
-\end{mmaCell}
-\begin{mmaCell}{Output}
-FEx[term1, term2, ...]
-Represents a functional expression as a sum of FTerm objects. This is the main container for functional equations in FEDeriK. FEx objects support non-commutative multiplication (**) and automatically handle simplification of zero terms.
-\end{mmaCell}
-%
-Inside a notebook, a brief overview can be accessed using \mathem{\mmaDef{FInfo[]}}.
-We also provide several example notebooks where the derivation of certain theories with several functional master equations is shown, which we list in~\Cref{tab:examples}.
-
-%
-\begin{table*}[t]
+\begin{table*}[b]
 	\begin{tcolorbox}[title=Available example notebooks,
 		title filled=false,
 		colback=pastelblue!5!white,
@@ -472,6 +437,88 @@ We also provide several example notebooks where the derivation of certain theori
 	\caption{Overview of example notebooks included in the \FunKit repository.}
 	\label{tab:examples}
 \end{table*}
+
+
+%%%%%%%%%%%%%%%%%%%%%%
+\subsection*{Installation \& Examples}
+
+To follow the code examples, one may install the package from inside a Mathematica notebook using
+%
+\begin{mmaCell}{Input}
+\mmaDef{Import}["https://raw.githubusercontent.com/satfra/FunKit/main/FunKitInstaller.m"]
+\end{mmaCell}
+%
+If the package is already installed, import \FunKit with
+%
+\begin{mmaCell}{Input}
+\mmaDef{Get}["FunKit\`{}"]
+\end{mmaCell}
+%
+\FunKit's source code and examples are available in a GitHub repository \cite{FunKitRepo}.
+The \FunKit package has no requirements except for either a Mathematica version $\geq 11.0$ or a corresponding free WolframEngine installation.
+While Linux and MacOS are fully supported, \FunKit on Windows has only partial feature support, as \FORM does not support execution on Windows systems. Tracing group structures and creating diagrammatic rules is thus unavailable by default on Windows. If the user is able to provide a working \FormTracer installation, they can set \mathem{\mmaDef{$UseFORMOnWindows}=True} before loading the package to enable all functionality.
+We recommended to use \FunKit via WSL (Windows Subsystem for Linux), which always allows one to utilise the full feature~set.
+
+A Notebook containing all code written below can be found at \texttt{examples/FunKitPaper.nb} in the repository \cite{FunKitRepo}.
+Besides the guided explanations in this work, documentation on all functions provided by \FunKit can be accessed through their usage strings, i.e.,
+%
+\begin{mmaCell}{Input}
+\mmaDef{FDOp}::\mmaCmt{usage}
+\end{mmaCell}
+\begin{mmaCell}{Output}
+FDOp[field[index]]
+Represents a functional derivative operator \({\delta}\)/\({\delta}\)field acting on everything to its right. 
+FDOp operators are resolved using FResolveDerivatives or FResolveFDOp functions.
+\end{mmaCell}
+%
+Inside a notebook, a brief overview can be accessed using \mathem{\mmaDef{FInfo[]}}.
+We also provide several example notebooks where the derivation of certain theories with several functional master equations is shown, which we list in~\Cref{tab:examples}.
+
+
+\begin{table*}[b]
+	\begin{tcolorbox}[title=Quick Notation Reference,
+		title filled=false,
+		colback=pastelblue!5!white,
+		colframe=pastelblue,
+		fonttitle=\bfseries]
+		\begin{tabular}{p{3.8cm} p{2.2cm}  p{9.7cm}}
+			\toprule
+			Mathematica&Expression&Description \\
+			\midrule
+			%
+			\mathem{\mmaDef{AnyField}[a]} & $\Phi^a$ &
+			\small Superfield with multi-index $a$. \\[2ex]
+			%
+			\mathem{Psi[a]} &  $\psi^a$ &
+			\small Explicit field with a multi-index $a$, e.g. for a fermion $a=(d,F,C)$ (Dirac, flavour and colour groups). \\[2ex]
+			%
+			$\gamma$\mathem{[{...},{a,b}]} & $\gamma^{ab}$ &
+			\small Field metric used to raise/lower superindices: $\gamma^{ab}\Gamma_b=\Gamma^a$, see \eqref{eq:metric}. \\[2.5ex]
+			%
+			\mathem{\mmaDef{FMinus}[{...},{a,b}]} & $(-1)^{ab}$ &
+			\small Sign object for fermion permutations: $\hspace{4.2cm}$ for example \mathem{\mmaDef{FMinus}[{Psi,Psi},{a,b}]} = $-1$, see \eqref{eq:fminus}. \\[2ex]
+			%
+			\mathem{\mmaDef{FEx}[\mmaDef{FTerm}[...], ...]} & $ $ &
+			\small \mathem{\mmaDef{FTerm}}: a non‑commutative product (ordered factors). $\hspace{1.6cm}$ \mathem{\mmaDef{FEx}}: sum of \mathem{\mmaDef{FTerm}}s (main container). \\[2ex]
+			%
+			\mathem{\mmaDef{GammaN}}, \mathem{\mmaDef{S}}, \mathem{\mmaDef{Propagator}}, $\quad$ \mathem{\mmaDef{R}}, \mathem{\mmaDef{Rdot}} & $\Gamma$, $S$, $G$, $\qquad\quad$ $R$, $\partial_tR$ &
+			\small Indexed objects: 1PI vertices $\Gamma$ (\mathem{\mmaDef{GammaN}}), classical vertices $S$ (\mathem{\mmaDef{S}}), propagator $G^{ab}$ (\mathem{\mmaDef{Propagator}}), regulator $R_{ab}$ (\mathem{\mmaDef{R}}) and its derivative~$\partial_t R_{ab}$~(\mathem{\mmaDef{Rdot}}). \\[3ex]
+			%
+			\mathem{\mmaDef{FDOp}[...]} & $\frac{\delta}{\delta \Phi^a}$ &
+			\small Functional derivative operator acting on the remainder of the term. E.g. \mathem{\mmaDef{FDOp}[A[i]]} = $\frac{\delta}{\delta A^i}$, or \mathem{\mmaDef{FDOp}[\mmaDef{R}[{A,A},{-a,-b}]]} = $\frac{\delta}{\delta R_{ab}}$.\\[2.5ex]
+			%
+			\mathem{\mmaDef{SymmetryFactor}[...]} & $\textrm{Sym}_{a_1a_2\ldots}$ &
+			The symmetry factor $\textrm{Sym}_{a_1a_2\ldots}$ that arises in \labelcref{eq:symDeriv} is represented as \mathem{\mmaDef{SymmetryFactor}[{\mmaDef{AnyField},\mmaDef{AnyField},...},{a1,a2,...}]}.\\
+			%
+			%\bottomrule
+			%
+		\end{tabular}
+	\end{tcolorbox}
+	\caption{Brief overview for the most important symbols used in the notation of {\FunKit}, as introduced step by step in~\Cref{sec:FEDeriK}.}
+	\label{tab:notation}
+\end{table*}
+
+
 
 %%%%%%%%%%%%%%%%%%%%
 \section{Preliminaries \& Notation}
@@ -544,51 +591,6 @@ From the quantum equation of motion one derives the relation between the connect
 For a derivation, see \Cref{app:notation_details}. Multi-index functional derivatives, relevant for nPI equations, are also defined in \Cref{app:notation_details}.
 For explicit tensors, we work in Euclidean space throughout this work, but \FunKit does not restrict one to that.\\
 In the following sections, all expressions used above will be introduced as symbols in Mathematica step by step. A brief translation table for the most important symbols can be found below in \Cref{tab:notation}.
-
-
-
-\begin{table*}[t]
-	\begin{tcolorbox}[title=Quick Notation Reference,
-		title filled=false,
-		colback=pastelblue!5!white,
-		colframe=pastelblue,
-		fonttitle=\bfseries]
-		\begin{tabular}{p{3.8cm} p{2.2cm}  p{9.7cm}}
-			\toprule
-			Mathematica&Expression&Description \\
-			\midrule
-			%
-			\mathem{\mmaDef{AnyField}[a]} & $\Phi^a$ &
-			\small Superfield with multi-index $a$. \\[2ex]
-			%
-			\mathem{Psi[a]} &  $\psi^a$ &
-			\small Explicit field with a multi-index $a$, e.g. for a fermion $a=(d,F,C)$ (Dirac, flavour and colour groups). \\[2ex]
-			%
-			$\gamma$\mathem{[{...},{a,b}]} & $\gamma^{ab}$ &
-			\small Field metric used to raise/lower superindices: $\gamma^{ab}\Gamma_b=\Gamma^a$, see \eqref{eq:metric}. \\[2.5ex]
-			%
-			\mathem{\mmaDef{FMinus}[{...},{a,b}]} & $(-1)^{ab}$ &
-			\small Sign object for fermion permutations: $\hspace{4.2cm}$ for example \mathem{\mmaDef{FMinus}[{Psi,Psi},{a,b}]} = $-1$, see \eqref{eq:fminus}. \\[2ex]
-			%
-			\mathem{\mmaDef{FEx}[\mmaDef{FTerm}[...], ...]} & $ $ &
-			\small \mathem{\mmaDef{FTerm}}: a non‑commutative product (ordered factors). $\hspace{1.6cm}$ \mathem{\mmaDef{FEx}}: sum of \mathem{\mmaDef{FTerm}}s (main container). \\[2ex]
-			%
-			\mathem{\mmaDef{GammaN}}, \mathem{\mmaDef{S}}, \mathem{\mmaDef{Propagator}}, $\quad$ \mathem{\mmaDef{R}}, \mathem{\mmaDef{Rdot}} & $\Gamma$, $S$, $G$, $\qquad\quad$ $R$, $\partial_tR$ &
-			\small Indexed objects: 1PI vertices $\Gamma$ (\mathem{\mmaDef{GammaN}}), classical vertices $S$ (\mathem{\mmaDef{S}}), propagator $G^{ab}$ (\mathem{\mmaDef{Propagator}}), regulator $R_{ab}$ (\mathem{\mmaDef{R}}) and its derivative~$\partial_t R_{ab}$~(\mathem{\mmaDef{Rdot}}). \\[3ex]
-			%
-			\mathem{\mmaDef{FDOp}[...]} & $\frac{\delta}{\delta \Phi^a}$ &
-			\small Functional derivative operator acting on the remainder of the term. E.g. \mathem{\mmaDef{FDOp}[A[i]]} = $\frac{\delta}{\delta A^i}$, or \mathem{\mmaDef{FDOp}[\mmaDef{R}[{A,A},{-a,-b}]]} = $\frac{\delta}{\delta R_{ab}}$.\\[2.5ex]
-			%
-			\mathem{\mmaDef{SymmetryFactor}[...]} & $\textrm{Sym}_{a_1a_2\ldots}$ &
-			The symmetry factor $\textrm{Sym}_{a_1a_2\ldots}$ that arises in \labelcref{eq:symDeriv} is represented as \mathem{\mmaDef{SymmetryFactor}[{\mmaDef{AnyField},\mmaDef{AnyField},...},{a1,a2,...}]}.\\
-			%
-			%\bottomrule
-			%
-		\end{tabular}
-	\end{tcolorbox}
-	\caption{Brief overview for the most important symbols used in the notation of {\FunKit}, as introduced step by step in~\Cref{sec:FEDeriK}.}
-	\label{tab:notation}
-\end{table*}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -851,7 +853,7 @@ We describe the simplification and derivative algorithms used by \FunKit in more
 		\setlength\itemsep{0.1ex}
 		\item All Diagrams with exactly the same content of objects and the same set of open indices are grouped together.
 		\item Each group is then processed in parallel: Pairs of diagrams are sequentially built and compared.
-		\item The comparison of two diagrams is performed by traversing the graphs of both at the same time and checking for identity.
+		\item The comparison of two diagrams is performed by traversing the graphs of both at the same time and checking for identity. If the diagrams are disconnected, their sub-graphs are compared pair-wise. 
 		\item If symmetries of open indices are provided, all permutations (with possible prefactors, e.g. minus signs for fermionic permutations) are also explored.
 		\item If the graphs are identical, they are merged. When merging, the second diagram is prepended with a factor containing all signs needed to give it precisely the same index ordering and structure as the first diagram.
 	\end{enumerate}
@@ -876,6 +878,7 @@ truncation = <|
 \end{mmaCell}
 %
 The truncation for \mathem{\mmaDef{Field}} is left empty and \FunKit will set all field values to zero when truncating. If $A$ has a finite expectation value, as in finite-temperature Yang--Mills theory, one would change this to \mathem{\mmaDef{Field} -> {{A}}}. In that case, only explicit ghost and anti-ghost fields are set to zero.
+Conversely, omitting a key from the truncation table altogether keeps every instance of that object unchanged: \FunKit only filters objects whose head appears as a key.
 
 Next, we modify the setup as
 %
@@ -1121,7 +1124,9 @@ If we now plot again the flow of the gluon propagator, as calculated above, it l
 \vspace{-1ex}
 \noindent\hspace{3.0em}\includegraphics[width=0.65\linewidth]{diagram_9}\\
 %
-Additionally, one can give hints to \FunKit which objects should be interpreted as edges, and which ones as vertices, by using the keys \mathem{"Vertices"} and \mathem{"Edges"}, and override the default vertex shape and size via \mathem{"VertexStyles"} and \mathem{"VertexSizes"}, e.g. as in
+Additionally, one can give hints to \FunKit which objects should be interpreted as edges, and which ones as vertices, by using the keys \mathem{"Vertices"} and \mathem{"Edges"}, and override the default vertex shape and size via \mathem{"VertexStyles"} and \mathem{"VertexSizes"}.
+Additionally, external-leg labelling can be turned off with \mathem{"ExternalIndexLabels"->\mmaDef{False}}.
+As an example, one could define the following styling options:
 %
 \begin{mmaCell}{Input}
 \mmaDef{diagramStyling} = <|
@@ -1130,11 +1135,12 @@ Additionally, one can give hints to \FunKit which objects should be interpreted 
   "Vertices" -> \{MyCounterterm,ExternalSource\},
   "Edges" -> \{MyPropagator\},
   "VertexStyles" -> \{MyCounterterm -> \mmaDef{Graphics}[\{\mmaDef{Red},\mmaDef{Rectangle}[\{-1,-1\},\{1,1\}]\}]\},
-  "VertexSizes" -> \{MyCounterterm -> 0.2\}
-|>;
+  "VertexSizes" -> \{MyCounterterm -> 0.2\},
+  "ExternalIndexLabels" -> \mmaDef{False}
+ |>;
 \end{mmaCell}
 %
-This requires of course that the objects such as \mathem{MyCounterterm} have been registered with \FunKit before, see \Cref{sec:FEDeriK_teaching}. Entries in \mathem{"VertexStyles"} and \mathem{"VertexSizes"} take precedence over the built-in defaults, so they can also be used to re-skin the canonical heads (\mathem{\mmaDef{GammaN}}, \mathem{\mmaDef{S}}, \mathem{\mmaDef{Rdot}}, \mathem{\mmaDef{Field}}, \mathem{\mmaDef{R}}, \mathem{\mmaDef{Phidot}}).
+This requires of course that the objects such as \mathem{MyCounterterm} have been registered with \FunKit before, see \Cref{sec:FEDeriK_teaching}. Entries in \mathem{"VertexStyles"} and \mathem{"VertexSizes"} take precedence over the built-in defaults, so they can also be used to re-skin the canonical heads (\mathem{\mmaDef{GammaN}}, \mathem{\mmaDef{S}}, \mathem{\mmaDef{Field}}, \mathem{\mmaDef{Rdot}}, \mathem{\mmaDef{R}}, \mathem{\mmaDef{Phidot}}).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1553,7 +1559,7 @@ Conversely, \DoFun additionally provides the derivation of composite operator eq
 \FunKit also provides utilities not present in either \DoFun or \QMeS, e.g. integration of \FORM-based tracing with caching through \FormTracer, specification of tensorial bases for diagrammatic rules through \TensorBases, \LaTeX{} equation rendering and optimised C++, Julia and Fortran code generation. 
 An earlier package that supported C++ code generation is \texttt{CrazyDSE}\cite{Huber:2011xc}, which was however specifically developed for DSEs.
 
-Another special feature of \FunKit is the ability to identify topologically identical connected diagrams at any loop order. To do so, \FunKit traverses graphs in any possible sequence of paths to establish topological identity and relative signs, see also the green box above for Simplification.
+Another special feature of \FunKit is the ability to identify topologically identical diagrams at any loop order, including disconnected ones. To do so, \FunKit traverses graphs in any possible sequence of paths to establish topological identity and relative signs, see also the green box above for Simplification.
 
 Furthermore, for interoperability \FunKit includes explicit format conversion layers for both \DoFun and \QMeS output, allowing straightforward integration into existing pipelines and simplifying first contact for users.
 
@@ -1660,10 +1666,13 @@ We have also described the algorithms used in \FunKit, which are optimised at ev
 
 We demonstrated the capabilities of \FunKit using the example of Yang--Mills theory, scalar field theory, a Yukawa theory and an NJL model. As for master equations, we show DSEs, the Wetterich equation, the modified STIs and dynamically reparametrised flow equations. All these examples can be found in the \FunKit repository, see also \Cref{tab:examples}.
 
-While \FunKit covers a broad range of applications, of course some limitations remain.
+\FunKit covers a broad range of applications, but of course some limitations remain.
 A fundamental challenge is the resolution of functional derivatives, which involves a product-rule expansion that can lead to rapid intermediate expression growth for large truncations.
 Although \FunKit mitigates this through in-loop simplification, parallelisation and appropriate algorithm design, the scaling remains a practical bottleneck for very large systems. This is however not a problem specifically of \FunKit, but rather of the approach itself.
-The simplification algorithm of \FunKit currently only accepts connected diagrams. Passing disconnected diagrams to \mathem{\mmaDef{FSimplify}} will cause it to return the input without processing. Simplification of disconnected diagrams will be implemented in a future version of \FunKit.
+
+Furthermore, \FunKit assumes translation invariance: momentum conservation is imposed at every vertex and each field carries a single momentum. Settings that break this -- e.g. Bloch momenta, finite-volume backgrounds or Wigner-transformed fields -- have to encode the additional structure via auxiliary indices.
+More exotic field content, e.g. parastatistics, is not supported either, but could be accommodated by generalising the field-space metric.
+
 Also, while \FunKit generates optimised code for the integrands of functional equations, it does not provide a numerical integration framework; the user must embed the generated code into their own solver or use an existing numerical framework such as \DiFfRG \cite{Sattler:2024ozv}.
 
 \FunKit is already a basis for several on-going projects in the fQCD collaboration \cite{fQCD} involving large QCD truncations with dynamical hadronisation and other flowing reparametrisations.
@@ -2243,6 +2252,7 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 		\\[3ex]
 		\mathem{\mmaDef{FSimplify}[setup,expr]} &
 		\small Simplifies \mathem{expr} by identifying and combining terms. Optionally, one can either pass a symmetry list directly \mathem{"Symmetries"->symmetryList}, or include it in the given \mathem{\mmaDef{FEx}} - both will be taken into account.
+		 Disconnected diagrams are simplified component-wise; reorderings of disconnected components are recognised as equivalent and merged with the correct sign from permuting the sub-graphs.
 		\\[3ex]
 		\mathem{\mmaDef{FOrderFields}[setup,expr]} &
 		\small Orders all fields within \mathem{expr} according to the canonical ordering currently set for FunKit.

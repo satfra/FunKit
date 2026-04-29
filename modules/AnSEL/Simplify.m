@@ -1,28 +1,40 @@
 (**********************************************************************************
     Simplify.m -- Diagram identification and simplification
 
-    Public API:
-      FBuildSymmetryList          -- Constructs field permutations from symmetry groups
-      FMergeSymmetries            -- Merges two symmetry lists
-      FMakeSymmetryList          -- Builds symmetry list from fields and their types
+    Public API (exposed via ::usage in modules/AnSEL.m):
       FSimplify                  -- Simplifies FEx by identifying equivalent diagrams
+      FMakeSymmetryList          -- Builds symmetry list from fields and their types
+
+    Cross-module helpers (FunKit`Private` context, called from FEDeriK):
+      FBuildSymmetryList         -- Constructs field permutations from symmetry groups
+      FMergeSymmetries           -- Merges two symmetry lists
       FSimplifyNoSym             -- Simplifies FEx without symmetry information
 
-    Internal:
-      StartPoints                -- Finds viable starting points for diagram comparison
-                                    (used by TermsEqualAndSum)
-      IterateDiagram             -- Traverses a diagram along closed indices
-                                    (used by TermsEqualAndSum)
-      TermsEqualAndSum           -- Tests if two FTerms are equivalent and sums them
-                                    (used by SubFSimplify)
-      RearrangeFields            -- Rearranges standalone fields to match equivalence
-                                    (used by TermsEqualAndSum)
-      FTermContent               -- Extracts notation-agnostic field content key
+    File-local helpers:
+      StartPoints                -- Find viable starting points for diagram comparison
+      IterateDiagram             -- Traverse a diagram along closed indices
+      RearrangeFields            -- Reorder fields in an indexed object to align with
+                                    a target index position; emits the Grassmann sign
+      TermsEqualAndSum           -- Internal BFS used by TermsEqualCore (different
+                                    arity from the public-named variants below)
+      TermsEqualCore             -- Equality check on two preprocessed FTerms;
+                                    returns False or {sign, nt2}
+      TermsEqualAndSumPre        -- TermsEqualCore + coefficient summation
+      TermsEqualPre              -- TermsEqualCore projected to just the sign
+                                    (used by matchDisconnectedTerms)
+      FTermContent               -- Notation-agnostic field-content fingerprint
                                     (used by SeparateTermGroups)
-      SeparateTermGroups         -- Groups FTerms by field content for simplification
-                                    (used by FSimplify)
-      SubFSimplify               -- Simplifies a group of same-content FTerms
-                                    (used by FSimplify)
+      SeparateTermGroups         -- Group FTerms by field content
+      PrecomputeTermData         -- Cache cidx/oidx/objs/fp/disconnected per FTerm
+      TransformTermData          -- Apply a symmetry rule to cached data
+      SubFSimplify               -- Simplify a single fingerprint group
+      grassmannPermutationSign   -- Sign of a permutation on per-component
+                                    Grassmann parities (counts odd-odd inversions)
+      candidateBijections        -- Enumerate fingerprint-respecting bijections
+                                    between two component lists
+      matchDisconnectedTerms     -- Per-component matcher that dispatches to
+                                    TermsEqualPre, used by SubFSimplify when
+                                    either FTerm in a pair is disconnected
 **********************************************************************************)
 
 (* Profiling accumulators — set to non-zero initial values to enable *)
@@ -41,8 +53,6 @@ $ProfileGraphTraversal = 0.;
 
 $ProfileRearrangeFields = 0.;
 
-$ProfilePrecompute = 0.;
-
 $ProfileSymPreprocess = 0.;
 
 $ProfileFSimplifyEnabled = False;
@@ -57,7 +67,6 @@ ResetFSimplifyProfile[] :=
         $ProfileStartPoints = 0.;
         $ProfileGraphTraversal = 0.;
         $ProfileRearrangeFields = 0.;
-        $ProfilePrecompute = 0.;
         $ProfileSymPreprocess = 0.;
     );
 
@@ -66,7 +75,6 @@ PrintFSimplifyProfile[] :=
         Print["  SubFSimplify total:    ", NumberForm[$ProfileSubFSimplify, {5, 4}], " s"];
         Print["  TermsEqualAndSum:      ", NumberForm[$ProfileTermsEqual, {5, 4}], " s  (", $ProfileTermsEqualCount, " calls, ", $ProfileTermsEqualSuccess, " matches)"];
         Print["    StartPoints:         ", NumberForm[$ProfileStartPoints, {5, 4}], " s"];
-        Print["    Pre-compute (cidx/oidx/objs): ", NumberForm[$ProfilePrecompute, {5, 4}], " s"];
         Print["    Graph traversal:     ", NumberForm[$ProfileGraphTraversal, {5, 4}], " s"];
         Print["    RearrangeFields:     ", NumberForm[$ProfileRearrangeFields, {5, 4}], " s"];
         Print["  Sym preprocess:        ", NumberForm[$ProfileSymPreprocess, {5, 4}], " s"];
@@ -134,25 +142,12 @@ FBuildSymmetryList[setup_, symmetries_, derivativeList_] :=
         Return @ Join[{<|"Rule" -> {}, "Factor" -> 1|>}, Map[buildOneSymmetry, symmetries /. Cycles -> Identity]];
     ];
 
-(*Merge Symmetry lists*)
+(* Merge two symmetry lists by concatenation; an Outer-product merge that
+   composes individual rules was tried but rejected because it blows up the
+   number of equivalent rules without finding new equalities. *)
 
 FMergeSymmetries[sym1_, sym2_] :=
-    Module[{symCombine},
-        Return[Join[sym1, sym2] // DeleteDuplicates];
-        (* I am not sure we want to automatically blow up the number of rules*)
-        symCombine[a_, b_] :=
-            Module[{ret},
-                ret = Join[a["Rule"] /. b["Rule"], b["Rule"]] // DeleteDuplicates;
-                (* remove any trivial rules*)
-                ret = Sort @ Select[ret, Not @ MatchQ[#, HoldPattern[a_ -> a_]]&];
-                Return[<|"Rule" -> ret, "Factor" -> a["Factor"] * b["Factor"]|>];
-            ];
-        Return[
-            Outer[symCombine, sym1, sym2] //
-            Flatten //
-            DeleteDuplicates
-        ];
-    ];
+    Join[sym1, sym2] // DeleteDuplicates;
 
 (*Build a symmetry list from a set of fields*)
 
@@ -312,7 +307,7 @@ TermsEqualAndSum[
     , (* Index at which we start in t2 *)
     Msign2_
 ] :=
-    Module[{t1 = it1, t2 = it2, nt1, nt2, allObjt1 = MallObjt1, curIdx1, curPos1, nextInd1, nextPos1, memory1 = Mmemory1, assocFields1, allObjt2 = MallObjt2, curIdx2, curPos2, nextInd2, nextPos2, memory2 = Mmemory2, assocFields2, sign2 = Msign2, iter = 1, idx, jdx, viableBranches, branchSign, branchItRepl, branchObj, temp1, temp2, cidxt2 = Mcidxt2, curIdxRepl, ncidxt2, noidxt2, nmemory2, allIdxRepl = {}, nallIdxRepl, nallIdxReplNew},
+    Module[{t1 = it1, t2 = it2, nt2, allObjt1 = MallObjt1, curIdx1, curPos1, nextInd1, nextPos1, memory1 = Mmemory1, assocFields1, allObjt2 = MallObjt2, curIdx2, curPos2, nextInd2, nextPos2, memory2 = Mmemory2, assocFields2, sign2 = Msign2, iter = 1, idx, jdx, viableBranches, branchSign, branchItRepl, branchObj, temp1, temp2, cidxt2 = Mcidxt2, curIdxRepl, ncidxt2, noidxt2, nmemory2, allIdxRepl = {}, nallIdxRepl, nallIdxReplNew},
         FunKitDebug[3, "Following along a chain of indices."];
         curIdx1 = makePosIdx @ entry1;
         curIdx2 = makePosIdx @ entry2;
@@ -339,7 +334,7 @@ TermsEqualAndSum[
             (*Case 1: There is only a single object following*)
             If[Length[nextInd1] === 1,
                 FunKitDebug[3, "-------- CASE 1: Following the index chain."];
-                (*Check if the open indices aggree*)
+                (*Check if the open indices agree*)
                 If[Sort @ Intersection[oidxt1, makePosIdx /@ getIndices[nextPos1[[1]]]] =!= Sort @ Intersection[oidxt2, makePosIdx /@ getIndices[nextPos2[[1]]]],
                     FunKitDebug[3, "FAILURE ------------ Next open indices disagree.", Sort @ Intersection[oidxt1, makePosIdx /@ getIndices[nextPos1[[1]]]], ", ", Sort @ Intersection[oidxt2, makePosIdx /@ getIndices[nextPos2[[1]]]]];
                     Return[{False, allObjt2, t2, allIdxRepl}]
@@ -526,48 +521,38 @@ Returns both the sign and the reordered t2*)
 
 TermsEqualAndSum::undeterminedFields = "Error: Cannot equate terms if they are not fully truncated, i.e. contain instances of AnyField.";
 
-(* This is the main function for checking if two diagrams are equal to each other. Returns either False, or the sum of the two terms *)
+(* TermsEqualPre: equality check between two preprocessed (FixIndices +
+   FOrderFields applied) FTerms.  Returns either False or {sign, nt2}.
 
-(* Preprocessed variant: terms already have ReduceIndices applied.
-   Skips only ReduceIndices; still does FixIndices+FOrderFields for correct index naming. *)
+   `sign` is typically ±1 but can be a symbolic scalar in the AnyField slow
+   path of RearrangeFields — callers must accept that.
 
-(* TermsEqualAndSumPre: terms are assumed already normalized (FixIndices + FOrderFields)
-   by SubFSimplify before the pairwise loop. No redundant re-normalization.
-   Requires pre-computed data from PrecomputeTermData for both terms. *)
+   `nt2` is the index-renamed t2.  Its scalar prefactor carries any
+   FMinus[...] introduced during alignment, so a caller that sums
+   coefficients must read fac2 from nt2 (not from the original t2).
 
-TermsEqualAndSumPre[setup_, it1_FTerm, it2_FTerm, data1_Association, data2_Association] :=
-    TermsEqualAndSumCore[setup, it1, it2, data1, data2];
+   `data1`/`data2` come from PrecomputeTermData. *)
 
-TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
-    Module[{t1 = ReduceIndices[setup, it1], t2 = ReduceIndices[setup, it2]},
-        t1 = FixIndices[setup, FOrderFields[setup, t1]];
-        t2 = FixIndices[setup, FOrderFields[setup, t2]];
-        If[!FreeQ[it1, AnyField] || !FreeQ[it2, AnyField],
-            Return[False]
-        ];
-        TermsEqualAndSumPre[setup, t1, t2, PrecomputeTermData[setup, t1], PrecomputeTermData[setup, t2]]
-    ];
-
-(* Requires pre-computed data from PrecomputeTermData for both terms *)
-
-TermsEqualAndSumCore[setup_, t1_FTerm, t2_FTerm, data1_Association, data2_Association] :=
-    Module[{nt1, nt2, curIdx1, curIdx2, curIdxRepl, startPoints, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, startt2fields, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, a, factor, removeOther, fac1, fac2, terms1, terms2, nallIdxReplNew, tmp, $profT0 = AbsoluteTime[]},
+TermsEqualPre[setup_, t1_FTerm, t2_FTerm, data1_Association, data2_Association] :=
+    Module[{nt2 = t2, curIdx1, curIdx2, curIdxRepl, startPoints, allObjt1, allObjt2, cidxt1, cidxt2, oidxt1, oidxt2, startt1, startt1fields, cidxstartt1, startt2, nstartt2, cidxstartt2, branchAllObjt2, idx, jdx, equal = False, startsign, fac1, fac2, terms1, terms2, nallIdxReplNew, tmp, $profT0 = AbsoluteTime[]},
         $ProfileTermsEqualCount++;
-        FunKitDebug[4, "    TermsEqualAndSum: Comparing \n  ", t1, "\n   &\n  ", t2];
+        FunKitDebug[4, "    TermsEqual: Comparing \n  ", t1, "\n   &\n  ", t2];
+        (* No AnyField guard here: the RearrangeFields slow path produces
+           symbolic FMinus[...] factors when AnyField is present in fields
+           lists, and the BFS accumulates them into `equal`.  Callers must
+           be prepared to receive a symbolic sign. *)
         If[t1 === t2,
-            FunKitDebug[3, "    Terms are identical, returning FTerm[2, t1]."];
+            FunKitDebug[3, "    Terms are identical, sign = 1."];
             $ProfileTermsEqual += AbsoluteTime[] - $profT0;
             $ProfileTermsEqualSuccess++;
-            Return @ FTerm[2, t1]
+            Return[{1, t2}]
         ];
         {fac1, terms1} = SplitPrefactor[setup, t1];
         {fac2, terms2} = SplitPrefactor[setup, t2];
         If[terms1 === terms2,
-            factor = fac1 + fac2;
             $ProfileTermsEqual += AbsoluteTime[] - $profT0;
             $ProfileTermsEqualSuccess++;
-            If[factor === 0, Return[FTerm[0]]];
-            Return[FTerm[factor, terms1]]
+            Return[{1, t2}]
         ];
         (* Use pre-computed data *)
         cidxt1 = data1["cidx"];
@@ -643,17 +628,47 @@ TermsEqualAndSumCore[setup_, t1_FTerm, t2_FTerm, data1_Association, data2_Associ
             Return[False];
         ];
         $ProfileTermsEqualSuccess++;
-        If[GrassmannCount[setup, t1] === 0,
-            FunKitDebug[2, "Found two equal terms"];
-            {fac1, terms1} = SplitPrefactor[setup, t1];
-            {fac2, terms2} = SplitPrefactor[setup, nt2];
-            factor = fac1 + equal * fac2;
-            factor = ReduceIndices[setup, FTerm[factor]];
-            $ProfileTermsEqual += AbsoluteTime[] - $profT0;
-            Return @ FTerm[factor, terms1];
-        ];
         $ProfileTermsEqual += AbsoluteTime[] - $profT0;
-        Return[False];
+        Return[{equal, nt2}]
+    ];
+
+(* TermsEqualAndSumPre: equality check + coefficient summation.  Returns
+   either False or FTerm[fac1 + sign * fac2, ...t1's objects...].  Connected-
+   case only: bare-Grassmann FTerms are intentionally not merged via this
+   path because the BFS does not track Grassmann sign on bare fields;
+   matchDisconnectedTerms handles those via the per-component permutation. *)
+
+TermsEqualAndSumPre[setup_, t1_FTerm, t2_FTerm, data1_Association, data2_Association] :=
+    Module[{result, sign, nt2, fac1, fac2, terms1, terms2, factor},
+        result = TermsEqualPre[setup, t1, t2, data1, data2];
+        If[result === False, Return[False]];
+        {sign, nt2} = result;
+        If[GrassmannCount[setup, t1] =!= 0, Return[False]];
+        FunKitDebug[2, "Found two equal terms"];
+        {fac1, terms1} = SplitPrefactor[setup, t1];
+        {fac2, terms2} = SplitPrefactor[setup, nt2];
+        factor = ReduceIndices[setup, FTerm[fac1 + sign * fac2]];
+        If[factor === 0 || factor === FTerm[0], Return[FTerm[0]]];
+        FTerm[factor, terms1]
+    ];
+
+(* 3-arg variants normalize their inputs first; for callers that haven't
+   pre-applied FixIndices/FOrderFields/PrecomputeTermData. *)
+
+TermsEqual[setup_, it1_FTerm, it2_FTerm] :=
+    Module[{t1, t2},
+        If[!FreeQ[it1, AnyField] || !FreeQ[it2, AnyField], Return[False]];
+        t1 = FixIndices[setup, FOrderFields[setup, ReduceIndices[setup, it1]]];
+        t2 = FixIndices[setup, FOrderFields[setup, ReduceIndices[setup, it2]]];
+        TermsEqualPre[setup, t1, t2, PrecomputeTermData[setup, t1], PrecomputeTermData[setup, t2]]
+    ];
+
+TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
+    Module[{t1, t2},
+        If[!FreeQ[it1, AnyField] || !FreeQ[it2, AnyField], Return[False]];
+        t1 = FixIndices[setup, FOrderFields[setup, ReduceIndices[setup, it1]]];
+        t2 = FixIndices[setup, FOrderFields[setup, ReduceIndices[setup, it2]]];
+        TermsEqualAndSumPre[setup, t1, t2, PrecomputeTermData[setup, t1], PrecomputeTermData[setup, t2]]
     ];
 
 (**********************************************************************************
@@ -705,7 +720,7 @@ PrecomputeTermData[setup_, term_FTerm] :=
             ];
         Module[{cidx = GetClosedSuperIndices[setup, term], oidx = GetOpenSuperIndices[setup, term], fieldKey},
             fieldKey[obj_] := Head[obj] @@ Sort @ getFields[obj];
-            <|"cidx" -> cidx, "oidx" -> oidx, "objs" -> objs, "fp" -> {Length[cidx], Sort @ Map[fieldKey, objs]}|>
+            <|"cidx" -> cidx, "oidx" -> oidx, "objs" -> objs, "fp" -> {Length[cidx], Sort @ Map[fieldKey, objs]}, "disconnected" -> FDisconnectedQ[setup, term]|>
         ]
     ];
 
@@ -713,9 +728,104 @@ PrecomputeTermData[setup_, term_FTerm] :=
    Valid because symmetry rules only permute open indices, not field content. *)
 
 TransformTermData[data_Association, rule_List] :=
-    <|"cidx" -> (data["cidx"] /. rule), "oidx" -> (data["oidx"] /. rule), "objs" -> (data["objs"] /. rule)|>;
+    <|"cidx" -> (data["cidx"] /. rule), "oidx" -> (data["oidx"] /. rule), "objs" -> (data["objs"] /. rule), "disconnected" -> data["disconnected"]|>;
 
-(* Withing a group of possibly matching FTerms, check for any possible equalities *)
+(* Disconnected-matching helpers.
+
+   matchDisconnectedTerms: per-component matcher for two disconnected FTerms.
+   Returns either False or the merged FTerm.  Called from SubFSimplify
+   when at least one term in a pair is flagged disconnected — direct
+   TermsEqualAndSumPre would walk only one connected sub-graph from a single
+   start point, accepting equality after verifying just one component.
+
+   candidateBijections: enumerate fingerprint-respecting bijections between
+   two component lists (typically a single bijection when fingerprints are
+   unique; k! permutations within each fingerprint-equal group of k).
+
+   grassmannPermutationSign: sign of a permutation on per-component Grassmann
+   parities.  Counts inversions where both swapped components are
+   Grassmann-odd. *)
+
+grassmannPermutationSign[parities_List, perm_List] :=
+    Module[{n = Length[perm], sgn = 1, i, j},
+        Do[
+            Do[
+                If[perm[[i]] > perm[[j]] && parities[[ perm[[i]] ]] === 1 && parities[[ perm[[j]] ]] === 1,
+                    sgn = -sgn
+                ]
+                ,
+                {j, i + 1, n}
+            ]
+            ,
+            {i, 1, n - 1}
+        ];
+        sgn
+    ];
+
+(* Enumerate all bijections β : {1..n} -> {1..n} with fp1[[i]] === fp2[[β[[i]]]].
+   When fingerprints are unique, exactly one bijection is produced. *)
+
+candidateBijections[fp1_List, fp2_List] :=
+    Module[{n = Length[fp1], slots, build},
+        slots = Table[Flatten @ Position[fp2, fp1[[i]]], {i, n}];
+        build[partial_, used_] :=
+            Module[{i = Length[partial] + 1, choices, results = {}},
+                If[i > n, Return[{partial}]];
+                choices = Complement[slots[[i]], used];
+                Do[AppendTo[results, build[Append[partial, j], Append[used, j]]], {j, choices}];
+                Flatten[results, 1]
+            ];
+        build[{}, {}]
+    ];
+
+matchDisconnectedTerms[setup_, t1_FTerm, t2_FTerm, data1_Association, data2_Association] :=
+    Module[{fac1, fac2, terms1, terms2, comps1, comps2, fp1, fp2, parities,
+            dataPerComp1, dataPerComp2},
+        (* Strip scalar prefactors so per-component comparisons see coefficient-1 sub-FTerms. *)
+        {fac1, terms1} = SplitPrefactor[setup, t1];
+        {fac2, terms2} = SplitPrefactor[setup, t2];
+        comps1 = partitionFTermByConnectivity[setup, terms1];
+        comps2 = partitionFTermByConnectivity[setup, terms2];
+        If[Length[comps1] =!= Length[comps2], Return[False]];
+        fp1 = Map[FTermContent[setup, #]&, comps1];
+        fp2 = Map[FTermContent[setup, #]&, comps2];
+        If[Sort[fp1] =!= Sort[fp2], Return[False]];
+        dataPerComp1 = Map[PrecomputeTermData[setup, #]&, comps1];
+        dataPerComp2 = Map[PrecomputeTermData[setup, #]&, comps2];
+        parities = Map[Mod[GrassmannCount[setup, #], 2]&, comps1];
+        (* For each candidate bijection, run the connected-case TermsEqualPre on
+           every component pair.  The per-pair result is False or {sign, _} —
+           we only need the sign here; the per-component nt2 is irrelevant
+           because we stripped scalars from t1/t2 first, so per-component
+           prefactors are all 1. *)
+        Catch[
+            Do[
+                Module[{results, signs, sign, factor},
+                    results = Table[
+                        TermsEqualPre[
+                            setup,
+                            comps1[[i]], comps2[[ β[[i]] ]],
+                            dataPerComp1[[i]], dataPerComp2[[ β[[i]] ]]
+                        ]
+                        ,
+                        {i, Length[comps1]}
+                    ];
+                    If[FreeQ[results, False],
+                        signs = First /@ results;
+                        sign = (Times @@ signs) * grassmannPermutationSign[parities, β];
+                        factor = ReduceIndices[setup, FTerm[fac1 + sign * fac2]];
+                        If[factor === 0 || factor === FTerm[0], Throw[FTerm[0]]];
+                        Throw[FTerm[factor, terms1]]
+                    ]
+                ]
+                ,
+                {β, candidateBijections[fp1, fp2]}
+            ];
+            False
+        ]
+    ];
+
+(* Within a group of possibly matching FTerms, check for any possible equalities *)
 
 SubFSimplify[setup_, expr_] /; Length[expr] > 64 :=
     Module[{chunks, ret, temp},
@@ -740,7 +850,12 @@ SubFSimplify[setup_, expr_] /; Length[expr] <= 64 :=
                 If[termData[[idx]]["fp"] =!= termData[[jdx]]["fp"],
                     Continue[]
                 ];
-                red = TermsEqualAndSumPre[setup, ret[[idx]], ret[[jdx]], termData[[idx]], termData[[jdx]]];
+                red =
+                    If[ TrueQ[termData[[idx]]["disconnected"]] || TrueQ[termData[[jdx]]["disconnected"]],
+                        matchDisconnectedTerms[setup, ret[[idx]], ret[[jdx]], termData[[idx]], termData[[jdx]]]
+                        ,
+                        TermsEqualAndSumPre[setup, ret[[idx]], ret[[jdx]], termData[[idx]], termData[[jdx]]]
+                    ];
                 FunKitDebug[3, "Compared ", idx, " and ", jdx, ", result: ", red];
                 If[red =!= False,
                     ret[[idx]] = red;
@@ -755,7 +870,7 @@ SubFSimplify[setup_, expr_] /; Length[expr] <= 64 :=
         Return[ret];
     ];
 
-(* Withing a group of possibly matching FTerms, check for any possible equalities, but this time with a given list of symmetries *)
+(* Within a group of possibly matching FTerms, check for any possible equalities, but this time with a given list of symmetries *)
 
 SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] > 64 :=
     Module[{chunks, ret, temp},
@@ -783,7 +898,12 @@ SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] <= 64 :=
                 ];
                 matched = False;
                 (* Identity symmetry: use cached data directly *)
-                red = TermsEqualAndSumPre[setup, ret[[idx]], ret[[jdx]], termData[[idx]], termData[[jdx]]];
+                red =
+                    If[ TrueQ[termData[[idx]]["disconnected"]] || TrueQ[termData[[jdx]]["disconnected"]],
+                        matchDisconnectedTerms[setup, ret[[idx]], ret[[jdx]], termData[[idx]], termData[[jdx]]]
+                        ,
+                        TermsEqualAndSumPre[setup, ret[[idx]], ret[[jdx]], termData[[idx]], termData[[jdx]]]
+                    ];
                 If[red =!= False,
                     matched = True
                 ];
@@ -796,7 +916,12 @@ SubFSimplify[setup_, expr_, symmetryList_] /; Length[expr] <= 64 :=
                         (* Build symmetry-transformed term without full preprocess *)
                         t2sym = FTerm[nonTrivialSym[[kdx, Key["Factor"]]]] ** ret[[jdx]] /. nonTrivialSym[[kdx, Key["Rule"]]];
                         $ProfileSymPreprocess += AbsoluteTime[] - $profTmpSP;
-                        red = TermsEqualAndSumPre[setup, ret[[idx]], t2sym, termData[[idx]], data2sym];
+                        red =
+                            If[ TrueQ[termData[[idx]]["disconnected"]] || TrueQ[data2sym["disconnected"]],
+                                matchDisconnectedTerms[setup, ret[[idx]], t2sym, termData[[idx]], data2sym]
+                                ,
+                                TermsEqualAndSumPre[setup, ret[[idx]], t2sym, termData[[idx]], data2sym]
+                            ];
                         If[red =!= False,
                             matched = True;
                             Break[];
@@ -834,26 +959,12 @@ FSimplifyNoSym[setup_, expr_] :=
         Return[res];
     ];
 
-FSimplify::disconnected = "The expression contains disconnected diagrams. These will be skipped during simplification.";
-
 Options[FSimplify] = {"Symmetries" -> {}};
 
 FSimplify[setup_, inexpr_FEx, OptionsPattern[]] :=
-    Module[{subGroups, res, expr, annotations, useParallel, symmetries, connectedTerms, disconnectedTerms, connectedExpr},
+    Module[{subGroups, res, expr, annotations, useParallel, symmetries},
         AssertFSetup[setup];
         {expr, annotations} = SeparateFExAnnotations[inexpr];
-        (* Guard: separate disconnected diagrams and skip them *)
-        disconnectedTerms = Select[expr, FDisconnectedQ[setup, #]&];
-        If[Length[disconnectedTerms] > 0,
-            Message[FSimplify::disconnected];
-            connectedTerms = Select[expr, !FDisconnectedQ[setup, #]&];
-            If[Length[connectedTerms] == 0,
-                Return[MergeFExAnnotations[FEx @@ expr, annotations]]
-            ];
-            connectedExpr = FEx @@ connectedTerms;
-            res = FSimplify[setup, MergeFExAnnotations[connectedExpr, annotations], (Sequence @@ Thread[Rule @@ {#, OptionValue[FSimplify, #]}]& @ Keys[Options[FSimplify]])];
-            Return[FEx @@ Join[List @@ res, disconnectedTerms]]
-        ];
         expr = FOrderFields[setup, expr];
         expr = FixIndices[setup, expr];
         symmetries =

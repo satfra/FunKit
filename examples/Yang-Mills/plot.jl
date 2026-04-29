@@ -84,13 +84,12 @@ using DelimitedFiles
 
 begin
     # load csv data from lattice
-    #lat2_dat = np.loadtxt("gluon_prop_R4GeV_128p4_b6p3.dat")
-    lat2_dat = readdlm("gluon_prop_R4GeV_128p4_b6p3.dat")
-    p_lat2 = lat2_dat[1:end, 1]
-    GA_lat2 = lat2_dat[1:end, 2]
-    ZAm1_lat2 = GA_lat2 .* p_lat2 .^ 2
-    err_lat2 = lat2_dat[1:end, 3]
-    ZAm1_lat2_err = err_lat2 .* p_lat2 .^ 2
+    #lat2_dat = readdlm("gluon_prop_R4GeV_128p4_b6p3.dat")
+    #p_lat2 = lat2_dat[1:end, 1]
+    #GA_lat2 = lat2_dat[1:end, 2]
+    #ZAm1_lat2 = GA_lat2 .* p_lat2 .^ 2
+    #err_lat2 = lat2_dat[1:end, 3]
+    #ZAm1_lat2_err = err_lat2 .* p_lat2 .^ 2
 
     x_resc = 1.6
     y_resc = 2.0
@@ -107,7 +106,7 @@ begin
 
     fig2, (ax1, ax2, ax3) = subplots(1, 3, figsize=(3 * 3, 2.5), dpi=300)
 
-    ax1.errorbar(p_lat2, ZAm1_lat2, yerr=ZAm1_lat2_err, fmt="o", label="Sternbeck et al. (2006)", color="black", markersize=0.5, capsize=2)
+    #ax1.errorbar(p_lat2, ZAm1_lat2, yerr=ZAm1_lat2_err, fmt="o", label="Sternbeck et al. (2006)", color="black", markersize=0.5, capsize=2)
     ax1.plot(pGeV, dat_ZA .^ -1, label=L"Z_A", color=plt.cm.tab10(3), zorder=10)
     ax1.set_xlabel(L"p\textrm{ [GeV]}")
     ax1.set_ylabel(L"1/Z_A")

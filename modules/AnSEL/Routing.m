@@ -82,67 +82,6 @@ fermionicExtMomRouting[setup_, vertex_] :=
         Return[Mod[factor, 2] === 1];
     ];
 
-(* Partition an FTerm into connected components by BFS over shared closed
-   superindices. Items with no indices (numeric coefficients, scalar factors)
-   are absorbed into the first component so that multiplying the components
-   reproduces the original coefficient. Mirrors the logic of FDisconnectedQ
-   in modules/AnSEL/Disconnected.m. *)
-
-partitionFTermByConnectivity[setup_, ft_FTerm] :=
-    Module[{items, indexedItems, scalarItems, allFields, depth1Fields, idxO, idxF, indexedPos, scalarPos, closedIdx, idxSets, visited, queue, cur, idx, pos, components, compMembers},
-        items = List @@ ft;
-        allFields = Join[GetAllFields[setup], {AnyField}];
-        depth1Fields = Cases[ft, Alternatives @@ Map[Blank[#]&, allFields], {1}];
-        idxO = Cases[ft, Alternatives @@ Map[Blank[#]&, $indexedObjects], {1, 2}];
-        idxF = Select[Cases[ft, Alternatives @@ Map[Blank[#]&, allFields], {1}], MemberQ[depth1Fields, #]&];
-        indexedItems = Join[idxO, idxF];
-        indexedPos = Flatten @ Map[Position[items, #, {1}, 1]&, indexedItems];
-        scalarPos = Complement[Range[Length[items]], indexedPos];
-        scalarItems = items[[scalarPos]];
-        If[Length[indexedItems] <= 1,
-            Return[{ft}]
-        ];
-        closedIdx = GetClosedSuperIndices[setup, ft];
-        idxSets = objectIndices /@ indexedItems;
-        components = {};
-        visited = <||>;
-        While[Length[visited] < Length[indexedItems],
-            cur = First @ Complement[Range[Length[indexedItems]], Keys[visited]];
-            compMembers = {cur};
-            AssociateTo[visited, cur -> True];
-            queue = {cur};
-            While[Length[queue] > 0,
-                cur = First[queue];
-                queue = Rest[queue];
-                Do[
-                    If[!KeyExistsQ[visited, pos] && Length[Intersection[idxSets[[cur]], idxSets[[pos]], closedIdx]] > 0,
-                        AssociateTo[visited, pos -> True];
-                        AppendTo[queue, pos];
-                        AppendTo[compMembers, pos];
-                    ]
-                    ,
-                    {pos, 1, Length[indexedItems]}
-                ];
-            ];
-            AppendTo[components, Sort[compMembers]];
-        ];
-        If[Length[components] == 1,
-            Return[{ft}]
-        ];
-        components = SortBy[components, First];
-        Return[
-            MapIndexed[
-                If[#2[[1]] === 1,
-                    FTerm @@ Join[scalarItems, indexedItems[[#1]]]
-                    ,
-                    FTerm @@ indexedItems[[#1]]
-                ]&
-                ,
-                components
-            ]
-        ]
-    ];
-
 (* The main routing function *)
 
 (* Disconnected fast path: split the term into connected components, route
@@ -194,7 +133,7 @@ FRoute[setup_, expr_FTerm] /; FDisconnectedQ[setup, expr] :=
     ];
 
 FRoute[setup_, expr_FTerm] :=
-    Module[{openIndices, closedIndices, objects, ret = ReduceFTerm[setup, ReduceIndices[setup, expr]], idx, a, indPos, assocField, subObj, subMom, subExtMom, indStruct, externalIndices, externalMomenta, kind, f, momRepl, i, mom, loopMomenta, sidx, discard, rightMomenta, closedIndex, nextObj, tmp, flag, availMomenta, frozenMomenta = {}},
+    Module[{openIndices, closedIndices, objects, ret = ReduceFTerm[setup, ReduceIndices[setup, expr]], idx, indPos, assocField, subObj, subMom, subExtMom, indStruct, externalIndices, externalMomenta, kind, momRepl, mom, loopMomenta, rightMomenta, closedIndex, nextObj, tmp, flag, availMomenta, frozenMomenta = {}},
         AssertFSetup[setup];
         FunKitDebug[1, "FRoute: routing the sub-term ", expr];
         (*We first get all closed, open indices and all indexed objects. *)
@@ -270,13 +209,9 @@ FRoute[setup_, expr_FTerm] :=
             ret = ret /. allClosedRules /. allClosedRules;
             objects = objects /. allClosedRules /. allClosedRules;
         ];
-(*Next, we treat the external superindices. We assign to each an open group structure and a new momentum p1,p2,... 
-Momentum conservation is already enforced here, i.e. \!\(
-\*SubscriptBox[\(\[Sum]\), \(i\)]
-\*SubscriptBox[\(p\), \(i\)]\)=0 and we choose Subscript[p, n]=-\!\(
-\*SubscriptBox[\(\[Sum]\), \(i < n\)]\(
-\*SubscriptBox[\(p\), \(i\)]\ for\ the\ last\ momentum\ \(
-\*SubscriptBox[\(p\), \(n\)]\(.\)\)\)\)*)
+(* Treat the external superindices: assign each an open group structure and
+   a new momentum p1, p2, ...  Enforce momentum conservation directly by
+   choosing the last leg as p_N = -(p_1 + ... + p_(N-1)). *)
         (*Collect ALL open-index replacement rules, then apply at once.*)
         externalIndices = Table[{}, {idx, 1, Length[openIndices]}];
         Module[{allOpenRules = {}},

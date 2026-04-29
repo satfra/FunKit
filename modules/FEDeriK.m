@@ -156,48 +156,37 @@ Certain restrictions apply: If you put two Grassmann fields into the same factor
 
 Propagator::usage = "Propagator[{field1, field2}, {index1, index2}]
 Represents the two-point correlation function (propagator) G_{field1,field2} with specified indices.
-This is a built-in correlation function that appears in functional derivative calculations.
-Indices can be positive (raised) or negative (lowered, indicated by minus sign).";
+This is a built-in correlation function that appears in functional derivative calculations.";
 
 GammaN::usage = "GammaN[{field1, field2, ...}, {index1, index2, ...}]
-Represents the n-point vertex function \[CapitalGamma]_{field1,field2,...} with specified indices.
-This is the main correlation function for vertex functions in functional methods.
-The number of fields and indices must match, and indices can be positive or negative.";
+Represents the 1PI n-point vertex function \[CapitalGamma]_{field1,field2,...} with specified indices.";
 
 R::usage = "R[{field1, field2}, {index1, index2}]
 Represents the regulator function R_{field1,field2} used in functional renormalization group calculations.
-This appears in flow equations and provides the infrared regularization.
 Typically appears in expressions involving the Wetterich equation.";
 
 Rdot::usage = "Rdot[{field1, field2}, {index1, index2}]
 Represents the time derivative of the regulator function \[PartialD]_t R_{field1,field2}.
-This is the driving term in functional RG flow equations.
-Appears prominently in the Wetterich equation and its derivatives.";
+Appears in the Wetterich equation and its derivatives.";
 
 S::usage = "S[{field1, field2, ...}, {index1, index2, ...}]
 Represents terms in the classical action S with the specified field content and indices.
-Used in constructing classical actions and Dyson-Schwinger equations.
-The field content determines the type of interaction (2-point, 3-point, 4-point, etc.).";
+Used in constructing classical actions and Dyson-Schwinger equations.";
 
 \[Gamma]::usage = "\[Gamma][{field1, field2}, {index1, index2}]
-Represents the functional derivative \[Delta]/\[Delta]\[CurlyPhi] operation in functional expressions.
-This symbol appears automatically when functional derivatives are resolved.
-It encodes the fundamental Grassmann relation between field variations.";
+Represents the field metric used for raising and lowering indices in functional expressions.
+This symbol appears automatically when functional derivatives are resolved.";
 
 Field::usage = "Field[{field}, {index}]
-Represents a field expectation value \:27e8field\:27e9 with the specified index.
-Used in calculations involving non-zero field expectation values.
-Important for spontaneous symmetry breaking and background field methods.";
+Represents a field with the specified index. Alternative notation for field[index].";
 
 FDOp::usage = "FDOp[field[index]]
 Represents a functional derivative operator \[Delta]/\[Delta]field acting on everything to its right.
-This is the fundamental building block for taking functional derivatives.
 FDOp operators are resolved using FResolveDerivatives or FResolveFDOp functions.";
 
 FMinus::usage = "FMinus[{field1, field2}, {index1, index2}]
 Represents Grassmann minus signs (-1)^{field1\[CenterDot]field2} arising from commuting Grassmann fields.
-This is automatically generated when reordering expressions containing Grassmann fields.
-Essential for maintaining correct signs in calculations involving Grassmann fields.";
+This is automatically generated when reordering expressions containing Grassmann fields.";
 
 SymmetryFactor::usage = "SymmetryFactor[{field1, field2, ...}, {index1, index2, ...}]
 Represents the symmetry factor associated with identical fields in an expression.
@@ -206,7 +195,6 @@ When all fields are specified, it evaluates to 1 / (n1! n2! ...), where ni is th
 
 AnyField::usage = "AnyField
 Placeholder symbol representing an undetermined field type.
-Used in master equations like the Wetterich equation before truncation.
 Gets expanded to explicit fields during the truncation process using FTruncate.";
 
 FResolveFDOp::usage = "FResolveFDOp[setup, expr]
