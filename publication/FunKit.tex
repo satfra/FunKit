@@ -257,7 +257,7 @@ Both the tracing and code generation can also be used independently and in combi
 \begin{small}
 	\noindent
 	{\em Program Title:} \FunKit \\
-	{\em Developer's respository link}:  \url{https://github.com/satfra/FunKit} \\
+	{\em Developer's repository link}:  \url{https://github.com/satfra/FunKit} \\
 	{\em Licensing provisions:} GPLv3                                   \\
 	{\em Programming language:} Mathematica                                  \\
 	{\em Computer:}  Linux, MacOS, partially Windows                           \\
@@ -1571,6 +1571,8 @@ For small expressions, such as the scalar two-point function, all three packages
 As the number of fields and the size of the truncation grow, however, \FunKit consistently outperforms \QMeS, while showing parity with \DoFun.
 With even larger expressions, \FunKit is also able to outperform \DoFun: this is particularly pronounced for expressions involving many diagrams, such as the six-fermion flow equation in the four-fermion model, or the six-scalar flow in the scalar theory, where \FunKit can be faster by up to an order of magnitude.
 
+It is important to note, that even though \QMeS is slower than \DoFun or \FunKit, its most important advantage is its relative simplicity. This is achieved through straightforwardly implementing the superindex notation used also by \FunKit without any further optimisations that could introduce errors, with the aim of reliable handling of (fermionic) signs.
+
 
 \begin{table*}[t]
 	\centering
@@ -2280,10 +2282,13 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 		\small Routes indices and momenta in functional expressions, organising terms by loop order. For \mathem{\mmaDef{FTerm}}, returns an Association with keys \mathem{"Expression"} \mathem{"ExternalIndices"}, and \mathem{"LoopMomenta"}.\newline
 		For \mathem{\mmaDef{FEx}}, returns an Association with keys like \mathem{"0-Loop"}, \mathem{"1-Loop"}, etc.
 		\\[3ex]
-		\mathem{\mmaDef{FSetLoopMomentumName}[name]} & 
+		\mathem{\mmaDef{FSetLoopMomentumName}[name]} &
 		\small Sets the symbol for loop momentum variables. Must be a string (Default: \mathem{"l"}) which will then lead to momenta \mathem{l1}, \mathem{lf1}, etc
 		\\[3ex]
-		\mathem{\mmaDef{FUnroute}[setup, expr]} & 
+		\mathem{\mmaDef{FSetRoutingAlgorithm}[algorithm]} &
+		\small Selects how \mathem{\mmaDef{FRoute}} handles the routing of momenta. Available choices for \mathem{algorithm} are \mathem{"Default"} (routes momenta such that fermionic momenta flow through fermionic lines) and \mathem{"Regulator"} (never routes momenta through regulators). Note that the second choice can be problematic in at finite temperatures, as Matsubara frequencies are not propagated correctly.
+		\\[3ex]
+		\mathem{\mmaDef{FUnroute}[setup, expr]} &
 		\small \textbf{Experimental:} Reverses the index and momentum routing performed by FRoute, i.e., converts routed expressions back to superindex notation.
 	\end{tabular}
 \end{tcolorbox}
