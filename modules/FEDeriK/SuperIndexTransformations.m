@@ -31,8 +31,13 @@ fw is a list of three lists. The fw[[1]] is a list that transforms the explicit 
 
 GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
     Module[
-        {kdx, allObj, idx, jdx, newObj, indexPosToChange, indicesToChange, newSuperIndices, repl, replForward, replBackward}
+        {kdx, allObj, idx, jdx, newObj, indexPosToChange, indicesToChange, newSuperIndices, repl, replForward, replBackward, canonicalMom}
         ,
+        (* Pick a sign-canonical form so {m} and {-m} share a grouping key.
+           Abs[m] doesn't auto-simplify for Plus expressions like -l1+p1, which
+           used to leave conjugate momenta in different groups and trip the
+           pair-conservation check below. *)
+        canonicalMom[m_] := If[OrderedQ[{m, -m}], m, -m];
 (* Zip indexed objects notation-agnostically via getFields/getIndices.
    Filter to indexedObjectQ first to avoid double-extracting NotationB embedded
    field[index] pairs that appear at depth 2 inside indexed objects. *)
@@ -69,9 +74,9 @@ GetSuperIndexTermTransformationsSingleFTerm[setup_, term_FTerm] :=
                 Join[
                         (*group indices:*)Select[indicesToChange, Length[#[[2]]] === 2&][[All, 2, 2]]
                         ,
-                        (*momenta:*)
-                        Abs[Select[indicesToChange, Length[#[[2]]] === 1&][[All, 2]]]
-                    ] /. Abs[a_] :> a
+                        (*momenta — canonicalise sign so {m} and {-m} share a key:*)
+                        Map[{canonicalMom[#[[1]]]}&, Select[indicesToChange, Length[#[[2]]] === 1&][[All, 2]]]
+                    ]
             ];
         (*We assign each unique index group a new superindex*)
         newSuperIndices = Map[Unique["i"]&, indexPosToChange];

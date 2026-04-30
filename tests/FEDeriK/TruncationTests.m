@@ -280,6 +280,29 @@ AppendTo[
     ]
 ];
 
+(* Regression: a 1-leg Field truncation must round-trip cleanly through CTrunc's
+   list-notation conversion. Length-1 list-notation objects (Field[{A, ci}]) were
+   previously excluded by a Length[obj] >= 2 guard during convert-back, leaving
+   malformed list-notation Field objects in the result. *)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{expr, result, fieldSetup},
+            fieldSetup = scalarSetup;
+            fieldSetup["Truncation", Field] = {{Phi}};
+            expr = FEx[FTerm[Field[{Phi}, {i1}], Propagator[{AnyField, AnyField}, {-i1, i2}], GammaN[{Phi, Phi, Phi}, {-i2, i3, i4}]]];
+            result = FTruncate[fieldSetup, expr];
+            FreeQ[result, Field[{_, _}], Infinity] && result =!= FEx[]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FTruncate Field: 1-leg Field survives CTrunc list-notation round-trip"
+    ]
+];
+
 (**********************************************************************************
     FTruncateOpenIndices
 **********************************************************************************)

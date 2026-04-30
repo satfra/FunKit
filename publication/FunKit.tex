@@ -388,8 +388,9 @@ This workflow is also shown in \Cref{fig:workflow} and precisely corresponds to 
 \mmaDef{FTakeDerivatives}[\mmaDef{WetterichEquation},\{Phi[i1],Phi[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FPlot}//\mmaDef{FRoute}//\mmaDef{FPrint};
 \end{mmaCell}
 %
+\vspace{-0.5ex}
+\noindent\hspace{3.0em}\includegraphics[width=0.4\linewidth]{diagram_0.png}
 \vspace{-1.5ex}
-\noindent\hspace{3.0em}\includegraphics[width=0.35\linewidth]{diagram_0}
 \begin{equation*}
 \wideleft{\footnotesize$%
 	\begin{aligned}\  &\int_{l_1}G_{\phi^{a}\phi^{a}}(l_1,-l_1)\,\Gamma_{\phi^{c}\phi^{a}\phi^{d}}(l_1-p_1,-l_1,p_1)\,G_{\phi^{c}\phi^{c}}(l_1-p_1,p_1-l_1)\,\Gamma_{\phi^{a}\phi^{c}\phi^{d}}(l_1,p_1-l_1,-p_1)\,G_{\phi^{a}\phi^{a}}(l_1,-l_1)\,\partial_t R_{\phi^{a}\phi^{a}}(-l_1,l_1)
@@ -794,7 +795,7 @@ This will yield a rather large expression, which we can visualise using the \mat
 \begin{mmaCell}{Input}
 \mmaDef{FTakeDerivatives}[\mmaDef{wEq}, \{A[i1], A[i2]\}]//\mmaDef{FPrint}//\mmaDef{FPlot};
 \end{mmaCell}
-\vspace{-2.5ex}
+\vspace{-1.5ex}
 \begin{equation*}
 \wideleft{\footnotesize$%
 		\begin{aligned}\  &\Big(\,\frac{1}{2} (-1)^{A^{i_1}a} (-1)^{A^{i_2}a} (-1)^{cc} (-1)^{ee}
@@ -804,7 +805,9 @@ This will yield a rather large expression, which we can visualise using the \mat
 		\end{aligned}
 $}
 \end{equation*}
-\noindent\hspace{3.0em}\includegraphics[width=0.35\linewidth]{diagram_1}\\
+\vspace{-2ex}
+
+\noindent\hspace{3.0em}\includegraphics[width=0.38\linewidth]{diagram_1.png}\\
 %
 In the above, $(-1)^{ab}$ is the fermionic minus sign as defined in \labelcref{eq:fminus}, represented in \FunKit as \mmaInlineCell{Input}{\mmaDef{FMinus}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{a,b\}]}. Note additionally that, $\gamma_{ab}$ is represented as \mmaInlineCell{Input}{\mmaDef{\(\pmb{\gamma}\)}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{-a,-b\}]}, see also \Cref{tab:notation} for an overview of the notation.
 
@@ -906,7 +909,8 @@ We can now easily truncate the above expression:
 $}
 \end{equation*}
 \vspace{-1ex}
-\noindent\hspace{3.0em}\includegraphics[width=0.65\linewidth]{diagram_3}\\
+
+\noindent\hspace{3.0em}\includegraphics[width=0.78\linewidth]{diagram_3.png}\\
 %
 \begin{tcolorbox}[title=Algorithm details: Truncation,
 	title filled=false,
@@ -1002,7 +1006,7 @@ gluonDSE = \mmaDef{FTakeDerivatives}[\mmaDef{FMakeDSE}[A[i1]], \{A[i2]\}]//\mmaD
 $}
 \end{equation*}
 \vspace{-1.0ex}
-\noindent\hspace{3.0em}\includegraphics[width=0.55\linewidth]{diagram_4}\\[1ex]
+\noindent\hspace{3.0em}\includegraphics[width=0.75\linewidth]{diagram_4.png}\\[1ex]
 %
 The output of \mathem{\mmaDef{FRoute}} returns an association with keys as \mathem{"0-Loop"}, \mathem{"1-Loop"}, and so on, where all diagrams are grouped that have the same number of loops. Each of these elements is again an association that holds all necessary information about the result.
 The respective keys are:
@@ -1122,7 +1126,7 @@ If we now plot again the flow of the gluon propagator, as calculated above, it l
 \mmaDef{FTakeDerivatives}[\mmaDef{wEq},\{A[i1],A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FPlot};
 \end{mmaCell}
 \vspace{-1ex}
-\noindent\hspace{3.0em}\includegraphics[width=0.65\linewidth]{diagram_9}\\
+\noindent\hspace{3.0em}\includegraphics[width=0.8\linewidth]{diagram_9.png}\\
 %
 Additionally, one can give hints to \FunKit which objects should be interpreted as edges, and which ones as vertices, by using the keys \mathem{"Vertices"} and \mathem{"Edges"}, and override the default vertex shape and size via \mathem{"VertexStyles"} and \mathem{"VertexSizes"}.
 Additionally, external-leg labelling can be turned off with \mathem{"ExternalIndexLabels"->\mmaDef{False}}.
@@ -1269,7 +1273,8 @@ Note for the projectors that for non-commuting, and in particular for fields car
 DSEAcbc = \mmaDef{FTakeDerivatives}[\mmaDef{FMakeDSE}[A[i1]], \{cb[i2],c[i3]\}]//\mmaDef{FTruncate}//\mmaDef{FPlot}//\mmaDef{FRoute};
 \end{mmaCell}
 \vspace{-1.0ex}
-\noindent\hspace{3.0em}\includegraphics[width=0.7\linewidth]{diagram_8}\\[1ex]
+
+\noindent\hspace{3.0em}\includegraphics[width=0.85\linewidth]{diagram_8.png}\\[1ex]
 %
 In the following, we trace the third diagram of the above.
 In many situations, the symmetric-point approximation can be a good momentum configuration to obtain a reduced system of correlation functions. Specifically, if angular dependencies can be assumed to be mild, a system of symmetric-point diagrams defines a closed system of diagrams in DSE or fRG applications, see also \cite{Ihssen:2024miv, Eichmann:2014xya, Eichmann:2015nra, Eichmann:2025etg} for more explicit treatments of 3- to 5-point~functions.
@@ -1647,7 +1652,7 @@ It is important to note, that even though \QMeS is slower than \DoFun or \FunKit
 		In all cases, we measured the total time to take the derivatives and truncate the expression.
 		Especially for very large expressions with several thousand diagrams, e.g. the six-point and four-point flows, \FunKit excels.
 		All benchmarks were performed on a 16-core AMD Ryzen 9 7945HX machine.
-		Two warmup-cycles were used before five benchmark runs, which provide lead to the error bars as shown in the plots }
+		Two warmup-cycles were used before five benchmark runs, which provide lead to the error bars as shown in the plots. }
 	\label{fig:benchmarks}
 \end{figure*}
 
@@ -1928,8 +1933,9 @@ Flow2F = \mmaDef{FTakeDerivatives}[\mmaDef{setup4F},\mmaDef{WetterichEquation},\
 Flow2FTrunc = \mmaDef{FTruncate}[\mmaDef{setup4F}, Flow2F];
 \mmaDef{FPlot}[\mmaDef{setup4F}, Flow2FTrunc];
 \end{mmaCell}
-\vspace{-1.5ex}
-\noindent\hspace{3.0em}\includegraphics[width=0.19\linewidth]{diagram_6}\\[1ex]
+\vspace{-1ex}
+
+\noindent\hspace{3.0em}\includegraphics[width=0.11\linewidth]{diagram_6.png}\\
 %
 After routing and tracing, we obtain the flow equation as
 %
@@ -1954,8 +1960,8 @@ Flow4F = \mmaDef{FTakeDerivatives}[\mmaDef{setup4F},\mmaDef{WetterichEquation},\
 Flow4FTrunc = \mmaDef{FTruncate}[\mmaDef{setup4F},Flow4F];
 \mmaDef{FPlot}[\mmaDef{setup4F},Flow4FTrunc]
 \end{mmaCell}
-\vspace{-1.5ex}
-\noindent\hspace{3.0em}\includegraphics[width=0.52\linewidth]{diagram_7}
+
+\noindent\hspace{3.0em}\includegraphics[width=0.7\linewidth]{diagram_7.png}
 
 \begin{mmaCell}{Input}
 Flow4FRouted = \mmaDef{FRoute}[\mmaDef{setup4F},\mmaDef{Flow4FTrunc}];

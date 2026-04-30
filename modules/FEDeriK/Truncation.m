@@ -750,7 +750,7 @@ CTrunc[setup_, expr_FTerm] :=
   For 2-leg objects both have {_, _} as first arg; distinguish by checking
   that obj[[1,2]] is NOT a known field name (it's an index in list notation).*)
                     Module[{allFieldNames = Join[allFields, {AnyField}]},
-                        factors = Map[Replace[#, obj_ /; objectQ[obj] && Length[obj] >= 2 && MatchQ[obj[[1]], {_, _}] && !MemberQ[allFieldNames, obj[[1, 2]]] :> fromListNotation[obj], {0, Infinity}]&, factors];
+                        factors = Map[Replace[#, obj_ /; objectQ[obj] && Length[obj] >= 1 && MatchQ[obj[[1]], {_, _}] && !MemberQ[allFieldNames, obj[[1, 2]]] :> fromListNotation[obj], {0, Infinity}]&, factors];
                     ];
                     factors = factors /. numWrap$[x_] :> x;
 (*Resolve remaining AnyField in FMinus/SymmetryFactor from concrete objects.

@@ -157,3 +157,55 @@ AppendTo[tests, VerificationTest[
     True,
     TestID -> "DiagramStyling: ExternalIndexLabels -> False suppresses labels"
 ]];
+
+(**********************************************************************************
+    DiANE: FPlot routed-loop association — open-leg labels track the routed
+    input/output momenta. A scalar 2-point flow gives external momenta p1
+    (Symbol → label "p1") and -p1 (Times[-1, p1] → label "-p1" via the
+    placeholder + $externalLabelOverride channel).
+**********************************************************************************)
+
+FunKit`FSetGlobalSetup[testSetup];
+
+routedScalarFlow =
+    FunKit`FRoute[testSetup,
+        FunKit`FTakeDerivatives[testSetup, FunKit`WetterichEquation, {Phi[i1], Phi[i2]}] //
+            FunKit`FTruncate //
+            FunKit`FSimplify
+    ];
+
+AppendTo[tests, VerificationTest[
+    Module[{loopAssoc, labelOverride = <||>, indexRules, namedExpr, term,
+        graph, labels, displayed},
+        loopAssoc = routedScalarFlow["1-Loop"];
+        (* Replicate the FPlot loop-association handler so we can exercise
+           FGetDiagram (and thus the $externalLabelOverride mechanism)
+           directly without going through FPlot's Print path. *)
+        indexRules =
+            Map[
+                Function[rule,
+                    Module[{mom = rule[[2, 1]], placeholder},
+                        If[MatchQ[mom, _Symbol],
+                            rule[[2]] -> mom
+                            ,
+                            placeholder = Unique["leg"];
+                            AssociateTo[labelOverride, placeholder -> mom];
+                            rule[[2]] -> placeholder
+                        ]
+                    ]
+                ]
+                ,
+                loopAssoc["ExternalIndices"]
+            ];
+        namedExpr = loopAssoc["Expression"] /. indexRules;
+        term = (List @@ namedExpr)[[1]];
+        Block[{FunKit`Private`$externalLabelOverride = labelOverride},
+            graph = FunKit`Private`FGetDiagram[testSetup, term][[2]]
+        ];
+        labels = VertexLabels /. Options[graph, VertexLabels];
+        displayed = Cases[labels, (_ -> Placed[label_, _]) :> First @ Cases[{label}, s_String, Infinity]];
+        Sort[displayed] === Sort @ {"p1", "-p1"}
+    ],
+    True,
+    TestID -> "DiANE: FPlot loop-association labels external legs by routed momenta"
+]];

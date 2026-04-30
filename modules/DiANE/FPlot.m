@@ -63,6 +63,12 @@ $standardVertexStyles = {GammaN -> Graphics @ Style[Disk[{0, 0}, 2], Gray], S ->
 
 $standardVertexSize = {GammaN -> 0.15, S -> 0.05, Rdot -> 0.25, Field -> 0.1, R -> 0.2};
 
+(* Block-scoped map placeholderSuperIndex -> displayExpression, used by the
+   routed-association FPlot handler to label external legs by their input
+   momentum (e.g. a Plus-form conservation leg like -(p1+p2)) rather than
+   the post-FUnroute random superindex. Empty default: no override. *)
+$externalLabelOverride = <||>;
+
 arcFunc[g_, r_:1.5][list_, DirectedEdge[x_, x_]] :=
     With[{v = DynamicLocation["VertexID$" <> ToString[VertexIndex[g, x]], Automatic, Center]},
         Arrow[BezierCurve[Join[{v}, ScalingTransform[r {1, 1}, list[[1]]][list[[{5, 8, 10, 16, 18, 21}]]], {v}], SplineDegree -> 7]]
@@ -237,7 +243,7 @@ FGetDiagram[setup_, expr_FTerm] :=
                 {idx, 1, Length[externalVertices]}
             ];
         externalFields = Table[getField[externalFields[[idx]], FirstPosition[makePosIdx /@ getIndices[externalFields[[idx]]], externalVertices[[idx]]][[1]]], {idx, 1, Length[externalVertices]}];
-        externalIndexLabels = externalVertices;
+        externalIndexLabels = externalVertices /. Normal[$externalLabelOverride];
         externalVertices = Unique /@ externalVertices;
         vertexLabelRules =
             If[ShowExternalIndexLabels,
@@ -294,14 +300,39 @@ FPlot[setup_, expr_FEx] :=
     ];
 
 FPlot[setup_, expr_Association] /; isLoopAssociation[expr] :=
-    Module[{},
-        FPlot[setup, expr["Expression"]];
+    Module[{indexRules, labelOverride = <||>, namedExpr},
+        (* Substitute each routed indStruct list with a superindex named after
+           its external momentum so that the plot's external-leg labels match
+           the input/output momenta rather than post-FUnroute random ids. *)
+        indexRules =
+            Map[
+                Function[rule,
+                    Module[{mom = rule[[2, 1]], placeholder},
+                        If[MatchQ[mom, _Symbol],
+                            rule[[2]] -> mom
+                            ,
+                            (* Plus/Times momentum (e.g. conservation-fixed
+                               last leg): keep the actual expression as the
+                               displayed label via a placeholder + override. *)
+                            placeholder = Unique["leg"];
+                            AssociateTo[labelOverride, placeholder -> mom];
+                            rule[[2]] -> placeholder
+                        ]
+                    ]
+                ]
+                ,
+                expr["ExternalIndices"]
+            ];
+        namedExpr = expr["Expression"] /. indexRules;
+        Block[{$externalLabelOverride = labelOverride},
+            FPlot[setup, namedExpr]
+        ];
         Return @ expr
     ];
 
 FPlot[setup_, expr_Association] /; isRoutedAssociation @ expr :=
     Module[{},
-        FPlot[setup, (List @@ expr)[[All, Key["Expression"]]]];
+        FPlot[setup, #]& /@ (List @@ expr);
         Return @ expr
     ];
 
