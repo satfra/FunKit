@@ -376,17 +376,22 @@ CppCodeFORM[expr_] :=
 
 (* ::Input::Initialization:: *)
 
-CppCode[equation_] :=
-    Module[{optimized, varNames, definitions, returnStatement},
+Options[CppCode] = {"ReturnTransform" -> Identity};
+
+CppCode[equation_, OptionsPattern[]] :=
+    Module[{transform, optimized, varNames, definitions, returnStatement},
+        transform = OptionValue["ReturnTransform"];
         optimized = optimizeExpression[equation];
         varNames = getAllVarNames[optimized];
         (* Sub-kernel pattern (level 3) *)
         If[TrueQ[optimized["UseSubKernels"]],
-            Module[{subKernels, sharedDefs, sharedCode, allNames, subCode, declLine, rawExprCode},
+            Module[{subKernels, sharedDefs, sharedCode, allNames, subCode, declLine, rawExprCode, accSym, accStr, wrappedReturn},
                 sharedDefs = optimized["SharedDefinitions"];
                 subKernels = optimized["SubKernels"];
                 allNames = Join[sharedDefs[[All, 1]], Flatten @ Map[#["Definitions"][[All, 1]]&, subKernels]];
-                (* Type deduction from original unoptimized expression *)
+                (* Type deduction from original unoptimized expression. _acc accumulates
+                   un-transformed terms (each sub-kernel does _acc += terms); the
+                   ReturnTransform is applied only at the final return. *)
                 rawExprCode = CppForm[equation, "Format" -> False];
                 declLine = "// clang-format off\nusing _T = decltype(" <> rawExprCode <> ");\n// clang-format on\n";
                 (* Shared definitions *)
@@ -405,13 +410,16 @@ CppCode[equation_] :=
                         ,
                         {i, Length[subKernels]}
                     ];
-                Return[declLine <> sharedCode <> "_T _acc{};\n" <> StringJoin[subCode] <> "return _acc;"]
+                accSym = Unique["postAcc"];
+                accStr = ToString[accSym];
+                wrappedReturn = StringReplace[CppForm[transform[accSym]], accStr -> "_acc"];
+                Return[declLine <> sharedCode <> "_T _acc{};\n" <> StringJoin[subCode] <> "return " <> wrappedReturn <> ";"]
             ]
         ];
         (* Standard path: definitions + return *)
         definitions = formatDefinitions[optimized["Definitions"]];
         definitions = stripQuotedNames[definitions, varNames];
-        returnStatement = formatReturnStatement[optimized["Expr"]];
+        returnStatement = formatReturnStatement[transform[optimized["Expr"]]];
         returnStatement = stripQuotedNames[returnStatement, varNames];
         FunKitDebug[2, "Definitions: ", definitions];
         FunKitDebug[2, "returnStatement: ", returnStatement];
@@ -509,7 +517,7 @@ MakeParameterString[it_] :=
 
 ClearAll[MakeCppFunction];
 
-Options[MakeCppFunction] = {"Return" -> "auto", "Parameters" -> {}, "Name" -> "function", "Prefix" -> "", "Suffix" -> "", "CodeParser" -> "Cpp", "Body" -> "", "Class" -> "", "Templates" -> {}};
+Options[MakeCppFunction] = {"Return" -> "auto", "Parameters" -> {}, "Name" -> "function", "Prefix" -> "", "Suffix" -> "", "CodeParser" -> "Cpp", "Body" -> "", "Class" -> "", "Templates" -> {}, "ReturnTransform" -> Identity};
 
 MakeCppFunction[OptionsPattern[]] :=
     Module[{functionPrefix, functionSuffix, functionName, functionParameters, functionTemplates, idx, functionBody, parameters},
@@ -578,14 +586,19 @@ MakeCppFunction[OptionsPattern[]] :=
     ];
 
 MakeCppFunction[expr_, OptionsPattern[]] :=
-    Module[{codeParser, newBody},
-        codeParser =
-            If[OptionValue["CodeParser"] === "FORM",
-                CppCodeFORM
+    Module[{useFORM, transform, generated, newBody},
+        useFORM = OptionValue["CodeParser"] === "FORM";
+        transform = OptionValue["ReturnTransform"];
+        generated =
+            If[useFORM,
+                If[transform =!= Identity,
+                    Message[FunKit::warning, "ReturnTransform is not supported with CodeParser \"FORM\"; ignoring."]
+                ];
+                CppCodeFORM[expr]
                 ,
-                CppCode
+                CppCode[expr, "ReturnTransform" -> transform]
             ];
-        newBody = OptionValue["Body"] <> "\n" <> codeParser[expr];
+        newBody = OptionValue["Body"] <> "\n" <> generated;
         MakeCppFunction @@ (Evaluate @ Join[{"Body" -> newBody}, Thread[Rule @@ {#, OptionValue[MakeCppFunction, #]}]& @ Keys[Options[MakeCppFunction]]])
     ];
 

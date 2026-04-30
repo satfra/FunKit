@@ -31,15 +31,22 @@ FortranCodeForm[expr_] :=
     ];
 
 (* Fortran identifiers must start with a letter. The optimizer produces names
-   like _interp1, _cse1, _tran1, _result1 which are invalid. This function
-   renames them by stripping the leading underscore and adding an "fk" prefix. *)
+   like _interp1, _cse1, _tran1, _result1 which are invalid. The sub-kernel
+   accumulator _acc and the ReturnTransform placeholder postAcc<n> are also
+   coerced. This function renames them by stripping any leading underscore and
+   adding an "fk" prefix. *)
 fortranFixNames[code_String] :=
-    StringReplace[code, "_" ~~ prefix:("interp"|"cse"|"tran"|"result") ~~ num:DigitCharacter.. :> "fk" <> prefix <> num];
+    StringReplace[code, {
+        "_" ~~ prefix:("interp"|"cse"|"tran"|"result") ~~ num:DigitCharacter.. :> "fk" <> prefix <> num,
+        WordBoundary ~~ "_acc" ~~ WordBoundary :> "fkacc"
+    }];
 
 (* Generate double precision declarations for all optimizer variables in the code *)
 fortranVarDeclarations[code_String] :=
-    Module[{vars},
-        vars = Union @ StringCases[code, "fk" ~~ ("interp"|"cse"|"tran"|"result") ~~ DigitCharacter..];
+    Module[{numbered, accVar, vars},
+        numbered = Union @ StringCases[code, "fk" ~~ ("interp"|"cse"|"tran"|"result") ~~ DigitCharacter..];
+        accVar = If[StringContainsQ[code, WordBoundary ~~ "fkacc" ~~ WordBoundary], {"fkacc"}, {}];
+        vars = Join[numbered, accVar];
         If[Length[vars] === 0, "",
             "double precision :: " <> StringRiffle[vars, ", "] <> "\n"
         ]
@@ -51,8 +58,11 @@ fortranVarDeclarations[code_String] :=
 
 (* ::Input::Initialization:: *)
 
-FortranCode[equation_, name_:"kernel"] :=
-    Module[{optimized, varNames, fortranFormatDefs, definitions, returnStatement, result},
+Options[FortranCode] = {"ReturnTransform" -> Identity};
+
+FortranCode[equation_, name_:"kernel", OptionsPattern[]] :=
+    Module[{transform, optimized, varNames, fortranFormatDefs, definitions, returnStatement, result},
+        transform = OptionValue["ReturnTransform"];
         optimized = optimizeExpression[equation];
         varNames = getAllVarNames[optimized];
         fortranFormatDefs = Function[{defs},
@@ -68,7 +78,7 @@ FortranCode[equation_, name_:"kernel"] :=
         ];
         (* Sub-kernel path *)
         If[TrueQ[optimized["UseSubKernels"]],
-            Module[{subKernels, sharedDefs, sharedCode, allNames, subCode},
+            Module[{subKernels, sharedDefs, sharedCode, allNames, subCode, accSym, accStr, accLine, wrappedReturn},
                 sharedDefs = optimized["SharedDefinitions"];
                 subKernels = optimized["SubKernels"];
                 allNames = Join[
@@ -89,15 +99,19 @@ FortranCode[equation_, name_:"kernel"] :=
                     ],
                     {i, Length[subKernels]}
                 ];
-                result = sharedCode <> StringJoin[subCode] <>
-                    name <> " = " <> StringRiffle[Table["_result" <> ToString[i], {i, Length[subKernels]}], " + "];
+                accLine = "_acc = " <> StringRiffle[Table["_result" <> ToString[i], {i, Length[subKernels]}], " + "] <> "\n";
+                accSym = Unique["postAcc"];
+                accStr = ToString[accSym];
+                wrappedReturn = StringReplace[FortranCodeForm[transform[accSym]], accStr -> "_acc"];
+                result = sharedCode <> StringJoin[subCode] <> accLine <>
+                    name <> " = " <> wrappedReturn;
                 Return[fortranFixNames[result]]
             ]
         ];
         (* Standard path: definitions + return *)
         definitions = fortranFormatDefs[optimized["Definitions"]];
         definitions = stripQuotedNames[definitions, varNames];
-        returnStatement = name <> " = " <> FortranCodeForm[optimized["Expr"]];
+        returnStatement = name <> " = " <> FortranCodeForm[transform[optimized["Expr"]]];
         returnStatement = stripQuotedNames[returnStatement, varNames];
         FunKitDebug[2, "Fortran definitions: ", definitions];
         FunKitDebug[2, "Fortran returnStatement: ", returnStatement];
@@ -112,7 +126,7 @@ FortranCode[equation_, name_:"kernel"] :=
 
 ClearAll[MakeFortranFunction];
 
-Options[MakeFortranFunction] = {"Parameters" -> {}, "Name" -> "kernel", "Prefix" -> "", "Body" -> ""};
+Options[MakeFortranFunction] = {"Parameters" -> {}, "Name" -> "kernel", "Prefix" -> "", "Body" -> "", "ReturnTransform" -> Identity};
 
 MakeFortranFunction[OptionsPattern[]] :=
     Module[
@@ -150,6 +164,6 @@ MakeFortranFunction[OptionsPattern[]] :=
 
 MakeFortranFunction[expr_, OptionsPattern[]] :=
     Module[{newBody},
-        newBody = OptionValue["Body"] <> "\n" <> FortranCode[expr, OptionValue["Name"]];
+        newBody = OptionValue["Body"] <> "\n" <> FortranCode[expr, OptionValue["Name"], "ReturnTransform" -> OptionValue["ReturnTransform"]];
         MakeFortranFunction @@ (Evaluate @ Join[{"Body" -> newBody}, Thread[Rule @@ {#, OptionValue[MakeFortranFunction, #]}]& @ Keys[Options[MakeFortranFunction]]])
     ];

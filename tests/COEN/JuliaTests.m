@@ -105,3 +105,50 @@ AppendTo[tests, VerificationTest[
     True,
     TestID -> "Simple expression produces no CSE variables"
 ]];
+
+(**********************************************************************************
+    ReturnTransform option (post-processing injection)
+**********************************************************************************)
+
+ClearAll[a, b];
+exprRT = (Cos[a] + Sin[a]^2) / (1 + a);
+
+(* Identity transform on standard path: byte-identical to default *)
+AppendTo[tests, VerificationTest[
+    JuliaCode[exprRT, "ReturnTransform" -> Identity],
+    JuliaCode[exprRT],
+    TestID -> "ReturnTransform Identity matches default Julia (standard path)"
+]];
+
+(* Custom function wrapper: rendered as myWrap(...) via FortranForm fallback *)
+AppendTo[tests, VerificationTest[
+    StringContainsQ[
+        JuliaCode[exprRT, "ReturnTransform" -> Function[v, Global`myWrap[v]]],
+        "myWrap("
+    ],
+    True,
+    TestID -> "ReturnTransform custom wrapper appears in Julia output"
+]];
+
+(* Identity on sub-kernel path *)
+ClearAll[a];
+largeJuliaExpr = Sum[Sin[a + i] * Cos[a - i] / (1 + i * a), {i, 1, 600}];
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms = 200},
+    largeDefaultJ = JuliaCode[largeJuliaExpr];
+    largeIdentityJ = JuliaCode[largeJuliaExpr, "ReturnTransform" -> Identity];
+];
+AppendTo[tests, VerificationTest[largeIdentityJ, largeDefaultJ, TestID -> "ReturnTransform Identity matches default Julia (sub-kernel path)"]];
+
+(* Custom wrapper on sub-kernel path: emits myWrap(_acc) *)
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms = 200},
+    largeWrapJ = JuliaCode[largeJuliaExpr, "ReturnTransform" -> Function[v, Global`myWrap[v]]];
+];
+AppendTo[tests, VerificationTest[
+    StringContainsQ[largeWrapJ, "myWrap(_acc)"],
+    True,
+    TestID -> "ReturnTransform wraps _acc on Julia sub-kernel path"
+]];
+
+(* MakeJuliaFunction forwards the option *)
+funBodyRT = MakeJuliaFunction[exprRT, "Name" -> "fun", "Body" -> "a = in", "Parameters" -> {"in"}, "ReturnTransform" -> Function[v, Global`myWrap[v]]];
+AppendTo[tests, VerificationTest[StringContainsQ[funBodyRT, "myWrap("], True, TestID -> "MakeJuliaFunction forwards ReturnTransform"]];

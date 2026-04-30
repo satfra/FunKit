@@ -46,8 +46,11 @@ IndentCode[code_String, level_Integer] :=
 
 (* ::Input::Initialization:: *)
 
-JuliaCode[equation_] :=
-    Module[{optimized, varNames, juliaFormatDefs, definitions, returnStatement},
+Options[JuliaCode] = {"ReturnTransform" -> Identity};
+
+JuliaCode[equation_, OptionsPattern[]] :=
+    Module[{transform, optimized, varNames, juliaFormatDefs, definitions, returnStatement},
+        transform = OptionValue["ReturnTransform"];
         optimized = optimizeExpression[equation];
         varNames = getAllVarNames[optimized];
         juliaFormatDefs = Function[{defs},
@@ -63,7 +66,7 @@ JuliaCode[equation_] :=
         ];
         (* Sub-kernel pattern *)
         If[TrueQ[optimized["UseSubKernels"]],
-            Module[{subKernels, sharedDefs, sharedCode, allNames, subCode},
+            Module[{subKernels, sharedDefs, sharedCode, allNames, subCode, accSym, accStr, accLine, wrappedReturn},
                 sharedDefs = optimized["SharedDefinitions"];
                 subKernels = optimized["SubKernels"];
                 allNames = Join[
@@ -84,16 +87,20 @@ JuliaCode[equation_] :=
                     ],
                     {i, Length[subKernels]}
                 ];
+                accLine = "_acc = " <> StringRiffle[Table["_result" <> ToString[i], {i, Length[subKernels]}], " + "] <> "\n";
+                accSym = Unique["postAcc"];
+                accStr = ToString[accSym];
+                wrappedReturn = StringReplace[JuliaForm[transform[accSym]], accStr -> "_acc"];
                 Return[
-                    sharedCode <> StringJoin[subCode] <>
-                    "return " <> StringRiffle[Table["_result" <> ToString[i], {i, Length[subKernels]}], " + "]
+                    sharedCode <> StringJoin[subCode] <> accLine <>
+                    "return " <> wrappedReturn
                 ]
             ]
         ];
         (* Standard path: definitions + return *)
         definitions = juliaFormatDefs[optimized["Definitions"]];
         definitions = stripQuotedNames[definitions, varNames];
-        returnStatement = "return " <> JuliaForm[optimized["Expr"]];
+        returnStatement = "return " <> JuliaForm[transform[optimized["Expr"]]];
         returnStatement = stripQuotedNames[returnStatement, varNames];
         FunKitDebug[2, "Definitions: ", definitions];
         FunKitDebug[2, "returnStatement: ", returnStatement];
@@ -108,7 +115,7 @@ JuliaCode[equation_] :=
 
 ClearAll[MakeJuliaFunction];
 
-Options[MakeJuliaFunction] = {"Parameters" -> {}, "Name" -> "kernel", "Prefix" -> "", "Body" -> ""};
+Options[MakeJuliaFunction] = {"Parameters" -> {}, "Name" -> "kernel", "Prefix" -> "", "Body" -> "", "ReturnTransform" -> Identity};
 
 MakeJuliaFunction[OptionsPattern[]] :=
     Module[
@@ -145,7 +152,7 @@ MakeJuliaFunction[OptionsPattern[]] :=
 
 MakeJuliaFunction[expr_, OptionsPattern[]] :=
     Module[{newBody},
-        newBody = OptionValue["Body"] <> "\n" <> JuliaCode[expr];
+        newBody = OptionValue["Body"] <> "\n" <> JuliaCode[expr, "ReturnTransform" -> OptionValue["ReturnTransform"]];
         MakeJuliaFunction @@ (Evaluate @ Join[{"Body" -> newBody}, Thread[Rule @@ {#, OptionValue[MakeJuliaFunction, #]}]& @ Keys[Options[MakeJuliaFunction]]])
     ];
 

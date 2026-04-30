@@ -264,3 +264,52 @@ Block[{FunKit`Private`$codeOptimize = True},
 ];
 
 AppendTo[tests, VerificationTest[StringContainsQ[tranCode, "_tran"], True, TestID -> "Verify transcendental hoisting creates _tran variables"]];
+
+(**********************************************************************************
+    ReturnTransform option (post-processing injection)
+**********************************************************************************)
+
+ClearAll[a, b];
+exprRT = (Cos[a] + Sin[a]^2) / (1 + a);
+
+(* Identity transform on standard path: byte-identical to default *)
+AppendTo[tests, VerificationTest[
+    CppCode[exprRT, "ReturnTransform" -> Identity],
+    CppCode[exprRT],
+    TestID -> "ReturnTransform Identity matches default (standard path)"
+]];
+
+(* Re wrap on standard path: CppForm[Re[_]] = real(...) *)
+AppendTo[tests, VerificationTest[
+    StringContainsQ[CppCode[exprRT, "ReturnTransform" -> Re], "return real("],
+    True,
+    TestID -> "ReturnTransform Re wraps return on standard path"
+]];
+
+(* Identity transform on sub-kernel path: byte-identical to default *)
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms = 200},
+    largeDefaultRT = CppCode[largeExprSplit];
+    largeIdentityRT = CppCode[largeExprSplit, "ReturnTransform" -> Identity];
+];
+AppendTo[tests, VerificationTest[largeIdentityRT, largeDefaultRT, TestID -> "ReturnTransform Identity matches default (sub-kernel path)"]];
+
+(* Re wrap on sub-kernel path: real(_acc) at the return *)
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms = 200},
+    largeReRT = CppCode[largeExprSplit, "ReturnTransform" -> Re];
+];
+AppendTo[tests, VerificationTest[
+    StringContainsQ[largeReRT, "return real(_acc)"],
+    True,
+    TestID -> "ReturnTransform Re wraps _acc on sub-kernel path"
+]];
+
+(* MakeCppFunction forwards the option *)
+funBodyRT = MakeCppFunction[exprRT, "Name" -> "fun", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}, "ReturnTransform" -> Re];
+AppendTo[tests, VerificationTest[StringContainsQ[funBodyRT, "real("], True, TestID -> "MakeCppFunction forwards ReturnTransform"]];
+
+(* Constant transform: ignores input, returns a literal *)
+AppendTo[tests, VerificationTest[
+    StringContainsQ[CppCode[a + b, "ReturnTransform" -> (42 &)], "return 42."],
+    True,
+    TestID -> "ReturnTransform constant function applies"
+]];

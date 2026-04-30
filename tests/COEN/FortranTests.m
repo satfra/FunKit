@@ -139,3 +139,50 @@ AppendTo[tests, VerificationTest[
     True,
     TestID -> "Simple expression produces no CSE variables"
 ]];
+
+(**********************************************************************************
+    ReturnTransform option (post-processing injection)
+**********************************************************************************)
+
+ClearAll[a, b];
+exprRT = (Cos[a] + Sin[a]^2) / (1 + a);
+
+(* Identity transform on standard path: byte-identical to default *)
+AppendTo[tests, VerificationTest[
+    FortranCode[exprRT, "kernel", "ReturnTransform" -> Identity],
+    FortranCode[exprRT],
+    TestID -> "ReturnTransform Identity matches default Fortran (standard path)"
+]];
+
+(* Custom wrapper: rendered as myWrap(...) via FortranForm fallback *)
+AppendTo[tests, VerificationTest[
+    StringContainsQ[
+        FortranCode[exprRT, "kernel", "ReturnTransform" -> Function[v, Global`myWrap[v]]],
+        "myWrap("
+    ],
+    True,
+    TestID -> "ReturnTransform custom wrapper appears in Fortran output"
+]];
+
+(* Identity on sub-kernel path *)
+ClearAll[a];
+largeFortranExpr = Sum[Sin[a + i] * Cos[a - i] / (1 + i * a), {i, 1, 600}];
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms = 200},
+    largeDefaultF = FortranCode[largeFortranExpr];
+    largeIdentityF = FortranCode[largeFortranExpr, "kernel", "ReturnTransform" -> Identity];
+];
+AppendTo[tests, VerificationTest[largeIdentityF, largeDefaultF, TestID -> "ReturnTransform Identity matches default Fortran (sub-kernel path)"]];
+
+(* Custom wrapper on sub-kernel path *)
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms = 200},
+    largeWrapF = FortranCode[largeFortranExpr, "kernel", "ReturnTransform" -> Function[v, Global`myWrap[v]]];
+];
+AppendTo[tests, VerificationTest[
+    StringContainsQ[largeWrapF, "myWrap("],
+    True,
+    TestID -> "ReturnTransform wraps accumulator on Fortran sub-kernel path"
+]];
+
+(* MakeFortranFunction forwards the option *)
+funBodyRT = MakeFortranFunction[exprRT, "Name" -> "fun3", "Body" -> "double precision :: a\na = inp", "Parameters" -> {"inp"}, "ReturnTransform" -> Function[v, Global`myWrap[v]]];
+AppendTo[tests, VerificationTest[StringContainsQ[funBodyRT, "myWrap("], True, TestID -> "MakeFortranFunction forwards ReturnTransform"]];
