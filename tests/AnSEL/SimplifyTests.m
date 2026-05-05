@@ -81,6 +81,27 @@ AppendTo[
     ]
 ];
 
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{t1, t2, setup},
+            setup = GetFunKitSetupScalar[];
+            (* Depth-1 external fields (Phi[ci61]) must hash by their field name,
+               not by the index symbol — otherwise SeparateTermGroups partitions
+               structurally-equal FTerms that differ only in dummy-index names
+               into different groups, and FSimplify never sees the pair. *)
+            t1 = FTerm[1, S[{Phi, Phi, Phi, Phi}, {-i2, -i1, -ci62, -ci61}], Phi[ci61], Phi[ci62]];
+            t2 = FTerm[1, S[{Phi, Phi, Phi, Phi}, {-i2, -i1, -ci139, -ci138}], Phi[ci138], Phi[ci139]];
+            FunKit`Private`FTermContent[setup, t1] === FunKit`Private`FTermContent[setup, t2]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FTermContent: depth-1 external fields hash by field, not index"
+    ]
+];
+
 (**********************************************************************************
     Section 2: TermsEqualAndSum — bosonic terms — 6 tests
 **********************************************************************************)
@@ -358,6 +379,30 @@ AppendTo[
         FEx[]
         ,
         TestID -> "FSimplify: empty FEx"
+    ]
+];
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{setup, expr, result},
+            setup = GetFunKitSetupScalar[];
+            (* Two FTerms identical up to dummy-index renaming on external
+               Phi fields.  Mirrors the Yukawa DSE-derivative pattern that
+               surfaced this bug. *)
+            expr =
+                FEx[
+                    FTerm[1/24, S[{Phi, Phi, Phi, Phi}, {-i2, -i1, -ci62, -ci61}], Phi[ci61], Phi[ci62]],
+                    FTerm[1/24, S[{Phi, Phi, Phi, Phi}, {-i2, -i1, -ci139, -ci138}], Phi[ci138], Phi[ci139]]
+                ];
+            result = FSimplify[setup, expr];
+            {Length[result], Cases[result, FTerm[c_, ___] :> c, {1}]}
+        ]
+        ,
+        {1, {1/12}}
+        ,
+        TestID -> "FSimplify: merges terms differing only in dummy indices on external fields"
     ]
 ];
 

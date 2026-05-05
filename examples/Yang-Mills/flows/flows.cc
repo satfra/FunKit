@@ -1,8 +1,8 @@
 #include "./flows.hh"
 
 YangMillsFlows::YangMillsFlows(const DiFfRG::JSONValue &json)
-    : quadrature_provider(json), ZA(quadrature_provider, json), ZA3(quadrature_provider, json),
-      ZA4(quadrature_provider, json), ZAcbc(quadrature_provider, json), Zc(quadrature_provider, json)
+    : quadrature_provider(json), ZA(quadrature_provider, json), ZA3(quadrature_provider, json), ZA4(quadrature_provider, json),
+      ZAcbc(quadrature_provider, json), Zc(quadrature_provider, json)
 {
 }
 void YangMillsFlows::set_k(const double k)

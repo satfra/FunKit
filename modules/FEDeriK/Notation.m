@@ -305,6 +305,9 @@ FEx[annotations__Rule] :=
 FEx[FTerm[f___], annotations__Rule] /; AllTrue[$allObjects, FreeQ[{f}, #, Infinity]&] :=
     FEx[FTerm[f]];
 
+FEx[pre___, s1_Rule, s2_Rule] /; s1[[1]] === "Symmetries" && s2[[1]] === "Symmetries" :=
+    FEx[pre, "Symmetries" -> FMergeSymmetries[s1[[2]], s2[[2]]]];
+
 Protect[FEx, FTerm];
 
 (**********************************************************************************

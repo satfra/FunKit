@@ -677,7 +677,21 @@ TermsEqualAndSum[setup_, it1_FTerm, it2_FTerm] :=
 
 FTermContent[setup_, term_FTerm] :=
     Module[{objs},
-        objs = FunKit`Private`ExtractObjectsWithIndex[setup, term];
+        (* replFields normalizes depth-1 field applications like Π[ci61] into
+           Field[{Π},{ci61}], so getFields returns the field name {Π} rather
+           than the index ci61.  Without this the fingerprint depends on
+           closed-index names and structurally-equal FTerms get partitioned
+           into different groups by SeparateTermGroups. *)
+        objs =
+            Map[
+                If[FunKit`Private`indexedObjectQ[#],
+                    #
+                    ,
+                    FunKit`Private`replFields[setup, #]
+                ]&
+                ,
+                FunKit`Private`ExtractObjectsWithIndex[setup, term]
+            ];
         If[$VersionNumber >= 13.0,
             Hash[Sort @ Map[Head[#] @@ FunKit`Private`getFields[#]&, objs], "SHA256"]
             ,
