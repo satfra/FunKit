@@ -147,6 +147,28 @@ actionYMSymbolic={{A,2},{A,3},{A,4},{cb,c},{cb,c,A}};
 setFields[{A},{{c,cb}}];
 ";
 
+(* Yang-Mills with BRST source fields (mSTI; mirrors examples/mSTI-Yang-Mills.nb) *)
+
+GetFunKitSetupYangMillsMSTI[] :=
+    Module[{p, v, col, fields, trunc},
+        fields = <|
+            "Commuting"       -> {A[p, {v, col}]},
+            "Grassmann"       -> {{cb[p, {col}], c[p, {col}]}},
+            "CommutingSource" -> {Qcb[p], Qc[p]},
+            "GrassmannSource" -> {QA[p, {v, col}]}
+        |>;
+        trunc = <|
+            GammaN -> {
+                {A, A}, {cb, c},
+                {A, A, A}, {A, A, A, A}, {A, cb, c},
+                {A, Qcb}, {c, QA}, {A, c, QA}, {c, c, Qc}
+            },
+            Propagator -> {{A, A}, {cb, c}},
+            R          -> {{A, A}, {cb, c}}
+        |>;
+        Return[<|"FieldSpace" -> fields, "Truncation" -> trunc|>];
+    ];
+
 (* Yukawa setup with source fields *)
 
 GetFunKitSetupWithSources[] :=

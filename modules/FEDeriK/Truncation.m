@@ -648,8 +648,18 @@ CTrunc[setup_, expr_FTerm] :=
    A previous step's resolve rules fixed some AnyField slots
    but not all — the object no longer matches origProp or any
    concrete alt.  Find these partials and expand them. *)
-                    Module[{hd = Head[origProp], partials},
-                        partials = DeleteDuplicates @ Cases[current, p : hd[{_, _}..] /; !FreeQ[p, AnyField], {0, Infinity}];
+                    Module[{hd = Head[origProp], partials, origIdx = Map[Last, List @@ origProp]},
+                        (*Only match partials with the SAME indices as origProp — alts share
+                          origProp's indices, and `partials[[qi]] -> #` would otherwise overwrite
+                          a foreign propagator's indices with origProp's, collapsing distinct
+                          propagators onto the same index pair.*)
+                        partials = DeleteDuplicates @ Cases[
+                            current,
+                            p_hd /; Length[p] === Length[origIdx]
+                                && Map[Last, List @@ p] === origIdx
+                                && !FreeQ[p, AnyField],
+                            {0, Infinity}
+                        ];
                         Do[
                             If[FreeQ[current, partials[[qi]]],
                                 Continue[]
