@@ -191,6 +191,26 @@ FunctionalD[setup_, expr_, v : (f_[_, __] | {f_[_, __], _Integer}).., OptionsPat
         ];
         (*Rule for normal functional derivatives*)
         f /: D[f[{f1__}, {i1__}], f[{f2__}, {i2__}], NonConstants -> nonConst] := SymmetricDerivative[{f1}, {i1}, {f2}, {i2}];
+        (*Cross-correlation: derivative of a different correlation function w.r.t. f -> 0*)
+        Map[
+            (
+                With[{h = #},
+                    f /: D[obj_h, f[{f2__}, {i2__}], NonConstants -> nonConst] := 0;
+                ]
+            )&
+            ,
+            DeleteCases[$CorrelationFunctions, f]
+        ];
+        (*Bare field applications and AnyField w.r.t. multi-index f -> 0*)
+        Map[
+            (
+                With[{h = #},
+                    f /: D[h[_], f[{f2__}, {i2__}], NonConstants -> nonConst] := 0;
+                ]
+            )&
+            ,
+            DeleteDuplicates @ Join[GetAllFields[setup], {AnyField}]
+        ];
         (*Rule for normal functional derivatives, but AnyField*)
         (*No derivatives of FTerm, FEx*)
         f /: D[FTerm[a___], f[y__], NonConstants -> nonConst] := FTerm[FDOp[f[y]], a];
@@ -267,7 +287,7 @@ FunctionalD[setup_, FEx[___], v : (f_[__] | {f_[__], _Integer}).., OptionsPatter
 
 (*functional derivative w.r.t. multi-index field: Fall back to FunctionalD*)
 
-functionalDeriv[setup_, factor_, dF[a_, b__]] :=
+functionalDeriv[setup_, factor_, dF_[a_, b__]] :=
     Return[FunctionalD[setup, factor, dF[a, b]]];
 
 functionalDeriv[setup_, factor_, dF_] :=

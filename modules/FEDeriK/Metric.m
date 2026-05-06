@@ -78,6 +78,14 @@ ReduceIndices[setup_, {}] :=
 ReduceIndices[setup_, 0] :=
     0;
 
+(*An FEx may slip into ReduceIndicesBatch's term list when a derivative
+  produces a Plus that gets wrapped as FEx (Derivatives.m product-rule
+  branch) and the surrounding FTerm distributes it via Notation.m:289.
+  Dispatch through to per-term reduction.*)
+
+ReduceGamma[setup_, eq_FEx] :=
+    FEx @@ Map[ReduceGamma[setup, #]&, List @@ eq];
+
 ReduceGamma[setup_, term_FTerm] :=
     Module[{gPairs, closedSIndices, closed, i, both, result = term, casesGamma, t0 = AbsoluteTime[]},
         closedSIndices = GetClosedSuperIndices[setup, term];

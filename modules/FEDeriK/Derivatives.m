@@ -79,7 +79,32 @@ FResolveFDOpInternal[setup_, term_FTerm] :=
                         ,
                         1
                     ];
-                cTerm = cTerm * Times @@ Map[makeObj[FMinus, {Head[dF], #[[1]]}, {dF[[1]], #[[2]]}]&, pairs];
+                (*Emit one FMinus per (leg-of-dF, pair) combination so the
+                  product reproduces (-1)^(parity(dF) * parity(pair-field))
+                  for multi-leg correlation-function derivative variables.
+                  Single-leg dF = head[i] yields exactly one FMinus per pair,
+                  identical to the prior behaviour.*)
+                Module[{dFFields, dFInds},
+                    {dFFields, dFInds} =
+                        If[Length[dF] === 2 && ListQ[dF[[1]]] && ListQ[dF[[2]]],
+                            (*multi-leg correlator: head[{f1,...,fn},{i1,...,in}]*)
+                            {dF[[1]], dF[[2]]}
+                            ,
+                            (*single-leg field application: head[i]*)
+                            {{Head[dF]}, {dF[[1]]}}
+                        ];
+                    cTerm = cTerm * Times @@ Flatten @ Map[
+                        Function[pair,
+                            MapThread[
+                                Function[{f, i}, makeObj[FMinus, {f, pair[[1]]}, {i, pair[[2]]}]]
+                                ,
+                                {dFFields, dFInds}
+                            ]
+                        ]
+                        ,
+                        pairs
+                    ];
+                ];
             ];
             ,
             {idx, 1, nPost}

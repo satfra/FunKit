@@ -101,6 +101,35 @@ multiIndexResult = FunKit`Private`FunctionalD[yukawaSetup, GammaN[{Phi, Psi}, {i
 AppendTo[tests, VerificationTest[Head[multiIndexResult], Times, TestID -> "Multi-index functional derivative"]];
 
 (**********************************************************************************
+    Multi-Index Cross-Correlation Derivatives (regression: G appearing as a field)
+**********************************************************************************)
+
+FAddCorrelationFunction[G];
+
+(* Cross-correlation derivatives: different correlation functions are independent in nPI *)
+
+AppendTo[tests, VerificationTest[FunKit`Private`FunctionalD[testSetup, GammaN[{Phi, Phi}, {i, j}], G[{Phi, Phi}, {g, h}]], 0, TestID -> "FunctionalD multi-index: D[GammaN, G] is zero"]];
+
+AppendTo[tests, VerificationTest[FunKit`Private`FunctionalD[testSetup, S[{Phi, Phi}, {i, j}], G[{Phi, Phi}, {g, h}]], 0, TestID -> "FunctionalD multi-index: D[S, G] is zero"]];
+
+AppendTo[tests, VerificationTest[FunKit`Private`FunctionalD[testSetup, Phi[k], G[{Phi, Phi}, {g, h}]], 0, TestID -> "FunctionalD multi-index: D[Phi[k], G] is zero"]];
+
+(* Same-head shape check: catches the bug regression directly *)
+
+AppendTo[tests, VerificationTest[
+    Module[{r = FunKit`Private`FunctionalD[testSetup, G[{Phi, Phi}, {i, j}], G[{Phi, Phi}, {g, h}]]},
+        FreeQ[r, G[{___, G, ___}, _], Infinity] && FreeQ[r, _[_, {___, _List, ___}], Infinity]
+    ],
+    True,
+    TestID -> "FunctionalD multi-index: D[G,G] result is well-formed"
+]];
+
+(* Cleanup: keep file idempotent *)
+
+$userCorrelationFunctions = DeleteCases[$userCorrelationFunctions, G];
+$CorrelationFunctions    = Join[{Propagator, GammaN}, $userCorrelationFunctions];
+
+(**********************************************************************************
     Nested Function Tests
 **********************************************************************************)
 
