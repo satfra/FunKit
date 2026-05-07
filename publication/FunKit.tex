@@ -276,7 +276,7 @@ Both the tracing and code generation can also be used independently and in combi
 \section{Introduction}
 \label{sec:Introduction}
 
-Functional computations, utilising e.g. the functional Renormalisation Group (fRG) or Dyson--Schwinger equations (DSE), allow for the direct calculation of non-perturbative aspects of quantum field theories. They have been utilised with great success in a broad range of physical situations from quantum gravity to QCD to ultracold atoms. For some reviews and introductions to the topic see, e.g., \cite{Roberts:2000aa,Berges:2000ew,Maris:2003vk,Pawlowski:2005xe,Gies:2006wv,Delamotte:2007pf,Rosten:2010vm,Metzner_2012,Fischer:2018sdj,Dupuis:2020fhh,Fu:2022gou,Fischer:2026uni}.
+Functional computations, utilising e.g. the functional Renormalisation Group (fRG) or Dyson--Schwinger equations (DSE), allow for the direct calculation of non-perturbative aspects of quantum field theories. They have been utilised with great success in a broad range of physical situations from ity to QCD to ultracold atoms. For some reviews and introductions to the topic see, e.g., \cite{Roberts:1994dr,Roberts:2000aa,Berges:2000ew,Maris:2003vk,Pawlowski:2005xe,Gies:2006wv,Fischer:2006ub,Delamotte:2007pf,Rosten:2010vm,Metzner_2012,Bashir:2012fs,Fischer:2018sdj,Dupuis:2020fhh,Pawlowski:2020qer,Fu:2022gou,Fischer:2026uni}.
 
 Such functional approaches require the derivation of closed expressions for a set of vertices of a given theory. Expressions for all vertices can be obtained by taking functional derivatives of a given master equation, for example the Wetterich equation \cite{Wetterich:1992yh}, DSEs \cite{Dyson1, Schwinger1, Schwinger2} or derived from symmetry properties.
 Such an approach allows a non-perturbative access to all correlation functions of the theory while maintaining a finite amount of loops in the exact expressions for each vertex. However, an infinite tower of functional equations ensues, which has to be truncated while maintaining all relevant physics.
@@ -1770,7 +1770,7 @@ and, using right-derivatives,
 %
 We can take a derivative $\frac{\delta}{\delta\Phi^f}$ of \labelcref{eq:propInvLeft}, contract the equation with $G$ from the right, and use \labelcref{eq:propInvRight} to obtain the rule
 %
-\begin{align}\label{eq:derivG}
+\begin{align}\label{eq:derivG_full}
 	\left(\frac{\delta}{\delta \Phi^f}G^{ba}\right)
 	&= (-1)(-1)^{bf}(-1)^{dd}\, G^{bc}\Gamma_{cfd}G^{da}\,,
 \end{align}
@@ -1823,7 +1823,7 @@ However, \DoFun adds additional minus signs for fermionic vertices \cite{Huber:2
 \section{NJL Model Example}
 \label{app:NJL}
 
-In this appendix, we provide a complete worked example of defining custom tensor bases and deriving flow equations for an NJL model with Dirac fermions that have no further group structure, described by a classical action at some fixed UV scale $\Lambda$,
+In this appendix, we provide a complete worked example of defining custom tensor bases and deriving flow equations for an NJL model \cite{Klevansky:1992qe} with Dirac fermions that have no further group structure, described by a classical action at some fixed UV scale $\Lambda$,
 %
 \begin{align}
 	\Gamma_{\textrm{4F},\Lambda} = \bar\psi (\partial_\mu\gamma_\mu + m)\psi + \sum_{i=1}^3 \lambda_i\mathcal{T}^{(i)}_{d_1d_2d_3d_4}\bar\psi_{d_1}\bar\psi_{d_2}\psi_{d_3}\psi_{d_4}\,.
