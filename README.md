@@ -11,11 +11,14 @@ The Idea of `FunKit` is to be a one-stop solution to this end, starting with the
 If you use the package for your research, please cite the corresponding publication:
 
 ```
-@article{Sattler:2025FunKit,
-    author = "Sattler, Franz R.",
-    title = "{FunKit}",
-    year = "2026",
-    howpublished = "{\url{https://github.com/satfra/FunKit}}",
+@article{Sattler:2026FunKit,
+    author        = "Sattler, Franz R.",
+    title         = "{FunKit: A toolkit for functional approaches}",
+    year          = "2026",
+    eprint        = "XXXX.XXXXX",
+    archivePrefix = "arXiv",
+    primaryClass  = "hep-th",
+    url           = "https://github.com/satfra/FunKit",
 }
 ```
 
@@ -100,9 +103,13 @@ You can of course define arbitrary master equations besides the pre-defined `Wet
 To learn how to compute more complicated systems, you may want to see some typical examples on how to use `FunKit` to deal with common QFTs of interest. 
 
 You will find some showcases inside the `examples/` folder:
--  `examples/ScalarTheory` shows the derivation of DSEs and fRG flows in an $O(N)$ theory.
--  `examples/Yang-Mills` derives the functional equations for an $SU(N)$ gauge theory.
--  `examples/Yukawa` does the same for a mixed fermion-boson theory.
+-  `examples/ScalarTheory.nb` shows the derivation of DSEs and fRG flows in a scalar theory.
+-  `examples/Yang-Mills.nb` and `examples/Yang-Mills/` derive the functional equations for an $SU(N)$ gauge theory and provide a numerical implementation using [`DiFfRG`](https://github.com/satfra/DiFfRG).
+-  `examples/Yukawa.nb` does the same for a mixed fermion-boson theory.
+-  `examples/mSTI-Yang-Mills.nb` calculates the modified Slavnov–Taylor identity for the gluon two-point function.
+-  `examples/FlowingReparametrisation.nb` derives fRG equations for an $O(N)$ theory with flowing field reparametrisation.
+-  `examples/CompositeOperators.nb` derives correlation functions of a two-fermion composite operator.
+-  `examples/FunKitPaper.nb` is a guided, runnable companion to the [companion paper](publication/FunKit.pdf).
 
 ## Installation
 
