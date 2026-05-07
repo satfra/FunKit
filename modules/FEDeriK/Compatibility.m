@@ -415,7 +415,16 @@ DoFunAlgebraicDiagramQ[___] :=
 **********************************************************************************)
 
 FunKitForm[setup_, diag_] /; DoFunSuperindexDiagramQ[diag] :=
-    Module[{repl},
+    Module[{repl, hasGrassmann},
+        (* DoFun and FunKit disagree by a sign for every interaction vertex (n>=3)
+           that carries a Grassmann field. The mismatch arises from DoFun's
+           left-only Grassmann-derivative convention (DoFun 3, footnote 3 of
+           arXiv:1908.02760) combined with the bare-vertex sign S^{i1...in} =
+           -delta^n S/delta phi^n (Eq. 7 of arXiv:0808.2939) — both bare S and
+           dressed GammaN with Grassmann legs pick up a -1 per occurrence
+           relative to FunKit's symbolic representation. The 2-pt kinetic S is
+           exempt because n=2 is sign-free in DoFun's expansion convention. *)
+        hasGrassmann[fields_] := AnyTrue[fields, IsGrassmann[setup, #]&];
         repl =
             {
                 Times[a___, DoFun`DoDSERGE`op[f__]] :> FTerm[a, f]
@@ -424,11 +433,23 @@ FunKitForm[setup_, diag_] /; DoFunSuperindexDiagramQ[diag] :=
                 ,
                 DoFun`DoDSERGE`P[f__] :> makeObj[Propagator, {f}[[All, 1]], {f}[[All, 2]]]
                 ,
-                DoFun`DoDSERGE`V[f__] :> makeObj[GammaN, {f}[[All, 1]], {f}[[All, 2]]]
+                DoFun`DoDSERGE`V[f__] :>
+                    With[{fields = {f}[[All, 1]], indices = {f}[[All, 2]]},
+                        If[hasGrassmann[fields],
+                            -makeObj[GammaN, fields, indices],
+                            makeObj[GammaN, fields, indices]
+                        ]
+                    ]
                 ,
                 DoFun`DoDSERGE`dR[f__] :> makeObj[Rdot, {f}[[All, 1]], {f}[[All, 2]]]
                 ,
-                DoFun`DoDSERGE`S[f__] :> makeObj[S, {f}[[All, 1]], -{f}[[All, 2]]]
+                DoFun`DoDSERGE`S[f__] :>
+                    With[{fields = {f}[[All, 1]], indices = {f}[[All, 2]]},
+                        If[Length[fields] >= 3 && hasGrassmann[fields],
+                            -makeObj[S, fields, -indices],
+                            makeObj[S, fields, -indices]
+                        ]
+                    ]
             };
         FunKit`FEx[diag //. repl]
     ];
@@ -493,34 +514,46 @@ doFunObject[obj_Rdot] :=
 doFunObject[obj_S] :=
     DoFun`DoDSERGE`S @@ Transpose[{getFields[obj], -getIndices[obj]}];
 
-doFunTerm[fterm_FTerm] :=
-    Module[{elems, objects, coeffs},
+(* Per-Grassmann-vertex sign factor that mirrors the FunKitForm[] flip rule, so
+   that DoFun -> FunKit -> DoFun roundtrips preserve the original expression. *)
+doFunObjectSign[setup_, obj_] :=
+    Module[{fields = getFields[obj], head = Head[obj]},
+        Which[
+            head === S && Length[fields] >= 3 && AnyTrue[fields, IsGrassmann[setup, #]&], -1,
+            head === GammaN && AnyTrue[fields, IsGrassmann[setup, #]&], -1,
+            True, 1
+        ]
+    ];
+
+doFunTerm[setup_, fterm_FTerm] :=
+    Module[{elems, objects, coeffs, signFactor},
         elems = List @@ fterm;
         objects = Select[elems, orderedObjectQ];
         coeffs = Select[elems, (!orderedObjectQ[#])&];
+        signFactor = Times @@ Map[doFunObjectSign[setup, #]&, objects];
         If[objects === {},
             Times @@ coeffs
             ,
-            Times @@ coeffs * DoFun`DoDSERGE`op @@ Map[doFunObject, objects]
+            signFactor * Times @@ coeffs * DoFun`DoDSERGE`op @@ Map[doFunObject, objects]
         ]
     ];
 
 DoFunForm[setup_, obj_ /; orderedObjectQ[obj] && !routedObjectQ[obj]] :=
     (
         AssertFSetup[setup];
-        doFunObject[obj]
+        doFunObjectSign[setup, obj] * doFunObject[obj]
     );
 
 DoFunForm[setup_, fterm_FTerm] /; !routedFTermQ[fterm] :=
     (
         AssertFSetup[setup];
-        doFunTerm[fterm]
+        doFunTerm[setup, fterm]
     );
 
 DoFunForm[setup_, fex_FEx] /; !routedFExQ[fex] :=
     (
         AssertFSetup[setup];
-        Plus @@ Map[doFunTerm, SeparateFExAnnotations[fex][[1]]]
+        Plus @@ Map[doFunTerm[setup, #]&, SeparateFExAnnotations[fex][[1]]]
     );
 
 (**********************************************************************************

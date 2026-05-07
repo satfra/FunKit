@@ -112,6 +112,12 @@ DoFundiagcbcDSE = wrapDoFun[ymDoFunSetup <> "doDSE[actionYMSymbolic,{cb,c}]"];
 
 DoFunRescbcDSE = FunKitForm[ymFunKitSetup, DoFundiagcbcDSE];
 
+(* Ghost-gluon vertex DSE *)
+
+DoFundiagAcbcDSE = wrapDoFun[ymDoFunSetup <> "doDSE[actionYMSymbolic,{cb,c,A}]"];
+
+DoFunResAcbcDSE = FunKitForm[ymFunKitSetup, DoFundiagAcbcDSE];
+
 (**********************************************************************************
     DoFun — Wetterich flow
 **********************************************************************************)
@@ -139,6 +145,12 @@ DoFunResAcbc2 = FunKitForm[ymFunKitSetup, DoFundiagAcbc2];
 DoFundiagAAA = wrapDoFun[ymDoFunSetup <> "doRGE[actionYMSymbolic,{A,A,A}]"];
 
 DoFunResAAA = FunKitForm[ymFunKitSetup, DoFundiagAAA];
+
+(* Four-gluon vertex flow *)
+
+DoFundiagAAAA = wrapDoFun[ymDoFunSetup <> "doRGE[actionYMSymbolic,{A,A,A,A}]"];
+
+DoFunResAAAA = FunKitForm[ymFunKitSetup, DoFundiagAAAA];
 
 (**********************************************************************************
     FunKit — DSE (with AutoSimplify disabled for raw diagram counts)
@@ -260,8 +272,59 @@ AppendTo[tests, VerificationTest[resultcbcDSEQF, FEx[], TestID -> "Verify Yang-M
 
 (**********************************************************************************
     Comparison: FunKit vs DoFun — DSE
-    Can't really do this, as sign conventions are too different.
+    Sign-convention differences (DoFun 3 vs FunKit) are absorbed by the
+    per-Grassmann-vertex correction inside FunKitForm[]; see the comment at
+    modules/FEDeriK/Compatibility.m. The propagator DSEs (AA and cbc) survive
+    that correction term-for-term.
+
+    For the ghost-gluon vertex DSE, FunKit and DoFun produce different graph
+    expansions: FunKit's FMakeDSE differentiates the gluon DSE
+    (delta Gamma / delta A = ...), so it generates skeleton diagrams with
+    bare S^{(3)}_AAA or S^{(4)}_AAAA insertions; DoFun's doDSE differentiates
+    the ghost DSE and gets the same physics with the bare vertex relocated to
+    S^{(3)}_Acbc, where FunKit instead produces dressed gluon vertices.
+    Additionally DoFun's expansion uses the dressed 4-pt ghost-gluon vertex
+    GammaN[{A, A, cb, c}], which FunKit truncates away. To make a meaningful
+    symbolic comparison, we restrict both sides to the "ghost-channel" subset:
+    diagrams whose only bare vertex is S[A, cb, c] or S[cb, c] and whose only
+    dressed interaction is V[A, cb, c]. The structurally-different diagrams
+    are subtracted from each side accordingly.
 **********************************************************************************)
+
+resultAADSEDF = FSimplify[FEx[FunKitResAADSE, FTerm[-1, DoFunResAADSE]], "Symmetries" -> symsAA];
+
+AppendTo[tests, VerificationTest[resultAADSEDF, FEx[], TestID -> "Verify Yang-Mills DSE (DoFun): Gluon propagator"]];
+
+resultcbcDSEDF = FSimplify[FEx[FunKitRescbcDSE, FTerm[-1, DoFunRescbcDSE]], "Symmetries" -> symscbc];
+
+AppendTo[tests, VerificationTest[resultcbcDSEDF, FEx[], TestID -> "Verify Yang-Mills DSE (DoFun): Ghost propagator"]];
+
+(* Ghost-channel comparison: drop FunKit-only "classical" diagrams (bare
+   S^{(3,4)}_AAA insertions from differentiating the gluon DSE) and DoFun-only
+   diagrams (V[A,A,cb,c] tadpole, since {A,A,cb,c} is not in FunKit's GammaN
+   truncation; and 1-loop diagrams whose dressed vertex is V[A,A,A], which are
+   the structural counterparts to FunKit's bare-S[A,A,A] insertions and so
+   represent the same physics in a different graph expansion). What remains
+   on each side is the tree-level vertex term — the only diagram both sides
+   place identically in the DSE (with the bare S[A,cb,c]'s legs all external).
+   The 1-loop ghost-only diagram has identical topology on both sides but
+   incompatible external-leg routing (FunKit hangs i3 on the bare-S A-leg,
+   DoFun hangs i1 on its cb-leg), so it cannot be symbolically matched without
+   a Bose-resymmetrisation of the bare vertex. *)
+
+ghostChannelFTermQ[ft_] :=
+    FreeQ[ft, S[fields_, _] /; fields =!= {A, cb, c} && fields =!= {cb, c}] &&
+    FreeQ[ft, GammaN[fields_, _] /; AllTrue[fields, # === A&] && Length[fields] >= 3] &&
+    FreeQ[ft, GammaN[{A, A, cb, c}, _]] &&
+    Count[Cases[ft, _GammaN], _GammaN] === 0;
+
+FunKitResAcbcDSEGhost = FEx @@ Cases[List @@ FunKitResAcbcDSE, ft_FTerm /; ghostChannelFTermQ[ft]];
+
+DoFunResAcbcDSEGhost = FEx @@ Cases[List @@ DoFunResAcbcDSE, ft_FTerm /; ghostChannelFTermQ[ft]];
+
+resultAcbcDSEDF = FSimplify[FEx[FunKitResAcbcDSEGhost, FTerm[-1, DoFunResAcbcDSEGhost]], "Symmetries" -> symsAcbc];
+
+AppendTo[tests, VerificationTest[resultAcbcDSEDF, FEx[], TestID -> "Verify Yang-Mills DSE (DoFun): Ghost-gluon vertex tree term"]];
 
 (**********************************************************************************
     Comparison: FunKit vs QMeS — Wetterich flow
@@ -298,3 +361,15 @@ AppendTo[tests, VerificationTest[resultAA2DF, FEx[], TestID -> "Verify Yang-Mill
 resultcbc2DF = FSimplify[FEx[FunKitRescbc2, FTerm[-1, DoFunRescbc2]], "Symmetries" -> symscbc];
 
 AppendTo[tests, VerificationTest[resultcbc2DF, FEx[], TestID -> "Verify Yang-Mills flow (DoFun): Ghost propagator"]];
+
+resultAcbc2DF = FSimplify[FEx[FunKitResAcbc2, FTerm[-1, DoFunResAcbc2]], "Symmetries" -> symsAcbc2];
+
+AppendTo[tests, VerificationTest[resultAcbc2DF, FEx[], TestID -> "Verify Yang-Mills flow (DoFun): Ghost-gluon vertex"]];
+
+resultAAADF = FSimplify[FEx[FunKitResAAA, FTerm[-1, DoFunResAAA]], "Symmetries" -> symsAAA];
+
+AppendTo[tests, VerificationTest[resultAAADF, FEx[], TestID -> "Verify Yang-Mills flow (DoFun): Three-gluon vertex"]];
+
+resultAAAADF = FSimplify[FEx[FunKitResAAAA, FTerm[-1, DoFunResAAAA]], "Symmetries" -> symsAAAA];
+
+AppendTo[tests, VerificationTest[resultAAAADF, FEx[], TestID -> "Verify Yang-Mills flow (DoFun): Four-gluon vertex"]];

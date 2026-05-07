@@ -112,6 +112,10 @@ resultF2DF = FEx[FunKitResF2, FTerm[-1, DoFunResF2]] // FSimplify;
 
 resultS2DF = FEx[FunKitResS2, FTerm[-1, DoFunResS2]] // FSimplify;
 
+resultYukDF = FEx[FunKitResYuk, FTerm[-1, DoFunResYuk]] // FSimplify;
+
 AppendTo[tests, VerificationTest[resultF2DF, FEx[], TestID -> "Verify Yukawa theory (DoFun): Fermion propagator flow"]];
 
 AppendTo[tests, VerificationTest[resultS2DF, FEx[], TestID -> "Verify Yukawa theory (DoFun): Scalar propagator flow"]];
+
+AppendTo[tests, VerificationTest[resultYukDF, FEx[], TestID -> "Verify Yukawa theory (DoFun): Yukawa vertex flow"]];
