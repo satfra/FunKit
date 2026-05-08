@@ -1,4 +1,6 @@
-\documentclass[10pt,prd,nofootinbib,superscriptaddress]{revtex4-2}
+%\documentclass[10pt,prd,nofootinbib,superscriptaddress]{revtex4-2}
+\documentclass[preprint,10pt,sort&compress]{elsarticle}
+\usepackage[a4paper, total={6.5in, 8.6in}]{geometry}
 
 
 %%%%%%%%%%%%% Packages %%%%%%%%%%%%%
@@ -43,9 +45,12 @@
 \usepackage{hyperref}
 \usepackage[nameinlink]{cleveref}
 
-\makeatletter
-\AddToHook{cmd/appendix/before}{\def\cref@section@alias{appendix}\def\cref@subsection@alias{appendix}}
-\makeatother
+
+%\crefformat{appendix}{#2#1#3}
+
+%\makeatletter
+%\AddToHook{cmd/appendix/before}{\def\cref@section@alias{appendix}\def\cref@subsection@alias{appendix}}
+%\makeatother
 
 \usepackage{appendix}
 \usepackage{units}
@@ -221,30 +226,44 @@
 \renewcommand{\floatpagefraction}{.8}
 
 
+%%%%%%%%%%%%% TOC %%%%%%%%%%%%%
+
+%************************************* added
+\usepackage{titlesec}
+
+\newcommand*{\setupTOC}{%
+	\titleformat{\chapter}{}{}{0pt}{} 
+	
+	\titlespacing*{\chapter}{0pt}
+	{*7} %  % vertical space before the title <<<<<<<<<<
+	{*-15}  %  idem after title (in ex units + glue) <<<<<<<<<<<
+}
+%*************************************
+
+
 %%%%%%%%%%%%% Title and hypersetup %%%%%%%%%%%%%
 \newcommand{\gettitle}{FunKit: A computer algebra toolkit for functional approaches}
-
-\newcommand{\getBielefeldAffiliation}{\affiliation{Fakult{\"a}t f{\"u}r Physik, Universit{\"a}t Bielefeld, D-33615 Bielefeld, Germany}}
-
 \newcommand{\orcid}[1]{\href{https://orcid.org/#1}{\includegraphics[height=1.9ex,width=1.9ex]{orcid.png}}}
 
 \begin{document}
 
-\title{\gettitle}
-\author{Franz R. Sattler \orcid{0000-0003-1744-9456}\,}\thanks{
-	\href{mailto:fsattler@physik.uni-bielefeld.de}{fsattler@physik.uni-bielefeld.de}
-	}
-\getBielefeldAffiliation
+\begin{frontmatter}
+	\renewcommand{\thefootnote}{\fnsymbol{footnote}}
+	\title{\gettitle}
+	\author[a]{Franz R. Sattler \orcid{0000-0003-1744-9456}\,\footnote{
+			\href{mailto:fsattler@physik.uni-bielefeld.de}{fsattler@physik.uni-bielefeld.de}
+	}}
+	\address[a]{Fakult{\"a}t f{\"u}r Physik, Universit{\"a}t Bielefeld, D-33615 Bielefeld, Germany}
+	
+	\begin{abstract}
+	We introduce \FunKit, a Mathematica package for the derivation and tracing of functional equations from arbitrary master equations.
+	\FunKit provides an expression vocabulary and a set of rules that allow for derivations in any given field theory and master equation. It also allows users to add extensions for more specific situations.
+	Therefore, it can be used in a wide range of situations, for example Dyson--Schwinger or functional RG equations, flowing reparametrisations, nPI equations, (modified) STIs and WTIs, functional Polchinski and Wegner flows, functional master equations with sources, and many others.
+	Besides interfacing with the \FORM language to trace large tensor expressions efficiently, \FunKit also provides facilities to export arbitrary Mathematica expressions to C++, Julia or Fortran code, including the results of derivations, which can then be evaluated numerically.
+	Both the tracing and code generation can also be used independently and in combination with other packages.
+	\end{abstract}
 
-\begin{abstract}
-We introduce \FunKit, a Mathematica package for the derivation and tracing of functional equations from arbitrary master equations.
-\FunKit provides an expression vocabulary and a set of rules that allow for derivations in any given field theory and master equation. It also allows users to add extensions for more specific situations.
-Therefore, it can be used in a wide range of situations, for example Dyson--Schwinger or functional RG equations, flowing reparametrisations, nPI equations, (modified) STIs and WTIs, functional Polchinski and Wegner flows, functional master equations with sources, and many others.
-Besides interfacing with the \FORM language to trace large tensor expressions efficiently, \FunKit also provides facilities to export arbitrary Mathematica expressions to C++, Julia or Fortran code, including the results of derivations, which can then be evaluated numerically.
-Both the tracing and code generation can also be used independently and in combination with other packages.
-\end{abstract}
-
-\maketitle
+\end{frontmatter}
 
 
 %%%%%%%%%%%%%%%%%%%
@@ -264,8 +283,8 @@ Both the tracing and code generation can also be used independently and in combi
 \end{small}
 
 \vspace{-0.7cm}
-%\tableofcontents
 
+\tableofcontents
 
 %\tableofcontents
 %\vspace{-6ex}
@@ -589,6 +608,48 @@ From the quantum equation of motion one derives the relation between the connect
 For a derivation, see \Cref{app:notation_details}. Multi-index functional derivatives, relevant for nPI equations, are also defined in \Cref{app:notation_details}.
 For explicit tensors, we work in Euclidean space throughout this work, but \FunKit does not restrict one to that.\\
 In the following sections, all expressions used above will be introduced as symbols in Mathematica step by step. A brief translation table for the most important symbols can be found below in \Cref{tab:notation}.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Sign conventions}
+\label{sec:Signs}
+
+Sign conventions are a common source of confusion in computer algebra systems involving Grassman fields. In \FunKit, and by extension also in \TensorBases, which is relevant for \Cref{sec:TRACY}, we follow consistently the notation that subscripts on correlation functions or other functionals represent derivatives, performed from the right to the left. Explicitly, this means that, e.g., 
+%
+\begin{align}
+	F_{a_1\ldots a_n} = \frac{\delta }{\delta \Phi^{a}_1} \cdots \frac{\delta }{\delta \Phi^{a_n}} F[\Phi]\,.
+\end{align}
+%
+For later reference, let us here consider an example: we take the ghost part of the 1PI generating function $\Gamma$ of a Landau-gauge Yang-Mills theory, explicitly
+%
+\begin{align}
+	\Gamma[\Phi] &= \int_x \bar{c} \left(-\partial_\mu D_\mu \right) c \,+\,\ldots\,.
+	\\[1ex]
+	 &= \int_p \bar{c}(-p) p^2 c(p) - \int_{p,q}\bar{c}(p) \left( p_\mu gA^B_\mu(-p-q)t^B\right) c(q)\,,
+\end{align}
+%
+where $a,b$ are adjoint colour indices, $B$ is an index in the fundamental representation of the colour group, and $\int_p = \int \frac{d^dp}{(2\pi)^d}$. 
+$t^B$ is a generator from the Lie algebra of the symmetry group associated with the given Yang-Mills theory.
+Note also that we have performed a partial integration in the second term.
+Consequently, we immediately infer the ghost two-point function and the ghost-gluon vertex as
+%
+\begin{alignat}{2}
+	\Gamma_{\bar{c}_ac_b}(p,q) &=
+		\frac{\delta}{\delta\bar{c}_a(p)}\frac{\delta}{\delta c(q)} \Gamma[\Phi] &&=
+		-p^2\delta_{ab}
+			\delta(p-q)
+	\,,
+	\notag\\[1ex] 
+	\Gamma_{A^B\bar{c}_a c_b}(r,p,q) &=
+		\frac{\delta}{\delta A^B_\mu(r)}\frac{\delta}{\delta\bar{c}_a(p)}\frac{\delta}{\delta c(q)} \Gamma[\Phi] &&=
+	 	p_\mu g\, t^B_{ab} 
+			\delta(r-p-q)
+	\,.	
+\end{alignat}
+%
+Note here also that as part of our convention, \FunKit always orders fields such that commuting fields come first, then anti-Grassmann fields, then Grassmann fields. This can be also changed by the user, if so desired, see \Cref{app:all_func}.
+
+The conventions chosen here match exactly the ones of \QMeS. \DoFun adopts a slightly different convention in the ordering of the fields, see \Cref{app:notation_details}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1045,7 +1106,7 @@ In the above example, we also see that the command \mathem{\mmaDef{FPrint}} can 
 Advanced users may be interested in expanding the vocabulary and derivative rules of \FunKit. 
 This is explicitly supported to allow for very general applications, and we explain it briefly in the following. 
 %
-\paragraph{Adding new objects}
+\subsubsection*{Adding new objects}
 %
 Use the \mathem{\mmaDef{FAdd...}} family of helpers to register new symbols so they participate correctly in ordering, truncation and derivative algorithms:
 %
@@ -1060,7 +1121,7 @@ Use the \mathem{\mmaDef{FAdd...}} family of helpers to register new symbols so t
 %
 Each helper registers and protects the symbol and adjusts internal lists so the new object behaves like the built‑in ones (e.g. \mathem{\mmaDef{Propagator}}, \mathem{\mmaDef{GammaN}}, \mathem{\mmaDef{S}}, ...).
 %
-\paragraph{Fixing index positions}
+\subsubsection*{Fixing index positions}
 %
 Some indexed objects contain indices that must not be reordered by the field‑ordering routines (for example, the last index of a flowing reparametrisation function). Use
 %
@@ -1072,7 +1133,7 @@ to mark the last index position of \mathem{PhiDot} as unordered.
 This is insofar relevant, as the flowing reparametrisation \mathem{PhiDot} can be chosen differently for each field and thus changing the last index of \mathem{PhiDot} does not mean reordering derivatives, but actually using a different function.
 The second argument may be a single integer or a list of positions, counted from the right.
 %
-\paragraph{Custom functional derivative rules}
+\subsubsection*{Custom functional derivative rules}
 %
 When the built‑in derivative rules are insufficient, one may add user rules that \mathem{\mmaDef{FunctionalD}} applies during derivative resolution. Rules are added with
 %
@@ -1089,7 +1150,7 @@ Examples:
 %
 \mathem{\mmaDef{FAddFDRule}} uses \mathem{\mmaDef{HoldAll}} to keep patterns intact and is applied by \mathem{\mmaDef{FunctionalD}} before the default derivative rules. Provide patterns on the left and the desired evaluated result on the right (use Mathematica patterns where needed).
 %
-\paragraph{Clearing custom rules}
+\subsubsection*{Clearing custom rules}
 %
 To remove all user‑added derivative rules and restore the default behaviour call
 %
@@ -1685,12 +1746,10 @@ As \FunKit is embedded in the tools of the fQCD collaboration, it has also becom
 
 
 %%%%%%%%%%%%%%%%%%%%
-\begin{acknowledgments}
+\section*{Acknowledgments}
 We thank Maurice Brezavsek, Andreas Gei\ss{}el, Friederike Ihssen, Keiwan Jamaly, Konrad Kockler, Jan~M. Pawlowski and Jonas Wessely for discussions, finding bugs, proofreading this work, and collaboration on related topics. This work is done within the fQCD collaboration \cite{fQCD} and we thank its members for discussions and collaborations on related projects.
 FRS acknowledges funding by the GSI Helmholtzzentrum f\"ur Schwerionenforschung and by HGS-HIRe for FAIR. 
 FRS is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) through the Emmy Noether Programme Project No. 54526179.
-	
-\end{acknowledgments}
 
 \vspace{1cm}
 
@@ -1698,6 +1757,12 @@ FRS is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Fo
 
 %\newpage
 \appendix
+
+%\gdef\thesection{\Alph{section}}
+%\makeatletter
+%\renewcommand\@seccntformat[1]{\appendixname\ \csname the#1\endcsname.\hspace{0.5em}}
+%\makeatother
+
 \begingroup
 \allowdisplaybreaks
 
@@ -1814,7 +1879,23 @@ This is identical with how \QMeS defines its classical action. Furthermore, it i
 	S_{i_1\ldots i_n} = \frac{\delta}{\delta\phi^{i_1}}\cdots\frac{\delta}{\delta\phi^{i_n}}S[\phi]\,.
 \end{align}
 %
-However, \DoFun adds additional minus signs for fermionic vertices \cite{Huber:2011qr} when constructing the classical action - special care to this should be taken by users when comparing or porting existing \DoFun code to \FunKit.
+\DoFun~3 \cite{Huber:2019dkb} and \FunKit{} share their stated conventions, with the exception that \DoFun{} extracts the legs of every vertex  with $n\ge 3$ in \emph{reversed} order. Relative to a vertex from \FunKit, \DoFun carries an additional sign, to be precise
+%
+\begin{align}
+	F_{a_1a_2\ldots a_n}^\textrm{FunKit} &= (-1)^{n_G(n_G-1)/2}\, F_{a_1a_2\ldots a_n}^\textrm{DoFun}\,,\forall n \geq 3\,,
+	\notag\\[1ex]
+	F_{a_1a_2}^\textrm{FunKit} &= F_{a_1a_2}^\textrm{DoFun}\,,
+\end{align}
+%
+where $n_G$ is the number of distinct Grassmann fields within $\{\Phi^{a_1},\ldots,\Phi^{a_n}\}$ and $F$ is a correlation function, e.g. $F=\Gamma,S,\ldots$.
+\FunKit's \mathem{\mmaDef{FunKitForm}} and \mathem{\mmaDef{DoFunForm}} apply this correction automatically; users porting \DoFun{} code by hand must track it explicitly.
+
+Finally, in any given vertex we always consider all momenta to be incoming, which also fixes our Fourier convention:
+%
+\begin{equation}
+	\Phi^a(x) = \int \frac{d^d p}{(2\pi)^d} e^{ipx}\Phi^a(p)
+	\,.
+\end{equation}
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -2522,6 +2603,7 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 \endgroup
 
 %%%%%%%%%%%%%%%%%%%%
+\bibliographystyle{elsarticle-num}
 \bibliography{bibliography}
 %%%%%%%%%%%%%%%%%%%%
 
