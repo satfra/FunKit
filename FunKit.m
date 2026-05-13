@@ -21,8 +21,8 @@
 
 (* ::Input::Initialization:: *)
 If[($AllowInternet&&$NetworkConnected)&&$FrontEnd=!=Null,
-Module[{FCurPacletAddr,FCurPaclet,FCurVersion,
-FInstalledPaclet,FInstalledVersion},
+Module[{FCurPacletAddr,FCurPaclet,FCurVersion,FCurVersionList,
+FInstalledPaclet,FInstalledVersion,FInstalledVersionList},
 
 FCurPacletAddr="https://github.com/satfra/FunKit/raw/refs/heads/main/PacletInfo.m";
 FCurPaclet=CheckAbort[TimeConstrained[Import[FCurPacletAddr],2,$Failed],$Failed];
@@ -30,11 +30,13 @@ FCurPaclet=CheckAbort[TimeConstrained[Import[FCurPacletAddr],2,$Failed],$Failed]
 If[FCurPaclet=!=$Failed,
 FCurPaclet=(List@@FCurPaclet)[[1]];
 FCurVersion=FCurPaclet["Version"];
+FCurVersionList=ToExpression/@StringSplit[FCurVersion,"."];
 
 FInstalledPaclet=(List@@Import[FileNameJoin[{$UserBaseDirectory,"Applications","FunKit","PacletInfo.m"}]])[[1]];
 FInstalledVersion=FInstalledPaclet["Version"];
+FInstalledVersionList=ToExpression/@StringSplit[FInstalledVersion,"."];
 
-If[FCurVersion=!=FInstalledVersion,
+If[!OrderedQ[{FCurVersionList,FInstalledVersionList}],
 If[ChoiceDialog[
 TemplateApply["There is a newer FunKit version on the internet. 
 The installed version is `a`, whereas `b` is available. Do you want to install it?",<|"a"->FInstalledVersion,"b"->FCurVersion|>]
@@ -115,6 +117,17 @@ Import["https://raw.githubusercontent.com/satfra/TensorBases/main/TensorBasesIns
 Print["\!\(\*
 StyleBox[\"FunKit\",\nFontWeight->\"Bold\"]\) requires \!\(\*
 StyleBox[\"TensorBases\",\nFontWeight->\"Bold\"]\) to run."];Abort[];
+];
+];
+
+Module[{tbDir,tbPaclet,tbVersion,tbVerList,requiredVersion="1.1.6",requiredList},requiredList=ToExpression/@StringSplit[requiredVersion,"."];tbDir=SelectFirst[Join[{FileNameJoin[{$UserBaseDirectory,"Applications","TensorBases"}],FileNameJoin[{$BaseDirectory,"Applications","TensorBases"}],FileNameJoin[{$InstallationDirectory,"AddOns","Applications","TensorBases"}],FileNameJoin[{$InstallationDirectory,"AddOns","Packages","TensorBases"}],FileNameJoin[{$InstallationDirectory,"AddOns","ExtraPackages","TensorBases"}]},Select[$Path,StringContainsQ[#1,"TensorBases"]&]],DirectoryQ[#1]&];
+tbPaclet=Quiet[Check[(List@@Import[FileNameJoin[{tbDir,"PacletInfo.m"}]])[[1]],$Failed]];
+tbVersion=If[AssociationQ[tbPaclet]&&KeyExistsQ[tbPaclet,"Version"],tbPaclet["Version"],"0.0.0"];
+tbVerList=ToExpression/@StringSplit[tbVersion,"."];
+If[!OrderedQ[{requiredList,tbVerList}],
+If[ChoiceDialog[TemplateApply["FunKit requires TensorBases version `r` or newer. The installed TensorBases is version `i`. Do you want to update now?",Association["r"->requiredVersion,"i"->tbVersion]],WindowTitle->"Update TensorBases",WindowSize->{Medium,All}],
+Import["https://raw.githubusercontent.com/satfra/TensorBases/main/TensorBasesInstaller.m"],
+Print["\!\(\*StyleBox[\"FunKit\",FontWeight->\"Bold\"]\) requires \!\(\*StyleBox[\"TensorBases\",FontWeight->\"Bold\"]\) version "<>requiredVersion<>" or newer."];Abort[];];
 ];
 ];
 

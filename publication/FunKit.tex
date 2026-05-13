@@ -1,6 +1,5 @@
 %\documentclass[10pt,prd,nofootinbib,superscriptaddress]{revtex4-2}
 \documentclass[preprint,10pt,sort&compress]{elsarticle}
-\usepackage[a4paper, total={6.5in, 8.6in}]{geometry}
 
 
 %%%%%%%%%%%%% Packages %%%%%%%%%%%%%
@@ -45,12 +44,14 @@
 \usepackage{hyperref}
 \usepackage[nameinlink]{cleveref}
 
+\usepackage[]{tabularx}
+
 
 %\crefformat{appendix}{#2#1#3}
 
-%\makeatletter
-%\AddToHook{cmd/appendix/before}{\def\cref@section@alias{appendix}\def\cref@subsection@alias{appendix}}
-%\makeatother
+\makeatletter
+\AddToHook{cmd/appendix/before}{\def\cref@section@alias{appendix}\def\cref@subsection@alias{appendix}}
+\makeatother
 
 \usepackage{appendix}
 \usepackage{units}
@@ -224,22 +225,6 @@
 \definecolor{pastelgreen}{rgb}{0.4,0.9,0.5}
 
 \renewcommand{\floatpagefraction}{.8}
-
-
-%%%%%%%%%%%%% TOC %%%%%%%%%%%%%
-
-%************************************* added
-\usepackage{titlesec}
-
-\newcommand*{\setupTOC}{%
-	\titleformat{\chapter}{}{}{0pt}{} 
-	
-	\titlespacing*{\chapter}{0pt}
-	{*7} %  % vertical space before the title <<<<<<<<<<
-	{*-15}  %  idem after title (in ex units + glue) <<<<<<<<<<<
-}
-%*************************************
-
 
 %%%%%%%%%%%%% Title and hypersetup %%%%%%%%%%%%%
 \newcommand{\gettitle}{FunKit: A computer algebra toolkit for functional approaches}
@@ -429,14 +414,14 @@ We add green boxes throughout the text that provide additional information on th
 
 
 %
-\begin{table*}[b]
+\begin{table*}[t]
 	\begin{tcolorbox}[title=Available example notebooks,
 		title filled=false,
 		colback=pastelblue!5!white,
 		colframe=pastelblue,
 		fonttitle=\bfseries]
 		\small
-		\begin{tabular}{p{6.0cm} p{9.5cm}}
+		\begin{tabular}{p{6.0cm} p{9.2cm}}
 			\toprule
 			\textbf{Notebook (repo path)} & \textbf{Description} \\
 			\midrule
@@ -492,13 +477,13 @@ Inside a notebook, a brief overview can be accessed using \mathem{\mmaDef{FInfo[
 We also provide several example notebooks where the derivation of certain theories with several functional master equations is shown, which we list in~\Cref{tab:examples}.
 
 
-\begin{table*}[b]
+\begin{table*}[t]
 	\begin{tcolorbox}[title=Quick Notation Reference,
 		title filled=false,
 		colback=pastelblue!5!white,
 		colframe=pastelblue,
 		fonttitle=\bfseries]
-		\begin{tabular}{p{3.8cm} p{2.2cm}  p{9.7cm}}
+		\begin{tabular}{p{3.8cm} p{2.2cm}  p{8.7cm}}
 			\toprule
 			Mathematica&Expression&Description \\
 			\midrule
@@ -614,16 +599,26 @@ In the following sections, all expressions used above will be introduced as symb
 \subsection{Sign conventions}
 \label{sec:Signs}
 
-Sign conventions are a common source of confusion in computer algebra systems involving Grassman fields. In \FunKit, and by extension also in \TensorBases, which is relevant for \Cref{sec:TRACY}, we follow consistently the notation that subscripts on correlation functions or other functionals represent derivatives, performed from the right to the left. Explicitly, this means that, e.g., 
+Sign conventions are a common source of confusion in computer algebra systems involving Grassman fields. In \FunKit, and by extension also in \TensorBases, which is relevant for \Cref{sec:TRACY}, we follow consistently the following notation:
+%
+\begin{enumerate}
+	\item Subscripts on correlation functions or other functionals represent derivatives, performed from the right to the left. Explicitly, this means that
+	%
+	\begin{align}
+		F_{a_1\ldots a_n} = \frac{\delta }{\delta \Phi^{a}_1} \cdots \frac{\delta }{\delta \Phi^{a_n}} F[\Phi]\,,
+	\end{align}
+	%
+	where $F$ stands in for any functional.
+	
+	\item \FunKit always orders fields such that commuting fields come first, then anti-Grassmann fields, then Grassmann fields. This can be also changed by the user, if so desired, see \Cref{app:all_func}.
+\end{enumerate}
+%
+The conventions chosen here match exactly the ones of \QMeS. \DoFun adopts a slightly different convention in the ordering of the fields, see \Cref{app:notation_details}.
+
+For later reference, let us here consider an example: we take the ghost part of the 1PI generating function $\Gamma$ of a gauge-fixed Yang-Mills theory, explicitly
 %
 \begin{align}
-	F_{a_1\ldots a_n} = \frac{\delta }{\delta \Phi^{a}_1} \cdots \frac{\delta }{\delta \Phi^{a_n}} F[\Phi]\,.
-\end{align}
-%
-For later reference, let us here consider an example: we take the ghost part of the 1PI generating function $\Gamma$ of a Landau-gauge Yang-Mills theory, explicitly
-%
-\begin{align}
-	\Gamma[\Phi] &= \int_x \bar{c} \left(-\partial_\mu D_\mu \right) c \,+\,\ldots\,.
+	\Gamma[\Phi] &= \int_x \bar{c} \left(-\partial_\mu D_\mu \right) c \,+\,\ldots
 	\\[1ex]
 	 &= \int_p \bar{c}(-p) p^2 c(p) - \int_{p,q}\bar{c}(p) \left( p_\mu gA^B_\mu(-p-q)t^B\right) c(q)\,,
 \end{align}
@@ -635,21 +630,18 @@ Consequently, we immediately infer the ghost two-point function and the ghost-gl
 %
 \begin{alignat}{2}
 	\Gamma_{\bar{c}_ac_b}(p,q) &=
-		\frac{\delta}{\delta\bar{c}_a(p)}\frac{\delta}{\delta c(q)} \Gamma[\Phi] &&=
+		\frac{\delta}{\delta\bar{c}_a(p)}\frac{\delta}{\delta c_b(q)} \Gamma[\Phi] &&=
 		-p^2\delta_{ab}
 			\delta(p-q)
 	\,,
 	\notag\\[1ex] 
 	\Gamma_{A^B\bar{c}_a c_b}(r,p,q) &=
-		\frac{\delta}{\delta A^B_\mu(r)}\frac{\delta}{\delta\bar{c}_a(p)}\frac{\delta}{\delta c(q)} \Gamma[\Phi] &&=
+		\frac{\delta}{\delta A^B_\mu(r)}\frac{\delta}{\delta\bar{c}_a(p)}\frac{\delta}{\delta c_b(q)} \Gamma[\Phi] &&=
 	 	p_\mu g\, t^B_{ab} 
 			\delta(r-p-q)
 	\,.	
 \end{alignat}
 %
-Note here also that as part of our convention, \FunKit always orders fields such that commuting fields come first, then anti-Grassmann fields, then Grassmann fields. This can be also changed by the user, if so desired, see \Cref{app:all_func}.
-
-The conventions chosen here match exactly the ones of \QMeS. \DoFun adopts a slightly different convention in the ordering of the fields, see \Cref{app:notation_details}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -872,6 +864,27 @@ In the above, $(-1)^{ab}$ is the fermionic minus sign as defined in \labelcref{e
 \FunKit has automatically simplified the diagrams resulting from the above derivation. For finer control, the functions \mathem{\mmaDef{FResolveFDOp}} and \mathem{\mmaDef{FSimplify}} allow resolving derivatives and simplifying expressions step by step. In general, however, we recommend using \mathem{\mmaDef{FTakeDerivatives}}, as it provides the most automated workflow and generates additional simplification hints such as symmetry properties of the derivatives.
 We describe the simplification and derivative algorithms used by \FunKit in more detail in the green boxes below.
 
+\begin{tcolorbox}[title=Algorithm details: Diagram simplification,
+	title filled=false,
+	colback=pastelgreen!5!white,
+	colframe=pastelgreen!73!black,
+	fonttitle=\bfseries]
+	
+	With \mathem{\mmaDef{FSimplify}} we introduce an algorithm for the simplification of large sums of connected diagrams. \mathem{\mmaDef{FSimplify}} can detect identical diagrams and performs the following steps to find all matches and sum~them:
+	%
+	\begin{enumerate}
+		\setlength\itemsep{0.1ex}
+		\item All Diagrams with exactly the same content of objects and the same set of open indices are grouped together.
+		\item Each group is then processed in parallel: Pairs of diagrams are sequentially built and compared.
+		\item The comparison of two diagrams is performed by traversing the graphs of both at the same time and checking for identity. If the diagrams are disconnected, their sub-graphs are compared pair-wise. 
+		\item If symmetries of open indices are provided, all permutations (with possible prefactors, e.g. minus signs for fermionic permutations) are also explored.
+		\item If the graphs are identical, they are merged. When merging, the second diagram is prepended with a factor containing all signs needed to give it precisely the same index ordering and structure as the first diagram.
+	\end{enumerate}
+	
+\end{tcolorbox}
+
+
+
 \begin{tcolorbox}[title=Algorithm details: Derivatives,
 	title filled=false,
 	colback=pastelgreen!5!white,
@@ -902,26 +915,6 @@ We describe the simplification and derivative algorithms used by \FunKit in more
 
 
 
-\begin{tcolorbox}[title=Algorithm details: Diagram simplification,
-	title filled=false,
-	colback=pastelgreen!5!white,
-	colframe=pastelgreen!73!black,
-	fonttitle=\bfseries]
-	
-	With \mathem{\mmaDef{FSimplify}} we introduce an algorithm for the simplification of large sums of connected diagrams. \mathem{\mmaDef{FSimplify}} can detect identical diagrams and performs the following steps to find all matches and sum~them:
-	%
-	\begin{enumerate}
-		\setlength\itemsep{0.1ex}
-		\item All Diagrams with exactly the same content of objects and the same set of open indices are grouped together.
-		\item Each group is then processed in parallel: Pairs of diagrams are sequentially built and compared.
-		\item The comparison of two diagrams is performed by traversing the graphs of both at the same time and checking for identity. If the diagrams are disconnected, their sub-graphs are compared pair-wise. 
-		\item If symmetries of open indices are provided, all permutations (with possible prefactors, e.g. minus signs for fermionic permutations) are also explored.
-		\item If the graphs are identical, they are merged. When merging, the second diagram is prepended with a factor containing all signs needed to give it precisely the same index ordering and structure as the first diagram.
-	\end{enumerate}
-	
-\end{tcolorbox}
-
-
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 \subsection{Truncating the output}
 
@@ -944,8 +937,7 @@ Conversely, omitting a key from the truncation table altogether keeps every inst
 Next, we modify the setup as
 %
 \begin{mmaCell}{Input}
-\mmaDef{setup} = <|"FieldSpace" -> \mmaDef{fields},
-          "Truncation" -> \mmaDef{truncation}|>;
+\mmaDef{setup} = <|"FieldSpace" -> \mmaDef{fields}, "Truncation" -> \mmaDef{truncation}|>;
 \mmaDef{FSetGlobalSetup}[\mmaDef{setup}];
 \mmaDef{FSetTexStyles}[cb -> "{\textbackslash\textbackslash}bar\{c\}"];
 \end{mmaCell}
@@ -988,9 +980,8 @@ $}
 		\item If the corresponding flag is set, automatically  invoke \mathem{\mmaDef{FSimplify}} to merge identical surviving diagrams.
 	\end{itemize}
 	%
-	The dispatch table used for the truncation is memoised, so repeated lookups are $\mathcal{O}(1)$.
-
 \end{tcolorbox}
+
 
 %%%%%%%%%%%%%%%%%%%%%%
 \subsection{Routing momenta and group indices}
@@ -1209,12 +1200,67 @@ This requires of course that the objects such as \mathem{MyCounterterm} have bee
 \section{Diagrammatic rules and tracing of expressions}
 \label{sec:TRACY}
 
+After having derived the functional equation, it is necessary to use a set of diagrammatic rules to obtain an explicit expression for a given diagram. \FunKit provides functions to automatically create such rules from a chosen set of tensor bases. Nevertheless, we will first present a brief example how to define such rules by hand, and then introduce the automatic rule-creation included in \FunKit.
+
+
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
-\subsection{Creating diagrammatic rules}
+\subsection{Manually creating diagrammatic rules}
 
-After having derived the functional equation, it is necessary to use a set of diagrammatic rules to obtain an explicit expression for a given diagram. \FunKit provides functions to automatically create such rules from a chosen set of tensor bases.
+To see how to create the diagrammatic Feynman rules by hand, consider the ghost propagator flow, given by
+%
+\begin{mmaCell}{Input}
+diagGhostFlow = \mmaDef{FTakeDerivatives}[\mmaDef{wEq}, \{cb[i1], c[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FPlot}//\mmaDef{FRoute}//\mmaDef{FPrint};
+\end{mmaCell}
+\vspace{-1.1ex}
+\begin{equation*}
+	\wideleft{\footnotesize$%
+		\begin{aligned}\  &\int_{l_1}\left(-G_{A^{a}A^{b}}(-l_1,l_1)\,\Gamma_{A^{b}\bar{c}^{m}c^{d}}(-l_1,p_1,l_1-p_1)\,G_{c^{d}\bar{c}^{f}}(p_1-l_1,l_1-p_1)\,\Gamma_{A^{g}\bar{c}^{f}c^{n}}(l_1,p_1-l_1,-p_1)\,G_{A^{g}A^{j}}(-l_1,l_1)\,\partial_t R_{A^{j}A^{a}}(-l_1,l_1)\right)
+			\\ &\,+\,\int_{l_1}(-G_{c^{a}\bar{c}^{b}}(l_1+p_1,-l_1-p_1)\,\Gamma_{A^{c}\bar{c}^{m}c^{a}}(l_1,p_1,-l_1-p_1)\,G_{A^{c}A^{f}}(-l_1,l_1)\,\Gamma_{A^{f}\bar{c}^{h}c^{n}}(-l_1,l_1+p_1,-p_1)\,G_{c^{i}\bar{c}^{h}}(l_1+p_1,-l_1-p_1)
+			\\
+			&\hspace{1.2cm}\times\,\partial_t R_{\bar{c}^{b}c^{i}}(l_1+p_1,-l_1-p_1))
+		\end{aligned}
+		$}
+\end{equation*}
+\vspace{-0.5ex}
 
-To obtain the diagrammatic rules, \FunKit interfaces with the \TensorBases \cite{Braun:2025gvq} package, which provides the tensor expressions for interaction vertices. In \FunKit, a set of vertex bases is specified inside the \mathem{\mmaDef{setup}}.
+\noindent\hspace{3.0em}\includegraphics[width=0.6\linewidth]{diagram_5.png}\\
+%
+%
+To proceed, we require the explicit group structure of the ghost and gluon propagators, as well as the gluon propagator. We have already derived the necessary rules for the ghost vertices in \Cref{sec:Notation}. Assuming Landau gauge, a possible parametrisation of the gluon two-point vertex reads
+%
+\begin{align}
+	\Gamma_{A_\mu^AA_\nu^B}(p,q) = 
+	\left(
+	Z_A(p)\Pi^\perp_{\mu\nu}(q) + \frac{1}{\xi}\Pi^\parallel_{\mu\nu}(q)
+	\right)q^2\delta^{AB}
+	\delta(p-q)\,.
+\end{align}
+%
+Here, $\Pi^\perp_{\mu\nu}(p) = \delta_{\mu\nu} - \frac{p_\mu p_\nu}{p^2}$ and $\Pi^\parallel_{\mu\nu}(p) = \frac{p_\mu p_\nu}{p^2}$ are the transversal and longitudinal projectors, respectively.
+In Landau gauge, the longitudinal part of the gluon propagator does not get renormalised and thus we have not added a dressing function to that part.
+
+Altogether, we can write a set of Feynman rules as
+%
+\begin{mmaCell}{Input}
+\end{mmaCell}
+%
+Note that the default \FormTracer aliases for group and momentum tensors are used, if one does not specify them otherwise, e.g. \mathem{\mmaDef{sp}[p,q]} represents a scalar product $p\cdot q$, \mathem{\mmaDef{deltaAdjCol}[c2,c1]} stands in for a $\mathbbold{1}$ in adjoint colour space, etc. For a full list of all names \FormTracer knows, call \mathem{\mmaDef{ShowFormTracerDefinitions}[]}, which prints a full table thereof.
+
+
+With this, we can directly insert the rules into the ghost polarisation diagrams and trace them with the help of \FormTracer:
+%
+\begin{mmaCell}{Input}
+\end{mmaCell}
+%
+Here, \mathem{\mmaDef{FormTrace}} delegates to the \FormTracer package, which sends the expression to \FORM, which efficiently performs all momentum and group algebra contractions. The result is either a scalar expression, or a list of scalar expressions for each diagram.
+
+It is important to note that after tracing, momentum products like \mathem{\mmaDef{sp}[p,q]} will be still present in the output, and they need to be explicitly parametrised by the user before further processing.
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\subsection{Automatically creating diagrammatic rules}
+
+To automatically generate a set of diagrammatic rules, \FunKit interfaces with the \TensorBases \cite{Braun:2025gvq} package, which provides the tensor expressions for interaction vertices. In \FunKit, a set of vertex bases is specified inside the \mathem{\mmaDef{setup}}.
 %
 \begin{mmaCell}{Input}
 bases = <|\mmaDef{GammaN}->\{\{A,A\}->\{"AA",1\},
@@ -1263,8 +1309,6 @@ diagRules = \mmaDef{FMakeDiagrammaticRules}[];
 %
 The result of \mathem{\mmaDef{FMakeDiagrammaticRules}[]} is a replacement table that inserts all tensors in the specified basis for a given object, here the propagator. Each tensor is multiplied with a momentum-dependent \mathem{\mmaDef{dressing}} that can be later parametrised by the user. In the above output, for example, \FunKit uses the dressing of the inverse propagator in the diagrammatic rule for the propagator.
 
-Note also that the default \FormTracer aliases for group and momentum tensors are used, if one does not specify them otherwise, e.g. \mathem{\mmaDef{sp}[p,q]} represents a scalar product $p\cdot q$, \mathem{\mmaDef{deltaAdjCol}[c2,c1]} stands in for a $\mathbbold{1}$ in adjoint colour space, etc. For a full list of all names \FormTracer knows, call \mathem{\mmaDef{ShowFormTracerDefinitions}[]}, which prints a full table thereof. Note that even after tracing momentum products like \mathem{\mmaDef{sp}[p,q]} will be present in the output, which need to be explicitly parametrised by the user before further processing.
-
 With this, one can directly obtain the explicit expressions for diagrams. For example, the 0-loop term of the gluon propagator DSE can be calculated as
 %
 \begin{mmaCell}{Input}
@@ -1300,11 +1344,9 @@ DSEAAResult1L = \mmaDef{FormTrace}[
  ];
 \end{mmaCell}
 %
-Here, \mathem{\mmaDef{FormTrace}} delegates to the \FormTracer package, which sends the expression to \FORM, which efficiently performs all momentum and group algebra contractions. The result is either a scalar expression, or a list of scalar expressions for each diagram.
 Similarly, the above calculation can be also performed for all other diagrams appearing in the DSEs of the Yang--Mills system.
 
-Note for the projectors that for non-commuting, and in particular for fields carrying Dirac indices, the superindices in the projector should be appropriately exchanged, so that a field contracts with its partner-field. For an illustration, see also the NJL example in \Cref{app:NJL}, which shows this at the example of fermions.
-
+When using projectors for fields carrying Dirac indices, the superindices in the projector should be appropriately exchanged, so that a field contracts with its partner-field. For an illustration, see also the NJL example in \Cref{app:NJL}, which shows this at the example of fermions.
 
 \begin{tcolorbox}[title=Algorithm details: Tracing,
 	title filled=false,
@@ -1534,6 +1576,12 @@ auto DSE_kernel_AA_1Loop(const auto &l1, const auto &cospl1, const auto &p, cons
 %
 Fortran code can be generated analogously using the function \mathem{\mmaDef{MakeFortranFunction}}, which produces modern free-form Fortran with \texttt{implicit none} and typed parameter declarations. The expression serialiser \mathem{\mmaDef{FortranCodeForm}} translates Mathematica expressions to modern free-form Fortran and generates \texttt{double precision} functions with \texttt{implicit none}, making it suitable for integration into existing Fortran-based numerical codebases.
 
+By default, the code generation targets a register budget of 32 registers per kernel, reflecting typical GPU hardware constraints. For CPU-targeted applications, where register pressure is less restrictive, the user may adjust this setting via the \mathem{\mmaDef{FSetRegisterSize}} function. For C++, note also that \FunKit uses a custom function to describe integer powers, see \Cref{app:powr}.
+
+The code generation of \FunKit targets C++, Julia and Fortran, as these languages offer the performance characteristics required for realistic numerical applications.
+In particular, the generated code is designed for tight integration with high-performance solvers and GPU kernels, where languages such as Python would introduce prohibitive overhead.
+Should the need arise, the modular design of \FunKit makes the addition of further backends straightforward.
+
 \begin{tcolorbox}[title=Algorithm details: Code generation,
 	title filled=false,
 	colback=pastelgreen!5!white,
@@ -1556,12 +1604,6 @@ Fortran code can be generated analogously using the function \mathem{\mmaDef{Mak
 	The total number of available slots for hoisting of common sub-expressions per kernel can be set using \mathem{\mmaDef{FSetRegisterSize[int]}}, with a default of 32.
 	
 \end{tcolorbox}
-%
-By default, the code generation targets a register budget of 32 registers per kernel, reflecting typical GPU hardware constraints. For CPU-targeted applications, where register pressure is less restrictive, the user may adjust this setting via the \mathem{\mmaDef{FSetRegisterSize}} function. For C++, note also that \FunKit uses a custom function to describe integer powers, see \Cref{app:powr}.
-
-The code generation of \FunKit targets C++, Julia and Fortran, as these languages offer the performance characteristics required for realistic numerical applications.
-In particular, the generated code is designed for tight integration with high-performance solvers and GPU kernels, where languages such as Python would introduce prohibitive overhead.
-Should the need arise, the modular design of \FunKit makes the addition of further backends straightforward.
 
 
 %%%%%%%%%%%%%%%%%%%%
@@ -1636,61 +1678,65 @@ With even larger expressions, \FunKit is also able to outperform \DoFun: this is
 
 It is important to note, that even though \QMeS is slower than \DoFun or \FunKit, its most important advantage is its relative simplicity. This is achieved through straightforwardly implementing the superindex notation used also by \FunKit without any further optimisations that could introduce errors, with the aim of reliable handling of (fermionic) signs.
 
-
 \begin{table*}[t]
 	\centering
 	\renewcommand{\arraystretch}{1.25}
-	\begin{tabular}[t]{l c c c}
-		\toprule
-		\textbf{Feature} & \FunKit & \DoFun & \QMeS \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Master equations}} \\
-		\quad Dyson--Schwinger equations             & \cmark  & \cmark  & \cmark \\
-		\quad Flow equations (fRG)                  & \cmark  & \cmark  & \cmark \\
-		\quad (Modified) Slavnov--Taylor id.         & \cmark  & \xmark  & \cmark \\
-		\quad Composite operator equations          & (\cmark)\footnote{Although \FunKit does not provide these natively, they can be easily implemented by hand by constructing the objects with \texttt{FDOp}, see the provided example in \Cref{tab:examples}.}  & \cmark  & \xmark \\
-		\quad Arbitrary master equations            & \cmark  & \xmark  & \xmark \\
-		\quad Multi-index func.\ derivatives        & \cmark  & \xmark  & \xmark \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Field content}} \\
-		\quad Commuting (bosonic) fields            & \cmark  & \cmark  & \cmark \\
-		\quad Grassmann (fermionic) fields          & \cmark  & \cmark  & \cmark \\
-		\quad Complex fields                        & \cmark  & \cmark  & \cmark \\
-		\quad Background / source fields            & \cmark  & \xmark  & (\cmark)\footnote{\QMeS supports only BRST sources.} \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Truncation \& simplification}} \\
-		\quad Vertex truncation                     & \cmark  & \cmark  & \cmark \\
-		\quad Loop-order filtering                  & \cmark  & \cmark  & \xmark \\
-		\quad Broken-symmetry phase                 & \cmark  & \cmark  & \xmark \\
-		\quad Diagram topology identification       & \cmark  & (\cmark)\footnote{\DoFun can identify diagrams up to two-loop.}  & (\cmark)\footnote{\QMeS can identify diagrams up to one-loop.} \\
-		\bottomrule
-	\end{tabular}
-	\hfill
-	\begin{tabular}[t]{l c c c}
-		\toprule
-		\textbf{Feature} & \FunKit & \DoFun & \QMeS \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Momentum routing \& diagrammatic rules}} \\
-		\quad One-loop momentum routing             & \cmark  & \cmark  & \cmark \\
-		\quad Multi-loop momentum routing           & \cmark  & (\cmark)\footnote{\DoFun can route diagrams up to two-loop.}  & \xmark \\
-		\quad Feynman rule generation               & \cmark  & \cmark  & \xmark \\
-		\quad Tensor basis specification            & \cmark  & \xmark  & \xmark \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Index \& trace contraction}} \\
-		\quad Tracing of group structures           & \cmark  & \xmark  & \xmark \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Output \& visualisation}} \\
-		\quad Diagram plots                         & \cmark  & \cmark  & \xmark \\
-		\quad \LaTeX{} equation output              & \cmark  & \xmark  & \xmark \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Code generation}} \\
-		\quad C\texttt{++} / Julia / Fortran                 & \cmark  & \xmark  & \xmark \\
-		\midrule
-		\multicolumn{4}{l}{\textit{Interoperability}} \\
-		\quad \texttt{FeynCalc} compatibility                & \xmark  & (\cmark)\footnote{\DoFun provides a utility function to safely load the \texttt{FeynCalc} package.} & \xmark \\
-		\quad Cross-package format conversion       & \cmark  & \xmark  & \xmark \\
-		\bottomrule
-	\end{tabular}
+	\renewcommand*\footnoterule{}
+	\begin{minipage}{1\linewidth}
+		\small
+		\hspace{-0.5cm}
+		\begin{tabular}[t]{l c c c |}
+			\toprule
+			\textbf{Feature} & \FunKit & \DoFun & \QMeS \\
+			\midrule
+			\multicolumn{3}{l}{\textit{Master equations}} &\\
+			\quad Dyson--Schwinger equations             & \cmark  & \cmark  & \cmark \\
+			\quad Flow equations (fRG)                  & \cmark  & \cmark  & \cmark \\
+			\quad (Modified) Slavnov--Taylor id.         & \cmark  & \xmark  & \cmark \\
+			\quad Composite operator equations          & (\cmark)\footnote{Although \FunKit does not provide these natively, they can be easily implemented by hand by constructing the objects with \texttt{FDOp}, see the provided example in \Cref{tab:examples}.}  & \cmark  & \xmark \\
+			\quad Arbitrary master equations            & \cmark  & \xmark  & \xmark \\
+			\quad Multi-index func.\ derivatives        & \cmark  & \xmark  & \xmark \\
+			\hline
+			\multicolumn{3}{l}{\textit{Field content}} &\\
+			\quad Commuting (bosonic) fields            & \cmark  & \cmark  & \cmark \\
+			\quad Grassmann (fermionic) fields          & \cmark  & \cmark  & \cmark \\
+			\quad Complex fields                        & \cmark  & \cmark  & \cmark \\
+			\quad Background / source fields            & \cmark  & \xmark  & (\cmark)\footnote{\QMeS supports only BRST sources.} \\
+			\hline
+			\multicolumn{3}{l}{\textit{Truncation \& simplification}} & \\
+			\quad Vertex truncation                     & \cmark  & \cmark  & \cmark \\
+			\quad Loop-order filtering                  & \cmark  & \cmark  & \xmark \\
+			\quad Broken-symmetry phase                 & \cmark  & \cmark  & \xmark \\
+			\quad Diagram topology identification       & \cmark  & (\cmark)\footnote{\DoFun can identify diagrams up to two-loop.}  & (\cmark)\footnote{\QMeS can identify diagrams up to one-loop.} \\
+%			\bottomrule
+		\end{tabular}%
+		\begin{tabular}[t]{l c c c}
+			\toprule
+			\textbf{Feature} & \FunKit & \DoFun & \QMeS \\
+			\midrule
+			\multicolumn{4}{l}{\textit{Momentum routing \& diagrammatic rules}} \\
+			\quad One-loop momentum routing             & \cmark  & \cmark  & \cmark \\
+			\quad Multi-loop momentum routing           & \cmark  & (\cmark)\footnote{\DoFun can route diagrams up to two-loop.}  & \xmark \\
+			\quad Feynman rule generation               & \cmark  & \cmark  & \xmark \\
+			\quad Tensor basis specification            & \cmark  & \xmark  & \xmark \\
+			\midrule
+			\multicolumn{4}{l}{\textit{Index \& trace contraction}} \\
+			\quad Tracing of group structures           & \cmark  & \xmark  & \xmark \\
+			\midrule
+			\multicolumn{4}{l}{\textit{Output \& visualisation}} \\
+			\quad Diagram plots                         & \cmark  & \cmark  & \xmark \\
+			\quad \LaTeX{} equation output              & \cmark  & \xmark  & \xmark \\
+			\midrule
+			\multicolumn{4}{l}{\textit{Code generation}} \\
+			\quad C\texttt{++} / Julia / Fortran                 & \cmark  & \xmark  & \xmark \\
+			\midrule
+			\multicolumn{4}{l}{\textit{Interoperability}} \\
+			\quad \texttt{FeynCalc} compatibility                & \xmark  & (\cmark)\footnote{\DoFun provides a utility function to safely load the \texttt{FeynCalc} package.} & \xmark \\
+			\quad Cross-package format conversion       & \cmark  & \xmark  & \xmark \\
+%			\bottomrule
+		\end{tabular}
+	\end{minipage}
+	
 	\caption{Feature comparison of \FunKit (v1.0.0), \DoFun (v3.0)~\cite{Huber:2019dkb,Huber:2011qr} and \QMeS (v1.2)~\cite{Pawlowski:2021tkk}. A \cmark{} indicates full support, (\cmark) partial or indirect support, and \xmark{} no support.
 		Note that \FunKit has, a priori, a broader scope than the other packages, so features not present for \DoFun or \QMeS do not necessarily represent deficiencies.}
 	\label{tab:comparison}
@@ -1758,10 +1804,10 @@ FRS is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Fo
 %\newpage
 \appendix
 
-%\gdef\thesection{\Alph{section}}
-%\makeatletter
-%\renewcommand\@seccntformat[1]{\appendixname\ \csname the#1\endcsname.\hspace{0.5em}}
-%\makeatother
+\gdef\thesection{\Alph{section}}
+\makeatletter
+\renewcommand\@seccntformat[1]{\appendixname\ \csname the#1\endcsname.\hspace{0.5em}}
+\makeatother
 
 \begingroup
 \allowdisplaybreaks

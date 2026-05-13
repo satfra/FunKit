@@ -314,4 +314,44 @@ If[$FORMAvailable,
             TestID -> "FMakeP0FormRule: generates FORM code with ProjP0 (FORM)"
         ]
     ];
+
+    (* Regression: FORM's Fortran90 backend wraps the symbol E as [E]
+       (because E is Fortran's floating-point exponent character). The
+       fortranToMathematica converter must unwrap that bracket-quoting,
+       otherwise the downstream ToExpression call chokes on [E]^(...). *)
+    AppendTo[
+        tests
+        ,
+        VerificationTest[
+            FunKit`Private`fortranToMathematica[
+                "HEADER\n\nw(1)=ZQ([E]**(-1/(Pi)*T*k)*T*Pi,0);\n"
+            ]
+            ,
+            "\nw[1]=ZQ[E^(-1/(Pi)*T*k)*T*Pi,0]\n\n"
+            ,
+            TestID -> "fortranToMathematica: unwraps FORM's [E] bracket-quoting around Euler's E"
+        ]
+    ];
+
+    (* End-to-end regression of the user-reported failure: FormTrace on an
+       FTerm whose argument contains Exp[] must round-trip through FORM
+       without ToExpression::sntx. We pre-register ZQ as an extra var to
+       mirror a user session where ZQ is part of the active setup. *)
+    AppendTo[
+        tests
+        ,
+        VerificationTest[
+            Module[{result, savedVars},
+                savedVars = FormTracer`GetExtraVars[];
+                FormTracer`AddExtraVars[ZQ];
+                result = FormTrace[FTerm[ZQ[\[Pi] T Exp[-k/\[Pi] T], 0]]];
+                FormTracer`DefineExtraVars[savedVars];
+                result =!= $Failed && result =!= $Aborted && FreeQ[result, _String]
+            ]
+            ,
+            True
+            ,
+            TestID -> "FormTrace: Exp[...] in FTerm argument survives FORM round-trip (FORM)"
+        ]
+    ];
 ];
