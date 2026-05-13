@@ -23,10 +23,16 @@
 
 (* ::Input::Initialization:: *)
 
+Unprotect[Global`cos];
+
+ClearAttributes[Global`cos, Orderless];
+
 SetAttributes[Global`cos, Orderless];
 
 Global`cos[p_, p_] :=
     1;
+
+Protect[Global`cos];
 
 SetAttributes[Evaluate[Head @ Global`TBInsertOutputNaming[Global`TBsp[p1, p2]]], Orderless];
 

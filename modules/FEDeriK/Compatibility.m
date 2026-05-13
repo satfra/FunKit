@@ -414,17 +414,20 @@ DoFunAlgebraicDiagramQ[___] :=
     DoFun -> FunKit: superindex (symbolic format)
 **********************************************************************************)
 
+(* Per-vertex correction factor for DoFun <-> FunKit symbolic conversion.
+   For an n>=3 vertex with n_G Grassmann legs, DoFun's symbolic output carries
+   an extra factor (-1)^(n_G(n_G-1)/2) relative to FunKit, from the composition
+   of (i) the n>=3 external-leg Reverse in generateAction (DoDSERGE.m:1435) and
+   (ii) the canonical reordering with Signature-based sign tracking in
+   sortCanonical (DoDSERGE.m:1962, 1990). The n=2 kinetic term is exempt
+   because both source-level steps gate on Length>2. *)
+grassmannParity[setup_, fields_] :=
+    Module[{nG = Count[fields, _?(IsGrassmann[setup, #]&)]},
+        (-1)^Quotient[nG (nG - 1), 2]
+    ];
+
 FunKitForm[setup_, diag_] /; DoFunSuperindexDiagramQ[diag] :=
-    Module[{repl, hasGrassmann},
-        (* DoFun and FunKit disagree by a sign for every interaction vertex (n>=3)
-           that carries a Grassmann field. The mismatch arises from DoFun's
-           left-only Grassmann-derivative convention (DoFun 3, footnote 3 of
-           arXiv:1908.02760) combined with the bare-vertex sign S^{i1...in} =
-           -delta^n S/delta phi^n (Eq. 7 of arXiv:0808.2939) — both bare S and
-           dressed GammaN with Grassmann legs pick up a -1 per occurrence
-           relative to FunKit's symbolic representation. The 2-pt kinetic S is
-           exempt because n=2 is sign-free in DoFun's expansion convention. *)
-        hasGrassmann[fields_] := AnyTrue[fields, IsGrassmann[setup, #]&];
+    Module[{repl},
         repl =
             {
                 Times[a___, DoFun`DoDSERGE`op[f__]] :> FTerm[a, f]
@@ -435,18 +438,15 @@ FunKitForm[setup_, diag_] /; DoFunSuperindexDiagramQ[diag] :=
                 ,
                 DoFun`DoDSERGE`V[f__] :>
                     With[{fields = {f}[[All, 1]], indices = {f}[[All, 2]]},
-                        If[hasGrassmann[fields],
-                            -makeObj[GammaN, fields, indices],
-                            makeObj[GammaN, fields, indices]
-                        ]
+                        grassmannParity[setup, fields] * makeObj[GammaN, fields, indices]
                     ]
                 ,
                 DoFun`DoDSERGE`dR[f__] :> makeObj[Rdot, {f}[[All, 1]], {f}[[All, 2]]]
                 ,
                 DoFun`DoDSERGE`S[f__] :>
                     With[{fields = {f}[[All, 1]], indices = {f}[[All, 2]]},
-                        If[Length[fields] >= 3 && hasGrassmann[fields],
-                            -makeObj[S, fields, -indices],
+                        If[Length[fields] >= 3,
+                            grassmannParity[setup, fields] * makeObj[S, fields, -indices],
                             makeObj[S, fields, -indices]
                         ]
                     ]
@@ -514,13 +514,13 @@ doFunObject[obj_Rdot] :=
 doFunObject[obj_S] :=
     DoFun`DoDSERGE`S @@ Transpose[{getFields[obj], -getIndices[obj]}];
 
-(* Per-Grassmann-vertex sign factor that mirrors the FunKitForm[] flip rule, so
-   that DoFun -> FunKit -> DoFun roundtrips preserve the original expression. *)
+(* Per-vertex sign factor that mirrors the FunKitForm[] correction, so that
+   DoFun -> FunKit -> DoFun roundtrips preserve the original expression. *)
 doFunObjectSign[setup_, obj_] :=
     Module[{fields = getFields[obj], head = Head[obj]},
         Which[
-            head === S && Length[fields] >= 3 && AnyTrue[fields, IsGrassmann[setup, #]&], -1,
-            head === GammaN && AnyTrue[fields, IsGrassmann[setup, #]&], -1,
+            head === S && Length[fields] >= 3, grassmannParity[setup, fields],
+            head === GammaN, grassmannParity[setup, fields],
             True, 1
         ]
     ];

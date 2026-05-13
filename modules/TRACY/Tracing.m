@@ -22,6 +22,8 @@
 
 FormTracer`FormTrace::invalidResult = "FORM tracing returned an invalid result containing `1`. The result will not be cached.";
 
+FormTracer`FormTrace::formOutputMissing = "FORM produced no output at `1` (kernel `2`). The FORM run likely failed; check that FormTracer is fully initialised on this kernel.";
+
 validateTraceResult[result_] :=
     Module[{poison},
         poison = Select[{Null, $Failed, $Aborted}, !FreeQ[result, #]&];
@@ -30,6 +32,14 @@ validateTraceResult[result_] :=
             Abort[]
         ];
     ];
+
+(* TensorBases public functions (TBInsertCombinedLorentzTensors, UseLorentzLinearity,
+   GetFormTracerGroupConstants, …) live in Global`. FunKit.m's reset of
+   $DistributedContexts drops the default "Global`" entry, so without this they
+   never reach parallel subkernels and FORM tracing of any FEx/FTerm with
+   Lorentz/group content silently produces $Failed there. *)
+If[Head[$DistributedContexts] =!= List, $DistributedContexts = {}];
+$DistributedContexts = $DistributedContexts \[Union] {"Global`"};
 
 Unprotect[FEx, FTerm, FormTracer`FormTrace];
 
@@ -106,6 +116,10 @@ FTerm /: FormTracer`FormTrace[FTerm[a__], preReplRules_ : {}, postReplRules_ : {
         FormTracer`FormTrace[expr /. repl[[1]], Join[{scallDef}, preReplRules], postReplRules, {tmpfileName, "O1", "fortran90"}, bracket];
         FormTracer`DefineExtraVars[origVars];
         FunKitDebug[2, "FORM finished, reimporting to Mathematica."];
+        If[Not[FileExistsQ[tmpfileName]],
+            Message[FormTracer`FormTrace::formOutputMissing, tmpfileName, $KernelID];
+            Abort[];
+        ];
         result = ImportAndSimplifyFORM[tmpfileName];
         FunKitDebug[2, "Import finished."];
         Quiet[DeleteFile[tmpfileName]];
