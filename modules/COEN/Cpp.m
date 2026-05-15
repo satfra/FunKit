@@ -245,7 +245,11 @@ wrapLargeStatementsForClangFormat[code_String] :=
                             ];
                         (* Skip wrapping if this part already contains clang-format directives *)
                         If[StringLength[s] > $codeFormatStatementLimit && StringFreeQ[s, "// clang-format"],
-                            "// clang-format off\n" <> s <> "\n// clang-format on"
+                            (* Trailing \n is mandatory: fixClangFormatOffIndentation
+                               rewrites any line starting with "// clang-format on" to
+                               just that directive, discarding anything appended on the
+                               same line. *)
+                            "// clang-format off\n" <> s <> "\n// clang-format on\n"
                             ,
                             s
                         ]

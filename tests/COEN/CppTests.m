@@ -313,3 +313,43 @@ AppendTo[tests, VerificationTest[
     True,
     TestID -> "ReturnTransform constant function applies"
 ]];
+
+(**********************************************************************************
+    Regression: long function signature must not eat following statements
+    (`// clang-format on` was emitted without a trailing newline, so the next
+    `;`-split chunk landed on the same line and was dropped by
+    fixClangFormatOffIndentation; see Cpp.m:248)
+**********************************************************************************)
+
+(* Build a parameter list long enough to push the signature past
+   $codeFormatStatementLimit (1000 chars) and trigger the clang-format-off wrap. *)
+longInterpType = "SplineInterpolator1D<double, LogarithmicCoordinates1D<double>, GPU_memory>";
+longParams = Join[
+    {"k", "Nf"},
+    Map[<|"Name" -> #, "Type" -> longInterpType, "Const" -> True, "Reference" -> True|>&,
+        {"ZA3", "ZAcbc", "ZA4", "ZAqbq1", "dtZc", "Zc", "dtZA", "ZA", "dtZq", "Zq", "Mq", "lambda4F1"}]
+];
+
+(* expr references an interpolator-like call so _interp1 is generated. *)
+longSigBody = MakeCppFunction[dtZA[(1 + k^6)^(1/6)] + RB[k^2, l1^2] * ZA[l1],
+    "Name" -> "kernel",
+    "Prefix" -> "static",
+    "Body" -> "using namespace DiFfRG;using namespace DiFfRG::compute;\n",
+    "Parameters" -> longParams
+];
+
+interpRefs = DeleteDuplicates @ StringCases[longSigBody, "_interp" ~~ DigitCharacter ..];
+interpDefNames = DeleteDuplicates @ Flatten @ StringCases[longSigBody,
+    "const auto " ~~ x:("_interp" ~~ DigitCharacter ..) :> x];
+
+AppendTo[tests, VerificationTest[
+    Complement[interpRefs, interpDefNames],
+    {},
+    TestID -> "Long signature: every referenced _interp has a definition"
+]];
+
+AppendTo[tests, VerificationTest[
+    StringContainsQ[longSigBody, "using namespace DiFfRG::compute;"],
+    True,
+    TestID -> "Long signature: trailing using-statement is not eaten by clang-format-on"
+]];
