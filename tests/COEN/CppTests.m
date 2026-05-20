@@ -353,3 +353,33 @@ AppendTo[tests, VerificationTest[
     True,
     TestID -> "Long signature: trailing using-statement is not eaten by clang-format-on"
 ]];
+
+(**********************************************************************************
+    Regression: a sum (Plus) appearing as a factor in a product must keep its
+    grouping parentheses. Times is Orderless, so a single Plus factor is always
+    matched and parenthesized; but with >= 2 Plus factors the trailing sum used
+    to lose its parentheses, e.g. (a+b)*(c+d) was printed as "(a + b) * c + d".
+    This silently corrupted generated kernels (the ZA quark-loop angular factor;
+    see FUNKIT_KERNEL_PRINTER_BUG). For power-free expressions the emitted C++ is
+    also valid Wolfram syntax, so we re-parse it and compare numerically — this
+    catches the dropped grouping without needing a compiler.
+**********************************************************************************)
+
+parenRTSample = {za -> 1.3, zb -> 0.7, zc -> 2.1, zd -> 0.4, k -> 1.9,
+    m1 -> 0.5, m2 -> 1.1, d1 -> 0.8, d2 -> 1.7, l1 -> 2.3, p -> 0.6, r -> 1.4};
+
+parenRTExprs = {
+    (za + zb) (zc + zd),                       (* two pure sum factors *)
+    k (za + zb) (zc + zd),                      (* prefactor + two sum factors *)
+    (m1 + m2) (d1 + d2) (l1 + 2 r - 3 p)        (* mirrors the ZA quark-loop term *)
+};
+
+Do[
+    AppendTo[tests, VerificationTest[
+        ToExpression[FunKit`CppForm[e]] /. parenRTSample,
+        e /. parenRTSample,
+        SameTest -> (Abs[#1 - #2] < 10.^-9 &),
+        TestID -> "Sum factor keeps parentheses in product (round-trip): " <> ToString[e, InputForm]
+    ]],
+    {e, parenRTExprs}
+];
