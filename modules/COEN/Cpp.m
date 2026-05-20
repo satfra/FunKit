@@ -59,10 +59,13 @@ Options[CppForm] = {"Format" -> False};
 
 CppForm[expr_, OptionsPattern[]] :=
     Internal`InheritedBlock[
-        {processedExpr, nest, $MinPrecision = $CppPrecision, $MaxPrecision = $CppPrecision, CExpression}
+        {processedExpr, nest, factorCode, $MinPrecision = $CppPrecision, $MaxPrecision = $CppPrecision, CExpression}
         ,
         processedExpr = N[expr /. Power[E, x_] :> cppExp[x]];
         nest := GenerateCode[CExpression[#]]&;
+        (*a factor of a product: a sum must be wrapped in parentheses, since * binds tighter than + in C++*)
+        factorCode[p_Plus] := "(" <> nest[p] <> ")";
+        factorCode[x_] := nest[x];
         (*powr*)
         If[$CppPowr,
             CExpression /: GenerateCode[CExpression[Power[a_, b_Integer]]] := "powr<" <> ToString[b] <> ">(" <> nest[a] <> ")";
@@ -77,10 +80,15 @@ CppForm[expr_, OptionsPattern[]] :=
         ];
         (*FMA*)
         CExpression /: GenerateCode[CExpression[fmaGroup[a_, b_, c_]]] := "fma(" <> nest[a] <> ", " <> nest[b] <> ", " <> nest[c] <> ")";
-        (*associativity*)
-        CExpression /: GenerateCode[CExpression[Times[a__, Plus[b_, c__], d__]]] := nest[Times[a]] <> " * (" <> nest[Plus[b, c]] <> ") * " <> nest[Times[d]];
-        CExpression /: GenerateCode[CExpression[Times[Plus[b_, c__], d__]]] := "(" <> nest[Plus[b, c]] <> ") * " <> nest[Times[d]];
-        (*recursion for + and * *)
+        (*products: map factorCode over every factor at once and join with " * ", so each sum factor is
+          parenthesized. We must NOT peel one factor and recurse via nest[Times[rest]]: a single-argument
+          Times collapses (Times[Plus[..]] -> Plus[..]), routing a trailing sum to the Plus rule and
+          dropping its parentheses — the FUNKIT_KERNEL_PRINTER_BUG. The patterns require >= 2 factors
+          (f1_, frest__): Times has the OneIdentity attribute, so Times[factors__] would also match a lone
+          atom as Times[atom] and recurse forever via factorCode -> nest -> GenerateCode.*)
+        CExpression /: GenerateCode[CExpression[Times[r_Real /; r == -1, a__]]] := "-" <> StringRiffle[factorCode /@ {a}, " * "];
+        CExpression /: GenerateCode[CExpression[Times[f1_, frest__]]] := StringRiffle[factorCode /@ {f1, frest}, " * "];
+        (*recursion for +*)
         CExpression /: GenerateCode[CExpression[Plus[a_, b__]]] :=
             With[{lhs = nest[a], rhs = nest[Plus[b]]},
                 If[StringStartsQ[rhs, "-"],
@@ -89,8 +97,6 @@ CppForm[expr_, OptionsPattern[]] :=
                     lhs <> " + " <> rhs
                 ]
             ];
-        CExpression /: GenerateCode[CExpression[Times[r_Real /; r == -1, a__]]] := "-" <> nest[Times[a]];
-        CExpression /: GenerateCode[CExpression[Times[a_, b__]]] := nest[a] <> " * " <> nest[Times[b]];
         (*functions*)
         CExpression /: GenerateCode[CExpression[a_[args___]]] := nest[a] <> "(" <> StringJoin @ StringRiffle[nest /@ {args}, ", "] <> ")";
         (*string placeholders — CSE variable names are Mathematica strings; output as bare identifiers*)
