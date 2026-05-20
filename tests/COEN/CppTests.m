@@ -7,19 +7,19 @@ tests = {};
 Needs["CCompilerDriver`"];
 
 CppCompiler =
-  If[Quiet[RunProcess[{"g++", "--version"}]] =!= $Failed,
-    "g++"
-    ,
-    If[Quiet[RunProcess[{"clang++", "--version"}]] =!= $Failed,
-      "clang++"
-      ,
-      ""
-    ]
-  ];
+    If[Quiet[RunProcess[{"g++", "--version"}]] =!= $Failed,
+        "g++"
+        ,
+        If[Quiet[RunProcess[{"clang++", "--version"}]] =!= $Failed,
+            "clang++"
+            ,
+            ""
+        ]
+    ];
 
 If[CppCompiler == "",
-  Print["C++ compiler not found, skipping tests."];
-  Return[];
+    Print["C++ compiler not found, skipping tests."];
+    Return[];
 ];
 
 powrCode = "
@@ -233,9 +233,11 @@ Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFastMath = True,
 ];
 
 AppendTo[tests, VerificationTest[StringContainsQ[fastMathCode, "__expf("], True, TestID -> "Verify __expf in fast-math output"]];
+
 AppendTo[tests, VerificationTest[StringContainsQ[fastMathCode, "__logf("], True, TestID -> "Verify __logf in fast-math output"]];
 
 (* Fast-math should NOT emit intrinsics when precision is double *)
+
 Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeFastMath = True, FunKit`Private`$codePrecision = "double"},
     noFastMathCode = CppCode[Exp[x] + Log[x]];
 ];
@@ -253,6 +255,7 @@ Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms =
 ];
 
 AppendTo[tests, VerificationTest[StringContainsQ[splitCode, "// subkernel 1"], True, TestID -> "Verify sub-kernel splitting produces multiple blocks"]];
+
 AppendTo[tests, VerificationTest[StringContainsQ[splitCode, "// subkernel 2"], True, TestID -> "Verify sub-kernel splitting produces at least 2 blocks"]];
 
 (**********************************************************************************
@@ -270,49 +273,43 @@ AppendTo[tests, VerificationTest[StringContainsQ[tranCode, "_tran"], True, TestI
 **********************************************************************************)
 
 ClearAll[a, b];
-exprRT = (Cos[a] + Sin[a]^2) / (1 + a);
+
+exprRT = (Cos[a] + Sin[a] ^ 2) / (1 + a);
 
 (* Identity transform on standard path: byte-identical to default *)
-AppendTo[tests, VerificationTest[
-    CppCode[exprRT, "ReturnTransform" -> Identity],
-    CppCode[exprRT],
-    TestID -> "ReturnTransform Identity matches default (standard path)"
-]];
+
+AppendTo[tests, VerificationTest[CppCode[exprRT, "ReturnTransform" -> Identity], CppCode[exprRT], TestID -> "ReturnTransform Identity matches default (standard path)"]];
 
 (* Re wrap on standard path: CppForm[Re[_]] = real(...) *)
-AppendTo[tests, VerificationTest[
-    StringContainsQ[CppCode[exprRT, "ReturnTransform" -> Re], "return real("],
-    True,
-    TestID -> "ReturnTransform Re wraps return on standard path"
-]];
+
+AppendTo[tests, VerificationTest[StringContainsQ[CppCode[exprRT, "ReturnTransform" -> Re], "return real("], True, TestID -> "ReturnTransform Re wraps return on standard path"]];
 
 (* Identity transform on sub-kernel path: byte-identical to default *)
+
 Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms = 200},
     largeDefaultRT = CppCode[largeExprSplit];
     largeIdentityRT = CppCode[largeExprSplit, "ReturnTransform" -> Identity];
 ];
+
 AppendTo[tests, VerificationTest[largeIdentityRT, largeDefaultRT, TestID -> "ReturnTransform Identity matches default (sub-kernel path)"]];
 
 (* Re wrap on sub-kernel path: real(_acc) at the return *)
+
 Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms = 200},
     largeReRT = CppCode[largeExprSplit, "ReturnTransform" -> Re];
 ];
-AppendTo[tests, VerificationTest[
-    StringContainsQ[largeReRT, "return real(_acc)"],
-    True,
-    TestID -> "ReturnTransform Re wraps _acc on sub-kernel path"
-]];
+
+AppendTo[tests, VerificationTest[StringContainsQ[largeReRT, "return real(_acc)"], True, TestID -> "ReturnTransform Re wraps _acc on sub-kernel path"]];
 
 (* MakeCppFunction forwards the option *)
+
 funBodyRT = MakeCppFunction[exprRT, "Name" -> "fun", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}, "ReturnTransform" -> Re];
+
 AppendTo[tests, VerificationTest[StringContainsQ[funBodyRT, "real("], True, TestID -> "MakeCppFunction forwards ReturnTransform"]];
 
 (* Constant transform: ignores input, returns a literal *)
-AppendTo[tests, VerificationTest[
-    StringContainsQ[CppCode[a + b, "ReturnTransform" -> (42 &)], "return 42."],
-    True,
-    TestID -> "ReturnTransform constant function applies"
-]];
+
+AppendTo[tests, VerificationTest[StringContainsQ[CppCode[a + b, "ReturnTransform" -> (42&)], "return 42."], True, TestID -> "ReturnTransform constant function applies"]];
 
 (**********************************************************************************
     Regression: long function signature must not eat following statements
@@ -323,36 +320,22 @@ AppendTo[tests, VerificationTest[
 
 (* Build a parameter list long enough to push the signature past
    $codeFormatStatementLimit (1000 chars) and trigger the clang-format-off wrap. *)
+
 longInterpType = "SplineInterpolator1D<double, LogarithmicCoordinates1D<double>, GPU_memory>";
-longParams = Join[
-    {"k", "Nf"},
-    Map[<|"Name" -> #, "Type" -> longInterpType, "Const" -> True, "Reference" -> True|>&,
-        {"ZA3", "ZAcbc", "ZA4", "ZAqbq1", "dtZc", "Zc", "dtZA", "ZA", "dtZq", "Zq", "Mq", "lambda4F1"}]
-];
+
+longParams = Join[{"k", "Nf"}, Map[<|"Name" -> #, "Type" -> longInterpType, "Const" -> True, "Reference" -> True|>&, {"ZA3", "ZAcbc", "ZA4", "ZAqbq1", "dtZc", "Zc", "dtZA", "ZA", "dtZq", "Zq", "Mq", "lambda4F1"}]];
 
 (* expr references an interpolator-like call so _interp1 is generated. *)
-longSigBody = MakeCppFunction[dtZA[(1 + k^6)^(1/6)] + RB[k^2, l1^2] * ZA[l1],
-    "Name" -> "kernel",
-    "Prefix" -> "static",
-    "Body" -> "using namespace DiFfRG;using namespace DiFfRG::compute;\n",
-    "Parameters" -> longParams
-];
 
-interpRefs = DeleteDuplicates @ StringCases[longSigBody, "_interp" ~~ DigitCharacter ..];
-interpDefNames = DeleteDuplicates @ Flatten @ StringCases[longSigBody,
-    "const auto " ~~ x:("_interp" ~~ DigitCharacter ..) :> x];
+longSigBody = MakeCppFunction[dtZA[(1 + k^6) ^ (1/6)] + RB[k^2, l1^2] * ZA[l1], "Name" -> "kernel", "Prefix" -> "static", "Body" -> "using namespace DiFfRG;using namespace DiFfRG::compute;\n", "Parameters" -> longParams];
 
-AppendTo[tests, VerificationTest[
-    Complement[interpRefs, interpDefNames],
-    {},
-    TestID -> "Long signature: every referenced _interp has a definition"
-]];
+interpRefs = DeleteDuplicates @ StringCases[longSigBody, "_interp" ~~ DigitCharacter..];
 
-AppendTo[tests, VerificationTest[
-    StringContainsQ[longSigBody, "using namespace DiFfRG::compute;"],
-    True,
-    TestID -> "Long signature: trailing using-statement is not eaten by clang-format-on"
-]];
+interpDefNames = DeleteDuplicates @ Flatten @ StringCases[longSigBody, "const auto " ~~ x : ("_interp" ~~ DigitCharacter..) :> x];
+
+AppendTo[tests, VerificationTest[Complement[interpRefs, interpDefNames], {}, TestID -> "Long signature: every referenced _interp has a definition"]];
+
+AppendTo[tests, VerificationTest[StringContainsQ[longSigBody, "using namespace DiFfRG::compute;"], True, TestID -> "Long signature: trailing using-statement is not eaten by clang-format-on"]];
 
 (**********************************************************************************
     Regression: a sum (Plus) appearing as a factor in a product must keep its
@@ -365,24 +348,18 @@ AppendTo[tests, VerificationTest[
     catches the dropped grouping without needing a compiler.
 **********************************************************************************)
 
-parenRTSample = {za -> 1.3, zb -> 0.7, zc -> 2.1, zd -> 0.4, k -> 1.9,
-    m1 -> 0.5, m2 -> 1.1, d1 -> 0.8, d2 -> 1.7, l1 -> 2.3, p -> 0.6, r -> 1.4};
+parenRTSample = {za -> 1.3, zb -> 0.7, zc -> 2.1, zd -> 0.4, k -> 1.9, m1 -> 0.5, m2 -> 1.1, d1 -> 0.8, d2 -> 1.7, l1 -> 2.3, p -> 0.6, r -> 1.4};
 
-parenRTExprs = {
-    (za + zb) (zc + zd),                       (* two pure sum factors *)
-    k (za + zb) (zc + zd),                      (* prefactor + two sum factors *)
-    (m1 + m2) (d1 + d2) (l1 + 2 r - 3 p)        (* mirrors the ZA quark-loop term *)
-};
+parenRTExprs =
+    {
+        (za + zb) (zc + zd)
+        ,(* two pure sum factors *)
+        k (za + zb) (zc + zd)
+        , (* prefactor + two sum factors *)
+        (m1 + m2) (d1 + d2) (l1 + 2 r - 3 p)(* mirrors the ZA quark-loop term *)
+    };
 
-Do[
-    AppendTo[tests, VerificationTest[
-        ToExpression[FunKit`CppForm[e]] /. parenRTSample,
-        e /. parenRTSample,
-        SameTest -> (Abs[#1 - #2] < 10.^-9 &),
-        TestID -> "Sum factor keeps parentheses in product (round-trip): " <> ToString[e, InputForm]
-    ]],
-    {e, parenRTExprs}
-];
+Do[AppendTo[tests, VerificationTest[ToExpression[FunKit`CppForm[e]] /. parenRTSample, e /. parenRTSample, SameTest -> (Abs[#1 - #2] < 10. ^ -9&), TestID -> "Sum factor keeps parentheses in product (round-trip): " <> ToString[e, InputForm]]], {e, parenRTExprs}];
 
 (**********************************************************************************
     Regression: Cot/Coth/ArcCot/ArcCoth must respect $CppPowr. With powr disabled
@@ -391,34 +368,18 @@ Do[
 **********************************************************************************)
 
 Block[{FunKit`Private`$CppPowr = False},
-    Do[
-        AppendTo[tests, VerificationTest[
-            StringFreeQ[FunKit`CppForm[fn[x]], "powr"],
-            True,
-            TestID -> "Cotangent family is powr-free when $CppPowr is False: " <> ToString[fn]
-        ]],
-        {fn, {Cot, Coth, ArcCot, ArcCoth}}
-    ]
+    Do[AppendTo[tests, VerificationTest[StringFreeQ[FunKit`CppForm[fn[x]], "powr"], True, TestID -> "Cotangent family is powr-free when $CppPowr is False: " <> ToString[fn]]], {fn, {Cot, Coth, ArcCot, ArcCoth}}]
 ];
+
 (* And still uses powr<-1> by default (regression guard the other way). *)
-AppendTo[tests, VerificationTest[
-    StringContainsQ[FunKit`CppForm[Cot[x]], "powr<-1>"],
-    True,
-    TestID -> "Cot uses powr<-1> when $CppPowr is True (default)"
-]];
+
+AppendTo[tests, VerificationTest[StringContainsQ[FunKit`CppForm[Cot[x]], "powr<-1>"], True, TestID -> "Cot uses powr<-1> when $CppPowr is True (default)"]];
 
 (**********************************************************************************
     expm1: exp(x)-1 should emit expm1 (more accurate near x=0). The patterns must
     match the -1./1. that N[] produces, not the literal integer -1/1.
 **********************************************************************************)
 
-AppendTo[tests, VerificationTest[
-    StringContainsQ[FunKit`CppForm[Exp[x] - 1], "expm1"],
-    True,
-    TestID -> "exp(x)-1 emits expm1"
-]];
-AppendTo[tests, VerificationTest[
-    StringContainsQ[FunKit`CppForm[1 - Exp[x]], "expm1"],
-    True,
-    TestID -> "1-exp(x) emits expm1"
-]];
+AppendTo[tests, VerificationTest[StringContainsQ[FunKit`CppForm[Exp[x] - 1], "expm1"], True, TestID -> "exp(x)-1 emits expm1"]];
+
+AppendTo[tests, VerificationTest[StringContainsQ[FunKit`CppForm[1 - Exp[x]], "expm1"], True, TestID -> "1-exp(x) emits expm1"]];
