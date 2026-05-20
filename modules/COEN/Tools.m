@@ -7,9 +7,12 @@
       FSetFastMath               -- Enables/disables fast math GPU intrinsics
       FSetMaxKernelTerms         -- Sets max terms per sub-kernel before splitting
       FSetCodePrecision          -- Sets code precision ("single" or "double")
+      FSetFullSimplifyLimit      -- LeafCount above which Simplify replaces FullSimplify
 
     Internal:
-      parallelSimplify           -- Parallel FullSimplify with automatic fallback
+      parallelSimplify           -- Parallel simplify (FullSimplify for small exprs,
+                                    Simplify above $codeFullSimplifyMaxLeafCount) with
+                                    automatic serial fallback
                                     (used by Cpp, CppOptimize, Fortran, Julia)
 
     Variables:
@@ -24,6 +27,8 @@
       $codeFormatStatementLimit  -- Max chars before disabling clang-format
       $codeFMARestructure        -- FMA pattern restructuring toggle (default True)
       $codeParallelThreshold     -- Min items for parallel evaluation (default 4)
+      $codeFullSimplifyMaxLeafCount -- LeafCount above which Simplify replaces
+                                    FullSimplify in parallelSimplify (default 100)
 **********************************************************************************)
 
 (**********************************************************************************
@@ -69,12 +74,26 @@ If[$OperatingSystem =!= "Windows",
 
 $codeParallelThreshold = 4;
 
+(* FullSimplify is by far the dominant cost in code generation. It is worth it on
+   small subexpressions, but on larger ones it explodes (and dominates suite/kernel
+   generation time) while buying little over the much cheaper Simplify. Above this
+   LeafCount, fall back to Simplify. Both are value-preserving, so this only trades
+   simplification aggressiveness for speed. Tunable via FSetFullSimplifyLimit. *)
+
+$codeFullSimplifyMaxLeafCount = 100;
+
 parallelSimplify[exprs_List] :=
-    If[Length[exprs] >= $codeParallelThreshold && Length[Kernels[]] > 0,
-        FunKitDebug[2, "Parallelizing FullSimplify over ", Length[exprs], " expressions on ", Length[Kernels[]], " kernels"];
-        ParallelMap[FullSimplify, exprs, DistributedContexts -> Automatic]
-        ,
-        Map[FullSimplify, exprs]
+(* Bake the limit in as a literal so the mapped function carries no FunKit-context
+   dependency onto subkernels (only LeafCount/Simplify/FullSimplify, all built-in). *)
+    With[{lim = $codeFullSimplifyMaxLeafCount},
+        With[{simplifyOne = (If[LeafCount[#] > lim, Simplify[#], FullSimplify[#]]&)},
+            If[Length[exprs] >= $codeParallelThreshold && Length[Kernels[]] > 0,
+                FunKitDebug[2, "Parallelizing simplify over ", Length[exprs], " expressions on ", Length[Kernels[]], " kernels (FullSimplify <= ", lim, " leaves, else Simplify)"];
+                ParallelMap[simplifyOne, exprs, DistributedContexts -> Automatic]
+                ,
+                Map[simplifyOne, exprs]
+            ]
+        ]
     ];
 
 (**********************************************************************************
@@ -154,5 +173,14 @@ FSetCodePrecision[p_String] /; MemberQ[{"single", "double"}, p] :=
 FSetCodePrecision[___] :=
     (
         Message[FunKit::invalidArguments, FSetCodePrecision];
+        Abort[]
+    );
+
+FSetFullSimplifyLimit[n_Integer?Positive] :=
+    Set[$codeFullSimplifyMaxLeafCount, n];
+
+FSetFullSimplifyLimit[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetFullSimplifyLimit];
         Abort[]
     );

@@ -102,6 +102,11 @@ Sets max terms per sub-kernel before splitting. Default 500."
 FSetCodePrecision::usage = "FSetCodePrecision[p]
 Sets code precision. Accepts \"single\" or \"double\". Default \"double\"."
 
+FSetFullSimplifyLimit::usage = "FSetFullSimplifyLimit[n]
+Sets the LeafCount above which code generation uses Simplify instead of FullSimplify
+during simplification of definitions. Larger limit = more aggressive (slower)
+simplification. Default 100."
+
 (* ::Section:: *)
 
 (*Begin Private*)

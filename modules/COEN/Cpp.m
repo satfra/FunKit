@@ -133,29 +133,34 @@ CppForm[expr_, OptionsPattern[]] :=
         CExpression /: GenerateCode[CExpression[cppExp[a_]]] := "exp(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[Exp[a_]]] := "exp(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[Power[a_, b_]]] := "pow(" <> nest[a] <> "," <> nest[b] <> ")";
-        CExpression /: GenerateCode[CExpression[cppExp[a_] - 1]] := "expm1(" <> nest[a] <> ")";
-        CExpression /: GenerateCode[CExpression[1 - cppExp[a_]]] := "-expm1(" <> nest[a] <> ")";
-        CExpression /: GenerateCode[CExpression[Plus[cppExp[a_], -1, c__]]] := "expm1(" <> nest[a] <> ") + " <> nest[Plus[c]];
-        CExpression /: GenerateCode[CExpression[Plus[-cppExp[a_], 1, c__]]] := "(-expm1(" <> nest[a] <> ")) + " <> nest[Plus[c]];
+        (* expm1(x) = exp(x)-1, more accurate near x=0. Match the literal -1./1. that the
+           upstream N[] produces (the original literal integer -1/1 never fired post-N).
+           IMPORTANT: use literal reals, NOT a condition like m_/;m==-1 — a condition forces
+           an O(#terms) check on every Plus node (orderless), which is catastrophically slow on
+           large sums; literal parts are matched by fast indexed lookup. *)
+        CExpression /: GenerateCode[CExpression[Plus[cppExp[a_], -1.]]] := "expm1(" <> nest[a] <> ")";
+        CExpression /: GenerateCode[CExpression[Plus[1., Times[-1., cppExp[a_]]]]] := "-expm1(" <> nest[a] <> ")";
+        CExpression /: GenerateCode[CExpression[Plus[cppExp[a_], -1., c__]]] := "expm1(" <> nest[a] <> ") + " <> nest[Plus[c]];
+        CExpression /: GenerateCode[CExpression[Plus[Times[-1., cppExp[a_]], 1., c__]]] := "(-expm1(" <> nest[a] <> ")) + " <> nest[Plus[c]];
         CExpression /: GenerateCode[CExpression[Log[a_]]] := "log(" <> nest[a] <> ")";
         (*trigonometric*)
         CExpression /: GenerateCode[CExpression[Sin[a_]]] := "sin(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[Cos[a_]]] := "cos(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[Tan[a_]]] := "tan(" <> nest[a] <> ")";
-        CExpression /: GenerateCode[CExpression[Cot[a_]]] := "powr<-1>(tan(" <> nest[a] <> "))";
+        CExpression /: GenerateCode[CExpression[Cot[a_]]] := If[$CppPowr, "powr<-1>(tan(" <> nest[a] <> "))", "pow(tan(" <> nest[a] <> "), -1)"];
         CExpression /: GenerateCode[CExpression[ArcSin[a_]]] := "asin(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[ArcCos[a_]]] := "acos(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[ArcTan[a_]]] := "atan(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[ArcTan[a_, b_]]] := "atan2(" <> nest[a] <> ", " <> nest[b] <> ")";
-        CExpression /: GenerateCode[CExpression[ArcCot[a_]]] := "atan(powr<-1>(" <> nest[a] <> "))";
+        CExpression /: GenerateCode[CExpression[ArcCot[a_]]] := If[$CppPowr, "atan(powr<-1>(" <> nest[a] <> "))", "atan(pow(" <> nest[a] <> ", -1))"];
         CExpression /: GenerateCode[CExpression[Sinh[a_]]] := "sinh(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[Cosh[a_]]] := "cosh(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[Tanh[a_]]] := "tanh(" <> nest[a] <> ")";
-        CExpression /: GenerateCode[CExpression[Coth[a_]]] := "powr<-1>(tanh(" <> nest[a] <> "))";
+        CExpression /: GenerateCode[CExpression[Coth[a_]]] := If[$CppPowr, "powr<-1>(tanh(" <> nest[a] <> "))", "pow(tanh(" <> nest[a] <> "), -1)"];
         CExpression /: GenerateCode[CExpression[ArcSinh[a_]]] := "asinh(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[ArcCosh[a_]]] := "acosh(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[ArcTanh[a_]]] := "atanh(" <> nest[a] <> ")";
-        CExpression /: GenerateCode[CExpression[ArcCoth[a_]]] := "atanh(powr<-1>(" <> nest[a] <> "))";
+        CExpression /: GenerateCode[CExpression[ArcCoth[a_]]] := If[$CppPowr, "atanh(powr<-1>(" <> nest[a] <> "))", "atanh(pow(" <> nest[a] <> ", -1))"];
         (*min, max, abs*)
         CExpression /: GenerateCode[CExpression[Abs[a_]]] := "abs(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[Min[a_, b_]]] := "min(" <> nest[a] <> "," <> nest[b] <> ")";

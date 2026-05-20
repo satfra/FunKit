@@ -383,3 +383,42 @@ Do[
     ]],
     {e, parenRTExprs}
 ];
+
+(**********************************************************************************
+    Regression: Cot/Coth/ArcCot/ArcCoth must respect $CppPowr. With powr disabled
+    they previously still emitted powr<-1>(...) unconditionally, referencing an
+    undefined template (compile error) when integer powers correctly used pow().
+**********************************************************************************)
+
+Block[{FunKit`Private`$CppPowr = False},
+    Do[
+        AppendTo[tests, VerificationTest[
+            StringFreeQ[FunKit`CppForm[fn[x]], "powr"],
+            True,
+            TestID -> "Cotangent family is powr-free when $CppPowr is False: " <> ToString[fn]
+        ]],
+        {fn, {Cot, Coth, ArcCot, ArcCoth}}
+    ]
+];
+(* And still uses powr<-1> by default (regression guard the other way). *)
+AppendTo[tests, VerificationTest[
+    StringContainsQ[FunKit`CppForm[Cot[x]], "powr<-1>"],
+    True,
+    TestID -> "Cot uses powr<-1> when $CppPowr is True (default)"
+]];
+
+(**********************************************************************************
+    expm1: exp(x)-1 should emit expm1 (more accurate near x=0). The patterns must
+    match the -1./1. that N[] produces, not the literal integer -1/1.
+**********************************************************************************)
+
+AppendTo[tests, VerificationTest[
+    StringContainsQ[FunKit`CppForm[Exp[x] - 1], "expm1"],
+    True,
+    TestID -> "exp(x)-1 emits expm1"
+]];
+AppendTo[tests, VerificationTest[
+    StringContainsQ[FunKit`CppForm[1 - Exp[x]], "expm1"],
+    True,
+    TestID -> "1-exp(x) emits expm1"
+]];
