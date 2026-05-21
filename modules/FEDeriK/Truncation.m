@@ -808,8 +808,52 @@ CTrunc[setup_, expr_FTerm] :=
 OTrunc[setup_, {}] :=
     {}
 
+(* Expand a single open index `idx` within one term, over all candidate fields.
+   The carrier object is located in the *given* term (not a stale reference), so
+   repeated calls correctly handle several AnyField indices on the same object. *)
+
+expandOpenIndex[setup_, term_FTerm, idx_, allFields_] :=
+    Module[{factors = List @@ term, allObj, subObj, idxOccur, idxPos, ignore, a},
+        allObj = ExtractObjectsWithIndex[setup, FTerm @@ (factors /. FTerm[__] :> ignore)];
+        subObj = Select[allObj, MemberQ[getIndices[#], idx, {1, 3}]&];
+        If[Length[subObj] < 1,
+            Message[indices::objectNotFound, idx, term, Length[subObj], 1];
+            Abort[];
+        ];
+        idxOccur =
+            If[MemberQ[getIndices[subObj[[1]]], -idx],
+                -idx
+                ,
+                idx
+            ];
+        idxPos = FirstPosition[getIndices[subObj[[1]]], idxOccur][[1]];
+        (*If the index slot is already concrete, there's nothing to expand*)
+        If[getField[subObj[[1]], idxPos] =!= AnyField,
+            Return[{term}]
+        ];
+        (*Expand over all candidate fields; drop those killed by the truncation*)
+        DeleteCases[
+            Map[
+                Module[{s1 = subObj[[1]], t},
+                    s1 = setField[s1, idxPos, #];
+                    s1 = truncationPass[setup, s1];
+                    If[s1 === 0,
+                        0
+                        ,
+                        t = term /. {subObj[[1]] :> s1, FMinus[{a_, a_}, {getIndex[s1, idxPos], getIndex[s1, idxPos]}] :> FMinus[{#, #}, {getIndex[s1, idxPos], getIndex[s1, idxPos]}], FMinus[{a_, b_}, {getIndex[s1, idxPos], ib_}] :> FMinus[{#, b}, {getIndex[s1, idxPos], ib}], FMinus[{a_, b_}, {ia_, getIndex[s1, idxPos]}] :> FMinus[{a, #}, {ia, getIndex[s1, idxPos]}]};
+                        ReduceIndices[setup, t]
+                    ]
+                ]&
+                ,
+                allFields
+            ]
+            ,
+            0
+        ]
+    ];
+
 OTrunc[setup_, expr_FTerm] :=
-    Module[{ret = List @@ expr, curi, allObj, openIndices, i, allFields = GetNonSourceFields[setup], idx, subObj, idxOccur, idxPos, ignore, a},
+    Module[{ret = List @@ expr, curi, openIndices, allFields = GetNonSourceFields[setup], idx, terms, ignore, a},
         FunKitDebug[3, "Truncating the term (open indices) ", expr];
         ret = replFields[setup, ret];
         (*Start off with the nested FTerms*)
@@ -826,42 +870,14 @@ OTrunc[setup_, expr_FTerm] :=
             ,
             FunKitDebug[3, "  Found open indices: ", openIndices];
         ];
-        allObj = ExtractObjectsWithIndex[setup, FTerm @@ (ret /. FTerm[__] :> ignore)];
-        ret = FEx[FTerm @@ ret];
-        (*Next, find all factors that needs to be expanded*)
+        (*Expand each open index, recomputing the carrier object per current term.
+          This handles several AnyField indices living on the same object.*)
+        terms = {FTerm @@ ret};
         For[curi = 1, curi <= Length[openIndices], curi++,
             idx = openIndices[[curi]];
-            subObj = Select[allObj, MemberQ[getIndices[#], idx, {1, 3}]&];
-            If[Length[subObj] < 1,
-                Message[indices::objectNotFound, idx, expr, Length[subObj], 1];
-                Abort[];
-            ];
-            idxOccur =
-                If[MemberQ[getIndices[subObj[[1]]], -idx],
-                    -idx
-                    ,
-                    idx
-                ];
-            idxPos = FirstPosition[getIndices[subObj[[1]]], idxOccur][[1]];
-            (*If there's no AnyField, continue*)
-            If[getField[subObj[[1]], idxPos] =!= AnyField,
-                Continue[]
-            ];
-            (*Otherwise, directly expand*)
-            ret =
-                FEx @@
-                    Map[
-                        Module[{s1 = subObj[[1]], t},
-                            s1 = setField[s1, idxPos, #];
-                            s1 = truncationPass[setup, s1];
-                            t = ret /. {subObj[[1]] :> s1, FMinus[{a_, a_}, {getIndex[s1, idxPos], getIndex[s1, idxPos]}] :> FMinus[{#, #}, {getIndex[s1, idxPos], getIndex[s1, idxPos]}], FMinus[{a_, b_}, {getIndex[s1, idxPos], ib_}] :> FMinus[{#, b}, {getIndex[s1, idxPos], ib}], FMinus[{a_, b_}, {ia_, getIndex[s1, idxPos]}] :> FMinus[{a, #}, {ia, getIndex[s1, idxPos]}]};
-                            ReduceIndices[setup, t]
-                        ]&
-                        ,
-                        allFields
-                    ];
+            terms = Flatten[expandOpenIndex[setup, #, idx, allFields]& /@ terms];
         ];
-        Return[unreplFields[setup, truncationPass[setup, ret]]];
+        Return[unreplFields[setup, truncationPass[setup, FEx @@ terms]]];
     ];
 
 FTruncateOpenIndices[setup_, expr_FEx] :=

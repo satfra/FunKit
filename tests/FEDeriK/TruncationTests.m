@@ -10,6 +10,8 @@ srcSetup = GetFunKitSetupWithSources[];
 
 ySetup = GetFunKitSetupYukawa[];
 
+ymSetup = GetFunKitSetupYangMills[];
+
 (**********************************************************************************
     Source fields NOT in AnyField expansion
 **********************************************************************************)
@@ -341,5 +343,34 @@ AppendTo[
         True
         ,
         TestID -> "FTruncateOpenIndices: mixed Phi/AnyField 2-point expands AnyField"
+    ]
+];
+
+(* Two open indices on the same object (both propagator slots AnyField) must BOTH
+   be expanded, with no spurious coefficients, and the operation must be idempotent
+   and message-free. Regression test for the stale-subObj / getIndex[0,..] bug. *)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{expr, once, twice, content, coeffs},
+            expr = FEx[FTerm[Propagator[{AnyField, AnyField}, {i1, i2}]]];
+            once = FTruncateOpenIndices[ymSetup, expr];
+            (* Re-running must not error (Part::partd regression) and must be stable. *)
+            twice = FTruncateOpenIndices[ymSetup, once];
+            content[r_] := Sort[Cases[r, Propagator[f_List, _] :> Sort[f], Infinity]];
+            coeffs[r_] := Cases[List @@ r, FTerm[c_?NumberQ, ___] :> Abs[c]];
+            (* Both open slots expand: gluon {A,A} plus the two ghost leg assignments. *)
+            FreeQ[once, AnyField, Infinity]
+              && FreeQ[twice, AnyField, Infinity]
+              && content[once] === Sort[{Sort[{A, A}], Sort[{c, cb}], Sort[{c, cb}]}]
+              && content[twice] === content[once]
+              && Max[Append[coeffs[once], 1]] === 1
+        ]
+        ,
+        True
+        ,
+        TestID -> "FTruncateOpenIndices: AnyField in both propagator slots fully expands"
     ]
 ];

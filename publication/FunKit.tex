@@ -618,9 +618,9 @@ The conventions chosen here match exactly the ones of \QMeS. \DoFun adopts a sli
 For later reference, let us here consider an example: we take the ghost part of the 1PI generating function $\Gamma$ of a gauge-fixed Yang-Mills theory, explicitly
 %
 \begin{align}
-	\Gamma[\Phi] &= \int_x \bar{c} \left(-\partial_\mu D_\mu \right) c \,+\,\ldots
+	\Gamma[\Phi] &= \int_x \bar{c}_a \left(-\partial_\mu D^{ab}_\mu \right) c_b \,+\,\ldots
 	\\[1ex]
-	 &= \int_p \bar{c}(-p) p^2 c(p) - \int_{p,q}\bar{c}(p) \left( p_\mu gA^B_\mu(-p-q)t^B\right) c(q)\,,
+	 &= \int_p \bar{c}_a(-p) p^2 c_b(p) + i\int_{p,q}\bar{c}_a(p) \left( p_\mu gf^{abc}A^c_\mu(-p-q)\right) c_b(q)\,,
 \end{align}
 %
 where $a,b$ are adjoint colour indices, $B$ is an index in the fundamental representation of the colour group, and $\int_p = \int \frac{d^dp}{(2\pi)^d}$. 
@@ -635,9 +635,9 @@ Consequently, we immediately infer the ghost two-point function and the ghost-gl
 			\delta(p-q)
 	\,,
 	\notag\\[1ex] 
-	\Gamma_{A^B\bar{c}_a c_b}(r,p,q) &=
-		\frac{\delta}{\delta A^B_\mu(r)}\frac{\delta}{\delta\bar{c}_a(p)}\frac{\delta}{\delta c_b(q)} \Gamma[\Phi] &&=
-	 	p_\mu g\, t^B_{ab} 
+	\Gamma_{A^c\bar{c}_a c_b}(r,p,q) &=
+		\frac{\delta}{\delta A^c_\mu(r)}\frac{\delta}{\delta\bar{c}_a(p)}\frac{\delta}{\delta c_b(q)} \Gamma[\Phi] &&=
+	 	-i p_\mu g\, f^{abc} 
 			\delta(r-p-q)
 	\,.	
 \end{alignat}
@@ -1242,16 +1242,45 @@ In Landau gauge, the longitudinal part of the gluon propagator does not get reno
 Altogether, we can write a set of Feynman rules as
 %
 \begin{mmaCell}{Input}
+feynmanRulesYMGhost=\{
+  \mmaDef{Propagator}[\{A,A\},\{\{p1_,\{v1_,c1_\}\},\{p2_,\{v2_,c2_\}\}\}]:>
+    deltaAdjCol[c1,c2](1/ZA[Sqrt[sp[p2,p2]]]transProj[p2,v1,v2])/sp[p2,p2],
+  \mmaDef{Propagator}[\{c,cb\},\{\{p1_,\{c1_\}\},\{p2_,\{c2_\}\}\}]:>
+    -deltaAdjCol[c1,c2] 1/(Zc[Sqrt[sp[p2,p2]]]sp[p2,p2]),
+  
+  \mmaDef{GammaN}[\{A,cb,c\},\{\{p1_,\{v1_,c1_\}\},\{p2_,\{c2_\}\},\{p3_,\{c3_\}\}\}]:>-I vec[p2,v1]g FCol[c2,c3,c1],
+  
+  \mmaDef{Rdot}[\{A,A\},\{\{p1_,\{v1_,c1_\}\},\{p2_,\{v2_,c2_\}\}\}]:>
+    deltaAdjCol[c1,c2]transProj[p2,v1,v2]RAdot[k^2,p^2],
+  \mmaDef{s}[\{cb,c\},\{\{p1_,\{c1_\}\},\{p2_,\{c2_\}\}\}]:>-deltaAdjCol[c1,c2]Rcdot[k^2,p^2]
+ \};
 \end{mmaCell}
 %
+We have already set $\xi=0$ for Landau gauge, so we don't include the longitudinal tensor structure in the gluon propagator.
 Note that the default \FormTracer aliases for group and momentum tensors are used, if one does not specify them otherwise, e.g. \mathem{\mmaDef{sp}[p,q]} represents a scalar product $p\cdot q$, \mathem{\mmaDef{deltaAdjCol}[c2,c1]} stands in for a $\mathbbold{1}$ in adjoint colour space, etc. For a full list of all names \FormTracer knows, call \mathem{\mmaDef{ShowFormTracerDefinitions}[]}, which prints a full table thereof.
 
-
-With this, we can directly insert the rules into the ghost polarisation diagrams and trace them with the help of \FormTracer:
+For the tracing of the flow, we have to project the tensor structures of the diagram. We can use for this the the projector onto the ghost two-point funciton calculated by \TensorBases. Then, we can also insert the rules into the expression and trace with the help of \FormTracer:
 %
 \begin{mmaCell}{Input}
+\mmaDef{traceExprYMGhost} = \mmaDef{FTerm}[
+  \mmaDef{TBGetProjector}["cbc",1,\{i1,i2\}/.\mmaDef{diagGhostFlow}["1-Loop"]["ExternalIndices"]],
+  \mmaDef{diagGhostFlow}["1-Loop"]["Expression"]
+ ]/.\mmaDef{feynmanRulesYMGhost}//\mmaDef{FormTrace}
+\end{mmaCell}
+\begin{mmaCell}{Output}
+\{\mmaFrac{
+-\mmaSup{g}{2} Nc RAdot[\mmaSup{k}{2},\mmaSup{p}{2}](\mmaSup{sp[l1,p1]}{2}-sp[l1,l1]sp[p1,p1])
+}{
+\mmaSup{sp[l1,l1]}{3}(sp[l1,l1]-2sp[l1,p1]+sp[p1,p1]) \mmaSup{ZA[\mmaSqrt{sp[l1, l1]}]}{2} Zc[\mmaSqrt{sp[l1,l1]-2sp[l1,p1]+sp[p1,p1]}]
+},
+\mmaFrac{
+-\mmaSup{g}{2} Nc Rcdot[\mmaSup{k}{2},\mmaSup{p}{2}](\mmaSup{sp[l1, p1]}{2}-sp[l1,l1]sp[p1,p1])
+}{
+\mmaSup{sp[l1,l1]}\mmaSup{(sp[l1,l1]+2sp[l1,p1]+sp[p1,p1])}{2}ZA[\mmaSqrt{sp[l1,l1]}] \mmaSup{Zc[\mmaSqrt{sp[l1,l1]+2sp[l1,p1]+sp[p1,p1]}]}{2}
+}\}
 \end{mmaCell}
 %
+The result is the flow of the scalar part of $\Gamma_{\bar{c}c} = \frac{\delta}{\delta\bar{c}}\frac{\delta}{\delta c} \Gamma$.
 Here, \mathem{\mmaDef{FormTrace}} delegates to the \FormTracer package, which sends the expression to \FORM, which efficiently performs all momentum and group algebra contractions. The result is either a scalar expression, or a list of scalar expressions for each diagram.
 
 It is important to note that after tracing, momentum products like \mathem{\mmaDef{sp}[p,q]} will be still present in the output, and they need to be explicitly parametrised by the user before further processing.
@@ -1793,7 +1822,7 @@ As \FunKit is embedded in the tools of the fQCD collaboration, it has also becom
 
 %%%%%%%%%%%%%%%%%%%%
 \section*{Acknowledgments}
-We thank Maurice Brezavsek, Andreas Gei\ss{}el, Friederike Ihssen, Keiwan Jamaly, Konrad Kockler, Jan~M. Pawlowski and Jonas Wessely for discussions, finding bugs, proofreading this work, and collaboration on related topics. This work is done within the fQCD collaboration \cite{fQCD} and we thank its members for discussions and collaborations on related projects.
+We thank Maurice Brezavsek, Andreas Gei\ss{}el, Friederike Ihssen, Keiwan Jamaly, Konrad Kockler, Ugo Mire, Jan~M. Pawlowski and Jonas Wessely for discussions, finding bugs, proofreading this work, and collaboration on related topics. This work is done within the fQCD collaboration \cite{fQCD} and we thank its members for discussions and collaborations on related projects.
 FRS acknowledges funding by the GSI Helmholtzzentrum f\"ur Schwerionenforschung and by HGS-HIRe for FAIR. 
 FRS is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Foundation) through the Emmy Noether Programme Project No. 54526179.
 
@@ -2065,15 +2094,15 @@ Flow2FTrunc = \mmaDef{FTruncate}[\mmaDef{setup4F}, Flow2F];
 After routing and tracing, we obtain the flow equation as
 %
 \begin{mmaCell}{Input}
-	Flow2FRouted = \mmaDef{FRoute}[\mmaDef{setup4F}, \mmaDef{Flow2FTrunc}];
-	traceExpr2F = Flow2FRouted["1-Loop"]["Expression"]/.\mmaDef{FMakeDiagrammaticRules}[\mmaDef{setup4F}];
-	proj2F = \mmaDef{TBGetProjector}["psibarpsi", 1, \{i2,i1\}/.Flow2FRouted["1-Loop"]["ExternalIndices"]];
-	Flow2FTraced = \mmaDef{FTerm}[proj2F, traceExpr2F ]//\mmaDef{FormTrace};
-	Flow2FTraced/.\mmaDef{parametrization4F}//\mmaDef{Simplify}
+Flow2FRouted = \mmaDef{FRoute}[\mmaDef{setup4F}, \mmaDef{Flow2FTrunc}];
+traceExpr2F = Flow2FRouted["1-Loop"]["Expression"]/.\mmaDef{FMakeDiagrammaticRules}[\mmaDef{setup4F}];
+proj2F = \mmaDef{TBGetProjector}["psibarpsi", 1, \{i2,i1\}/.Flow2FRouted["1-Loop"]["ExternalIndices"]];
+Flow2FTraced = \mmaDef{FTerm}[proj2F, traceExpr2F ]//\mmaDef{FormTrace};
+Flow2FTraced/.\mmaDef{parametrization4F}//\mmaDef{Simplify}
 \end{mmaCell}
 %
 \begin{mmaCell}{Output}
-	\{\mmaFrac{4 GInv[1,lf1] GInv[2,lf1] (3 lambda[1] - 4(lambda[2] + lambda[3])) Rdot[lf1] sp[lf1,lf1]}{\mmaSup{(\mmaSup{GInv[1,lf1]}{2} - \mmaSup{GInv[2,lf1]}{2} sp[lf1,lf1])}{2}}\}
+\{\mmaFrac{4 GInv[1,lf1] GInv[2,lf1] (3 lambda[1] - 4(lambda[2] + lambda[3])) Rdot[lf1] sp[lf1,lf1]}{\mmaSup{(\mmaSup{GInv[1,lf1]}{2} - \mmaSup{GInv[2,lf1]}{2} sp[lf1,lf1])}{2}}\}
 \end{mmaCell}
 %
 Note here that we had to swap the fermion and anti-fermion in the projector in order to correctly route the Dirac tensor indices. One should be mindful of the additional minus arising from the swapping of fields.
@@ -2238,7 +2267,7 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 	colback=pastelblue!5!white,
 	colframe=pastelblue,
 	fonttitle=\bfseries]
-	\begin{tabular}{p{4.6cm} p{11.3cm}}
+	\begin{tabular}{p{4.6cm} p{10.7cm}}
 		\mathem{\mmaDef{FMakeClassicalAction}[setup]} & 
 		\small Constructs the classical action from the setup's truncation table for the object \mathem{\mmaDef{S}}.
 		\\[3ex]
@@ -2257,6 +2286,31 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 \end{tcolorbox}
 
 
+\begin{tcolorbox}[title=Diagrams and \LaTeX,
+title filled=false,
+colback=pastelblue!5!white,
+colframe=pastelblue,
+fonttitle=\bfseries]
+\begin{tabular}{p{4.2cm} p{11.6cm}}
+	\mathem{\mmaDef{FPrint}[setup, expr]} & 
+	\small Prints functional expressions in formatted mathematical notation using \LaTeX{} rendering with the \texttt{MaTeX} package. Returns the original expression after printing for easy chaining.
+	\\[3ex]
+	\mathem{\mmaDef{FTex}[setup, expr]} & 
+	\small Outputs a string of \LaTeX{} code for the given expression.
+	\\[3ex]
+	\mathem{\mmaDef{FPlot}[setup, expr]} & 
+	\small Prints Feynman Diagrams of the given functional expression.
+	\\[3ex]
+	\mathem{\mmaDef{FAddTexStyles}[rules...]} & 
+	\small Adds custom \LaTeX{} styling rules for specific mathematical objects or fields. Style rules should be given as replacement rules, e.g., \mathem{field -> "\\mathbf{field}"}.
+	\\[3ex]
+	\mathem{\mmaDef{FSetTexStyles}[rules...]} & 
+	\small Same as \mathem{\mmaDef{FAddTexStyles}}, but resets the list of known style rules.
+\end{tabular}
+\end{tcolorbox}
+
+
+
 
 
 \begin{tcolorbox}[title=Notation,
@@ -2264,7 +2318,7 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 	colback=pastelblue!5!white,
 	colframe=pastelblue,
 	fonttitle=\bfseries]
-	\begin{tabular}{p{3cm} p{12.8cm}}
+	\begin{tabular}{p{3cm} p{12.2cm}}
 		\mathem{\mmaDef{FEx}} & 
 		\small Represents a sum of \mathem{\mmaDef{FTerm}} objects and is the main container for functional equations in \FunKit. Supports non-commutative multiplication \mathem{**} and handles some simplifications.
 		\\[3ex]
@@ -2322,7 +2376,7 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 	colback=pastelblue!5!white,
 	colframe=pastelblue,
 	fonttitle=\bfseries]
-	\begin{tabular}{p{4cm} p{11.8cm}}
+	\begin{tabular}{p{4cm} p{11.2cm}}
 		\mathem{\mmaDef{QMeSForm}[setup,expr]} & 
 		\small Converts expressions containing indexed objects (like \mathem{\mmaDef{Propagator}}, \mathem{\mmaDef{GammaN}}) to \QMeS-style notation. Uses the canonical ordering \mathem{"b>af>f"} for field arrangement.
 		\\[3ex]
@@ -2335,36 +2389,12 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 \end{tcolorbox}
 
 
-\begin{tcolorbox}[title=Diagrams and \LaTeX,
-	title filled=false,
-	colback=pastelblue!5!white,
-	colframe=pastelblue,
-	fonttitle=\bfseries]
-	\begin{tabular}{p{4.2cm} p{11.6cm}}
-		\mathem{\mmaDef{FPrint}[setup, expr]} & 
-		\small Prints functional expressions in formatted mathematical notation using \LaTeX{} rendering with the \texttt{MaTeX} package. Returns the original expression after printing for easy chaining.
-		\\[3ex]
-		\mathem{\mmaDef{FTex}[setup, expr]} & 
-		\small Outputs a string of \LaTeX{} code for the given expression.
-		\\[3ex]
-		\mathem{\mmaDef{FPlot}[setup, expr]} & 
-		\small Prints Feynman Diagrams of the given functional expression.
-		\\[3ex]
-		\mathem{\mmaDef{FAddTexStyles}[rules...]} & 
-		\small Adds custom \LaTeX{} styling rules for specific mathematical objects or fields. Style rules should be given as replacement rules, e.g., \mathem{field -> "\\mathbf{field}"}.
-		\\[3ex]
-		\mathem{\mmaDef{FSetTexStyles}[rules...]} & 
-		\small Same as \mathem{\mmaDef{FAddTexStyles}}, but resets the list of known style rules.
-	\end{tabular}
-\end{tcolorbox}
-
-
 \begin{tcolorbox}[title=Derivatives and truncations,
 	title filled=false,
 	colback=pastelblue!5!white,
 	colframe=pastelblue,
 	fonttitle=\bfseries]
-	\begin{tabular}{p{5.7cm} p{10.1cm}}
+	\begin{tabular}{p{5.7cm} p{9.5cm}}
 		\mathem{\mmaDef{FTakeDerivatives}[setup,expr,dList]} &
 		\small Takes multiple functional derivatives of \mathem{expr} with respect to the fields in \mathem{dList}, starting from the right to the left.
 		Returns the result with all derivative operators resolved.\newline
@@ -2413,7 +2443,7 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 	colback=pastelblue!5!white,
 	colframe=pastelblue,
 	fonttitle=\bfseries]
-	\begin{tabular}{p{5.2cm} p{10.6cm}}
+	\begin{tabular}{p{5.2cm} p{10.0cm}}
 		\mathem{\mmaDef{FRoute}[setup, expr]} & 
 		\small Routes indices and momenta in functional expressions, organising terms by loop order. For \mathem{\mmaDef{FTerm}}, returns an Association with keys \mathem{"Expression"} \mathem{"ExternalIndices"}, and \mathem{"LoopMomenta"}.\newline
 		For \mathem{\mmaDef{FEx}}, returns an Association with keys like \mathem{"0-Loop"}, \mathem{"1-Loop"}, etc.
@@ -2430,12 +2460,59 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 \end{tcolorbox}
 
 
+\begin{tcolorbox}[title=Modifying the Notation,
+title filled=false,
+colback=pastelblue!5!white,
+colframe=pastelblue,
+fonttitle=\bfseries]
+\begin{tabular}{p{5.4cm} p{9.8cm}}
+	\mathem{\mmaDef{FAddCorrelationFunction}[obj]} & 
+	\small Adds an object that reacts to reordering and to functional derivatives.
+	\\[3ex]
+	\mathem{\mmaDef{FAddOrderedObject}[obj]} & 
+	\small Adds an object that reacts to reordering but not to functional derivatives.
+	\\[3ex]
+	\mathem{\mmaDef{FAddIndexedObject}[obj]} & 
+	\small Adds an object that does not react to reordering or to functional derivatives.
+	\\[3ex]
+	\mathem{\mmaDef{FAddObject}[obj]} & 
+	\small Adds an object that does not react to reordering or to functional derivatives and ignores whether indices are already contracted.
+	\\[3ex]
+	\mathem{\mmaDef{FShowCorrelationFunctions}[]} & 
+	\small Shows all objects that react to reordering and functional derivatives.
+	\\[3ex]
+	\mathem{\mmaDef{FShowOrderedObjects}[]} & 
+	\small Shows all objects that react to reordering.
+	\\[3ex]
+	\mathem{\mmaDef{FShowIndexedObjects}[]} & 
+	\small Shows all objects that require consistently closed indices.
+	\\[3ex]
+	\mathem{\mmaDef{FShowObjects}[]} & 
+	\small Shows all known objects.
+	\\[3ex]
+	\mathem{\mmaDef{FSetUnorderedIndices}[obj,ind]} &
+	\small Specifies which indices of an indexed object should never be reordered during field ordering operations. \mathem{ind} can be either a single index position, or a list thereof. Counting starts from the right at 1.
+	\\[3ex]
+	\mathem{\mmaDef{FSetSymmetricObject}[obj,fields]} & 
+	\small Sets an object with fields \mathem{fields={f1,...}} to be symmetric in all its indices.
+	\\[3ex]
+	\mathem{\mmaDef{FAddFDRule}[object, wrt, result]} & 
+	\small Adds a custom functional derivative rule to be used with priority when taking derivatives. Patterns should be used in general.\newline
+	The rule applies to \mathem{object} (e.g., \mathem{\mmaDef{GammaN}[{f__},{i__}]}) when taking a derivative with respect to \mathem{wrt} (e.g., \mathem{ob[{f1_,f2_},{i1_,i2_}]}), which yields the \mathem{result} (e.g., \mathem{MyResult[{f1,f2,f},{i1,i2,i}]}).
+	\\[3ex]
+	\mathem{\mmaDef{FClearFDRules}[]} & 
+	\small Clears all custom functional derivative rules added with \mathem{\mmaDef{FAddFDRule}}.
+\end{tabular}
+\end{tcolorbox}
+
+
+
 \begin{tcolorbox}[title=Diagrammatic rules and Tracing with FORM,
 	title filled=false,
 	colback=pastelblue!5!white,
 	colframe=pastelblue,
 	fonttitle=\bfseries]
-	\begin{tabular}{p{5.7cm} p{10.0cm}}
+	\begin{tabular}{p{5.7cm} p{9.6cm}}
 		\mathem{\mmaDef{FMakeDiagrammaticRules}[setup]} & 
 		\small Generates a list of replacement rules that convert functional expressions into an explicit form that can be traced. The bases must be known to the \TensorBases package beforehand.
 		\\[3ex]
@@ -2550,51 +2627,6 @@ Besides the explanations in this document, \FunKit gives detailed documentation 
 	\end{tabular}
 \end{tcolorbox}
 
-
-\begin{tcolorbox}[title=Modifying the Notation,
-	title filled=false,
-	colback=pastelblue!5!white,
-	colframe=pastelblue,
-	fonttitle=\bfseries]
-	\begin{tabular}{p{5.4cm} p{10.4cm}}
-		\mathem{\mmaDef{FAddCorrelationFunction}[obj]} & 
-		\small Adds an object that reacts to reordering and to functional derivatives.
-		\\[3ex]
-		\mathem{\mmaDef{FAddOrderedObject}[obj]} & 
-		\small Adds an object that reacts to reordering but not to functional derivatives.
-		\\[3ex]
-		\mathem{\mmaDef{FAddIndexedObject}[obj]} & 
-		\small Adds an object that does not react to reordering or to functional derivatives.
-		\\[3ex]
-		\mathem{\mmaDef{FAddObject}[obj]} & 
-		\small Adds an object that does not react to reordering or to functional derivatives and ignores whether indices are already contracted.
-		\\[3ex]
-		\mathem{\mmaDef{FShowCorrelationFunctions}[]} & 
-		\small Shows all objects that react to reordering and functional derivatives.
-		\\[3ex]
-		\mathem{\mmaDef{FShowOrderedObjects}[]} & 
-		\small Shows all objects that react to reordering.
-		\\[3ex]
-		\mathem{\mmaDef{FShowIndexedObjects}[]} & 
-		\small Shows all objects that require consistently closed indices.
-		\\[3ex]
-		\mathem{\mmaDef{FShowObjects}[]} & 
-		\small Shows all known objects.
-		\\[3ex]
-		\mathem{\mmaDef{FSetUnorderedIndices}[obj,ind]} &
-		\small Specifies which indices of an indexed object should never be reordered during field ordering operations. \mathem{ind} can be either a single index position, or a list thereof. Counting starts from the right at 1.
-		\\[3ex]
-		\mathem{\mmaDef{FSetSymmetricObject}[obj,fields]} & 
-		\small Sets an object with fields \mathem{fields={f1,...}} to be symmetric in all its indices.
-		\\[3ex]
-		\mathem{\mmaDef{FAddFDRule}[object, wrt, result]} & 
-		\small Adds a custom functional derivative rule to be used with priority when taking derivatives. Patterns should be used in general.\newline
-		The rule applies to \mathem{object} (e.g., \mathem{\mmaDef{GammaN}[{f__},{i__}]}) when taking a derivative with respect to \mathem{wrt} (e.g., \mathem{ob[{f1_,f2_},{i1_,i2_}]}), which yields the \mathem{result} (e.g., \mathem{MyResult[{f1,f2,f},{i1,i2,i}]}).
-		\\[3ex]
-		\mathem{\mmaDef{FClearFDRules}[]} & 
-		\small Clears all custom functional derivative rules added with \mathem{\mmaDef{FAddFDRule}}.
-	\end{tabular}
-\end{tcolorbox}
 
 \begin{tcolorbox}[title=Global Options,
 	title filled=false,
