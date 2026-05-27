@@ -10,6 +10,7 @@ publication/*.log
 publication/FunKitNotes.bib
 
 TBCache/
+TraceCache/
 
 .DS_Store
 

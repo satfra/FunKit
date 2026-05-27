@@ -701,7 +701,7 @@ SymmetryFactor
 \({\gamma}\)
 \end{mmaCell}
 %
-Lowered superindices are, in both notations, indicated by a minus sign, upper indices carry no sign, which is a notation adapted from \xAct \cite{xact2025}. As an example, the correlation function $\Gamma_{a\,b\,A^c}^{\phantom{a\,b\,A^c}\bar{c}^d}$, with the fields of $a$ and $b$ undetermined, may be expressed~as
+Lowered superindices are, in both notations, indicated by a minus sign; upper indices carry no sign. This notation is adapted from \xAct \cite{xact2025}. As an example, the correlation function $\Gamma_{a\,b\,A^c}^{\phantom{a\,b\,A^c}\bar{c}^d}$, with the fields of $a$ and $b$ undetermined, may be expressed~as
 %
 \begin{mmaCell}{Input}
 \mmaDef{GammaN}[\{\mmaDef{AnyField},\mmaDef{AnyField},A,cb\},\{-a,-b,-c,d\}]
@@ -788,7 +788,7 @@ fields = <|
  |>;
 \end{mmaCell}
 %
-The gauge field \mathem{A} is a commuting field and has no partner field. In contrast, there are ghosts and anti-ghosts \mathem{cb}, \mathem{c}, hence they are specified as a pair in a nested list.
+The gauge field \mathem{A} is a commuting field and has no partner field. In contrast, there are anti-ghosts and ghosts \mathem{cb}, \mathem{c}, hence they are specified as a pair in a nested list.
 Fields are always specified together with their full index structure. 
 In the above case of Yang--Mills theory, all fields have both momentum and additional group structure.  The momentum is then the first argument of the field and a list of all group indices gives the (optional) second argument.
 A momentum variable is always obligatory, i.e., a purely scalar field space would be specified as
@@ -1193,7 +1193,7 @@ As an example, one could define the following styling options:
  |>;
 \end{mmaCell}
 %
-This requires of course that the objects such as \mathem{MyCounterterm} have been registered with \FunKit before, see \Cref{sec:FEDeriK_teaching}. Entries in \mathem{"VertexStyles"} and \mathem{"VertexSizes"} take precedence over the built-in defaults, so they can also be used to re-skin the canonical heads (\mathem{\mmaDef{GammaN}}, \mathem{\mmaDef{S}}, \mathem{\mmaDef{Field}}, \mathem{\mmaDef{Rdot}}, \mathem{\mmaDef{R}}, \mathem{\mmaDef{Phidot}}).
+This requires of course that objects such as \mathem{MyCounterterm} have been registered with \FunKit before, see \Cref{sec:FEDeriK_teaching}. Entries in \mathem{"VertexStyles"} and \mathem{"VertexSizes"} take precedence over the built-in defaults, so they can also be used to re-skin the canonical heads (\mathem{\mmaDef{GammaN}}, \mathem{\mmaDef{S}}, \mathem{\mmaDef{Field}}, \mathem{\mmaDef{Rdot}}, \mathem{\mmaDef{R}}, \mathem{\mmaDef{Phidot}}).
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1661,7 +1661,7 @@ All results are exported to a HDF5 file \texttt{output.hdf5}, which contains the
 
 For the derivation, we project the full vertices of all classical tensor structures in Landau gauge onto the symmetric point, as explained in \Cref{sec:TRACY}. 
 The initial condition has been adjusted such that the STIs are fulfilled in the ultraviolet, and the scaling solution is obtained in the infrared. \DiFfRG then integrates the flow equations over six orders of magnitude.
-The details of the truncation, and a more in-depth explanation of its features can be found in \cite{Cyrol:2016tym}. With this computation we essentially reproduce \cite{Cyrol:2016tym}.
+The details of the truncation and a more in-depth explanation of its features can be found in \cite{Cyrol:2016tym}. With this computation we essentially reproduce \cite{Cyrol:2016tym}.
 
 We show the numerical results of this calculation in \Cref{fig:YM}. There, the gluon propagator is shown in comparison to the lattice data from \cite{Sternbeck:2006cg}, and we also show the ghost dressing which exhibits scaling down to $10^{-3}\,\textrm{GeV}$. 
 Finally, we show the avatars of the strong coupling, which agree down to about $2\,\textrm{GeV}$, where they start to differ substantially in the infrared.
@@ -1698,7 +1698,7 @@ Furthermore, for interoperability \FunKit includes explicit format conversion la
 
 In \Cref{fig:benchmarks}, we show timing benchmarks for the derivation and truncation of correlation functions in four theories of increasing complexity: 
 a four-fermion (NJL-type) model, a scalar $O(N)$ model, a Yukawa theory, and a Yang--Mills theory. In each case, the total wall time for taking the functional derivatives and truncating the resulting expression is measured. These benchmarks were performed on a 16-core AMD Ryzen 9 7945HX machine. Parallelisation was handled internally by each library.
-The benchmark scripts can be found in the \FunKit repository in the \texttt{benchmarks/} folder, together with a visualisation Julia script.
+The benchmark scripts can be found in the \FunKit repository in the \texttt{benchmarks/} folder, together with a visualisation Python script.
 
 For small expressions, such as the scalar two-point function, all three packages perform well below a tenth of a second; however, \FunKit even proves to be an order of magnitude faster.
 As the number of fields and the size of the truncation grow, however, \FunKit consistently outperforms \QMeS, while showing parity with \DoFun.
@@ -1855,7 +1855,7 @@ From the definition of the metric \labelcref{eq:metric}, we can directly infer t
 \begin{align}
 	\gamma^{a}_{\phantom{a}c} &= \gamma^{ab}\gamma_{bc} = (-1)^{ac}\delta^a_c
 	\,,\notag\\[1ex]
-	\gamma_{a}^{\phantom{a}c} &= \gamma^{bc}\gamma_{ba} = \delta^a_c
+	\gamma_{a}^{\phantom{a}c} &= \gamma^{bc}\gamma_{ba} = \delta^c_a
 	\,,
 \end{align}
 %
