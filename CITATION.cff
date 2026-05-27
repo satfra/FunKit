@@ -1,0 +1,27 @@
+cff-version: 1.2.0
+message: "If you use FunKit in your research, please cite both the software and the accompanying paper."
+title: FunKit
+version: 1.0.0
+url: "https://github.com/satfra/FunKit"
+repository-code: "https://github.com/satfra/FunKit"
+license: GPL-3.0-or-later
+type: software
+authors:
+  - family-names: Sattler
+    given-names: Franz R.
+    orcid: "https://orcid.org/0000-0003-1744-9456"
+    affiliation: "Fakultät für Physik, Universität Bielefeld"
+    email: fsattler@physik.uni-bielefeld.de
+preferred-citation:
+  type: article
+  title: "FunKit: A toolkit for functional approaches"
+  year: 2026
+  authors:
+    - family-names: Sattler
+      given-names: Franz R.
+      orcid: "https://orcid.org/0000-0003-1744-9456"
+      affiliation: "Fakultät für Physik, Universität Bielefeld"
+  identifiers:
+    - type: other
+      value: "arXiv:XXXX.XXXXX"
+      description: "arXiv preprint identifier (replace once assigned)"
