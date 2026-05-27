@@ -19,15 +19,19 @@ jobs:
 
       - name: Run tests
         run: |
-          cd $GITHUB_WORKSPACE/build
+          cd "$GITHUB_WORKSPACE/build"
+          # tee so output streams to the live Actions log AND is captured for the
+          # step summary. pipefail makes $? reflect make's exit, not tee's.
+          # (Don't redirect to build/test.log — CMake's test target already tees there.)
+          set -o pipefail
           set +e
-          make test > test.log 2>&1
+          make test 2>&1 | tee make-test.log
           res=$?
           set -e
           {
             echo "## Test output"
             echo '```'
-            cat test.log
+            cat make-test.log
             echo '```'
           } >> "$GITHUB_STEP_SUMMARY"
           # if tests failed, fail the step
