@@ -293,7 +293,7 @@ For a general guide to the derivation of functional equations, also using the af
 With \FunKit, we aim to provide a fast, convenient and comprehensive solution for the derivation of arbitrary functional equations.
 We provide a complete pipeline to allow for the specification of the theory, the taking of functional derivatives, diagram simplification, the specification of interaction bases, tracing of tensor structures, and the export to C++, Julia or Fortran code for numerical evaluation.
 
-To trace tensor structures, \FunKit builds on \texttt{FormTracer} and \texttt{TensorBases}, while functional derivatives and diagram comparisons are implemented in a reliable manner by using a super-index notation, making it possible to handle any given (user-specified) master equation.
+To trace tensor structures, \FunKit builds on \texttt{FormTracer} and \texttt{TensorBases}, while functional derivatives and diagram comparisons are implemented in a reliable manner by using a superindex notation, making it possible to handle any given (user-specified) master equation.
 
 \FunKit also aims to be fast by automatically parallelising tasks during derivations, using a mixture of optimisation algorithms of the \FORM package and Mathematica simplifications to process the output from the tracing of tensor structures, and providing a sophisticated optimisation algorithm for C++, Julia and Fortran code output.
 These latter two functionalities, i.e., the helpers for efficient tensor tracing and the generation of highly optimised C++, Julia or Fortran code, can be used independently of the analytic tools. 
@@ -459,7 +459,7 @@ If the package is already installed, import \FunKit with
 \FunKit's source code and examples are available in a GitHub repository \cite{FunKitRepo}.
 The \FunKit package has no requirements except for either a Mathematica version $\geq 11.0$ or a corresponding free WolframEngine installation.
 While Linux and macOS are fully supported, \FunKit on Windows has only partial feature support, as \FORM does not support execution on Windows systems. Tracing group structures and creating diagrammatic rules is thus unavailable by default on Windows. If the user is able to provide a working \FormTracer installation, they can set \mathem{\mmaDef{$UseFORMOnWindows}=True} before loading the package to enable all functionality.
-We recommend to use \FunKit via WSL (Windows Subsystem for Linux), which always allows one to utilise the full feature~set.
+We recommend using \FunKit via WSL (Windows Subsystem for Linux), which always allows one to utilise the full feature~set.
 
 A Notebook containing all code written below can be found at \texttt{examples/FunKitPaper.nb} in the repository \cite{FunKitRepo}.
 Besides the guided explanations in this work, documentation on all functions provided by \FunKit can be accessed through their usage strings, i.e.,
@@ -826,7 +826,7 @@ fieldsYMmSTI = <|
 \end{mmaCell}
 %
 In the field space definition, Grassmann sources do not need to be paired with anti-fields.
-We provide the full calculation of the modified STI for the gluon-two-point function as an example in an fRG situation within the notebook \texttt{examples/mSTI-Yang-Mills.nb}.
+We provide the full calculation of the modified STI for the gluon two-point function as an example in an fRG situation within the notebook \texttt{examples/mSTI-Yang-Mills.nb}.
 
 
 %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
@@ -1017,7 +1017,7 @@ As an example, we consider here the DSE for the gluon two-point function. In gen
 \end{align}
 %
 and it can be readily obtained in \FunKit by using \mathem{\mmaDef{FMakeDSE}[...]}, providing a setup and a field that is inserted for the superindex $c$.
-Note that \mathem{\mmaDef{FMakeDSE}} can be readily constructed also by the user: First, $\delta S / \delta \phi^c$ can be directly created from a given classical action, e.g. using \mathem{\mmaDef{FMakeClassicalAction}}. Next, all fields can be replaced with the rule \mathem{f[a_]->\mmaDef{FEx}[\mmaDef{FTerm}[f[a]],\mmaDef{FTerm}[\mmaDef{Propagator}[{f,\mmaDef{AnyField}},{a,b}],\mmaDef{FDOp}[\mmaDef{AnyField}[b]]]]}. Finally, one can resolve all derivative operators with \mathem{\mmaDef{FResolveDerivatives}}. This is precisely what the convenience function \mathem{\mmaDef{FMakeDSE}} internally does.
+Note that \mathem{\mmaDef{FMakeDSE}} can also be readily constructed by the user: First, $\delta S / \delta \phi^c$ can be directly created from a given classical action, e.g. using \mathem{\mmaDef{FMakeClassicalAction}}. Next, all fields can be replaced with the rule \mathem{f[a_]->\mmaDef{FEx}[\mmaDef{FTerm}[f[a]],\mmaDef{FTerm}[\mmaDef{Propagator}[{f,\mmaDef{AnyField}},{a,b}],\mmaDef{FDOp}[\mmaDef{AnyField}[b]]]]}. Finally, one can resolve all derivative operators with \mathem{\mmaDef{FResolveDerivatives}}. This is precisely what the convenience function \mathem{\mmaDef{FMakeDSE}} internally does.
 
 Now, to obtain an equation for the gluon two-point function, we choose $c = A^a_{\mu}$ and take a further functional derivative with respect to $A$ (note that we don't provide a setup, as a global one has been specified before): 
 
@@ -1101,8 +1101,9 @@ This is explicitly supported to allow for very general applications, and we expl
 Use the \mathem{\mmaDef{FAdd...}} family of helpers to register new symbols so they participate correctly in ordering, truncation and derivative algorithms:
 %
 \begin{mmaCell}{Input}
-\mmaDef{FAddObject}[MyTag];               (* general non-indexed object, can have indices and act 
-                                    as a "bystander", like Sym and FMinus *)
+\mmaDef{FAddObject}[MyTag];               (* general object that may carry indices but does not
+                                    react to reordering or contraction, acting as a "bystander",
+                                    like Sym and FMinus *)
 \mmaDef{FAddIndexedObject}[MyIndexed];    (* object that carries field/index lists, must be 
                                     correctly contracted *)
 \mmaDef{FAddOrderedObject}[MyOrdered];    (* participates in canonical ordering *)
@@ -1235,7 +1236,7 @@ To proceed, we require the explicit group structure of the ghost and gluon propa
 	\delta(p+q)\,.
 \end{align}
 %
-Here, $\Pi^\perp_{\mu\nu}(p) = \delta_{\mu\nu} - \frac{p_\mu p_\nu}{p^2}$ and $\Pi^\parallel_{\mu\nu}(p) = \frac{p_\mu p_\nu}{p^2}$ are the transversal and longitudinal projectors, respectively.
+Here, $\Pi^\perp_{\mu\nu}(p) = \delta_{\mu\nu} - \frac{p_\mu p_\nu}{p^2}$ and $\Pi^\parallel_{\mu\nu}(p) = \frac{p_\mu p_\nu}{p^2}$ are the transverse and longitudinal projectors, respectively.
 In Landau gauge, the longitudinal part of the gluon propagator does not get renormalised and thus we have not added a dressing function to that part.
 
 Altogether, we can write a set of Feynman rules as
@@ -1699,7 +1700,7 @@ In \Cref{fig:benchmarks}, we show timing benchmarks for the derivation and trunc
 a four-fermion (NJL-type) model, a scalar $O(N)$ model, a Yukawa theory, and a Yang--Mills theory. In each case, the total wall time for taking the functional derivatives and truncating the resulting expression is measured. These benchmarks were performed on a 16-core AMD Ryzen 9 7945HX machine. Parallelisation was handled internally by each library.
 The benchmark scripts can be found in the \FunKit repository in the \texttt{benchmarks/} folder, together with a visualisation Julia script.
 
-For small expressions, such as the scalar two-point function, all three packages perform well below a tenth of a second, however, \FunKit even proves to be an order of magnitude faster.
+For small expressions, such as the scalar two-point function, all three packages perform well below a tenth of a second; however, \FunKit even proves to be an order of magnitude faster.
 As the number of fields and the size of the truncation grow, however, \FunKit consistently outperforms \QMeS, while showing parity with \DoFun.
 With even larger expressions, \FunKit is also able to outperform \DoFun: this is particularly pronounced for expressions involving many diagrams, such as the six-fermion flow equation in the four-fermion model, or the six-scalar flow in the scalar theory, where \FunKit can be faster by up to an order of magnitude.
 
@@ -1801,7 +1802,7 @@ The correctness of the \FunKit package is verified by an extensive test suite, c
 In comparison to \DoFun or \QMeS, \FunKit allows both for broader applications, not being restricted to particular master equations. As an example for such an application, we have also provided an example notebook deriving flows with generalised flow equations, see \Cref{tab:examples}.
 It also has a broader scope, as it culminates in either fully traced analytic expressions or code ready for use in a numerical framework. To our knowledge, no other package provides the entire pipeline depicted in \Cref{fig:workflow}.
 
-We have also described the algorithms used in \FunKit, which are optimised at every stage: parallelisation is dynamically switched on and off at every stage of the workflow to maximise performance, and the generated code is highly optimised for both CPU and GPU applications.
+We have also described the algorithms used in \FunKit, which are optimised at every stage: parallelisation is dynamically switched on and off throughout the workflow to maximise performance, and the generated code is highly optimised for both CPU and GPU applications.
 
 We demonstrated the capabilities of \FunKit using the example of Yang--Mills theory, scalar field theory, a Yukawa theory and an NJL model. As for master equations, we show DSEs, the Wetterich equation, the modified STIs and dynamically reparametrised flow equations. All these examples can be found in the \FunKit repository, see also \Cref{tab:examples}.
 
@@ -1837,6 +1838,7 @@ FRS is supported by the Deutsche Forschungsgemeinschaft (DFG, German Research Fo
 \makeatother
 
 \renewcommand{\thefigure}{\Alph{section}.\arabic{figure}}
+\setcounter{figure}{0}
 
 \begingroup
 \allowdisplaybreaks
