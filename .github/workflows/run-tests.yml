@@ -2,42 +2,36 @@ name: run-tests
 on: push
 jobs:
   build:
-    runs-on: ubuntu-latest
-
-    container:
-      image: wolframresearch/wolframengine:latest
-      options: --user root
-    env:
-      WOLFRAM_SYSTEM_ID: Linux-x86-64
+    # Runs on the self-hosted runner on franzArch, which has a fully licensed
+    # native Wolfram install plus all build tools (cmake/make/git/form/unzip).
+    runs-on: [self-hosted, wolfram]
 
     steps:
       - name: checkout repo
         uses: actions/checkout@v4
 
       - name: Setup build and install
-        env:
-          WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAM_LICENSE_ENTITLEMENT_ID }}
         run: |
-          apt-get update
-          apt-get install -y cmake make git form unzip
           mkdir -p $GITHUB_WORKSPACE/build
           cd $GITHUB_WORKSPACE/build
           cmake -DCMAKE_BUILD_TYPE=Release $GITHUB_WORKSPACE
           make install
 
       - name: Run tests
-        env:
-          WOLFRAMSCRIPT_ENTITLEMENTID: ${{ secrets.WOLFRAM_LICENSE_ENTITLEMENT_ID }}
         run: |
           cd $GITHUB_WORKSPACE/build
-          res=$(make test > test.log)
-          echo "Summary: \n$(cat test.log)"
-          echo "## Test output" >> $GITHUB_STEP_SUMMARY
-          echo "\`\`\`bash\\n" >> $GITHUB_STEP_SUMMARY
-          cat test.log >> $GITHUB_STEP_SUMMARY
-          echo "\\n\`\`\`" >> $GITHUB_STEP_SUMMARY
+          set +e
+          make test > test.log 2>&1
+          res=$?
+          set -e
+          {
+            echo "## Test output"
+            echo '```'
+            cat test.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
           # if tests failed, fail the step
           if [ "$res" -ne 0 ]; then
-            echo " # !Tests failed" >> $GITHUB_STEP_SUMMARY
+            echo "# ❌ Tests failed" >> "$GITHUB_STEP_SUMMARY"
             exit 1
           fi
