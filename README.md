@@ -13,12 +13,12 @@ If you use the package for your research, please cite the corresponding publicat
 ```
 @article{Sattler:2026FunKit,
     author        = "Sattler, Franz R.",
-    title         = "{FunKit: A toolkit for functional approaches}",
+    title         = "{FunKit: A computer algebra toolkit for functional approaches}",
     year          = "2026",
-    eprint        = "XXXX.XXXXX",
+    month         = "5",
+    eprint        = "2605.28935",
     archivePrefix = "arXiv",
-    primaryClass  = "hep-th",
-    url           = "https://github.com/satfra/FunKit",
+    primaryClass  = "hep-ph"
 }
 ```
 

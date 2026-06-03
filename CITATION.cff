@@ -14,7 +14,7 @@ authors:
     email: fsattler@physik.uni-bielefeld.de
 preferred-citation:
   type: article
-  title: "FunKit: A toolkit for functional approaches"
+  title: "FunKit: A computer algebra toolkit for functional approaches"
   year: 2026
   authors:
     - family-names: Sattler
@@ -23,5 +23,5 @@ preferred-citation:
       affiliation: "Fakultät für Physik, Universität Bielefeld"
   identifiers:
     - type: other
-      value: "arXiv:XXXX.XXXXX"
-      description: "arXiv preprint identifier (replace once assigned)"
+      value: "arXiv:2605.28935"
+      description: "arXiv preprint identifier"
