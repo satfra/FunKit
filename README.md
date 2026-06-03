@@ -1,6 +1,7 @@
 # FunKit
 
 [![Tests](https://img.shields.io/endpoint?style=for-the-badge&url=https://gist.githubusercontent.com/satfra/5274b1492e4a72ebb1aa57a7d60b0267/raw/funkit-tests.json)](https://github.com/satfra/FunKit/actions/workflows/run-tests.yml)
+[![arXiv](https://img.shields.io/badge/arXiv-2605.28935-b31b1b.svg?style=for-the-badge)](https://arxiv.org/abs/2605.28935)
 
 `FunKit` is a Mathematica package for all tasks related to the derivation of functional equations in Quantum Field Theory (QFT). 
 
