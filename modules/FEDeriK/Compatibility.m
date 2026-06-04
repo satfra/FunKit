@@ -21,7 +21,9 @@
 
 FunKitForm::parseError = "Cannot parse field names from QMeS symbol name `1`.";
 
-FunKitForm::indexMismatch = "Index count mismatch for QMeS symbol `1`: got `2` indices, expected `3` (superindex) or `4` (routed).";
+FunKitForm::indexMismatch = "Cannot segment indices of QMeS named symbol `1`: `2` flattened indices grouped into `3` legs, but `4` field(s) were parsed from the symbol name.";
+
+FunKitForm::mixedSuperindex = "QMeS named symbol `1` mixes a bare superindex leg with legs carrying explicit group indices: an external leg lacks the group indices its field declares. External legs should be given full index structure in the QMeS derivation; reconstructing the bare leg(s) as superindices.";
 
 (**********************************************************************************
     Detection helpers: superindex vs routed
@@ -308,7 +310,7 @@ parseFieldNames[setup_, str_String] :=
     ];
 
 reverseQMeSNaming[setup_, sym_Symbol[indices_List]] :=
-    Module[{name, prefix, head, fieldStr, fields, nFields, slotsPerField, result, pos},
+    Module[{name, prefix, head, fieldStr, fields, nFields, baseName, idxBaseNames, isGroupIndex, segments, result},
         name = SymbolName[sym];
         (* Identify prefix and head *)
         {prefix, head} =
@@ -328,21 +330,50 @@ reverseQMeSNaming[setup_, sym_Symbol[indices_List]] :=
         fieldStr = StringDrop[name, StringLength[prefix]];
         fields = parseFieldNames[setup, fieldStr];
         nFields = Length[fields];
-        slotsPerField = Map[Length[FieldSetupIndices[setup, #]]&, fields];
-        pos = 1;
-        result =
-            Table[
-                Module[{nSlots = slotsPerField[[i]], chunk},
-                    chunk = indices[[pos ;; pos + nSlots - 1]];
-                    pos += nSlots;
-                    If[nSlots === 1,
-                        {chunk[[1]]}
-                        ,
-                        {chunk[[1]], chunk[[2 ;; ]]}
-                    ]
-                ]
+(* QMeS flattens all the per-leg indices {momentum, {groupIndices}...} 
+   into a single flat list. Sadly, it allows for external indices to be superindices,
+   which leads to a different number of flat arguments for these. So, we re-segment: 
+   a group index is an atomic symbol whose base name (before any "$") is one of the 
+   setup's declared internal index names; every other element starts a new leg. 
+   The base name strips any "$" suffix so that the declared template indices (which may themselves be
+   localised symbols, e.g. v$17284) and QMeS's Unique-generated dummies of
+   those same indices (e.g. v$17283$17697) compare equal. *)
+        baseName[s_] := First[StringSplit[SymbolName[s], "$"]];
+        idxBaseNames = DeleteDuplicates[Map[baseName, Flatten[Map[Rest[FieldSetupIndices[setup, #]]&, GetAllFields[setup]]]]];
+        isGroupIndex[x_] := MatchQ[x, _Symbol] && MemberQ[idxBaseNames, baseName[x]];
+        segments = {};
+        Do[
+            If[isGroupIndex[el] && Length[segments] > 0,
+                segments[[-1]] = Append[segments[[-1]], el]
                 ,
-                {i, 1, nFields}
+                AppendTo[segments, {el}]
+            ]
+            ,
+            {el, indices}
+        ];
+        If[Length[segments] =!= nFields,
+            Message[FunKitForm::indexMismatch, sym, Length[indices], Length[segments], nFields];
+            Abort[]
+        ];
+(* A clean named symbol is either pure superindex (every leg a single
+   symbol) or fully routed (every indexed leg carries its declared group
+   indices). QMeS may emit a MIX -- e.g. an external leg left as a bare
+   superindex alongside internal legs with explicit group indices. Flag
+   that, per the convention that external legs should be fully specified. *)
+        With[{expectedGroup = Map[Length[Flatten[Rest[FieldSetupIndices[setup, #]]]]&, fields], actualGroup = Map[Length[#] - 1&, segments]},
+            If[AnyTrue[actualGroup, # > 0&] && Or @@ MapThread[Less, {actualGroup, expectedGroup}],
+                Message[FunKitForm::mixedSuperindex, sym]
+            ]
+        ];
+        result =
+            Map[
+                If[Length[#] === 1,
+                    {#[[1]]}
+                    ,
+                    {#[[1]], #[[2 ;; ]]}
+                ]&
+                ,
+                segments
             ];
         makeObj[head, fields, result]
     ];
@@ -421,9 +452,10 @@ DoFunAlgebraicDiagramQ[___] :=
    (ii) the canonical reordering with Signature-based sign tracking in
    sortCanonical (DoDSERGE.m:1962, 1990). The n=2 kinetic term is exempt
    because both source-level steps gate on Length>2. *)
+
 grassmannParity[setup_, fields_] :=
-    Module[{nG = Count[fields, _?(IsGrassmann[setup, #]&)]},
-        (-1)^Quotient[nG (nG - 1), 2]
+    Module[{nG = Count[fields, _ ? (IsGrassmann[setup, #]&)]},
+        (-1) ^ Quotient[nG (nG - 1), 2]
     ];
 
 FunKitForm[setup_, diag_] /; DoFunSuperindexDiagramQ[diag] :=
@@ -446,7 +478,8 @@ FunKitForm[setup_, diag_] /; DoFunSuperindexDiagramQ[diag] :=
                 DoFun`DoDSERGE`S[f__] :>
                     With[{fields = {f}[[All, 1]], indices = {f}[[All, 2]]},
                         If[Length[fields] >= 3,
-                            grassmannParity[setup, fields] * makeObj[S, fields, -indices],
+                            grassmannParity[setup, fields] * makeObj[S, fields, -indices]
+                            ,
                             makeObj[S, fields, -indices]
                         ]
                     ]
@@ -516,12 +549,18 @@ doFunObject[obj_S] :=
 
 (* Per-vertex sign factor that mirrors the FunKitForm[] correction, so that
    DoFun -> FunKit -> DoFun roundtrips preserve the original expression. *)
+
 doFunObjectSign[setup_, obj_] :=
     Module[{fields = getFields[obj], head = Head[obj]},
         Which[
-            head === S && Length[fields] >= 3, grassmannParity[setup, fields],
-            head === GammaN, grassmannParity[setup, fields],
-            True, 1
+            head === S && Length[fields] >= 3,
+                grassmannParity[setup, fields]
+            ,
+            head === GammaN,
+                grassmannParity[setup, fields]
+            ,
+            True,
+                1
         ]
     ];
 
