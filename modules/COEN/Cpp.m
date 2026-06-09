@@ -53,11 +53,37 @@ FUseCppPowr[False] :=
 
 $CppPowr = True;
 
+(* Formatter selection: default to the fast in-process pretty-printer; opt into
+   clang-format for exact LLVM-style output (see formatCppInProcess / formatViaClangFormat). *)
+
+$FUseClangFormat = False;
+
+FSetUseClangFormat[b_?BooleanQ] :=
+    Set[$FUseClangFormat, b];
+
+FSetUseClangFormat[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetUseClangFormat];
+        Abort[]
+    );
+
 $CppPrecision = 20;
 
 Options[CppForm] = {"Format" -> False};
 
-CppForm[expr_, OptionsPattern[]] :=
+Options[cppFormCore] = {"Format" -> False};
+
+(* Thin codegen-profiling wrapper (see Tools.m: cgTimed, zero overhead when disabled).
+   The work lives in cppFormCore so its internal Return[]s resolve at that function's
+   call boundary, leaving the timing Module in cgTimed intact. *)
+
+CppForm[expr_, opts : OptionsPattern[]] :=
+    (
+        If[TrueQ[$ProfileCodegenOn], $ProfileCgCppFormCount++];
+        cgTimed[$ProfileCgCppForm, cppFormCore[expr, opts]]
+    );
+
+cppFormCore[expr_, OptionsPattern[]] :=
     Internal`InheritedBlock[
         {processedExpr, nest, factorCode, $MinPrecision = $CppPrecision, $MaxPrecision = $CppPrecision, CExpression}
         ,
@@ -177,10 +203,15 @@ CppForm[expr_, OptionsPattern[]] :=
             CExpression /: GenerateCode[CExpression[Cos[a_]]] := "__cosf(" <> nest[a] <> ")";
             CExpression /: GenerateCode[CExpression[Tan[a_]]] := "__tanf(" <> nest[a] <> ")";
         ];
+        (* GenerateCode applies the CExpression rules above directly. ToCCodeString does
+           the same but carries ~26 ms/call of fixed SymbolicC overhead (line-wrapping
+           bookkeeping) — catastrophic when CppForm is called 65-110x per kernel. Our
+           rules already emit fully-parenthesized code, and clang-format normalizes
+           whitespace downstream, so the output is equivalent (whitespace-only delta). *)
         If[TrueQ[OptionValue["Format"]],
-            Return[FormatCppCode[ToCCodeString[CExpression[processedExpr]]]]
+            Return[FormatCppCode[GenerateCode[CExpression[processedExpr]]]]
             ,
-            Return[ToCCodeString[CExpression[processedExpr]]]
+            Return[GenerateCode[CExpression[processedExpr]]]
         ];
     ];
 
@@ -209,17 +240,10 @@ WriteCodeToFile::unchanged = "File `1` unchanged.";
 WriteCodeToFile::exported = "Exported to `1`.";
 
 WriteCodeToFile[fileName_String, expression_String] :=
-    Module[{tmpfileName, preprocessed},
+    Module[{tmpfileName},
         tmpfileName = fileName <> ".tmpcode";
-        If[clangFormatExists,
-            preprocessed = wrapLargeStatementsForClangFormat[expression];
-            Export[tmpfileName, preprocessed, "Text"];
-            CreateClangFormat[$TemporaryDirectory];
-            Export[tmpfileName, RunProcess[{"clang-format", "-style=file:" <> FileNameJoin[{$TemporaryDirectory, ".clang-format"}], tmpfileName}, "StandardOutput"], "Text"];
-            Export[tmpfileName, fixClangFormatOffIndentation[Import[tmpfileName, "Text"]], "Text"];
-            ,
-            Export[tmpfileName, expression, "Text"];
-        ];
+        (* FormatCppCode picks the in-process formatter or clang-format per FSetUseClangFormat *)
+        Export[tmpfileName, FormatCppCode[expression], "Text"];
         If[FileExistsQ[fileName],
             If[Import[fileName, "Text"] == Import[tmpfileName, "Text"],
                 Message[WriteCodeToFile::unchanged, fileName];
@@ -300,28 +324,102 @@ fixClangFormatOffIndentation[code_String] :=
         StringRiffle[result, "\n"]
     ];
 
+(* In-process C++ pretty-printer (default formatter).
+
+   The codegen pipeline already emits one statement per line (formatDefinitions in
+   CppOptimize.m), so formatting reduces to consistent indentation by brace depth. This
+   avoids the ~1 s/call clang-format spawn on large kernels entirely.
+
+   - wrapLargeStatementsForClangFormat is reused to fence over-long statements (and the
+     giant "using _T = decltype(...)" lines) in // clang-format off/on regions.
+   - Lines inside those regions are passed through verbatim; fixClangFormatOffIndentation
+     re-indents the markers afterwards (shared with the clang-format path).
+   - Brace depth is counted only outside off-regions; balanced inline braces (e.g.
+     "_T _acc{};", "min({a, b})") net to zero, so they do not perturb indentation. *)
+
+cppIndent[n_Integer] :=
+    StringJoin @ ConstantArray["  ", Max[n, 0]];
+
+formatCppInProcess[code_String] :=
+    Module[{pre, lines, depth, out, inOff, t},
+        pre = wrapLargeStatementsForClangFormat[code];
+        (* Break a leading access specifier ("public:", etc.) onto its own line for
+           readability; safe because these only occur at class scope, never in off-regions. *)
+        lines =
+            Flatten @ Map[
+                Function[ln,
+                    Module[{tt = StringTrim[ln], spec},
+                        If[StringMatchQ[tt, ("public:" | "private:" | "protected:") ~~ Whitespace ~~ __],
+                            spec = First @ StringCases[tt, StartOfString ~~ ("public:" | "private:" | "protected:")];
+                            {spec, StringTrim @ StringDrop[tt, StringLength[spec]]}
+                            ,
+                            {ln}
+                        ]
+                    ]
+                ],
+                StringSplit[pre, "\n"]
+            ];
+        depth = 0;
+        out = {};
+        inOff = False;
+        Do[
+            Module[{ln = lines[[i]]},
+                Which[
+                    StringStartsQ[StringTrim[ln], "// clang-format off"],
+                        AppendTo[out, cppIndent[depth] <> "// clang-format off"];
+                        inOff = True;
+                    ,
+                    StringStartsQ[StringTrim[ln], "// clang-format on"],
+                        inOff = False;
+                        AppendTo[out, cppIndent[depth] <> "// clang-format on"];
+                    ,
+                    inOff,
+                        AppendTo[out, ln];
+                    ,
+                    True,
+                        t = StringTrim[ln];
+                        If[t === "",
+                            AppendTo[out, ""];
+                            ,
+                            AppendTo[out, cppIndent[depth - If[StringStartsQ[t, "}"], 1, 0]] <> t];
+                            depth = Max[depth + StringCount[t, "{"] - StringCount[t, "}"], 0];
+                        ];
+                ]
+            ]
+            ,
+            {i, 1, Length[lines]}
+        ];
+        fixClangFormatOffIndentation @ StringRiffle[out, "\n"]
+    ];
+
+(* clang-format path, kept as an opt-in fallback (FSetUseClangFormat[True]). *)
+
+formatViaClangFormat[expression_String] :=
+    Module[{tmpfileName1, tmpfileName2, output},
+        tmpfileName1 = FileNameJoin[{$TemporaryDirectory, "in_" <> makeTemporaryFileName[]}];
+        tmpfileName2 = FileNameJoin[{$TemporaryDirectory, "out_" <> makeTemporaryFileName[]}];
+        Export[tmpfileName1, wrapLargeStatementsForClangFormat[expression], "Text"];
+        CreateClangFormat[$TemporaryDirectory];
+        Export[tmpfileName2, RunProcess[{"clang-format", "-style=file:" <> FileNameJoin[{$TemporaryDirectory, ".clang-format"}], tmpfileName1}, "StandardOutput"], "Text"];
+        output = fixClangFormatOffIndentation @ Import[tmpfileName2, "Text"];
+        Quiet[DeleteFile[{tmpfileName1, tmpfileName2}]];
+        output
+    ];
+
 Options[FormatCppCode] = {"Format" -> True};
 
 FormatCppCode[expression_String, OptionsPattern[]] :=
-    Module[{tmpfileName1, tmpfileName2, preprocessed, output},
-        tmpfileName1 = FileNameJoin[{$TemporaryDirectory, "in_" <> makeTemporaryFileName[]}];
-        tmpfileName2 = FileNameJoin[{$TemporaryDirectory, "out_" <> makeTemporaryFileName[]}];
-        If[clangFormatExists && TrueQ[OptionValue["Format"]],
-            preprocessed = wrapLargeStatementsForClangFormat[expression];
-            Export[tmpfileName1, preprocessed, "Text"];
-            CreateClangFormat[$TemporaryDirectory];
-            Export[tmpfileName2, RunProcess[{"clang-format", "-style=file:" <> FileNameJoin[{$TemporaryDirectory, ".clang-format"}], tmpfileName1}, "StandardOutput"], "Text"];
-            ,
-            Export[tmpfileName1, expression, "Text"];
-        ];
-        If[FileExistsQ[tmpfileName2],
-            output = Import[tmpfileName2, "Text"];
-            output = fixClangFormatOffIndentation[output];
-            Quiet[DeleteFile[{tmpfileName1, tmpfileName2}]];
-            Return[output];
-        ];
-        Quiet[DeleteFile[tmpfileName1]];
-        Return[expression]
+    If[Not @ TrueQ[OptionValue["Format"]],
+        expression
+        ,
+        If[TrueQ[$ProfileCodegenOn], $ProfileCgClangFormatCount++];
+        cgTimed[$ProfileCgClangFormat,
+            If[TrueQ[$FUseClangFormat] && clangFormatExists,
+                formatViaClangFormat[expression]
+                ,
+                formatCppInProcess[expression]
+            ]
+        ]
     ];
 
 FormatCppCode[___] :=

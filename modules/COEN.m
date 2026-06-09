@@ -78,9 +78,17 @@ Converts a Mathematica expression into its Fortran code representation.
 Named FortranCodeForm to avoid shadowing the built-in System`FortranForm.";
 
 FormatCppCode::usage = "FormatCppCode[codeString, opts]
-Uses clang-format, if available on the system, to automatically format a given string of C++ code.
+Formats a given string of C++ code. By default uses a fast in-process pretty-printer
+(brace-depth indentation, no external process). Call FSetUseClangFormat[True] to format
+via clang-format instead (slower, requires clang-format on PATH).
 Options:
-  \"Format\" -> True (default) — if False, return the string unchanged without running clang-format.";
+  \"Format\" -> True (default) — if False, return the string unchanged.";
+
+FSetUseClangFormat::usage = "FSetUseClangFormat[True/False]
+Selects the C++ formatter used by FormatCppCode (and hence all C++ codegen).
+False (default) uses a fast in-process pretty-printer; True uses clang-format if it is
+available on PATH. clang-format is much slower (spawns a process per fragment and scales
+poorly on large kernels) but matches the LLVM/.clang-format style exactly.";
 
 MakeParameterString::usage = "MakeParameterString[param]
 Generates the parameter string for a single parameter, either specified by an Association with keys 'Name', 'Type', 'Const', 'Reference' or by a string giving its name.";

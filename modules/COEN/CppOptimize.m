@@ -115,7 +115,7 @@ dagCSE[expr_, remainingRegisters_Integer] :=
             reverseStringRules = {};
         ];
         (* Try Experimental`OptimizeExpression with timeout *)
-        result = Quiet @ TimeConstrained[Experimental`OptimizeExpression[cleanExpr], 120, $Failed];
+        result = cgTimed[$ProfileCgOptExpr, Quiet @ TimeConstrained[Experimental`OptimizeExpression[cleanExpr], 120, $Failed]];
         If[result =!= $Failed && Head[result] === Experimental`OptimizedExpression,
             Module[
                 {heldBlock, numParts, allAssignments, kept, dropped, inlineRules, cseNames, symbolToString}
@@ -177,6 +177,7 @@ dagCSE[expr_, remainingRegisters_Integer] :=
     ];
 
 fallbackCSE[expr_, maxVars_Integer] :=
+    cgTimed[$ProfileCgFallbackCSE,
     Module[{optList, subexprs, replacementObj, replacementKeys, names, rules, rulesFS, newExpr, definitions},
         optList = $codeOptimizeFunctions;
         subexprs = Flatten @ Map[Cases[expr, #, Infinity]&, optList];
@@ -194,6 +195,7 @@ fallbackCSE[expr_, maxVars_Integer] :=
         newExpr = expr //. Reverse[rules] //. Reverse[rulesFS];
         definitions = Table[{names[[i]], replacementKeys[[i]] //. Reverse[rules[[ ;; i - 1]]] //. Reverse[rulesFS[[ ;; i - 1]]]}, {i, 1, Length[replacementKeys]}];
         <|"Expr" -> newExpr, "Definitions" -> definitions|>
+    ]
     ];
 
 (**********************************************************************************
@@ -440,13 +442,13 @@ optimizeSubKernel[expr_, sharedDefCount_Integer] :=
         FunKitDebug[2, "  Per-kernel budget: ", perKernelBudget, " (registers=", $availableRegisters, ", shared=", sharedDefCount, ")"];
         e = expr;
         (* CSE with per-kernel budget *)
-        cseResult = dagCSE[e, perKernelBudget];
+        cseResult = cgTimed[$ProfileCgCSE, dagCSE[e, perKernelBudget]];
         e = cseResult["Expr"];
         cseDefs = cseResult["Definitions"];
         FunKitDebug[2, "  CSE found ", Length[cseDefs], " subexpressions"];
 (* Normalize power bases: rewrite Power[base, m] using an already-hoisted
    Power[base, n] temporary when m is a nonzero integer multiple of n *)
-        {e, cseDefs} = normalizePowerBases[e, cseDefs];
+        {e, cseDefs} = cgTimed[$ProfileCgPowerNorm, normalizePowerBases[e, cseDefs]];
 (* Topological sort: normalizePowerBases can introduce forward references
    (e.g. _cse6 = 1/_cse7 when _cse7 = l1^2) by rewriting powers in terms
    of later-defined temporaries.  Re-sort so each def comes after its deps. *)
@@ -472,31 +474,33 @@ optimizeSubKernel[expr_, sharedDefCount_Integer] :=
         ];
         FunKitDebug[2, "  Power basis normalization done"];
         (* Algebraic factoring *)
-        If[Length[cseDefs] > 0,
-            Module[{allExprsToFactor, factoredExprs},
-                allExprsToFactor = Prepend[cseDefs[[All, 2]], e];
-                factoredExprs =
-                    If[Length[allExprsToFactor] >= $codeParallelThreshold && Length[Kernels[]] > 0,
-                        ParallelMap[algebraicFactor, allExprsToFactor, DistributedContexts -> Automatic]
-                        ,
-                        Map[algebraicFactor, allExprsToFactor]
-                    ];
-                e = factoredExprs[[1]];
-                cseDefs = Table[{cseDefs[[idx, 1]], factoredExprs[[idx + 1]]}, {idx, 1, Length[cseDefs]}];
-            ];
-            ,
-            e = algebraicFactor[e];
+        cgTimed[$ProfileCgFactor,
+            If[Length[cseDefs] > 0,
+                Module[{allExprsToFactor, factoredExprs},
+                    allExprsToFactor = Prepend[cseDefs[[All, 2]], e];
+                    factoredExprs =
+                        If[Length[allExprsToFactor] >= $codeParallelThreshold && Length[Kernels[]] > 0,
+                            ParallelMap[algebraicFactor, allExprsToFactor, DistributedContexts -> Automatic]
+                            ,
+                            Map[algebraicFactor, allExprsToFactor]
+                        ];
+                    e = factoredExprs[[1]];
+                    cseDefs = Table[{cseDefs[[idx, 1]], factoredExprs[[idx + 1]]}, {idx, 1, Length[cseDefs]}];
+                ];
+                ,
+                e = algebraicFactor[e];
+            ]
         ];
         (* Transcendental hoisting with remaining budget *)
         remainingBudget = Max[0, perKernelBudget - Length[cseDefs]];
-        tranResult = hoistTranscendentals[e, remainingBudget];
+        tranResult = cgTimed[$ProfileCgTranscendental, hoistTranscendentals[e, remainingBudget]];
         e = tranResult["Expr"];
         FunKitDebug[2, "  Transcendental hoisting: ", tranResult["Count"], " (budget was ", remainingBudget, ")"];
         (* FMA restructuring *)
-        e = fmaRestructure[e];
+        e = cgTimed[$ProfileCgFMA, fmaRestructure[e]];
         allDefs = Join[cseDefs, tranResult["Definitions"]];
         If[Length[allDefs] > 0,
-            allDefs = Map[{#[[1]], fmaRestructure[#[[2]]]}&, allDefs];
+            allDefs = cgTimed[$ProfileCgFMA, Map[{#[[1]], fmaRestructure[#[[2]]]}&, allDefs]];
         ];
         <|"Expr" -> e, "Definitions" -> allDefs|>
     ];
@@ -588,12 +592,12 @@ optimizeExpression[equation_] :=
         expr = equation;
         (* === GLOBAL PASSES === *)
         (* Pass 1: Interpolator hoisting — extract global memory reads *)
-        interpResult = hoistInterpolators[expr];
+        interpResult = cgTimed[$ProfileCgHoist, hoistInterpolators[expr]];
         expr = interpResult["Expr"];
         interpCount = interpResult["Count"];
         FunKitDebug[2, "Hoisted ", interpCount, " interpolator calls"];
         (* Pass 2: Early split decision *)
-        splitResult = earlySplit[interpResult["Definitions"], expr];
+        splitResult = cgTimed[$ProfileCgSplit, earlySplit[interpResult["Definitions"], expr]];
         FunKitDebug[2, "Early split: ", splitResult["Split"]];
         (* === PER-KERNEL PASSES === *)
         If[TrueQ[splitResult["Split"]],
@@ -623,7 +627,7 @@ optimizeExpression[equation_] :=
             allDefs = Join[interpResult["Definitions"], result["Definitions"]];
             FunKitDebug[2, "Single-kernel optimization complete: ", Length[allDefs], " total defs"];
             (* Try splitting for registers if expression is large *)
-            splitResult = splitIntoSubKernels[allDefs, result["Expr"]];
+            splitResult = cgTimed[$ProfileCgSplit, splitIntoSubKernels[allDefs, result["Expr"]]];
             FunKitDebug[2, "Post-optimization split: SubKernels=", TrueQ[splitResult["UseSubKernels"]]];
             splitResult
         ]
