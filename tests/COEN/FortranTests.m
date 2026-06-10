@@ -122,6 +122,73 @@ fortranOptVal = ToExpression[StringTrim[outputOpt["StandardOutput"]]];
 AppendTo[tests, VerificationTest[Abs[fortranOptVal - expectedOptVal] < 1*^-8, True, TestID -> "Optimized Fortran function returns correct value"]];
 
 (**********************************************************************************
+    Composite-denominator hoisting: _den names must be coerced to valid Fortran
+    identifiers (fkden), since Fortran identifiers cannot start with "_". See
+    Fortran.m fortranFixNames / fortranVarDeclarations and CppOptimize.m
+    hoistDivisions.
+**********************************************************************************)
+
+ClearAll[a, mm]
+
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeHoistDivisions = True},
+    fortranDenCode = FortranCode[Sin[a] / (mm + a^2) + Cos[a] / (mm + a^2)];
+];
+
+AppendTo[tests, VerificationTest[
+    StringContainsQ[fortranDenCode, "fkden"],
+    True,
+    TestID -> "Composite denominator hoisting produces fkden variables in Fortran"
+]];
+
+(* No leading-underscore _den survives the rename (would be invalid Fortran). *)
+
+AppendTo[tests, VerificationTest[
+    StringFreeQ[fortranDenCode, "_den"],
+    True,
+    TestID -> "No invalid _den identifiers remain in Fortran output"
+]];
+
+(* ...and the result is numerically correct end-to-end. *)
+
+funBodyDen = MakeFortranFunction[Sin[a] / (mm + a^2) + Cos[a] / (mm + a^2), "Name" -> "funden",
+    "Body" -> "double precision :: a, mm\na = in1\nmm = in2",
+    "Parameters" -> {"in1", "in2"}];
+
+(* The hoisted denominator is declared with double precision (required: the
+   generated function uses implicit none). *)
+
+AppendTo[tests, VerificationTest[
+    StringContainsQ[funBodyDen, "double precision" ~~ Shortest[__] ~~ "fkden"],
+    True,
+    TestID -> "Hoisted denominator gets a double precision declaration in Fortran"
+]];
+
+codeDen = funBodyDen <> "
+
+program main
+  implicit none
+  double precision :: res, funden
+  res = funden(1.2d0, 0.7d0)
+  write(*,'(F25.15)') res
+end program main
+";
+
+execFileDen = $TemporaryDirectory <> "/FunKitFortranTestDen.f90";
+execPathDen = $TemporaryDirectory <> "/FunKitFortranTestDen";
+Export[execFileDen, codeDen, "Text"];
+
+compileDen = RunProcess[{"gfortran", "-ffree-form", "-o", execPathDen, execFileDen}];
+
+AppendTo[tests, VerificationTest[compileDen["ExitCode"], 0, TestID -> "Verify compilation of Fortran function with hoisted denominator"]];
+
+outputDen = If[compileDen["ExitCode"] === 0, RunProcess[{execPathDen}], <|"StandardOutput" -> ""|>];
+
+expectedDenVal = N[(Sin[a] / (mm + a^2) + Cos[a] / (mm + a^2)) /. {a -> 1.2, mm -> 0.7}, 15];
+fortranDenVal = ToExpression[StringTrim[outputDen["StandardOutput"]]];
+
+AppendTo[tests, VerificationTest[Abs[fortranDenVal - expectedDenVal] < 1*^-8, True, TestID -> "Fortran function with hoisted denominator returns correct value"]];
+
+(**********************************************************************************
     Simple expression: plain return, no CSE
 **********************************************************************************)
 

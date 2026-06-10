@@ -31,20 +31,20 @@ FortranCodeForm[expr_] :=
     ];
 
 (* Fortran identifiers must start with a letter. The optimizer produces names
-   like _interp1, _cse1, _tran1, _result1 which are invalid. The sub-kernel
+   like _interp1, _cse1, _tran1, _result1, _den1 which are invalid. The sub-kernel
    accumulator _acc and the ReturnTransform placeholder postAcc<n> are also
    coerced. This function renames them by stripping any leading underscore and
    adding an "fk" prefix. *)
 fortranFixNames[code_String] :=
     StringReplace[code, {
-        "_" ~~ prefix:("interp"|"cse"|"tran"|"result") ~~ num:DigitCharacter.. :> "fk" <> prefix <> num,
+        "_" ~~ prefix:("interp"|"cse"|"tran"|"result"|"den") ~~ num:DigitCharacter.. :> "fk" <> prefix <> num,
         WordBoundary ~~ "_acc" ~~ WordBoundary :> "fkacc"
     }];
 
 (* Generate double precision declarations for all optimizer variables in the code *)
 fortranVarDeclarations[code_String] :=
     Module[{numbered, accVar, vars},
-        numbered = Union @ StringCases[code, "fk" ~~ ("interp"|"cse"|"tran"|"result") ~~ DigitCharacter..];
+        numbered = Union @ StringCases[code, "fk" ~~ ("interp"|"cse"|"tran"|"result"|"den") ~~ DigitCharacter..];
         accVar = If[StringContainsQ[code, WordBoundary ~~ "fkacc" ~~ WordBoundary], {"fkacc"}, {}];
         vars = Join[numbered, accVar];
         If[Length[vars] === 0, "",

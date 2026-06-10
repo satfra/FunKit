@@ -51,6 +51,44 @@ hoistInterpolators[expr_] :=
     ];
 
 (**********************************************************************************
+    Pass 1b: Composite-Denominator Hoisting
+    Extract every distinct negative-integer power of a composite (Plus/Times) base
+    -- the regulated-propagator denominators 1/(M^2 + q*(...)^2) etc. These are NOT
+    interpolator leaves, so without global hoisting they fall to the per-sub-kernel
+    CSE (Pass 3) and are recomputed once per chunk when the term-sum is split.
+    Hoisting them to shared "_den" defs (like interpolators) computes each once.
+
+    Bases are sorted by LeafCount ascending so a denominator nested inside another
+    gets a lower index; each def body then substitutes the already-assigned inner
+    "_denK" (rules without its own), making the def list topologically ordered.
+    Runs AFTER interpolator hoisting, so bases already carry "_interp" placeholders.
+**********************************************************************************)
+
+hoistDivisions[expr_] :=
+    Module[{cands, uniqueDens, names, rules, newExpr, defs},
+        If[Not @ TrueQ[$codeHoistDivisions],
+            Return[<|"Expr" -> expr, "Definitions" -> {}, "Count" -> 0|>]
+        ];
+        (* composite reciprocals: Power[base, n<0] with base a Plus or Times (a shared,
+           non-trivial denominator), not a bare symbol/number/placeholder *)
+        cands = Cases[expr,
+            Power[b_, n_Integer] /; n < 0 && (Head[b] === Plus || Head[b] === Times),
+            Infinity];
+        (* inner (smaller) denominators first -> def list is dependency-ordered *)
+        uniqueDens = SortBy[DeleteDuplicates[cands], LeafCount];
+        If[Length[uniqueDens] === 0,
+            Return[<|"Expr" -> expr, "Definitions" -> {}, "Count" -> 0|>]
+        ];
+        names = Table["_den" <> ToString[i], {i, 1, Length[uniqueDens]}];
+        rules = Thread[uniqueDens -> names];
+        newExpr = expr //. rules;
+        (* def body for _denI: replace NESTED denominators (all rules except its own,
+           which would otherwise collapse the whole body to its own name) *)
+        defs = Table[{names[[i]], uniqueDens[[i]] //. Drop[rules, {i}]}, {i, 1, Length[uniqueDens]}];
+        <|"Expr" -> newExpr, "Definitions" -> defs, "Count" -> Length[uniqueDens]|>
+    ];
+
+(**********************************************************************************
     Power Basis Normalization
     After CSE, rewrite Power[base, m] in terms of an already-hoisted Power[base, n]
     temporary when m is a nonzero integer multiple of n.  This prevents independent
@@ -407,11 +445,35 @@ earlySplit[interpDefs_, expr_] :=
         interpNames = #[[1]]& /@ interpDefs;
         interpsByName = Association @ Table[interpDefs[[i, 1]] -> interpDefs[[i]], {i, Length[interpDefs]}];
         Module[
-            {chunkRefs, useCounts, sharedNames, sharedDefs}
+            {chunkRefs, useCounts, sharedNames, sharedDefs, defsByName}
             ,
-            (* Find which interp names each chunk references *)
-            chunkRefs = Map[Intersection[interpNames, DeleteDuplicates @ Cases[#, _String, Infinity]]&, chunks];
-            (* Count how many chunks reference each interp *)
+            (* name -> definition, for transitive reference expansion *)
+            defsByName = Association @ Table[interpDefs[[i, 1]] -> interpDefs[[i]], {i, Length[interpDefs]}];
+            (* Find which def names each chunk references -- TRANSITIVELY: a chunk that
+               references _den5 also "uses" every _interp/_den that _den5's body reads,
+               so a denominator shared across chunks (and its inputs) is correctly counted
+               as shared rather than dropped or recomputed per chunk. *)
+            chunkRefs =
+                Map[
+                    Function[{chunk},
+                        Module[{refs, prevLen = -1},
+                            (* level {0, Infinity}: a chunk (or def body) that IS a bare
+                               placeholder string -- e.g. a term that is a single hoisted
+                               reciprocal _denK with no other factors -- sits at level 0 and
+                               would be missed by the default Infinity (= {1, Infinity}). *)
+                            refs = Intersection[interpNames, DeleteDuplicates @ Cases[chunk, _String, {0, Infinity}]];
+                            While[Length[refs] =!= prevLen,
+                                prevLen = Length[refs];
+                                refs = DeleteDuplicates @ Join[refs,
+                                    Intersection[interpNames,
+                                        Flatten @ Map[Cases[defsByName[#][[2]], _String, {0, Infinity}]&, refs]]];
+                            ];
+                            refs
+                        ]
+                    ],
+                    chunks
+                ];
+            (* Count how many chunks reference each interp/den *)
             useCounts = Counts[Flatten[chunkRefs]];
             sharedNames = Keys @ Select[useCounts, # > 1&];
             sharedDefs = Select[interpDefs, MemberQ[sharedNames, #[[1]]]&];
@@ -583,7 +645,7 @@ splitIntoSubKernels[allDefs_, finalExpr_] :=
 **********************************************************************************)
 
 optimizeExpression[equation_] :=
-    Module[{expr, interpResult, interpCount, splitResult, sharedDefs, subKernels, result, allDefs},
+    Module[{expr, interpResult, interpCount, divResult, divCount, globalDefs, splitResult, sharedDefs, subKernels, result, allDefs},
         FunKitDebug[1, "Starting optimization pipeline (optimize = ", $codeOptimize, ")"];
         (* If optimization is disabled, return raw expression with no passes *)
         If[!TrueQ[$codeOptimize],
@@ -596,8 +658,15 @@ optimizeExpression[equation_] :=
         expr = interpResult["Expr"];
         interpCount = interpResult["Count"];
         FunKitDebug[2, "Hoisted ", interpCount, " interpolator calls"];
+        (* Pass 1b: Composite-denominator hoisting — share reciprocals across chunks *)
+        divResult = cgTimed[$ProfileCgHoist, hoistDivisions[expr]];
+        expr = divResult["Expr"];
+        divCount = divResult["Count"];
+        FunKitDebug[2, "Hoisted ", divCount, " composite denominators"];
+        (* global defs: interps FIRST, then denominators (which reference interps) *)
+        globalDefs = Join[interpResult["Definitions"], divResult["Definitions"]];
         (* Pass 2: Early split decision *)
-        splitResult = cgTimed[$ProfileCgSplit, earlySplit[interpResult["Definitions"], expr]];
+        splitResult = cgTimed[$ProfileCgSplit, earlySplit[globalDefs, expr]];
         FunKitDebug[2, "Early split: ", splitResult["Split"]];
         (* === PER-KERNEL PASSES === *)
         If[TrueQ[splitResult["Split"]],
@@ -623,8 +692,8 @@ optimizeExpression[equation_] :=
             <|"UseSubKernels" -> True, "SharedDefinitions" -> sharedDefs, "SubKernels" -> subKernels|>
             ,
             (* Single-kernel path: optimize the whole expression *)
-            result = optimizeSubKernel[expr, interpCount];
-            allDefs = Join[interpResult["Definitions"], result["Definitions"]];
+            result = optimizeSubKernel[expr, interpCount + divCount];
+            allDefs = Join[globalDefs, result["Definitions"]];
             FunKitDebug[2, "Single-kernel optimization complete: ", Length[allDefs], " total defs"];
             (* Try splitting for registers if expression is large *)
             splitResult = cgTimed[$ProfileCgSplit, splitIntoSubKernels[allDefs, result["Expr"]]];

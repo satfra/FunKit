@@ -188,6 +188,12 @@ $codeOptimizeFunctions = {a_Symbol[__] /; Not @ MatchQ[a, Times | Plus | Power |
 
 $codeOptimizeInterps = {a_Symbol[__] /; Not @ MatchQ[a, Times | Plus | Power | Rational | Complex | Real | Integer]};
 
+(* Composite-denominator (negative integer power of a Plus/Times base) global hoisting.
+   These reciprocals are NOT interpolator leaves, so without this they fall to the
+   PER-SUB-KERNEL CSE and get recomputed once per chunk when the term-sum is split.
+   Hoisting them to shared defs (like interpolators) computes each once across chunks. *)
+$codeHoistDivisions = True;
+
 $availableRegisters = 32;
 
 $codeOptimize = True;

@@ -269,6 +269,112 @@ Block[{FunKit`Private`$codeOptimize = True},
 AppendTo[tests, VerificationTest[StringContainsQ[tranCode, "_tran"], True, TestID -> "Verify transcendental hoisting creates _tran variables"]];
 
 (**********************************************************************************
+    Composite-denominator hoisting (Pass 1b)
+    Negative integer powers of a Plus/Times base — the regulated-propagator
+    denominators 1/(M^2 + q*(...)^2) — are hoisted to shared "_den" defs so a
+    denominator shared across split sub-kernels is computed once, not recomputed
+    per chunk by the per-sub-kernel CSE. See CppOptimize.m hoistDivisions and
+    Tools.m $codeHoistDivisions.
+**********************************************************************************)
+
+ClearAll[a, mm, b, c];
+
+(* A composite denominator is hoisted to a _den variable. *)
+
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeHoistDivisions = True},
+    denHoistCode = CppCode[Sin[a] / (mm + a^2) + Cos[a] / (mm + a^2)];
+];
+
+AppendTo[tests, VerificationTest[StringContainsQ[denHoistCode, "_den"], True, TestID -> "Composite denominator hoisting creates _den variables"]];
+
+(* With hoisting disabled the same denominator falls to the per-kernel CSE, so no
+   _den appears — guards the $codeHoistDivisions toggle. *)
+
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeHoistDivisions = False},
+    denNoHoistCode = CppCode[Sin[a] / (mm + a^2) + Cos[a] / (mm + a^2)];
+];
+
+AppendTo[tests, VerificationTest[StringFreeQ[denNoHoistCode, "_den"], True, TestID -> "No _den variables when $codeHoistDivisions is False"]];
+
+(* A denominator shared across many terms that split into sub-kernels must be
+   hoisted to exactly ONE shared def (the efficiency invariant: not recomputed
+   once per chunk). Exercises the transitive reference tracking in earlySplit. *)
+
+ClearAll[a];
+denSharedExpr = Sum[Sin[a + i] Cos[a - i] / (3 + a^2), {i, 1, 600}];
+
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeHoistDivisions = True, FunKit`Private`$codeMaxKernelTerms = 200},
+    denSharedCode = CppCode[denSharedExpr];
+];
+
+AppendTo[tests, VerificationTest[StringContainsQ[denSharedCode, "// subkernel 1"], True, TestID -> "Shared denominator: expression does split into sub-kernels"]];
+
+AppendTo[tests, VerificationTest[Length @ StringCases[denSharedCode, "const auto _den" ~~ DigitCharacter.. ~~ " ="], 1, TestID -> "Shared denominator hoisted to a single def across sub-kernels"]];
+
+(* ...and the split kernel still computes the right value. *)
+
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeHoistDivisions = True, FunKit`Private`$codeMaxKernelTerms = 200},
+    funBodyDen = MakeCppFunction[denSharedExpr, "Name" -> "funDen", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+];
+
+execDen = CreateExecutable["
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+using NumberType = double;
+
+" <> fmaCode <> "
+" <> powrCode <> "
+" <> funBodyDen <> "
+
+int main () {
+  std::cout << std::setprecision (10) << funDen (1.5) << std::endl;
+}
+", "FunKitCppTestDen", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
+
+outputDen = Import["!" <> QuoteFile[execDen], "Text"];
+
+expectedDen = ToString[NumberForm[denSharedExpr /. a -> 1.5, 10]];
+
+AppendTo[tests, VerificationTest[execDen =!= $Failed, True, TestID -> "Shared denominator hoisting compiles with sub-kernel splitting"]];
+
+AppendTo[tests, VerificationTest[outputDen, expectedDen, TestID -> "Shared denominator hoisting preserves numerical value across sub-kernels"]];
+
+(* Nested denominators: inner is hoisted first and the outer def references it
+   (topological ordering by LeafCount + nested substitution). Compile & run to
+   confirm the dependency-ordered defs produce the correct value. *)
+
+ClearAll[a, b, c];
+denNestedExpr = 1 / (b + 1 / (c + a^2)) + a / (c + a^2);
+
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeHoistDivisions = True},
+    funBodyNested = MakeCppFunction[denNestedExpr /. {b -> 0.7, c -> 1.3}, "Name" -> "funNested", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+];
+
+execNested = CreateExecutable["
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+using NumberType = double;
+
+" <> fmaCode <> "
+" <> powrCode <> "
+" <> funBodyNested <> "
+
+int main () {
+  std::cout << std::setprecision (10) << funNested (1.5) << std::endl;
+}
+", "FunKitCppTestNested", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
+
+outputNested = Import["!" <> QuoteFile[execNested], "Text"];
+
+expectedNested = ToString[NumberForm[denNestedExpr /. {b -> 0.7, c -> 1.3, a -> 1.5}, 10]];
+
+AppendTo[tests, VerificationTest[execNested =!= $Failed, True, TestID -> "Nested denominator hoisting compiles"]];
+
+AppendTo[tests, VerificationTest[outputNested, expectedNested, TestID -> "Nested denominator hoisting preserves numerical value"]];
+
+(**********************************************************************************
     ReturnTransform option (post-processing injection)
 **********************************************************************************)
 
