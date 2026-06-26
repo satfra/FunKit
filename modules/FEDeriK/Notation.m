@@ -83,11 +83,16 @@ couldBeField = MatchQ[#, _Symbol[_Symbol]] || MatchQ[#, _Symbol[-_Symbol]] || Ma
 
 isFreeTerm = Not @ (ContainsAny[GetAllSymbols[#], $nonCommutingObjects] || Or @@ Map[couldBeField, #, Infinity])&;
 
-FTerm[first_, pre___, Times[a_, other2_], post___] /; NumericQ[first] && NumericQ[a] :=
-    FTerm[first * a, pre, other2, post]
+(* Pull a numeric factor out of an inner Times into the coefficient. Bind the whole
+   product as t_Times and split via First/Rest: a canonical Times sorts its (single,
+   auto-combined) numeric factor first, so NumericQ[First[t]] is an O(1) test. Matching
+   Times[a_, other2_] here would instead enumerate all 2^N Orderless+Flat partitions of
+   the product before the /; condition could reject them -> exponential blowup. *)
+FTerm[first_, pre___, t_Times, post___] /; NumericQ[first] && NumericQ[First[t]] :=
+    FTerm[first * First[t], pre, Rest[t], post]
 
-FTerm[first_, pre___, Times[a_, other2_], post___] /; Not @ NumericQ[first] && NumericQ[a] :=
-    FTerm[a, first, pre, other2, post]
+FTerm[first_, pre___, t_Times, post___] /; Not @ NumericQ[first] && NumericQ[First[t]] :=
+    FTerm[First[t], first, pre, Rest[t], post]
 
 FTerm[first_, pre___, a_, post___] /; NumericQ[first] && NumericQ[a] :=
     FTerm[first * a, pre, post]

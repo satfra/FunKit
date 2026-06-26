@@ -715,6 +715,179 @@ MakeCppFunction[expr_, OptionsPattern[]] :=
         MakeCppFunction @@ (Evaluate @ Join[{"Body" -> newBody}, Thread[Rule @@ {#, OptionValue[MakeCppFunction, #]}]& @ Keys[Options[MakeCppFunction]]])
     ];
 
+(* ::Subsubsection:: *)
+
+(*Split (outlined sub-kernel) function creation*)
+
+(* ::Input::Initialization:: *)
+
+(* Transitive closure of definition names referenced by an expression, returned in the
+   dependency order of `orderedNames` (so a def appears after the defs it depends on). *)
+transitiveDefRefs[expr_, orderedNames_, defsByName_] :=
+    Module[{refs, prev = -1},
+        refs = Intersection[orderedNames, DeleteDuplicates @ Cases[expr, _String, {0, Infinity}]];
+        While[Length[refs] =!= prev,
+            prev = Length[refs];
+            refs = DeleteDuplicates @ Join[refs,
+                Intersection[orderedNames, Flatten @ Map[Cases[defsByName[#][[2]], _String, {0, Infinity}]&, refs]]];
+        ];
+        Select[orderedNames, MemberQ[refs, #]&]
+    ];
+
+ClearAll[MakeCppFunctionSplit];
+
+MakeCppFunctionSplit::bothinterp = "Options \"Interpolators\" and \"NotInterpolators\" are mutually exclusive; provide at most one.";
+
+(* ShareInterpolators: True = scoped per-contribution lookup-passing (OpenACC-style); False
+   (default) = each sub recomputes the shared defs it uses (DCE prunes). Measured on ZA4:
+   recompute spills LESS (254/1728) than scoped (255/1984) or up-front sharing — the parent's
+   persistent _acc + per-block lookups outweigh the per-sub recompute, so recompute wins. *)
+Options[MakeCppFunctionSplit] = Join[Options[MakeCppFunction], {"Decorator" -> "static KOKKOS_FUNCTION", "Interpolators" -> Automatic, "NotInterpolators" -> Automatic, "ShareInterpolators" -> False, "SeparateLookups" -> False}];
+
+MakeCppFunctionSplit[expr_, opts : OptionsPattern[]] :=
+    Module[{transform, optimized, prologue, name, decorator, params, argNames, argStr,
+            sharedDefs, subKernels, allNames, sharedCode, subFns, kernelBody, kernelFn,
+            accSym, wrappedReturn},
+        (* Mutually-exclusive interpolator declaration (used by the shared-hoisting pass) *)
+        If[OptionValue["Interpolators"] =!= Automatic && OptionValue["NotInterpolators"] =!= Automatic,
+            Message[MakeCppFunctionSplit::bothinterp];
+            Abort[]
+        ];
+        (* SeparateLookups: the OpenACC dispatcher->integrand structure. Emit ONE arithmetic
+           `<name>_eval` that takes the hoisted interpolator results as scalar parameters (no
+           spline-lookup code, no arithmetic splitting), and a `<name>` that performs the spline
+           lookups and calls `<name>_eval` once. Separating the (register-heavy) lookup code from
+           the polynomial into two frames is what lets the OpenACC integrand fit without spilling. *)
+        If[TrueQ[OptionValue["SeparateLookups"]],
+            Module[{savedMax, savedLvl, opt, defs, finalExpr, varNamesL, lookupDefs, restDefs, lookupNames,
+                    prologueL, nameL, paramsL, argNamesL, decoratorL, transformL,
+                    evalParams, restCode, retStmt, evalBody, evalFn, lookupCode, kernelBodyL, kernelFnL},
+                nameL = OptionValue["Name"]; prologueL = OptionValue["Body"]; paramsL = OptionValue["Parameters"];
+                argNamesL = Map[If[StringQ[#], #, #["Name"]]&, paramsL];
+                decoratorL = OptionValue["Decorator"]; transformL = OptionValue["ReturnTransform"];
+                (* Optimize WITHOUT sub-kernel splitting — we want one flat arithmetic body. *)
+                savedMax = $codeMaxKernelTerms; savedLvl = $kernelSplitLevel;
+                $codeMaxKernelTerms = 10^9; $kernelSplitLevel = 1;
+                opt = optimizeExpression[expr];
+                $codeMaxKernelTerms = savedMax; $kernelSplitLevel = savedLvl;
+                defs = opt["Definitions"]; finalExpr = opt["Expr"]; varNamesL = getAllVarNames[opt];
+                (* Lookups = the hoisted interpolator calls named _interp...; the _den... and
+                   _cse... defs are cheap arithmetic and stay inside eval. *)
+                lookupDefs = Select[defs, StringStartsQ[#[[1]], "_interp"]&];
+                restDefs = Select[defs, Not @ StringStartsQ[#[[1]], "_interp"]&];
+                lookupNames = lookupDefs[[All, 1]];
+                evalParams = Join[paramsL, Map[<|"Name" -> #, "Type" -> "auto", "Const" -> True, "Reference" -> True|>&, lookupNames]];
+                restCode = stripQuotedNames[formatDefinitions[restDefs], varNamesL];
+                retStmt = stripQuotedNames[formatReturnStatement[transformL[finalExpr]], varNamesL];
+                evalBody = prologueL <> "\n" <> restCode <> "\n" <> retStmt;
+                evalFn = MakeCppFunction["Name" -> nameL <> "_eval", "Parameters" -> evalParams,
+                    "Prefix" -> decoratorL, "Return" -> "auto", "Body" -> evalBody];
+                lookupCode = stripQuotedNames[formatDefinitions[lookupDefs], varNamesL];
+                kernelBodyL = prologueL <> "\n" <> lookupCode <> "return " <> nameL <> "_eval(" <> StringRiffle[Join[argNamesL, lookupNames], ", "] <> ");";
+                kernelFnL = MakeCppFunction["Name" -> nameL, "Parameters" -> paramsL, "Prefix" -> OptionValue["Prefix"],
+                    "Return" -> OptionValue["Return"], "Suffix" -> OptionValue["Suffix"], "Templates" -> OptionValue["Templates"],
+                    "Class" -> OptionValue["Class"], "Body" -> kernelBodyL];
+                Return[StringRiffle[{evalFn, kernelFnL}, "\n\n"]]
+            ]
+        ];
+        transform = OptionValue["ReturnTransform"];
+        optimized = optimizeExpression[expr];
+        (* If the integrand did not split into sub-kernels, emit the plain single function. *)
+        If[!TrueQ[optimized["UseSubKernels"]],
+            Return[MakeCppFunction @@ (Evaluate @ Join[{expr}, Thread[Rule @@ {#, OptionValue[#]}]& @ Keys[Options[MakeCppFunction]]])]
+        ];
+        prologue = OptionValue["Body"];
+        name = OptionValue["Name"];
+        decorator = OptionValue["Decorator"];
+        params = OptionValue["Parameters"];
+        argNames = Map[If[StringQ[#], #, #["Name"]]&, params];
+        argStr = StringRiffle[argNames, ", "];
+        sharedDefs = optimized["SharedDefinitions"];
+        subKernels = optimized["SubKernels"];
+        allNames = Join[sharedDefs[[All, 1]], Flatten @ Map[#["Definitions"][[All, 1]]&, subKernels]];
+        sharedCode = stripQuotedNames[formatDefinitions[sharedDefs], allNames];
+        accSym = Unique["postAcc"];
+        wrappedReturn = StringReplace[CppForm[transform[accSym]], ToString[accSym] -> "_acc"];
+        If[TrueQ[OptionValue["ShareInterpolators"]] && Length[sharedDefs] > 0,
+            (* SCOPED-SHARE path (mirrors the OpenACC dispatcher->integrand structure): the
+               parent computes each sub-kernel's interpolators/denominators in its OWN scoped
+               block and passes them as scalars to a poly-only sub-function. Block scope lets
+               each contribution's lookups die before the next, so the parent never holds them
+               all live; and the sub-functions carry no lookup code (just the polynomial). This
+               separates the lookup working-set from the polynomial working-set into distinct
+               register frames. *)
+            Module[{sharedNames, declLine, rawExprCode, perSubShared, blocks},
+                sharedNames = sharedDefs[[All, 1]];
+                rawExprCode = CppForm[expr, "Format" -> False];
+                declLine = "// clang-format off\nusing _T = decltype(" <> rawExprCode <> ");\n// clang-format on\n";
+                (* Shared (globally-unique) defs each sub transitively needs — traversing both
+                   the sub's terms and its own (locally-named) defs. Only these are passed as
+                   scalars; per-sub local CSE keep their (reused) names and stay inside the sub. *)
+                perSubShared =
+                    Table[
+                        Module[{localDefs, defsByName, allOrdered, refs},
+                            localDefs = subKernels[[i]]["Definitions"];
+                            defsByName = Association @ Join[
+                                Table[sharedDefs[[j, 1]] -> sharedDefs[[j]], {j, Length[sharedDefs]}],
+                                Table[localDefs[[j, 1]] -> localDefs[[j]], {j, Length[localDefs]}]];
+                            allOrdered = Join[sharedNames, localDefs[[All, 1]]];
+                            refs = transitiveDefRefs[subKernels[[i]]["Terms"], allOrdered, defsByName];
+                            Select[sharedNames, MemberQ[refs, #]&]
+                        ]
+                        ,
+                        {i, Length[subKernels]}
+                    ];
+                subFns =
+                    Table[
+                        Module[{usedShared, localCode, termsCode, subParams, subBody},
+                            usedShared = perSubShared[[i]];
+                            localCode = stripQuotedNames[formatDefinitions[subKernels[[i]]["Definitions"]], allNames];
+                            termsCode = stripQuotedNames[CppForm[subKernels[[i]]["Terms"]], allNames];
+                            subParams = Join[params, Map[<|"Name" -> #, "Type" -> "auto", "Const" -> True, "Reference" -> True|>&, usedShared]];
+                            subBody = prologue <> "\n" <> localCode <> "return " <> termsCode <> ";";
+                            MakeCppFunction["Name" -> name <> "_sub" <> ToString[i], "Parameters" -> subParams,
+                                "Prefix" -> decorator, "Return" -> "auto", "Body" -> subBody]
+                        ]
+                        ,
+                        {i, Length[subKernels]}
+                    ];
+                blocks =
+                    Table[
+                        Module[{usedShared, usedDefs, defCode},
+                            usedShared = perSubShared[[i]];
+                            usedDefs = Select[sharedDefs, MemberQ[usedShared, #[[1]]]&];
+                            defCode = stripQuotedNames[formatDefinitions[usedDefs], allNames];
+                            "{\n" <> defCode <> "_acc += " <> name <> "_sub" <> ToString[i] <> "(" <> StringRiffle[Join[argNames, usedShared], ", "] <> ");\n}\n"
+                        ]
+                        ,
+                        {i, Length[subKernels]}
+                    ];
+                kernelBody = prologue <> "\n" <> declLine <> "_T _acc{};\n" <> StringJoin[blocks] <> "return " <> wrappedReturn <> ";";
+            ]
+            ,
+            (* RECOMPUTE path: each sub-function recomputes the shared defs (DCE prunes unused). *)
+            subFns =
+                Table[
+                    Module[{localDefs, termsCode, subBody},
+                        localDefs = stripQuotedNames[formatDefinitions[subKernels[[i]]["Definitions"]], allNames];
+                        termsCode = stripQuotedNames[CppForm[subKernels[[i]]["Terms"]], allNames];
+                        subBody = prologue <> "\n" <> sharedCode <> localDefs <> "return " <> termsCode <> ";";
+                        MakeCppFunction["Name" -> name <> "_sub" <> ToString[i], "Parameters" -> params,
+                            "Prefix" -> decorator, "Return" -> "auto", "Body" -> subBody]
+                    ]
+                    ,
+                    {i, Length[subKernels]}
+                ];
+            kernelBody = prologue <> "\nauto _acc = " <>
+                StringRiffle[Table[name <> "_sub" <> ToString[i] <> "(" <> argStr <> ")", {i, Length[subKernels]}], " + "] <>
+                ";\nreturn " <> wrappedReturn <> ";";
+        ];
+        kernelFn = MakeCppFunction["Name" -> name, "Parameters" -> params, "Prefix" -> OptionValue["Prefix"],
+            "Return" -> OptionValue["Return"], "Suffix" -> OptionValue["Suffix"], "Templates" -> OptionValue["Templates"],
+            "Class" -> OptionValue["Class"], "Body" -> kernelBody];
+        StringRiffle[Append[subFns, kernelFn], "\n\n"]
+    ];
+
 (* ::Subsection:: *)
 
 (*Creating Headers*)

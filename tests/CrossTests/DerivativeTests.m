@@ -96,17 +96,22 @@ FunKitResYuk =
     Comparison and Tests
 **********************************************************************************)
 
-resultF2QF = FEx[FunKitResF2, FTerm[-1, QMeSResF2]] // FSimplify;
+(* QMeS comparison: only run when the QMeS package is actually installed (see
+   tests/util/getQMeS.m). Otherwise DeriveFunctionalEquation/ReduceIdenticalFlow-
+   Diagrams stay unevaluated and these would fail spuriously. *)
+If[TrueQ[$QMeSAvailable],
+    resultF2QF = FEx[FunKitResF2, FTerm[-1, QMeSResF2]] // FSimplify;
 
-resultS2QF = FEx[FunKitResS2, FTerm[-1, QMeSResS2]] // FSimplify;
+    resultS2QF = FEx[FunKitResS2, FTerm[-1, QMeSResS2]] // FSimplify;
 
-resultYukQF = FEx[FunKitResYuk, FTerm[-1, QMeSResYuk]] // FSimplify;
+    resultYukQF = FEx[FunKitResYuk, FTerm[-1, QMeSResYuk]] // FSimplify;
 
-AppendTo[tests, VerificationTest[resultF2QF, FEx[], TestID -> "Verify Yukawa theory (QMeS): Fermion propagator flow"]];
+    AppendTo[tests, VerificationTest[resultF2QF, FEx[], TestID -> "Verify Yukawa theory (QMeS): Fermion propagator flow"]];
 
-AppendTo[tests, VerificationTest[resultS2QF, FEx[], TestID -> "Verify Yukawa theory (QMeS): Scalar propagator flow"]];
+    AppendTo[tests, VerificationTest[resultS2QF, FEx[], TestID -> "Verify Yukawa theory (QMeS): Scalar propagator flow"]];
 
-AppendTo[tests, VerificationTest[resultYukQF, FEx[], TestID -> "Verify Yukawa theory (QMeS): Yukawa vertex flow"]];
+    AppendTo[tests, VerificationTest[resultYukQF, FEx[], TestID -> "Verify Yukawa theory (QMeS): Yukawa vertex flow"]];
+];
 
 resultF2DF = FEx[FunKitResF2, FTerm[-1, DoFunResF2]] // FSimplify;
 

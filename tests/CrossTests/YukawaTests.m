@@ -96,17 +96,22 @@ FunKitRes4 =
     Comparison and Tests
 **********************************************************************************)
 
-result2QF = FEx[FunKitRes2, FTerm[-1, QMeSRes2]] // FSimplify;
+(* QMeS comparison: only run when the QMeS package actually installed (see
+   tests/util/getQMeS.m). Otherwise DeriveFunctionalEquation/ReduceIdenticalFlow-
+   Diagrams stay unevaluated and these would fail spuriously. *)
+If[TrueQ[$QMeSAvailable],
+    result2QF = FEx[FunKitRes2, FTerm[-1, QMeSRes2]] // FSimplify;
 
-result3QF = FEx[FunKitRes3, FTerm[-1, QMeSRes3]] // FSimplify;
+    result3QF = FEx[FunKitRes3, FTerm[-1, QMeSRes3]] // FSimplify;
 
-result4QF = FEx[FunKitRes4, FTerm[-1, QMeSRes4]] // FSimplify;
+    result4QF = FEx[FunKitRes4, FTerm[-1, QMeSRes4]] // FSimplify;
 
-AppendTo[tests, VerificationTest[result2QF, FEx[], TestID -> "Verify scalar field theory (QMeS): Propagator flow"]];
+    AppendTo[tests, VerificationTest[result2QF, FEx[], TestID -> "Verify scalar field theory (QMeS): Propagator flow"]];
 
-AppendTo[tests, VerificationTest[result3QF, FEx[], TestID -> "Verify scalar field theory (QMeS): Three-point flow"]];
+    AppendTo[tests, VerificationTest[result3QF, FEx[], TestID -> "Verify scalar field theory (QMeS): Three-point flow"]];
 
-AppendTo[tests, VerificationTest[result4QF, FEx[], TestID -> "Verify scalar field theory (QMeS): Four-point flow"]];
+    AppendTo[tests, VerificationTest[result4QF, FEx[], TestID -> "Verify scalar field theory (QMeS): Four-point flow"]];
+];
 
 result2DF = FEx[FunKitRes2, FTerm[-1, DoFunRes2]] // FSimplify;
 

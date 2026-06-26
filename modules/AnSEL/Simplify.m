@@ -632,6 +632,19 @@ TermsEqualPre[setup_, t1_FTerm, t2_FTerm, data1_Association, data2_Association] 
         Return[{equal, nt2}]
     ];
 
+(* mergeCoefficientIntoTerm: build a flat FTerm from a summed coefficient and an
+   objects-only FTerm.  The coefficient is itself an FTerm here (ReduceIndices
+   wraps its argument, e.g. ReduceIndices[setup, FTerm[2]] -> FTerm[2]), so the
+   naive FTerm[factor, terms] is doubly nested and relies on the
+   FTerm[___, FTerm[__], ___] flattening downvalues (Notation.m) to collapse.
+   If that flattening does not fire, an FTerm leaks into the prefactor and a
+   later merge produces a malformed coefficient like 1 + FTerm[2].  Splicing the
+   parts explicitly makes the result flat by construction, independent of the
+   downvalue firing. *)
+
+mergeCoefficientIntoTerm[factor_, terms_FTerm] :=
+    FTerm @@ Join[If[Head[factor] === FTerm, List @@ factor, {factor}], List @@ terms];
+
 (* TermsEqualAndSumPre: equality check + coefficient summation.  Returns
    either False or FTerm[fac1 + sign * fac2, ...t1's objects...].  Connected-
    case only: bare-Grassmann FTerms are intentionally not merged via this
@@ -649,7 +662,7 @@ TermsEqualAndSumPre[setup_, t1_FTerm, t2_FTerm, data1_Association, data2_Associa
         {fac2, terms2} = SplitPrefactor[setup, nt2];
         factor = ReduceIndices[setup, FTerm[fac1 + sign * fac2]];
         If[factor === 0 || factor === FTerm[0], Return[FTerm[0]]];
-        FTerm[factor, terms1]
+        mergeCoefficientIntoTerm[factor, terms1]
     ];
 
 (* 3-arg variants normalize their inputs first; for callers that haven't
@@ -829,7 +842,7 @@ matchDisconnectedTerms[setup_, t1_FTerm, t2_FTerm, data1_Association, data2_Asso
                         sign = (Times @@ signs) * grassmannPermutationSign[parities, β];
                         factor = ReduceIndices[setup, FTerm[fac1 + sign * fac2]];
                         If[factor === 0 || factor === FTerm[0], Throw[FTerm[0]]];
-                        Throw[FTerm[factor, terms1]]
+                        Throw[mergeCoefficientIntoTerm[factor, terms1]]
                     ]
                 ]
                 ,

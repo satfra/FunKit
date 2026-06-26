@@ -301,3 +301,31 @@ AppendTo[
         TestID -> "CompositeOperators 2pt: 5 total (2 disc + 3 conn), no FMinus, FRoute connected → 2 terms"
     ]
 ];
+
+(* Invariant: a merged FTerm's coefficient must be a plain scalar, never a nested
+   FTerm.  Regression guard for the "1 + FTerm[2]" merge bug, where the summed
+   coefficient (ReduceIndices wraps it as FTerm[...]) leaked into the prefactor
+   because the construction relied on the FTerm[___, FTerm[__], ___] flattening
+   downvalue firing.  mergeCoefficientIntoTerm now splices the parts explicitly,
+   so the result is flat regardless of that downvalue.  This is checked directly
+   on the helper so it holds even where the flattening downvalue happens to fire. *)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{setup, merged, pref},
+            setup = GetFunKitSetupScalar[];
+            merged = FunKit`Private`mergeCoefficientIntoTerm[
+                FTerm[3],
+                FTerm[Propagator[{Phi, Phi}, {i1, i2}], GammaN[{Phi, Phi}, {i1, i2}]]
+            ];
+            pref = First @ FunKit`Private`SplitPrefactor[setup, merged];
+            {pref, FreeQ[pref, _FTerm]}
+        ]
+        ,
+        {3, True}
+        ,
+        TestID -> "FSimplify disconnected: merged coefficient is a flat scalar (no nested FTerm)"
+    ]
+];

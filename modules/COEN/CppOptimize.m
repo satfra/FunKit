@@ -132,6 +132,27 @@ normalizePowerBases[expr_, defs_] :=
     ];
 
 (**********************************************************************************
+    Recompute-cost estimate for a CSE candidate (register-pressure-aware CSE).
+    Atoms (numbers, symbols, string placeholders) are free; +,* cost 1 per extra arg;
+    a small positive integer power (powr<n>, n<=8) costs 1; negative/fractional powers
+    (division, pow()) and any other call (sqrt/exp/log/interpolators) cost ~8.
+    A candidate is "cheap to rematerialize" when its cost <= $cseCostThreshold, in which
+    case it is left inline rather than spending a long-lived register on it.
+**********************************************************************************)
+
+cseRematCost[e_] /; NumericQ[e] := 0;
+cseRematCost[_Symbol] := 0;
+cseRematCost[_String] := 0;
+cseRematCost[Power[b_, n_Integer]] := cseRematCost[b] + If[n > 0, If[n <= 8, 1, 2], 8];
+cseRematCost[Power[b_, _]] := cseRematCost[b] + 8;
+cseRematCost[Times[args__]] := Total[cseRematCost /@ {args}] + (Length[{args}] - 1);
+cseRematCost[Plus[args__]] := Total[cseRematCost /@ {args}] + (Length[{args}] - 1);
+cseRematCost[_[args__]] := 8 + Total[cseRematCost /@ {args}];
+cseRematCost[_] := 8;
+
+cheapToRemat[e_] := TrueQ[$codeCSECostFilter] && cseRematCost[e] <= $cseCostThreshold;
+
+(**********************************************************************************
     DAG-Based Common Subexpression Elimination
     Uses Experimental`OptimizeExpression with fallback to weighted frequency CSE.
 **********************************************************************************)
@@ -188,6 +209,22 @@ dagCSE[expr_, remainingRegisters_Integer] :=
 (* Extract final expression via Hold then release — the symbolic
    expression doesn't have side effects, so ReleaseHold is safe *)
                     finalExpr = ReleaseHold @ Extract[heldBlock, {1, 2, numParts}, Hold];
+(* Register-pressure-aware rematerialization: drop CSE temporaries that are cheap to
+   recompute (small positive powers, a single add or multiply) so they are not held in long-lived
+   registers across a large basic block. Inline the dropped defs back into the remaining
+   defs and the final expression (//. resolves chains of dropped-on-dropped deps). *)
+                    If[TrueQ[$codeCSECostFilter] && Length[allAssignments] > 0,
+                        Module[{cheapMask, cheapDefs, keepDefs, rematRules},
+                            cheapMask = Map[cheapToRemat[#[[2]]]&, allAssignments];
+                            cheapDefs = Pick[allAssignments, cheapMask, True];
+                            keepDefs = Pick[allAssignments, cheapMask, False];
+                            If[Length[cheapDefs] > 0,
+                                rematRules = Map[#[[1]] -> #[[2]]&, cheapDefs];
+                                finalExpr = finalExpr //. rematRules;
+                                allAssignments = Map[{#[[1]], #[[2]] //. rematRules}&, keepDefs];
+                            ];
+                        ];
+                    ];
                     (* Limit to remaining register budget *)
                     If[Length[allAssignments] > remainingRegisters,
                         kept = Take[allAssignments, remainingRegisters];
@@ -220,6 +257,10 @@ fallbackCSE[expr_, maxVars_Integer] :=
         optList = $codeOptimizeFunctions;
         subexprs = Flatten @ Map[Cases[expr, #, Infinity]&, optList];
         replacementObj = Select[Counts[subexprs], # > 1&];
+        (* Register-pressure-aware: drop cheap-to-recompute candidates (rematerialize). *)
+        If[TrueQ[$codeCSECostFilter],
+            replacementObj = KeySelect[replacementObj, Not @ cheapToRemat[#]&];
+        ];
         replacementObj = TakeLargest[replacementObj, Min[maxVars, Length[replacementObj]]];
         replacementKeys = Keys[replacementObj];
         If[Length[replacementKeys] === 0,
@@ -409,17 +450,46 @@ extractSummationCore[expr_] :=
         {1, {expr}}
     ];
 
+(* Recursively refine a single term for KernelSplitLevel > 1: split the term's largest
+   nested Plus in half, `level`-1 times. Returns a list of sub-terms whose sum equals the
+   input term (algebraic identity: pf*(a+b) == pf*a + pf*b). Terms with no nested Plus are
+   returned unchanged. This turns a single heavy "prefactor * big-polynomial * propagators"
+   term into several smaller terms the partitioner can place in separate sub-kernels. *)
+
+splitDeep[term_, level_Integer] :=
+    If[level <= 1,
+        {term}
+        ,
+        Module[{pf, subterms, half},
+            {pf, subterms} = extractSummationCore[term];
+            If[Length[subterms] <= 1,
+                {term}
+                ,
+                half = Ceiling[Length[subterms] / 2];
+                Join[
+                    splitDeep[pf * (Plus @@ Take[subterms, half]), level - 1],
+                    splitDeep[pf * (Plus @@ Drop[subterms, half]), level - 1]
+                ]
+            ]
+        ]
+    ];
+
 earlySplit[interpDefs_, expr_] :=
     Module[
         {prefactor, terms, numTerms, exprComplexity, totalWeight, chunkSize, chunks, subKernelData, interpNames, interpsByName}
         ,
         (* Extract the summation core, handling Times[prefactor, Plus[...]] *)
         {prefactor, terms} = extractSummationCore[expr];
+        (* KernelSplitLevel > 1: refine heavy terms by splitting their nested sums, so a
+           single big nested term becomes several smaller ones for the partitioner. *)
+        If[$kernelSplitLevel > 1,
+            terms = Flatten[splitDeep[#, $kernelSplitLevel]& /@ terms]
+        ];
         numTerms = Length[terms];
         exprComplexity = Total[LeafCount /@ terms];
         totalWeight = Length[interpDefs] + exprComplexity;
         chunkSize = $codeMaxKernelTerms;
-        FunKitDebug[2, "Early split check: ", numTerms, " terms, LeafCount ", exprComplexity, ", ", Length[interpDefs], " interp defs, total weight ", totalWeight, " vs threshold ", chunkSize];
+        FunKitDebug[2, "Early split check: ", numTerms, " terms (split level ", $kernelSplitLevel, "), LeafCount ", exprComplexity, ", ", Length[interpDefs], " interp defs, total weight ", totalWeight, " vs threshold ", chunkSize];
         (* Below threshold or cannot split — single kernel *)
         If[(totalWeight <= chunkSize && numTerms <= chunkSize) || numTerms <= 1,
             Return[<|"Split" -> False, "Expr" -> expr, "SharedDefs" -> interpDefs|>]

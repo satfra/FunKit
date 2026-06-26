@@ -56,6 +56,16 @@ Produces formatted C++ code suitable for compilation.";
 MakeCppFunction::usage = "MakeCppFunction[\"Name\"->name, \"Return\"->returnType, \"Parameters\"->paramList, \"Body\"->body, ...]
 Generates a C++ function definition based on specified options. See Options[MakeCppFunction] for available settings.";
 
+MakeCppFunctionSplit::usage = "MakeCppFunctionSplit[expr, \"Name\"->name, \"Parameters\"->paramList, ...]
+Like MakeCppFunction[expr, ...], but when the integrand splits into sub-kernels it emits each sub-kernel
+as a separate device sub-function (decorated via the \"Decorator\" option, default \"static KOKKOS_FUNCTION\")
+and a main function that sums the sub-function calls. This keeps each sub-function's working set in its own
+register frame, drastically reducing register pressure / spilling for large GPU kernels. Returns the
+sub-function definitions followed by the main function, as sibling class methods (one string).
+If the expression does not split, falls back to MakeCppFunction[expr, ...].
+Options: all Options[MakeCppFunction] plus \"Decorator\" (sub-function prefix), and the mutually-exclusive
+\"Interpolators\"->{...} / \"NotInterpolators\"->{...} (see Options).";
+
 MakeJuliaFunction::usage = "MakeJuliaFunction[\"Name\"->name, \"Return\"->returnType, \"Parameters\"->paramList, \"Body\"->body, ...]
 Generates a Julia function definition based on specified options. See Options[MakeJuliaFunction] for available settings.";
 
@@ -106,6 +116,17 @@ Enables CUDA fast-math intrinsics (__expf, __logf, etc.). Single precision only.
 
 FSetMaxKernelTerms::usage = "FSetMaxKernelTerms[n]
 Sets max terms per sub-kernel before splitting. Default 500."
+
+FSetCSECostFilter::usage = "FSetCSECostFilter[b]
+Enables (True, default) or disables (False) register-pressure-aware CSE: when on, a
+subexpression is promoted to a CSE temporary only if its recompute cost exceeds
+$cseCostThreshold; cheaper ones (small positive powers, a single add/multiply) are left
+inline. Reduces generated-source size; note backend GVN may re-materialize them, so it is
+not by itself a register-spill remedy on GPU."
+
+FSetCSECostThreshold::usage = "FSetCSECostThreshold[n]
+Sets the recompute-cost cutoff (in ~arithmetic ops) below or equal to which a CSE
+candidate is left inline rather than hoisted to a temporary. Default 2."
 
 FSetCodePrecision::usage = "FSetCodePrecision[p]
 Sets code precision. Accepts \"single\" or \"double\". Default \"double\"."

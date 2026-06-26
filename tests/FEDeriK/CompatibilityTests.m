@@ -286,6 +286,12 @@ doFunAlg3 = wrapDoFun[doFunAlgSetup <> "getAE[doRGE[actionYukawaSymbolic,{Psi,Ps
     F1: QMeS superindex — derive, convert to FunKit, convert back, check structure
 **********************************************************************************)
 
+(* F1 (and F4 below): these depend on QMeS-package output (qmesDiag2, qmesDiag3),
+   so they run only when QMeS is actually installed (see tests/util/getQMeS.m).
+   The surrounding F2/F3/F5 sections use FunKit's own QMeSForm/DoFunForm and run
+   regardless. *)
+If[TrueQ[$QMeSAvailable],
+
 fQmesFK2 = FunKitForm[qmesDiag2];
 
 fQmesFK3 = FunKitForm[qmesDiag3];
@@ -311,6 +317,8 @@ AppendTo[tests, VerificationTest[fQmesRT2 === fQmesFK2, True, TestID -> "F1e: QM
 (* Yukawa vertex roundtrip changes field ordering due to QMeS c>ag>g convention — check structure *)
 
 AppendTo[tests, VerificationTest[validFExQ[fQmesRT3] && FreeQ[fQmesRT3, Part] && Length[fQmesRT3] === Length[fQmesFK3], True, TestID -> "F1f: QMeS Yukawa vertex: roundtrip produces valid FEx with same diagram count"]];
+
+];  (* end QMeS F1 guard *)
 
 (**********************************************************************************
     F2: DoFun superindex — derive, convert to FunKit, convert back, check structure
@@ -374,6 +382,8 @@ AppendTo[tests, VerificationTest[fDoFunAlgRT3 === fDoFunAlgFK3, True, TestID -> 
     which is exactly the QMeS routed format.
 **********************************************************************************)
 
+If[TrueQ[$QMeSAvailable],
+
 qmesFullDiag2 = DeriveFunctionalEquation[yQMeSSetup, {Phi[i1], Phi[i2]}, "OutputLevel" -> "FullDiagrams"];
 
 qmesFullDiag3 = DeriveFunctionalEquation[yQMeSSetup, {Psi[i1], Psibar[i2], Phi[i3]}, "OutputLevel" -> "FullDiagrams"];
@@ -404,6 +414,8 @@ AppendTo[tests, VerificationTest[Head[fQmesFullBack3] === List, True, TestID -> 
 AppendTo[tests, VerificationTest[validFExQ[fQmesFullRT2], True, TestID -> "F4e: QMeS FullDiagrams scalar propagator: roundtrip produces valid FEx"]];
 
 AppendTo[tests, VerificationTest[validFExQ[fQmesFullRT3] && FreeQ[fQmesFullRT3, Part] && Length[fQmesFullRT3] === Length[fQmesFullFK3], True, TestID -> "F4f: QMeS FullDiagrams Yukawa vertex: roundtrip produces valid FEx"]];
+
+];  (* end QMeS F4 guard *)
 
 (**********************************************************************************
     F5: FunKit-derivation origin. F1-F4 start from a QMeS/DoFun derivation and

@@ -6,9 +6,13 @@ tests = {};
 
 hasFortran = Quiet[RunProcess[{"gfortran", "--version"}]] =!= $Failed;
 
+(* gfortran may be absent (e.g. a fresh machine). Code-generation tests below run
+   regardless; the compile/run blocks are each guarded by If[hasFortran, ...] so
+   they are skipped rather than reported as failures. A bare Return[] here does
+   NOT work: the runner evaluates the file via ToExpression, so Return[] would not
+   short-circuit the subsequent test definitions. *)
 If[!hasFortran,
-    Print["Fortran compiler not found, skipping tests."];
-    Return[];
+    Print["Fortran compiler not found, skipping compiler-dependent tests."];
 ];
 
 ClearAll[a]
@@ -29,17 +33,19 @@ program main
 end program main
 ";
 
-execFile1 = $TemporaryDirectory <> "/FunKitFortranTest1.f90";
-execPath1 = $TemporaryDirectory <> "/FunKitFortranTest1";
-Export[execFile1, code1, "Text"];
+If[hasFortran,
+    execFile1 = $TemporaryDirectory <> "/FunKitFortranTest1.f90";
+    execPath1 = $TemporaryDirectory <> "/FunKitFortranTest1";
+    Export[execFile1, code1, "Text"];
 
-compile1 = RunProcess[{"gfortran", "-ffree-form", "-o", execPath1, execFile1}];
+    compile1 = RunProcess[{"gfortran", "-ffree-form", "-o", execPath1, execFile1}];
 
-AppendTo[tests, VerificationTest[compile1["ExitCode"], 0, TestID -> "Verify compilation of basic Fortran function"]];
+    AppendTo[tests, VerificationTest[compile1["ExitCode"], 0, TestID -> "Verify compilation of basic Fortran function"]];
 
-output1 = If[compile1["ExitCode"] === 0, RunProcess[{execPath1}], <|"StandardOutput" -> ""|>];
+    output1 = If[compile1["ExitCode"] === 0, RunProcess[{execPath1}], <|"StandardOutput" -> ""|>];
 
-AppendTo[tests, VerificationTest[StringTrim[output1["StandardOutput"]], "42", TestID -> "Verify return value of basic Fortran function"]];
+    AppendTo[tests, VerificationTest[StringTrim[output1["StandardOutput"]], "42", TestID -> "Verify return value of basic Fortran function"]];
+];
 
 (**********************************************************************************
     Testing typical arithmetic operations in Fortran functions
@@ -59,20 +65,22 @@ program main
 end program main
 ";
 
-execFile2 = $TemporaryDirectory <> "/FunKitFortranTest2.f90";
-execPath2 = $TemporaryDirectory <> "/FunKitFortranTest2";
-Export[execFile2, code2, "Text"];
+If[hasFortran,
+    execFile2 = $TemporaryDirectory <> "/FunKitFortranTest2.f90";
+    execPath2 = $TemporaryDirectory <> "/FunKitFortranTest2";
+    Export[execFile2, code2, "Text"];
 
-compile2 = RunProcess[{"gfortran", "-ffree-form", "-o", execPath2, execFile2}];
+    compile2 = RunProcess[{"gfortran", "-ffree-form", "-o", execPath2, execFile2}];
 
-AppendTo[tests, VerificationTest[compile2["ExitCode"], 0, TestID -> "Verify compilation of Fortran function with arithmetic operations"]];
+    AppendTo[tests, VerificationTest[compile2["ExitCode"], 0, TestID -> "Verify compilation of Fortran function with arithmetic operations"]];
 
-output2 = If[compile2["ExitCode"] === 0, RunProcess[{execPath2}], <|"StandardOutput" -> ""|>];
+    output2 = If[compile2["ExitCode"] === 0, RunProcess[{execPath2}], <|"StandardOutput" -> ""|>];
 
-expectedVal = N[expr /. a -> 1.5, 15];
-fortranVal = ToExpression[StringTrim[output2["StandardOutput"]]];
+    expectedVal = N[expr /. a -> 1.5, 15];
+    fortranVal = ToExpression[StringTrim[output2["StandardOutput"]]];
 
-AppendTo[tests, VerificationTest[Abs[fortranVal - expectedVal] < 1*^-8, True, TestID -> "Verify return value of Fortran function with arithmetic operations"]];
+    AppendTo[tests, VerificationTest[Abs[fortranVal - expectedVal] < 1*^-8, True, TestID -> "Verify return value of Fortran function with arithmetic operations"]];
+];
 
 (**********************************************************************************
     Optimization pipeline test: CSE variables appear in output
@@ -106,20 +114,22 @@ program main
 end program main
 ";
 
-execFileOpt = $TemporaryDirectory <> "/FunKitFortranTestOpt.f90";
-execPathOpt = $TemporaryDirectory <> "/FunKitFortranTestOpt";
-Export[execFileOpt, codeOpt, "Text"];
+If[hasFortran,
+    execFileOpt = $TemporaryDirectory <> "/FunKitFortranTestOpt.f90";
+    execPathOpt = $TemporaryDirectory <> "/FunKitFortranTestOpt";
+    Export[execFileOpt, codeOpt, "Text"];
 
-compileOpt = RunProcess[{"gfortran", "-ffree-form", "-o", execPathOpt, execFileOpt}];
+    compileOpt = RunProcess[{"gfortran", "-ffree-form", "-o", execPathOpt, execFileOpt}];
 
-AppendTo[tests, VerificationTest[compileOpt["ExitCode"], 0, TestID -> "Verify compilation of optimized Fortran function"]];
+    AppendTo[tests, VerificationTest[compileOpt["ExitCode"], 0, TestID -> "Verify compilation of optimized Fortran function"]];
 
-outputOpt = If[compileOpt["ExitCode"] === 0, RunProcess[{execPathOpt}], <|"StandardOutput" -> ""|>];
+    outputOpt = If[compileOpt["ExitCode"] === 0, RunProcess[{execPathOpt}], <|"StandardOutput" -> ""|>];
 
-expectedOptVal = N[exprOpt /. {a -> 1.2, b -> 0.7}, 15];
-fortranOptVal = ToExpression[StringTrim[outputOpt["StandardOutput"]]];
+    expectedOptVal = N[exprOpt /. {a -> 1.2, b -> 0.7}, 15];
+    fortranOptVal = ToExpression[StringTrim[outputOpt["StandardOutput"]]];
 
-AppendTo[tests, VerificationTest[Abs[fortranOptVal - expectedOptVal] < 1*^-8, True, TestID -> "Optimized Fortran function returns correct value"]];
+    AppendTo[tests, VerificationTest[Abs[fortranOptVal - expectedOptVal] < 1*^-8, True, TestID -> "Optimized Fortran function returns correct value"]];
+];
 
 (**********************************************************************************
     Composite-denominator hoisting: _den names must be coerced to valid Fortran
@@ -173,20 +183,22 @@ program main
 end program main
 ";
 
-execFileDen = $TemporaryDirectory <> "/FunKitFortranTestDen.f90";
-execPathDen = $TemporaryDirectory <> "/FunKitFortranTestDen";
-Export[execFileDen, codeDen, "Text"];
+If[hasFortran,
+    execFileDen = $TemporaryDirectory <> "/FunKitFortranTestDen.f90";
+    execPathDen = $TemporaryDirectory <> "/FunKitFortranTestDen";
+    Export[execFileDen, codeDen, "Text"];
 
-compileDen = RunProcess[{"gfortran", "-ffree-form", "-o", execPathDen, execFileDen}];
+    compileDen = RunProcess[{"gfortran", "-ffree-form", "-o", execPathDen, execFileDen}];
 
-AppendTo[tests, VerificationTest[compileDen["ExitCode"], 0, TestID -> "Verify compilation of Fortran function with hoisted denominator"]];
+    AppendTo[tests, VerificationTest[compileDen["ExitCode"], 0, TestID -> "Verify compilation of Fortran function with hoisted denominator"]];
 
-outputDen = If[compileDen["ExitCode"] === 0, RunProcess[{execPathDen}], <|"StandardOutput" -> ""|>];
+    outputDen = If[compileDen["ExitCode"] === 0, RunProcess[{execPathDen}], <|"StandardOutput" -> ""|>];
 
-expectedDenVal = N[(Sin[a] / (mm + a^2) + Cos[a] / (mm + a^2)) /. {a -> 1.2, mm -> 0.7}, 15];
-fortranDenVal = ToExpression[StringTrim[outputDen["StandardOutput"]]];
+    expectedDenVal = N[(Sin[a] / (mm + a^2) + Cos[a] / (mm + a^2)) /. {a -> 1.2, mm -> 0.7}, 15];
+    fortranDenVal = ToExpression[StringTrim[outputDen["StandardOutput"]]];
 
-AppendTo[tests, VerificationTest[Abs[fortranDenVal - expectedDenVal] < 1*^-8, True, TestID -> "Fortran function with hoisted denominator returns correct value"]];
+    AppendTo[tests, VerificationTest[Abs[fortranDenVal - expectedDenVal] < 1*^-8, True, TestID -> "Fortran function with hoisted denominator returns correct value"]];
+];
 
 (**********************************************************************************
     Simple expression: plain return, no CSE

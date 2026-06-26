@@ -206,12 +206,35 @@ $codePrecision = "double";
 
 $codeMaxKernelTerms = 500;
 
+(* Depth to which the kernel splitter recurses into nested sums. Level 1 (default)
+   splits only the top-level Plus; level >= 2 also splits the largest nested Plus inside
+   each heavy term (halving per extra level), enabling finer sub-kernels for integrands
+   that are a single nested term (prefactor * big-product) rather than a wide sum. *)
+
+$kernelSplitLevel = 1;
+
 (* Max character length of a single C++ statement (from ; to ;) before
    clang-format is disabled for that statement to avoid OOM. *)
 
 $codeFormatStatementLimit = 1000;
 
 $codeFMARestructure = True;
+
+(* Register-pressure-aware CSE. A subexpression is promoted to a (long-lived) CSE
+   temporary only when its recompute cost EXCEEDS $cseCostThreshold; cheaper ones
+   (small positive integer powers, a single add or multiply) are left inline so the backend
+   rematerializes them at use instead of holding them in a register across a large
+   basic block. ON by default — a ~1-op value is never worth a register on a
+   register-starved GPU. The flag exists to A/B the effect, not to gate the behaviour. *)
+
+$codeCSECostFilter = True;
+
+(* Recompute-cost cutoff (in ~arithmetic ops): atoms are free; +,* cost 1 each; a small
+   positive integer power (powr<n>, n<=8) costs 1; negative/fractional powers (division,
+   pow()) and other calls (sqrt/exp/log/interpolators) cost ~8 and are always kept.
+   Threshold 2 drops pure monomials and trivial 1-2 op combos. *)
+
+$cseCostThreshold = 2;
 
 FSetRegisterSize[n_Integer?Positive] :=
     Module[{},
@@ -248,6 +271,37 @@ FSetMaxKernelTerms[n_Integer?Positive] :=
     Module[{},
         $codeMaxKernelTerms = n;
     ];
+
+FSetKernelSplitLevel[n_Integer?Positive] :=
+    Module[{},
+        $kernelSplitLevel = n;
+    ];
+
+FSetKernelSplitLevel[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetKernelSplitLevel];
+        Abort[]
+    );
+
+FSetCSECostFilter[b_?BooleanQ] :=
+    Set[$codeCSECostFilter, b];
+
+FSetCSECostFilter[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetCSECostFilter];
+        Abort[]
+    );
+
+FSetCSECostThreshold[n_Integer?NonNegative] :=
+    Module[{},
+        $cseCostThreshold = n;
+    ];
+
+FSetCSECostThreshold[___] :=
+    (
+        Message[FunKit::invalidArguments, FSetCSECostThreshold];
+        Abort[]
+    );
 
 FSetMaxKernelTerms[___] :=
     (

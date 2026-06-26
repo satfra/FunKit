@@ -53,7 +53,7 @@ exec1 = CreateExecutable["
 int main(){
   std::cout << fun(42) << std::endl;
 }
-", "FunKitCppTest1", "CompilerName" -> CppCompiler];
+", "FunKitCppTest1", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
 
 output1 = Import["!" <> QuoteFile[exec1], "Text"];
 

@@ -6,9 +6,13 @@ tests = {};
 
 hasJulia = Quiet[RunProcess[{"julia", "--version"}]] =!= $Failed;
 
-If[hasJulia == "",
-    Print["Julia compiler not found, skipping tests."];
-    Return[];
+(* julia may be absent (e.g. a fresh machine). hasJulia is a Boolean, so the old
+   guard `hasJulia == ""` was never True and the interpreter tests ran anyway.
+   Code-generation tests below run regardless; the run blocks are each guarded by
+   If[hasJulia, ...]. A bare Return[] would not short-circuit here (the runner
+   evaluates the file via ToExpression), so we guard each block instead. *)
+If[!hasJulia,
+    Print["Julia interpreter not found, skipping interpreter-dependent tests."];
 ];
 
 ClearAll[a]
@@ -23,13 +27,15 @@ code1 = funBody1 <> "
 print(fun(42))
 ";
 
-execFile1 = Export[$TemporaryDirectory <> "/FunKitJuliaTest1.jl", code1, "Text"];
+If[hasJulia,
+    execFile1 = Export[$TemporaryDirectory <> "/FunKitJuliaTest1.jl", code1, "Text"];
 
-output1 = RunProcess[{"julia", execFile1}];
+    output1 = RunProcess[{"julia", execFile1}];
 
-AppendTo[tests, VerificationTest[output1["StandardError"], "", TestID -> "Verify correctness of basic Julia function"]];
+    AppendTo[tests, VerificationTest[output1["StandardError"], "", TestID -> "Verify correctness of basic Julia function"]];
 
-AppendTo[tests, VerificationTest[output1["StandardOutput"], "42", TestID -> "Verify return value of basic Julia function"]];
+    AppendTo[tests, VerificationTest[output1["StandardOutput"], "42", TestID -> "Verify return value of basic Julia function"]];
+];
 
 (**********************************************************************************
     Testing typical arithmetic operations in Julia functions    
@@ -43,15 +49,17 @@ code2 = funBody2 <> "
 print(round(fun(1.5),digits=11))
 "
 
-execFile2 = Export[$TemporaryDirectory <> "/FunKitJuliaTest2.jl", code2, "Text"];
+If[hasJulia,
+    execFile2 = Export[$TemporaryDirectory <> "/FunKitJuliaTest2.jl", code2, "Text"];
 
-output2 = RunProcess[{"julia", execFile2}]
+    output2 = RunProcess[{"julia", execFile2}];
 
-expected = ToString[NumberForm[expr /. a -> 1.5, 10]];
+    expected = ToString[NumberForm[expr /. a -> 1.5, 10]];
 
-AppendTo[tests, VerificationTest[output2["StandardError"], "", TestID -> "Verify correctness of Julia function with arithmetic operations"]];
+    AppendTo[tests, VerificationTest[output2["StandardError"], "", TestID -> "Verify correctness of Julia function with arithmetic operations"]];
 
-AppendTo[tests, VerificationTest[output2["StandardOutput"], expected, TestID -> "Verify return value of Julia function with arithmetic operations"]];
+    AppendTo[tests, VerificationTest[output2["StandardOutput"], expected, TestID -> "Verify return value of Julia function with arithmetic operations"]];
+];
 
 (**********************************************************************************
     Optimization pipeline test: CSE variables appear in output, result still correct
@@ -76,13 +84,15 @@ codeOpt = funBodyOpt <> "
 print(round(fun(1.2, 0.7), digits=10))
 ";
 
-execFileOpt = Export[$TemporaryDirectory <> "/FunKitJuliaTestOpt.jl", codeOpt, "Text"];
-outputOpt = RunProcess[{"julia", execFileOpt}];
+If[hasJulia,
+    execFileOpt = Export[$TemporaryDirectory <> "/FunKitJuliaTestOpt.jl", codeOpt, "Text"];
+    outputOpt = RunProcess[{"julia", execFileOpt}];
 
-expectedOpt = ToString[NumberForm[N[exprOpt /. {a -> 1.2, b -> 0.7}, 10], 10]];
+    expectedOpt = ToString[NumberForm[N[exprOpt /. {a -> 1.2, b -> 0.7}, 10], 10]];
 
-AppendTo[tests, VerificationTest[outputOpt["StandardError"], "", TestID -> "Optimization pipeline produces no Julia runtime errors"]];
-AppendTo[tests, VerificationTest[outputOpt["StandardOutput"], expectedOpt, TestID -> "Optimized Julia function returns correct value"]];
+    AppendTo[tests, VerificationTest[outputOpt["StandardError"], "", TestID -> "Optimization pipeline produces no Julia runtime errors"]];
+    AppendTo[tests, VerificationTest[outputOpt["StandardOutput"], expectedOpt, TestID -> "Optimized Julia function returns correct value"]];
+];
 
 (**********************************************************************************
     $codeOptimize = False: plain expression path produces just a return statement
