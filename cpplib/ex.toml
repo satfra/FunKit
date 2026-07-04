@@ -1,0 +1,25 @@
+equation = [
+  [
+  { type = "number", value = 0.5 },
+  { type = "FDOp", legs = [ [ "phi", 10 ] ] },
+  { type = "FDOp", legs = [ [ "phi", 9 ] ] },
+  { type = "FDOp", legs = [ [ "phi", 8 ] ] },
+  { type = "FDOp", legs = [ [ "phi", 7 ] ] },
+  { type = "FDOp", legs = [ [ "phi", 6 ] ] },
+  { type = "FDOp", legs = [ [ "phi", 5 ] ] },
+  { type = "FDOp", legs = [ [ "phi", 4 ] ] },
+  { type = "FDOp", legs = [ [ "phi", 3 ] ] },
+  { type = "Propagator", legs = [ [ "phi", 1 ], [ "phi", 2 ] ] },
+  { type = "Rdot", legs = [ [ "phi", -1 ], [ "phi", -2 ] ] }
+  ]
+]
+
+[setup]
+debug = 1
+outputFile = ""
+objects = [ ]
+ordered = [ "Rdot" ]
+correlators = [ ]
+
+  [[setup.cFields]]
+  phi = [ ]

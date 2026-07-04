@@ -1,0 +1,7 @@
+CMakeCache.txt
+cmake_*
+CMakeFiles/
+build/
+.cache
+Makefile
+funkit

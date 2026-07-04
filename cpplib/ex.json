@@ -1,0 +1,58 @@
+{
+    "setup": {
+        "debug": 1,
+        "cFields": [
+            {
+                "phi": []
+            }
+        ],
+        "objects": [],
+        "ordered": [
+            "Rdot"
+        ],
+        "correlators": []
+    },
+    "equation": [
+        [
+            {
+                "type": "number",
+                "value": 0.5
+            },
+            {
+                "type": "FDOp",
+                "legs": [
+                    [
+                        "phi",
+                        2
+                    ]
+                ]
+            },
+            {
+                "type": "Propagator",
+                "legs": [
+                    [
+                        "phi",
+                        0
+                    ],
+                    [
+                        "phi",
+                        1
+                    ]
+                ]
+            },
+            {
+                "type": "Rdot",
+                "legs": [
+                    [
+                        "phi",
+                        0
+                    ],
+                    [
+                        "phi",
+                        1
+                    ]
+                ]
+            }
+        ]
+    ]
+}
