@@ -4,6 +4,10 @@
 
 namespace FunKit
 {
+  double normalize(const Setup &setup, Object &obj);
+  void normalize(const Setup &setup, FTerm &fterm);
+  void normalize(const Setup &setup, FEq &feq);
+
   void reduce(FTerm &fterm);
   void reduce(FEq &feq);
 

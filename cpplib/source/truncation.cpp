@@ -168,6 +168,14 @@ namespace FunKit
         changed = true;
         break;
       }
+      default: {
+        if (has_AnyField(obj)) break;
+        if (!setup.truncation.in_truncation(obj)) {
+          term.clear();
+          return;
+        }
+        break;
+      }
       }
     }
     // Only sweep out the resolved objects if anything was resolved
@@ -189,6 +197,7 @@ namespace FunKit
     FEq out;
     std::vector<FTerm> work;
     truncate_into(setup, std::move(fterm), work, out);
+    normalize(setup, out);
     return out;
   }
 

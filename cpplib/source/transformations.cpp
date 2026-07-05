@@ -9,6 +9,39 @@
 
 namespace FunKit
 {
+  double normalize(const Setup &setup, Object &obj)
+  {
+    // Refuse to normalize objects with AnyField legs, since they are symbolic and cannot be resolved
+    if (has_AnyField(obj)) return 1;
+
+    // Sort the legs of the object by field index and then by leg index.
+    // Each commutation of two legs contributes a sign factor to the object value.
+    double sign = 1;
+    for (Idx i = 0; i < Idx(obj.legs.size()); ++i) {
+      for (Idx j = i + 1; j < Idx(obj.legs.size()); ++j) {
+        if (obj.legs[i] > obj.legs[j]) {
+          std::swap(obj.legs[i], obj.legs[j]);
+          sign *= std::get<0>(commute_sign(setup, obj.legs[i], obj.legs[j]));
+        }
+      }
+    }
+    return sign;
+  }
+
+  void normalize(const Setup &setup, FTerm &fterm)
+  {
+    // Normalize all Objects inside the FTerm
+    for (auto &obj : fterm)
+      fterm.value *= normalize(setup, obj);
+  }
+
+  void normalize(const Setup &setup, FEq &feq)
+  {
+    // Normalize all FTerm inside the FEq
+    for (auto &fterm : feq)
+      normalize(setup, fterm);
+  }
+
   void reduce(FTerm &fterm)
   {
     if (fterm.size() == 0) return;

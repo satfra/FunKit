@@ -113,23 +113,23 @@ TEST_CASE("Truncation queries", "[core][truncation]")
   auto [setup, feq] = FunKit::parse(BOILERPLATE_DIR + "scalar.toml");
   const FunKit::FieldIdx phi = setup.field_to_idx("phi");
 
-  REQUIRE(setup.truncation.in_truncation(FunKit::ObjectType::GammaN, {phi, phi, phi}));
-  REQUIRE_FALSE(setup.truncation.in_truncation(FunKit::ObjectType::GammaN, {phi, phi, phi, phi, phi}));
-  REQUIRE(setup.truncation.in_truncation(setup.type_to_idx("Rdot"), {phi, phi}));
+  REQUIRE(setup.truncation.in_truncation({FunKit::ObjectType::GammaN, {{phi, 0}, {phi, 1}, {phi, 2}}}));
+  REQUIRE_FALSE(setup.truncation.in_truncation({FunKit::ObjectType::GammaN, {{phi, 0}, {phi, 0}, {phi, 0}}}));
+  REQUIRE(setup.truncation.in_truncation({setup.type_to_idx("Rdot"), {{phi, 0}, {phi, 0}}}));
   // No rules for a type means everything is allowed
-  REQUIRE(setup.truncation.in_truncation(FunKit::ObjectType::Field, {phi}));
+  REQUIRE(setup.truncation.in_truncation({FunKit::ObjectType::Field, {{phi, 0}}}));
 
   REQUIRE(setup.truncation.max_truncation(FunKit::ObjectType::GammaN) == 4);
   REQUIRE(setup.truncation.max_truncation(FunKit::ObjectType::Propagator) == 2);
   REQUIRE(setup.truncation.max_truncation(FunKit::ObjectType::Field) == 1);
 
-  REQUIRE_THROWS(setup.truncation.in_truncation(99, {phi}));
+  REQUIRE_THROWS(setup.truncation.in_truncation({99, {{phi, 0}}}));
   REQUIRE_THROWS(setup.truncation.max_truncation(99));
 
   // Un-updated truncation tables must not be usable
   FunKit::Truncation empty;
   REQUIRE_THROWS(empty.add_rule(FunKit::ObjectType::GammaN, {phi}));
-  REQUIRE_THROWS(empty.in_truncation(FunKit::ObjectType::GammaN, {phi}));
+  REQUIRE_THROWS(empty.in_truncation({FunKit::ObjectType::GammaN, {{phi, 0}}}));
 }
 
 TEST_CASE("has_AnyField", "[core]")
@@ -283,7 +283,7 @@ TEST_CASE("Truncation rule tables", "[core][truncation]")
   REQUIRE_THROWS(empty.truncation_rules(FunKit::ObjectType::GammaN));
 
   // in_truncation must not depend on the query order
-  REQUIRE(setup.truncation.in_truncation(FunKit::ObjectType::GammaN, {psi, psibar, phi}));
+  REQUIRE(setup.truncation.in_truncation({FunKit::ObjectType::GammaN, {{psi, 0}, {psibar, 1}, {phi, 2}}}));
 }
 
 TEST_CASE("Truncation add_rule validation", "[core][truncation]")

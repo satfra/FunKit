@@ -115,9 +115,20 @@ namespace FunKit
     finalized = true;
   }
 
-  bool Truncation::in_truncation(KeyT type_idx, const std::vector<FieldIdx> &field_indices) const
+  bool Truncation::in_truncation(const Object &object) const
   {
     if (!finalized) loud_throw("Cannot query a non-finalized Truncation object.");
+
+    // Extract the type index and field indices from the object, and sort the field indices for comparison
+    const KeyT type_idx = object.type;
+    std::vector<FieldIdx> field_indices;
+    field_indices.reserve(object.legs.size());
+    for (const auto &leg : object.legs) {
+      if (leg.first == AnyField) return true; // AnyField is always allowed
+      field_indices.emplace_back(leg.first);
+    }
+    std::sort(field_indices.begin(), field_indices.end());
+
     if (type_idx == ObjectType::Field) {
       if (m_truncation_table[0].empty()) return true; // No truncation rules means all are allowed
       for (const auto &rule : m_truncation_table[0]) {
@@ -126,10 +137,8 @@ namespace FunKit
     } else if (type_idx >= 0 && 1 + type_idx < m_truncation_table.size()) {
       if (m_truncation_table[1 + type_idx].empty()) return true; // No truncation rules means all are allowed
       // Rules are stored sorted, so the query must be sorted as well
-      std::vector<FieldIdx> sorted_indices = field_indices;
-      std::sort(sorted_indices.begin(), sorted_indices.end());
       for (const auto &rule : m_truncation_table[1 + type_idx]) {
-        if (rule == sorted_indices) return true;
+        if (rule == field_indices) return true;
       }
     } else {
       loud_throw("Unknown object type index: " + std::to_string(type_idx));

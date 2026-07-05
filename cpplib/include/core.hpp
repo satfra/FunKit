@@ -70,7 +70,7 @@ namespace FunKit
     void add_rule(KeyT type_idx, std::vector<FieldIdx> field_indices);
     void finalize();
 
-    bool in_truncation(KeyT type_idx, const std::vector<FieldIdx> &field_indices) const;
+    bool in_truncation(const Object &obj) const;
     Idx max_truncation(KeyT type_idx) const;
     const std::vector<std::vector<FieldIdx>> &truncation_rules(KeyT type_idx) const;
     const std::vector<std::vector<FieldIdx>> &truncation_rules(KeyT type_idx, Idx order) const;

@@ -326,10 +326,7 @@ TEST_CASE("Derivatives followed by truncation close the scalar flow", "[truncati
     // Every correlation function must be inside the truncation
     for (const auto &obj : term) {
       if (!setup.is_correlationFunction(obj.type)) continue;
-      std::vector<FunKit::FieldIdx> fields;
-      for (const auto &leg : obj.legs)
-        fields.push_back(leg.first);
-      REQUIRE(setup.truncation.in_truncation(obj.type, fields));
+      REQUIRE(setup.truncation.in_truncation(obj));
     }
   }
 }
