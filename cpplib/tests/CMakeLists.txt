@@ -19,6 +19,8 @@ enable_testing()
 add_compile_definitions(
   "BOILERPLATE_DIR=std::string(\"${CMAKE_CURRENT_SOURCE_DIR}/boilerplate/\")")
 
-add_executable(derivatives ${CMAKE_CURRENT_SOURCE_DIR}/derivatives.cpp)
-target_link_libraries(derivatives PRIVATE funkitlib Catch2::Catch2WithMain)
-catch_discover_tests(derivatives)
+foreach(test core exceptions io parse transformations derivatives)
+  add_executable(${test} ${CMAKE_CURRENT_SOURCE_DIR}/${test}.cpp)
+  target_link_libraries(${test} PRIVATE funkitlib Catch2::Catch2WithMain)
+  catch_discover_tests(${test})
+endforeach()

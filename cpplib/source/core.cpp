@@ -1,7 +1,6 @@
 #include "core.hpp"
 
-#include <limits>
-#include <stdexcept>
+#include "exceptions.hpp"
 
 namespace FunKit
 {
@@ -30,19 +29,19 @@ namespace FunKit
 
   void Truncation::add_rule(KeyT type_idx, const std::vector<FieldIdx> &field_indices)
   {
-    if (m_truncation_table.empty()) throw std::runtime_error("Truncation table is empty, call update() first.");
+    if (m_truncation_table.empty()) loud_throw("Truncation table is empty, call update() first.");
     if (type_idx == ObjectType::Field)
       m_truncation_table[0].emplace_back(field_indices);
     else if (type_idx >= 0 && 1 + type_idx < m_truncation_table.size())
       m_truncation_table[1 + type_idx].emplace_back(field_indices);
     else
-      throw std::runtime_error("Unknown object type index: " + std::to_string(type_idx));
+      loud_throw("Unknown object type index: " + std::to_string(type_idx));
     update_max_sizes();
   }
 
   bool Truncation::in_truncation(KeyT type_idx, const std::vector<FieldIdx> &field_indices) const
   {
-    if (m_truncation_table.empty()) throw std::runtime_error("Truncation table is empty, call update() first.");
+    if (m_truncation_table.empty()) loud_throw("Truncation table is empty, call update() first.");
     if (type_idx == ObjectType::Field) {
       if (m_truncation_table[0].empty()) return true; // No truncation rules means all are allowed
       for (const auto &rule : m_truncation_table[0]) {
@@ -54,23 +53,23 @@ namespace FunKit
         if (rule == field_indices) return true;
       }
     } else {
-      throw std::runtime_error("Unknown object type index: " + std::to_string(type_idx));
+      loud_throw("Unknown object type index: " + std::to_string(type_idx));
     }
     return false;
   }
 
   KeyT Truncation::max_truncation(KeyT type_idx) const
   {
-    if (m_truncation_table.empty()) throw std::runtime_error("Truncation table is empty, call update() first.");
+    if (m_truncation_table.empty()) loud_throw("Truncation table is empty, call update() first.");
     if (type_idx == ObjectType::Field) return 1;
     if (type_idx < 0 || type_idx >= m_truncation_table.size() - 1)
-      throw std::runtime_error("Unknown object type index: " + std::to_string(type_idx));
+      loud_throw("Unknown object type index: " + std::to_string(type_idx));
     return m_max_truncation_size[1 + type_idx];
   }
 
   std::string sidx_to_string(KeyT _idx)
   {
-    if (_idx == 0) throw std::runtime_error("Got zero index while parsing");
+    if (_idx == 0) loud_throw("Got zero index while parsing");
 
     bool pos = _idx > 0;
     KeyT idx = pos ? _idx : -1 * _idx;
@@ -92,18 +91,27 @@ namespace FunKit
 
   bool Setup::is_cField(KeyT field_idx) const
   {
-    if (field_idx < 2 * cFields.size())
+    if (field_idx < 2 * cFields.size()) {
+      if (field_idx % 2 == 1 && cFields[field_idx / 2].second.name.empty())
+        loud_throw("Field index " + std::to_string(field_idx) + " is the missing partner of the unpaired field " +
+                   cFields[field_idx / 2].first.name + ".");
       return true;
-    else if (field_idx < 2 * cFields.size() + 2 * gFields.size())
+    } else if (field_idx < 2 * cFields.size() + 2 * gFields.size()) {
+      const KeyT g_idx = field_idx - 2 * cFields.size();
+      if (g_idx % 2 == 1 && gFields[g_idx / 2].second.name.empty())
+        loud_throw("Field index " + std::to_string(field_idx) + " is the missing partner of the unpaired field " +
+                   gFields[g_idx / 2].first.name + ".");
       return false;
-    throw std::runtime_error("Unknown field index " + std::to_string(field_idx) + ", only have " +
-                             std::to_string(2 * cFields.size() + 2 * gFields.size()) + " fields.");
+    }
+    loud_throw("Unknown field index " + std::to_string(field_idx) + ", only have " +
+               std::to_string(2 * cFields.size() + 2 * gFields.size()) + " fields.");
   }
 
   bool Setup::is_gField(KeyT field_idx) const { return !is_cField(field_idx); }
 
   FieldIdx Setup::field_to_idx(const std::string &field_name) const
   {
+    if (field_name == "") loud_throw("Got empty field name while parsing");
     if (field_name == "AnyField") return AnyField;
     for (FieldIdx i = 0; i < cFields.size(); ++i) {
       if (cFields[i].first.name == field_name) return 2 * i;
@@ -113,7 +121,7 @@ namespace FunKit
       if (gFields[i].first.name == field_name) return 2 * cFields.size() + 2 * i;
       if (gFields[i].second.name == field_name) return 2 * cFields.size() + 2 * i + 1;
     }
-    throw std::runtime_error("Unknown field name: " + field_name);
+    loud_throw("Unknown field name: " + field_name);
   }
 
   std::string Setup::idx_to_field(FieldIdx field_idx) const
@@ -122,13 +130,19 @@ namespace FunKit
       return "AnyField";
     else if (field_idx >= 0 && field_idx < cFields.size() * 2) {
       if (field_idx % 2 == 0) return cFields[field_idx / 2].first.name;
+      if (cFields[field_idx / 2].second.name.empty())
+        loud_throw("Field index " + std::to_string(field_idx) + " is the missing partner of the unpaired field " +
+                   cFields[field_idx / 2].first.name + ".");
       return cFields[field_idx / 2].second.name;
     } else if (field_idx >= 2 * cFields.size() && field_idx < 2 * (cFields.size() + gFields.size())) {
       FieldIdx g_idx = field_idx - 2 * cFields.size();
       if (g_idx % 2 == 0) return gFields[g_idx / 2].first.name;
+      if (gFields[g_idx / 2].second.name.empty())
+        loud_throw("Field index " + std::to_string(field_idx) + " is the missing partner of the unpaired field " +
+                   gFields[g_idx / 2].first.name + ".");
       return gFields[g_idx / 2].second.name;
     }
-    throw std::runtime_error("Unknown field index: " + std::to_string(field_idx));
+    loud_throw("Unknown field index: " + std::to_string(field_idx));
   }
 
   KeyT Setup::type_to_idx(const std::string &type_name) const
@@ -140,7 +154,7 @@ namespace FunKit
     for (KeyT i = 0; i < objects.size(); ++i) {
       if (objects[i] == type_name) return predef_correlation_functions + i;
     }
-    throw std::runtime_error("Unknown object name: " + type_name);
+    loud_throw("Unknown object name: " + type_name);
   }
 
   std::string Setup::idx_to_type(KeyT type_idx) const
@@ -151,7 +165,7 @@ namespace FunKit
     if (type_idx == ObjectType::GammaN) return "GammaN";
     if (type_idx >= predef_correlation_functions && type_idx < predef_correlation_functions + objects.size())
       return objects[type_idx - predef_correlation_functions];
-    throw std::runtime_error("Unknown object index: " + std::to_string(type_idx));
+    loud_throw("Unknown object index: " + std::to_string(type_idx));
   }
 
   bool has_FDOp(const FTerm &term)

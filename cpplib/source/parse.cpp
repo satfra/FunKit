@@ -5,6 +5,7 @@
 #include <string>
 
 #include "core.hpp"
+#include "exceptions.hpp"
 #include "io.hpp"
 
 #include "nlohmann/json.hpp"
@@ -23,8 +24,8 @@ namespace FunKit
     json data = json::parse(file);
 
     // Sanity: We need a "setup" and an "equation" section
-    if (!data.contains("setup")) throw std::runtime_error("Missing 'setup' section in JSON file.");
-    if (!data.contains("equation")) throw std::runtime_error("Missing 'equation' section in JSON file.");
+    if (!data.contains("setup")) loud_throw("Missing 'setup' section in JSON file.");
+    if (!data.contains("equation")) loud_throw("Missing 'equation' section in JSON file.");
 
     // Global info:
     setup.input_file = filename;
@@ -48,7 +49,7 @@ namespace FunKit
         else if (entries.size() == 2)
           setup.cFields.push_back(std::make_pair(entries[0], entries[1]));
         else
-          throw std::runtime_error("Fields can be provided at most in pairs!");
+          loud_throw("Fields can be provided at most in pairs!");
       }
 
     // Read Grassmann fields
@@ -67,7 +68,7 @@ namespace FunKit
         else if (entries.size() == 2)
           setup.gFields.push_back(std::make_pair(entries[0], entries[1]));
         else
-          throw std::runtime_error("Fields can be provided at most in pairs!");
+          loud_throw("Fields can be provided at most in pairs!");
       }
 
     // Read existing correlation functions
@@ -93,11 +94,10 @@ namespace FunKit
       for (const auto &rule : data["setup"]["truncation"].items()) {
         KeyT type_idx = setup.type_to_idx(rule.key());
         if (!rule.value().is_array())
-          throw std::runtime_error("Truncation rule for '" + rule.key() + "' must be an array in JSON file.");
+          loud_throw("Truncation rule for '" + rule.key() + "' must be an array in JSON file.");
         for (const auto &field_indices : rule.value()) {
           if (!field_indices.is_array())
-            throw std::runtime_error("Each truncation rule for '" + rule.key() +
-                                     "' must be an array of field names in JSON file.");
+            loud_throw("Each truncation rule for '" + rule.key() + "' must be an array of field names in JSON file.");
           std::vector<FieldIdx> indices;
           for (const auto &field_name : field_indices) {
             indices.push_back(setup.field_to_idx(field_name));
@@ -143,8 +143,8 @@ namespace FunKit
     const auto data = toml::parse<toml::ordered_type_config>(file);
 
     // Sanity: We need a "setup" and an "equation" section
-    if (!data.contains("setup")) throw std::runtime_error("Missing 'setup' section in TOML file.");
-    if (!data.contains("equation")) throw std::runtime_error("Missing 'equation' section in TOML file.");
+    if (!data.contains("setup")) loud_throw("Missing 'setup' section in TOML file.");
+    if (!data.contains("equation")) loud_throw("Missing 'equation' section in TOML file.");
 
     // Global info:
     setup.input_file = filename;
@@ -156,8 +156,7 @@ namespace FunKit
     // Read commuting fields
     if (data.at("setup").contains("cFields")) {
       // must be an array of tables
-      if (!data.at("setup").at("cFields").is_array())
-        throw std::runtime_error("'cFields' must be an array of tables in TOML file.");
+      if (!data.at("setup").at("cFields").is_array()) loud_throw("'cFields' must be an array of tables in TOML file.");
 
       for (const auto &field : data.at("setup").at("cFields").as_array()) {
         std::vector<Field> entries;
@@ -173,15 +172,14 @@ namespace FunKit
         else if (entries.size() == 2)
           setup.cFields.push_back(std::make_pair(entries[0], entries[1]));
         else
-          throw std::runtime_error("Fields can be provided at most in pairs!");
+          loud_throw("Fields can be provided at most in pairs!");
       }
     }
 
     // Read Grassmann fields
     if (data.at("setup").contains("gFields")) {
       // must be an array of tables
-      if (!data.at("setup").at("gFields").is_array())
-        throw std::runtime_error("'gFields' must be an array of tables in TOML file.");
+      if (!data.at("setup").at("gFields").is_array()) loud_throw("'gFields' must be an array of tables in TOML file.");
 
       for (const auto &field : data.at("setup").at("gFields").as_array()) {
         std::vector<Field> entries;
@@ -197,15 +195,14 @@ namespace FunKit
         else if (entries.size() == 2)
           setup.gFields.push_back(std::make_pair(entries[0], entries[1]));
         else
-          throw std::runtime_error("Fields can be provided at most in pairs!");
+          loud_throw("Fields can be provided at most in pairs!");
       }
     }
 
     // Read existing correlation functions
     if (data.at("setup").contains("correlators")) {
       // must be an array of strings
-      if (!data.at("setup").at("correlators").is_array())
-        throw std::runtime_error("'correlators' must be an array in TOML file.");
+      if (!data.at("setup").at("correlators").is_array()) loud_throw("'correlators' must be an array in TOML file.");
 
       for (const auto &object : data.at("setup").at("correlators").as_array()) {
         setup.objects.push_back(object.as_string());
@@ -218,8 +215,7 @@ namespace FunKit
     // Read ordered functions
     if (data.at("setup").contains("ordered")) {
       // must be an array of strings
-      if (!data.at("setup").at("ordered").is_array())
-        throw std::runtime_error("'ordered' must be an array in TOML file.");
+      if (!data.at("setup").at("ordered").is_array()) loud_throw("'ordered' must be an array in TOML file.");
 
       for (const auto &object : data.at("setup").at("ordered").as_array()) {
         setup.objects.push_back(object.as_string());
@@ -232,17 +228,15 @@ namespace FunKit
     setup.truncation.update(setup);
     if (data.at("setup").contains("truncation")) {
       // must be a table
-      if (!data.at("setup").at("truncation").is_table())
-        throw std::runtime_error("'truncation' must be a table in TOML file.");
+      if (!data.at("setup").at("truncation").is_table()) loud_throw("'truncation' must be a table in TOML file.");
 
       for (const auto &rule : data.at("setup").at("truncation").as_table()) {
         KeyT type_idx = setup.type_to_idx(rule.first);
         if (!rule.second.is_array())
-          throw std::runtime_error("Truncation rule for '" + rule.first + "' must be an array in TOML file.");
+          loud_throw("Truncation rule for '" + rule.first + "' must be an array in TOML file.");
         for (const auto &field_indices : rule.second.as_array()) {
           if (!field_indices.is_array())
-            throw std::runtime_error("Each truncation rule for '" + rule.first +
-                                     "' must be an array of field names in TOML file.");
+            loud_throw("Each truncation rule for '" + rule.first + "' must be an array of field names in TOML file.");
           std::vector<FieldIdx> indices;
           for (const auto &field_name : field_indices.as_array()) {
             indices.push_back(setup.field_to_idx(field_name.as_string()));
@@ -255,8 +249,7 @@ namespace FunKit
     // Parse the equation
     for (const auto &term : data.at("equation").as_array()) {
       // must be an array of tables
-      if (!term.is_array())
-        throw std::runtime_error("Each term in 'equation' must be an array of tables in TOML file.");
+      if (!term.is_array()) loud_throw("Each term in 'equation' must be an array of tables in TOML file.");
 
       FTerm fterm;
       for (const auto &object : term.as_array()) {
@@ -266,17 +259,15 @@ namespace FunKit
         }
 
         // Sanity check: Each object must have a type and legs
-        if (!object.contains("type"))
-          throw std::runtime_error("Missing 'type' in object " + toml::format(object) + " in TOML file.");
-        if (!object.contains("legs"))
-          throw std::runtime_error("Missing 'legs' in object " + toml::format(object) + " in TOML file.");
+        if (!object.contains("type")) loud_throw("Missing 'type' in object " + toml::format(object) + " in TOML file.");
+        if (!object.contains("legs")) loud_throw("Missing 'legs' in object " + toml::format(object) + " in TOML file.");
         // legs must be an array of arrays with two elements each
         if (!object.at("legs").is_array())
-          throw std::runtime_error("'legs' must be an array in object " + toml::format(object) + " in TOML file.");
+          loud_throw("'legs' must be an array in object " + toml::format(object) + " in TOML file.");
         for (const auto &leg : object.at("legs").as_array()) {
           if (!leg.is_array() || leg.as_array().size() != 2)
-            throw std::runtime_error("'legs' must be an array of arrays with two elements each in object " +
-                                     toml::format(object) + " in TOML file.");
+            loud_throw("'legs' must be an array of arrays with two elements each in object " + toml::format(object) +
+                       " in TOML file.");
         }
 
         Object obj;
@@ -305,7 +296,7 @@ namespace FunKit
       // Parse TOML file
       std::tie(setup, equation) = FunKit::parse_toml(filename);
     } else {
-      throw std::runtime_error("Unsupported file format. Please use .json or .toml files.");
+      loud_throw("Unsupported file format. Please use .json or .toml files.");
     }
 
     return std::tuple(std::move(setup), std::move(equation));

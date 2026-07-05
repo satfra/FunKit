@@ -1,6 +1,9 @@
 #include "io.hpp"
+
 #include <format>
 #include <string>
+
+#include "exceptions.hpp"
 
 namespace FunKit
 {
@@ -26,7 +29,7 @@ namespace FunKit
           object.type < predef_correlation_functions + setup.objects.size()) {
         os += setup.objects[object.type - predef_correlation_functions];
       } else {
-        throw std::runtime_error("Unknown object type: " + std::to_string(object.type));
+        loud_throw("Unknown object type: " + std::to_string(object.type));
       }
     }
 

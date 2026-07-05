@@ -3,6 +3,10 @@
 #include "core.hpp"
 #include <exception>
 
+// custom throw that also prints the file and line number of the throw
+#define loud_throw(msg)                                                                                                \
+  throw std::runtime_error(std::string("In ") + __FILE__ + ":" + std::to_string(__LINE__) + ":\n    " + msg);
+
 namespace FunKit
 {
   namespace Exc

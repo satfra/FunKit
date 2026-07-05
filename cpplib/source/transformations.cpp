@@ -44,7 +44,7 @@ namespace FunKit
 
   FTerm &commute_forward(const Setup &setup, FTerm &term, Idx i1)
   {
-    if (i1 >= Idx(term.size()) - 1) throw std::runtime_error("Can't commute beyond the term!");
+    if (i1 >= Idx(term.size()) - 1) loud_throw("Can't commute beyond the term!");
 
     // First, swap the objects
     std::swap(term[i1], term[i1 + 1]);
