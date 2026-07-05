@@ -191,7 +191,8 @@ namespace FunKit
       }
     }
 
-    return reduce(result_terms);
+    reduce(result_terms);
+    return result_terms;
   }
 
   FEq &resolve_derivatives(const Setup &setup, FEq &feq)

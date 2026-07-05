@@ -4,6 +4,9 @@
 
 namespace FunKit
 {
-  FTerm &truncate(const Setup &setup, FTerm &fterm);
+  void prune(const Setup &setup, FTerm &term);
+  void prune(const Setup &setup, FEq &feq);
+
+  FEq truncate(const Setup &setup, FTerm fterm);
   FEq &truncate(const Setup &setup, FEq &feq);
 } // namespace FunKit

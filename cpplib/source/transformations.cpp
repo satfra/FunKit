@@ -9,24 +9,24 @@
 
 namespace FunKit
 {
-  FTerm &reduce(FTerm &fterm)
+  void reduce(FTerm &fterm)
   {
-    if (fterm.size() == 0) return fterm;
+    if (fterm.size() == 0) return;
     if (is_close(fterm.value, 0.)) {
       fterm.clear();
-      return fterm;
+      return;
     }
-    return fterm;
+    // erase all objects of type None
+    std::erase_if(fterm, [](const Object &obj) { return obj.type == ObjectType::None; });
   }
 
-  FEq &reduce(FEq &feq)
+  void reduce(FEq &feq)
   {
     // Reduce all FTerm inside the FEq
     for (auto &fterm : feq)
-      fterm = reduce(fterm);
+      reduce(fterm);
     // Prune a FEq of all empty FTerm:
     std::erase_if(feq, [](const FTerm &term) { return term.empty(); });
-    return feq;
   }
 
   std::tuple<double, Object> commute_sign(const Setup &setup, const LegT &leg1, const LegT &leg2)
@@ -65,12 +65,12 @@ namespace FunKit
         if (obj.type != ObjectType::None) commutation_signs.push_back(obj);
       }
     }
-    commutation_signs = reduce(commutation_signs);
+    reduce(commutation_signs);
 
     // Insert the commutation signs
     term.insert(term.begin(), commutation_signs.begin(), commutation_signs.end());
     term.value *= commutation_signs.value;
-    term = reduce(term);
+    reduce(term);
 
     return term;
   }

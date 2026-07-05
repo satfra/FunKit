@@ -14,11 +14,11 @@ TEST_CASE("Print objects", "[io]")
   FunKit::print(setup, prop, str);
   REQUIRE(str == "Propagator[{phi,phi},{a,b}]");
 
-  // Custom types and lower indices
+  // Custom types and lower indices (lower indices print with a minus)
   FunKit::Object rdot = {setup.type_to_idx("Rdot"), {{phi, -1}, {phi, -2}}};
   str.clear();
   FunKit::print(setup, rdot, str);
-  REQUIRE(str == "Rdot[{phi,phi},{a,b}]");
+  REQUIRE(str == "Rdot[{phi,phi},{-a,-b}]");
 
   // The ostream overload must produce the same output
   std::ostringstream oss;
@@ -41,7 +41,7 @@ TEST_CASE("Print terms and equations", "[io]")
 
   std::string term_str;
   FunKit::print(setup, term, term_str);
-  REQUIRE(term_str == "FTerm[0.5,Propagator[{phi,phi},{a,b}],Rdot[{phi,phi},{a,b}]]");
+  REQUIRE(term_str == "FTerm[0.5,Propagator[{phi,phi},{a,b}],Rdot[{phi,phi},{-a,-b}]]");
 
   FunKit::FEq eq = {term, term};
   std::string feq_str;

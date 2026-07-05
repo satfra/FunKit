@@ -71,6 +71,9 @@ namespace FunKit
           loud_throw("Fields can be provided at most in pairs!");
       }
 
+    // All fields are known now: build the per-field property table
+    setup.finalize_fields();
+
     // Read existing correlation functions
     if (data["setup"].contains("correlators"))
       for (const auto &object : data["setup"]["correlators"]) {
@@ -89,7 +92,7 @@ namespace FunKit
       }
 
     // Parse the truncation rules
-    setup.truncation.update(setup);
+    setup.truncation.initialize(setup);
     if (data["setup"].contains("truncation")) {
       for (const auto &rule : data["setup"]["truncation"].items()) {
         KeyT type_idx = setup.type_to_idx(rule.key());
@@ -106,6 +109,7 @@ namespace FunKit
         }
       }
     }
+    setup.truncation.finalize();
 
     // Parse the equation
     for (const auto &term : data["equation"]) {
@@ -199,6 +203,9 @@ namespace FunKit
       }
     }
 
+    // All fields are known now: build the per-field property table
+    setup.finalize_fields();
+
     // Read existing correlation functions
     if (data.at("setup").contains("correlators")) {
       // must be an array of strings
@@ -225,7 +232,7 @@ namespace FunKit
     }
 
     // Parse the truncation rules
-    setup.truncation.update(setup);
+    setup.truncation.initialize(setup);
     if (data.at("setup").contains("truncation")) {
       // must be a table
       if (!data.at("setup").at("truncation").is_table()) loud_throw("'truncation' must be a table in TOML file.");
@@ -245,6 +252,7 @@ namespace FunKit
         }
       }
     }
+    setup.truncation.finalize();
 
     // Parse the equation
     for (const auto &term : data.at("equation").as_array()) {

@@ -5,6 +5,7 @@
 #include "derivatives.hpp"
 #include "io.hpp"
 #include "parse.hpp"
+#include "truncation.hpp"
 
 int main(int argc, char **argv)
 {
@@ -55,6 +56,20 @@ int main(int argc, char **argv)
   if (setup.debug_level > 0) {
     std::cout << "Time taken for derivatives: ";
     const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(deriv_end - start).count();
+    if (ms < 1000)
+      std::cout << ms << " ms" << std::endl;
+    else
+      // output with 1 decimal place
+      std::cout << std::fixed << std::setprecision(1) << (ms / 1000.0) << " s" << std::endl;
+  }
+
+  result = FunKit::truncate(setup, result);
+
+  const auto trunc_end = std::chrono::high_resolution_clock::now();
+
+  if (setup.debug_level > 0) {
+    std::cout << "Time taken for truncation: ";
+    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(trunc_end - deriv_end).count();
     if (ms < 1000)
       std::cout << ms << " ms" << std::endl;
     else

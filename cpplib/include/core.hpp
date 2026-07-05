@@ -21,6 +21,13 @@ namespace FunKit
     std::vector<std::string> indices;
   };
 
+  // Precomputed per-field-index properties, built by Setup::finalize_fields()
+  struct FieldProps {
+    bool valid = false; // false for the padding index of an unpaired field
+    bool grassmann = false;
+    FieldIdx partner = 0; // the conjugate partner, or the field itself if unpaired
+  };
+
   namespace ObjectType
   {
     enum : KeyT {
@@ -36,24 +43,38 @@ namespace FunKit
   }
   constexpr KeyT predef_correlation_functions = 2;
 
+  using LegT = std::pair<FieldIdx, Idx>;
+
+  inline LegT operator-(const LegT &leg) { return std::make_pair(leg.first, -leg.second); }
+
   std::string sidx_to_string(KeyT _idx);
 
   struct Setup;
+  struct Object;
 
   class Truncation
   {
   private:
-    std::vector<std::vector<std::vector<KeyT>>> m_truncation_table;
-    std::vector<KeyT> m_max_truncation_size;
+    std::vector<std::vector<std::vector<FieldIdx>>> m_truncation_table;
+    std::vector<std::vector<std::vector<std::vector<FieldIdx>>>> m_order_truncation_table;
+    std::vector<Idx> m_max_truncation_size;
+    std::vector<std::vector<FieldIdx>> m_all_field_pairs;
 
     void update_max_sizes();
+    void update_order_truncation_table();
+
+    bool finalized = false;
 
   public:
-    void update(const Setup &setup);
-    void add_rule(KeyT type_idx, const std::vector<FieldIdx> &field_indices);
+    void initialize(const Setup &setup);
+    void add_rule(KeyT type_idx, std::vector<FieldIdx> field_indices);
+    void finalize();
 
     bool in_truncation(KeyT type_idx, const std::vector<FieldIdx> &field_indices) const;
-    KeyT max_truncation(KeyT type_idx) const;
+    Idx max_truncation(KeyT type_idx) const;
+    const std::vector<std::vector<FieldIdx>> &truncation_rules(KeyT type_idx) const;
+    const std::vector<std::vector<FieldIdx>> &truncation_rules(KeyT type_idx, Idx order) const;
+    const std::vector<std::vector<FieldIdx>> &all_field_pairs() const;
 
     friend void print(const Setup &setup, std::ostream &os);
   };
@@ -78,8 +99,18 @@ namespace FunKit
     std::vector<std::pair<Field, Field>> cFields;
     std::vector<std::pair<Field, Field>> gFields;
 
-    bool is_cField(KeyT field_idx) const;
-    bool is_gField(KeyT field_idx) const;
+    // Build the per-field property table; must be called after cFields/gFields are filled
+    void finalize_fields();
+    const FieldProps &field_props(FieldIdx field_idx) const;
+
+    bool is_cField(FieldIdx field_idx) const;
+    bool is_gField(FieldIdx field_idx) const;
+
+    bool has_partner(FieldIdx field_idx) const;
+    FieldIdx partner_field(FieldIdx field_idx) const;
+    Idx gamma(const LegT &leg1, const LegT &leg2) const;
+
+    std::vector<FieldIdx> all_fields() const;
 
     FieldIdx field_to_idx(const std::string &field_name) const;
     std::string idx_to_field(FieldIdx field_idx) const;
@@ -88,11 +119,10 @@ namespace FunKit
     std::string idx_to_type(KeyT type_idx) const;
 
     Truncation truncation;
+
+  private:
+    std::vector<FieldProps> m_field_props;
   };
-
-  using LegT = std::pair<FieldIdx, Idx>;
-
-  inline LegT operator-(const LegT &leg) { return std::make_pair(leg.first, -leg.second); }
 
   struct Object {
     KeyT type = ObjectType::None;
@@ -120,6 +150,9 @@ namespace FunKit
 
   bool has_FDOp(const FTerm &term);
   bool has_FDOp(const FEq &feq);
+
+  bool has_AnyField(const Object &obj);
+  bool has_AnyField(const FTerm &term);
 
   template <typename T1, typename T2>
     requires(std::is_floating_point<T1>::value && std::is_floating_point<T2>::value)
