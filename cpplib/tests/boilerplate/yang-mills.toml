@@ -1,0 +1,39 @@
+# Boilerplate: Yang-Mills theory (gluon A with Lorentz index "v" and color
+# index "col"; Grassmann ghost pair cb/c with color index "col").
+# Mirrors GetFunKitSetupYangMills[] in FunKit tests/boilerplate/setups.m.
+#
+# The equation is the Wetterich flow RHS, 1/2 G^{ab} Rdot_{ba}, with the
+# trace legs running over the full field space (AnyField).
+# NOTE: the gFields pair is meant as (antifield, field) = (cb, c);
+# see the parser note on table iteration order.
+
+equation = [
+  [
+  { prefactor = 0.5 },
+  { type = "Propagator", legs = [ [ "AnyField", 1 ], [ "AnyField", 2 ] ] },
+  { type = "Rdot", legs = [ [ "AnyField", -1 ], [ "AnyField", -2 ] ] }
+  ]
+]
+
+[setup]
+debug = 0
+ordered = [ "Rdot" ]
+correlators = [ ]
+
+  [[setup.cFields]]
+  A = [ "v", "col" ]
+
+  [[setup.gFields]]
+  cb = [ "col" ]
+  c = [ "col" ]
+
+[setup.truncation]
+Rdot = [ [ "A", "A" ], [ "cb", "c" ] ]
+Propagator = [ [ "A", "A" ], [ "cb", "c" ] ]
+GammaN = [
+  [ "A", "A" ],
+  [ "cb", "c" ],
+  [ "A", "A", "A" ],
+  [ "A", "A", "A", "A" ],
+  [ "A", "cb", "c" ],
+]

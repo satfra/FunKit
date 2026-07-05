@@ -1,0 +1,38 @@
+# Boilerplate: Yukawa theory (commuting phi, Grassmann pair psibar/psi
+# with a Dirac index "a").
+# Mirrors GetFunKitSetupYukawa[] in FunKit tests/boilerplate/setups.m.
+#
+# The equation is the Wetterich flow RHS, 1/2 G^{ab} Rdot_{ba}, with the
+# trace legs running over the full field space (AnyField).
+# NOTE: the gFields pair is meant as (antifield, field) = (psibar, psi);
+# see the parser note on table iteration order.
+
+equation = [
+  [
+  { prefactor = 0.5 },
+  { type = "Propagator", legs = [ [ "AnyField", 1 ], [ "AnyField", 2 ] ] },
+  { type = "Rdot", legs = [ [ "AnyField", -1 ], [ "AnyField", -2 ] ] }
+  ]
+]
+
+[setup]
+debug = 0
+ordered = [ "Rdot" ]
+correlators = [ ]
+
+  [[setup.cFields]]
+  phi = [ ]
+
+  [[setup.gFields]]
+  psibar = [ "a" ]
+  psi = [ "a" ]
+
+[setup.truncation]
+Rdot = [ [ "phi", "phi" ], [ "psi", "psibar" ] ]
+Propagator = [ [ "phi", "phi" ], [ "psi", "psibar" ] ]
+GammaN = [
+  [ "phi" ],
+  [ "psi", "psibar" ],
+  [ "phi", "phi" ],
+  [ "psi", "psibar", "phi" ],
+]

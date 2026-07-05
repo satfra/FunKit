@@ -21,9 +21,13 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/source/transformations.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/source/truncation.cpp)
 
-add_executable(funkit main.cpp ${SOURCES})
-target_include_directories(funkit PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/)
-target_link_libraries(funkit PRIVATE OpenMP::OpenMP_CXX)
+add_library(funkitlib STATIC ${SOURCES})
+target_link_libraries(funkitlib PUBLIC OpenMP::OpenMP_CXX)
+target_include_directories(funkitlib
+                           PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/)
+
+add_executable(funkit main.cpp)
+target_link_libraries(funkit PRIVATE funkitlib)
 
 # enable march=native if NOT on MacOS, enable tree vectorization and disable
 if(APPLE)
@@ -34,3 +38,7 @@ else()
     funkit
     PRIVATE "-march=native;-ftree-vectorize;-fno-math-errno;-fno-trapping-math")
 endif()
+
+# add tests
+enable_testing()
+add_subdirectory(tests)

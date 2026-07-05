@@ -17,7 +17,7 @@ namespace FunKit
     Setup setup;
     FEq feq;
 
-    using json = nlohmann::json;
+    using json = nlohmann::ordered_json;
 
     std::ifstream file(filename);
     json data = json::parse(file);
@@ -140,7 +140,7 @@ namespace FunKit
     FEq feq;
 
     std::ifstream file(filename);
-    const auto data = toml::parse(file);
+    const auto data = toml::parse<toml::ordered_type_config>(file);
 
     // Sanity: We need a "setup" and an "equation" section
     if (!data.contains("setup")) throw std::runtime_error("Missing 'setup' section in TOML file.");
@@ -229,12 +229,11 @@ namespace FunKit
     }
 
     // Parse the truncation rules
+    setup.truncation.update(setup);
     if (data.at("setup").contains("truncation")) {
       // must be a table
       if (!data.at("setup").at("truncation").is_table())
         throw std::runtime_error("'truncation' must be a table in TOML file.");
-
-      setup.truncation.update(setup);
 
       for (const auto &rule : data.at("setup").at("truncation").as_table()) {
         KeyT type_idx = setup.type_to_idx(rule.first);

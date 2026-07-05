@@ -1,0 +1,31 @@
+# Boilerplate: scalar theory (single commuting field phi).
+# Mirrors GetFunKitSetupScalar[] in FunKit tests/boilerplate/setups.m.
+#
+# The equation is the Wetterich flow RHS, 1/2 G^{ab} Rdot_{ba}.
+# Tests insert FDOp objects at the front of the term to take derivatives, e.g.
+#   { type = "FDOp", legs = [ [ "phi", 3 ] ] },
+
+equation = [
+  [
+  { prefactor = 0.5 },
+  { type = "Propagator", legs = [ [ "phi", 1 ], [ "phi", 2 ] ] },
+  { type = "Rdot", legs = [ [ "phi", -1 ], [ "phi", -2 ] ] }
+  ]
+]
+
+[setup]
+debug = 0
+ordered = [ "Rdot" ]
+
+  [[setup.cFields]]
+  phi = [ ]
+
+[setup.truncation]
+Rdot = [ [ "phi", "phi" ] ]
+Propagator = [ [ "phi", "phi" ] ]
+GammaN = [
+  [ "phi" ],
+  [ "phi", "phi" ],
+  [ "phi", "phi", "phi" ],
+  [ "phi", "phi", "phi", "phi" ],
+]
