@@ -1,6 +1,6 @@
 equation = [
   [
-  { type = "number", value = 0.5 },
+  { prefactor = 0.5 },
   { type = "FDOp", legs = [ [ "phi", 10 ] ] },
   { type = "FDOp", legs = [ [ "phi", 9 ] ] },
   { type = "FDOp", legs = [ [ "phi", 8 ] ] },
@@ -16,10 +16,16 @@ equation = [
 
 [setup]
 debug = 1
-outputFile = ""
+in_deriv_trunc = true
+outputFile = "out.m"
 objects = [ ]
 ordered = [ "Rdot" ]
 correlators = [ ]
 
   [[setup.cFields]]
   phi = [ ]
+
+[setup.truncation]
+Rdot = [ ["phi","phi"] ]
+Propagator = [ ["phi","phi"] ]
+GammaN = [ ["phi","phi", "phi"], ["phi","phi", "phi","phi"] ]

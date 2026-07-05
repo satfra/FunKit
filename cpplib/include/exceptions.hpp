@@ -1,3 +1,5 @@
+#pragma once
+
 #include "core.hpp"
 #include <exception>
 
@@ -12,12 +14,8 @@ namespace FunKit
       std::string msg;
 
     public:
-      ZeroIndex(const LegT &leg) : leg(leg)
-      {
-        msg = "The leg (" + std::to_string(leg.first) + "," + std::to_string(leg.second) + ") has zero index!";
-      }
-
-      const char *what() const noexcept override { return msg.c_str(); }
+      ZeroIndex(const LegT &leg);
+      const char *what() const noexcept override;
     };
 
     class UpperIndex : public std::exception
@@ -27,13 +25,8 @@ namespace FunKit
       std::string msg;
 
     public:
-      UpperIndex(const LegT &leg) : leg(leg)
-      {
-        msg = "Expected upper index in leg (" + std::to_string(leg.first) + "," + std::to_string(leg.second) +
-              "), but got lower!";
-      }
-
-      const char *what() const noexcept override { return msg.c_str(); }
+      UpperIndex(const LegT &leg);
+      const char *what() const noexcept override;
     };
 
     class LowerIndex : public std::exception
@@ -43,51 +36,13 @@ namespace FunKit
       std::string msg;
 
     public:
-      LowerIndex(const LegT &leg) : leg(leg)
-      {
-        msg = "Expected lower index in leg (" + std::to_string(leg.first) + "," + std::to_string(leg.second) +
-              "), but got upper!";
-      }
+      LowerIndex(const LegT &leg);
 
-      const char *what() const noexcept override { return msg.c_str(); }
-    };
-
-    class ExpectedNoFactor : public std::exception
-    {
-    private:
-      Object object;
-      std::string msg;
-
-    public:
-      ExpectedNoFactor(const Object &object) : object(object)
-      {
-        msg = "No factor expected for object of type " + std::to_string(object.type) + ", got " +
-              std::to_string(object.value) + ".";
-      }
-
-      const char *what() const noexcept override { return msg.c_str(); }
+      const char *what() const noexcept override;
     };
   } // namespace Exc
 
-  void assert_upper_index(const LegT &leg)
-  {
-    if (leg.second == 0) throw Exc::ZeroIndex(leg);
-    if (leg.second < 0) throw Exc::UpperIndex(leg);
-  }
-
-  void assert_lower_index(const LegT &leg)
-  {
-    if (leg.second == 0) throw Exc::ZeroIndex(leg);
-    if (leg.second > 0) throw Exc::LowerIndex(leg);
-  }
-
-  void assert_index(const LegT &leg)
-  {
-    if (leg.second == 0) throw Exc::ZeroIndex(leg);
-  }
-
-  void assert_no_factor(const Object &object)
-  {
-    if (!is_close(object.value, 1.)) throw Exc::ExpectedNoFactor(object);
-  }
+  void assert_upper_index(const LegT &leg);
+  void assert_lower_index(const LegT &leg);
+  void assert_index(const LegT &leg);
 } // namespace FunKit

@@ -12,10 +12,25 @@ endif()
 
 find_package(OpenMP REQUIRED)
 
-add_executable(funkit main.cpp)
-target_include_directories(funkit PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/)
+set(SOURCES
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/core.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/exceptions.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/io.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/parse.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/derivatives.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/transformations.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/truncation.cpp)
 
-# enable march=native
-target_compile_options(funkit PRIVATE "-march=native;-ftree-vectorize")
-target_compile_definitions(funkit PRIVATE "OPENMP")
+add_executable(funkit main.cpp ${SOURCES})
+target_include_directories(funkit PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include/)
 target_link_libraries(funkit PRIVATE OpenMP::OpenMP_CXX)
+
+# enable march=native if NOT on MacOS, enable tree vectorization and disable
+if(APPLE)
+  target_compile_options(
+    funkit PRIVATE "-ftree-vectorize;-fno-math-errno;-fno-trapping-math")
+else()
+  target_compile_options(
+    funkit
+    PRIVATE "-march=native;-ftree-vectorize;-fno-math-errno;-fno-trapping-math")
+endif()
