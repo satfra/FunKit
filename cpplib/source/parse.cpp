@@ -132,20 +132,17 @@ namespace FunKit
         setup.symmetries.add(std::move(sym));
       }
     }
-    // A "derivatives" list (top-level, sibling of "equation") generates the
-    // full symmetry group of the equation's external legs: each entry is a
-    // [field, label] pair naming one derivative. This asserts that the
-    // underlying functional is (graded-)symmetric in these derivatives.
+    // A "derivatives" list (top-level, sibling of "equation") declares the
+    // equation's external-leg symmetry: each entry is a [field, label] pair
+    // naming one derivative. Stored as-is — simplify() exploits it without
+    // expanding the (possibly huge) permutation group.
     if (data.contains("derivatives")) {
       if (!data["derivatives"].is_array()) loud_throw("'derivatives' must be an array in JSON file.");
-      std::vector<LegT> derivative_legs;
       for (const auto &entry : data["derivatives"]) {
         if (!entry.is_array() || entry.size() != 2)
           loud_throw("Each derivative must be a [field, label] pair in JSON file.");
-        derivative_legs.push_back({setup.field_to_idx(entry[0].get<std::string>()), entry[1].get<Idx>()});
+        setup.derivatives.push_back({setup.field_to_idx(entry[0].get<std::string>()), entry[1].get<Idx>()});
       }
-      for (auto &sym : make_symmetry_list(setup, derivative_legs))
-        setup.symmetries.add(std::move(sym));
     }
     setup.symmetries.finalize();
 
@@ -194,6 +191,8 @@ namespace FunKit
     if (data.at("setup").contains("outputFile")) setup.outputFile = data.at("setup").at("outputFile").as_string();
     if (data.at("setup").contains("in_deriv_trunc"))
       setup.in_deriv_trunc = data.at("setup").at("in_deriv_trunc").as_boolean();
+    if (data.at("setup").contains("do_truncate")) setup.do_truncate = data.at("setup").at("do_truncate").as_boolean();
+    if (data.at("setup").contains("do_simplify")) setup.do_simplify = data.at("setup").at("do_simplify").as_boolean();
 
     // Read commuting fields
     if (data.at("setup").contains("cFields")) {
@@ -311,21 +310,18 @@ namespace FunKit
         setup.symmetries.add(std::move(sym));
       }
     }
-    // A "derivatives" list (top-level, sibling of "equation") generates the
-    // full symmetry group of the equation's external legs: each entry is a
-    // [field, label] pair naming one derivative. This asserts that the
-    // underlying functional is (graded-)symmetric in these derivatives.
+    // A "derivatives" list (top-level, sibling of "equation") declares the
+    // equation's external-leg symmetry: each entry is a [field, label] pair
+    // naming one derivative. Stored as-is — simplify() exploits it without
+    // expanding the (possibly huge) permutation group.
     if (data.contains("derivatives")) {
       if (!data.at("derivatives").is_array()) loud_throw("'derivatives' must be an array in TOML file.");
-      std::vector<LegT> derivative_legs;
       for (const auto &entry : data.at("derivatives").as_array()) {
         if (!entry.is_array() || entry.as_array().size() != 2)
           loud_throw("Each derivative must be a [field, label] pair in TOML file.");
-        derivative_legs.push_back({setup.field_to_idx(std::string(entry.as_array()[0].as_string())),
-                                   static_cast<Idx>(entry.as_array()[1].as_integer())});
+        setup.derivatives.push_back({setup.field_to_idx(std::string(entry.as_array()[0].as_string())),
+                                     static_cast<Idx>(entry.as_array()[1].as_integer())});
       }
-      for (auto &sym : make_symmetry_list(setup, derivative_legs))
-        setup.symmetries.add(std::move(sym));
     }
     setup.symmetries.finalize();
 

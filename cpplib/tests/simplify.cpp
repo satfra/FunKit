@@ -886,39 +886,49 @@ TEST_CASE("simplify: flow matrix with symmetries matches the default Mathematica
       {"yang-mills.toml", {"A", "A", "A", "A"}, {-24., -12., -6., 3., 12.}},
   };
 
-  for (const auto &flow : flows) {
-    CAPTURE(flow.file, flow.derivs);
-    auto [setup, feq] = parse(BOILERPLATE_DIR + flow.file);
-    FTerm &term = feq[0];
-    std::vector<LegT> derivative_legs;
-    for (std::size_t i = flow.derivs.size(); i-- > 0;) {
-      const LegT leg = {setup.field_to_idx(flow.derivs[i]), Idx(101 + i)};
-      term.insert(term.begin(), {ObjectType::FDOp, {leg}});
-      derivative_legs.push_back(leg);
+  // Each flow runs twice: once with the derivative legs declared directly
+  // (Setup::derivatives — the orbit fast path), once with the explicitly
+  // expanded permutation group (Setup::symmetries — the transform-and-retry
+  // path). Both must give the reference result.
+  for (const bool use_orbits : {true, false}) {
+    for (const auto &flow : flows) {
+      CAPTURE(use_orbits, flow.file, flow.derivs);
+      auto [setup, feq] = parse(BOILERPLATE_DIR + flow.file);
+      FTerm &term = feq[0];
+      std::vector<LegT> derivative_legs;
+      for (std::size_t i = flow.derivs.size(); i-- > 0;) {
+        const LegT leg = {setup.field_to_idx(flow.derivs[i]), Idx(101 + i)};
+        term.insert(term.begin(), {ObjectType::FDOp, {leg}});
+        derivative_legs.push_back(leg);
+      }
+      if (use_orbits)
+        setup.derivatives = derivative_legs;
+      else
+        setup.symmetries = make_symmetries(make_symmetry_list(setup, derivative_legs));
+
+      resolve_derivatives(setup, feq);
+      truncate(setup, feq);
+      simplify(setup, feq);
+
+      std::vector<double> coeffs;
+      for (const auto &t : feq)
+        coeffs.push_back(t.value);
+      std::sort(coeffs.begin(), coeffs.end());
+      REQUIRE(coeffs == flow.coeffs);
     }
-    setup.symmetries = make_symmetries(make_symmetry_list(setup, derivative_legs));
-
-    resolve_derivatives(setup, feq);
-    truncate(setup, feq);
-    simplify(setup, feq);
-
-    std::vector<double> coeffs;
-    for (const auto &t : feq)
-      coeffs.push_back(t.value);
-    std::sort(coeffs.begin(), coeffs.end());
-    REQUIRE(coeffs == flow.coeffs);
   }
 }
 
 TEST_CASE("simplify: fully file-driven flow with derivative symmetries", "[simplify][symmetry][integration]")
 {
   // scalar-flow.toml carries the FDOps in the equation AND a "derivatives"
-  // list, from which the parser generates the S_2 symmetry over the external
-  // legs 101, 102. No programmatic setup needed.
+  // list; the two identical commuting legs 101, 102 form an orbit that
+  // simplify's matcher treats as freely interchangeable. No programmatic
+  // setup needed.
   auto [setup, feq] = parse(BOILERPLATE_DIR + "scalar-flow.toml");
-  REQUIRE(setup.symmetries.size() == 1);
-  REQUIRE(setup.symmetries.all()[0].cycles == std::vector<std::vector<Idx>>{{101, 102}});
-  REQUIRE(setup.symmetries.all()[0].factor == 1);
+  REQUIRE(setup.symmetries.empty());
+  const FieldIdx phi = setup.field_to_idx("phi");
+  REQUIRE(setup.derivatives == std::vector<LegT>{{phi, 101}, {phi, 102}});
 
   resolve_derivatives(setup, feq);
   truncate(setup, feq);

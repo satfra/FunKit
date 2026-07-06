@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <iostream>
 #include <numeric>
+#include <tuple>
 #include <unordered_map>
 
 #include "exceptions.hpp"
@@ -122,32 +123,75 @@ namespace FunKit
 
   namespace
   {
-    // Per-term lookup tables for the matcher, derived from an FTerm + its TermData.
-    struct WalkData {
-      // cids[o][p]: compact closed-index id of leg p of object o, -1 if the leg is open
-      std::vector<gch::small_vector<Idx, 4>> cids;
-      // open_legs[o]: the open legs of object o, sorted (multiset comparison)
-      std::vector<gch::small_vector<LegT, 4>> open_legs;
+    // Orbits of freely interchangeable open labels (identical commuting
+    // derivative legs). Labels not in any orbit are only equal to themselves.
+    struct OpenOrbits {
+      std::vector<std::pair<Idx, Idx>> label_to_orbit; // sorted by label
+
+      bool empty() const { return label_to_orbit.empty(); }
+
+      // Class of an open label: a shared negative id for orbit members, the
+      // label itself otherwise. Classes of different kinds never collide since
+      // labels are positive.
+      Idx class_of(Idx label) const
+      {
+        const auto it = std::lower_bound(label_to_orbit.begin(), label_to_orbit.end(), label,
+                                         [](const auto &e, Idx l) { return e.first < l; });
+        if (it != label_to_orbit.end() && it->first == label) return -1 - it->second;
+        return label;
+      }
     };
 
-    WalkData make_walk_data(const FTerm &term, const TermData &data)
+    // (field, position sign, class): the equality class of an open leg under
+    // the orbit symmetries. Two open legs may be matched iff their signatures
+    // are equal — with empty orbits this is exactly the old exact matching.
+    using OpenSig = std::tuple<FieldIdx, Idx, Idx>;
+
+    OpenSig open_sig_of(const LegT &leg, const OpenOrbits &orbits)
+    {
+      return {leg.first, leg.second > 0 ? 1 : -1, orbits.class_of(std::abs(leg.second))};
+    }
+
+    // Per-term lookup tables for the matcher, derived from an FTerm + its
+    // TermData (+ the active orbits).
+    struct WalkData {
+      // cids[o][p]: compact closed-index id of leg p of object o, -1 if open
+      std::vector<gch::small_vector<Idx, 4>> cids;
+      // ocls[o][p]: open-leg class of leg p (only meaningful where cids == -1)
+      std::vector<gch::small_vector<Idx, 4>> ocls;
+      // open_sig[o]: sorted open-leg signatures of object o (multiset compare)
+      std::vector<gch::small_vector<OpenSig, 4>> open_sig;
+      // sorted signatures of ALL open legs, and sorted object keys (cheap rejects)
+      std::vector<OpenSig> global_sig;
+      std::vector<std::uint64_t> sorted_keys;
+    };
+
+    WalkData make_walk_data(const FTerm &term, const TermData &data, const OpenOrbits &orbits)
     {
       WalkData w;
       w.cids.resize(term.size());
-      w.open_legs.resize(term.size());
+      w.ocls.resize(term.size());
+      w.open_sig.resize(term.size());
       for (std::size_t o = 0; o < term.size(); ++o) {
         for (const auto &leg : term[o].legs) {
           const Idx name = std::abs(leg.second);
           const auto it = std::lower_bound(data.closed_labels.begin(), data.closed_labels.end(), name);
-          if (it != data.closed_labels.end() && *it == name)
+          if (it != data.closed_labels.end() && *it == name) {
             w.cids[o].push_back(static_cast<Idx>(it - data.closed_labels.begin()));
-          else {
+            w.ocls[o].push_back(0);
+          } else {
+            const OpenSig sig = open_sig_of(leg, orbits);
             w.cids[o].push_back(-1);
-            w.open_legs[o].push_back(leg);
+            w.ocls[o].push_back(std::get<2>(sig));
+            w.open_sig[o].push_back(sig);
+            w.global_sig.push_back(sig);
           }
         }
-        std::sort(w.open_legs[o].begin(), w.open_legs[o].end());
+        std::sort(w.open_sig[o].begin(), w.open_sig[o].end());
       }
+      std::sort(w.global_sig.begin(), w.global_sig.end());
+      w.sorted_keys = data.obj_keys;
+      std::sort(w.sorted_keys.begin(), w.sorted_keys.end());
       return w;
     }
 
@@ -164,10 +208,13 @@ namespace FunKit
     // RearrangeFields accumulates one transposition at a time: each adjacent swap
     // of two Grassmann legs is -1, everything else +1, and the parity of the
     // Grassmann-restricted permutation does not depend on the transposition
-    // sequence chosen to realize it.
+    // sequence chosen to realize it. Open legs pair within their equality class;
+    // orbit classes only ever contain commuting legs, so the pairing choice
+    // cannot affect the sign.
     double object_alignment_sign(const Setup &setup, const Object &o1, const Object &o2,
-                                 const gch::small_vector<Idx, 4> &cids1, const std::vector<Idx> &imap,
-                                 const TermData &d2)
+                                 const gch::small_vector<Idx, 4> &cids1, const gch::small_vector<Idx, 4> &ocls1,
+                                 const gch::small_vector<Idx, 4> &cids2, const gch::small_vector<Idx, 4> &ocls2,
+                                 const std::vector<Idx> &imap, const TermData &d2)
     {
       const Idx k = static_cast<Idx>(o1.legs.size());
       gch::small_vector<Idx, 4> sigma(k, -1);
@@ -194,10 +241,11 @@ namespace FunKit
                 break;
               }
         } else {
-          // Open leg: the first unconsumed identical (field, signed index) leg;
-          // ties between truly identical legs are consumed in order.
+          // Open leg: the first unconsumed leg of the same equality class
+          // (field, position sign, orbit class / exact label).
           for (Idx p = 0; p < static_cast<Idx>(o2.legs.size()); ++p)
-            if (!consumed[p] && o2.legs[p] == leg1) {
+            if (!consumed[p] && cids2[p] == -1 && o2.legs[p].first == leg1.first &&
+                (o2.legs[p].second > 0) == (leg1.second > 0) && ocls2[p] == ocls1[a]) {
               q = p;
               break;
             }
@@ -222,16 +270,14 @@ namespace FunKit
 
     // The graph-isomorphism walk over two connected terms (TermsEqualAndSum
     // analog, restructured as backtracking DFS over immutable inputs). All cheap
-    // rejects have already run in terms_equal. Objects are nodes, closed indices
+    // rejects have already run in the caller. Objects are nodes, closed indices
     // are edges; the search builds an object map and a closed-index map, and the
     // Grassmann sign is computed once afterwards from the completed maps.
-    std::optional<double> match_connected(const Setup &setup, const FTerm &t1, const TermData &d1, const FTerm &t2,
-                                          const TermData &d2)
+    std::optional<double> match_connected(const Setup &setup, const FTerm &t1, const TermData &d1, const WalkData &w1,
+                                          const FTerm &t2, const TermData &d2, const WalkData &w2)
     {
       const Idx n = static_cast<Idx>(t1.size());
       const Idx m = static_cast<Idx>(d1.closed_labels.size());
-      const WalkData w1 = make_walk_data(t1, d1);
-      const WalkData w2 = make_walk_data(t2, d2);
 
       std::vector<Idx> omap(n, -1), imap(m, -1); // t1 object -> t2 object, t1 cid -> t2 cid
       std::vector<char> oused(n, 0), iused(m, 0);
@@ -274,9 +320,9 @@ namespace FunKit
           // Upper/lower position is ignored (Mathematica strips it via
           // makePosIdx throughout the walk). Deliberately NO field-blind
           // matching: identifying e.g. the two orientations of a fermion loop
-          // is the job of explicit symmetry transformations (Phase 5), not of
-          // the plain matcher — cross-validated against FSimplify with the
-          // Symmetries annotations stripped.
+          // is the job of explicit symmetry transformations, not of the plain
+          // matcher — cross-validated against FSimplify with the Symmetries
+          // annotations stripped.
           const LegT &cand = t2[o2].legs[q];
           if (cand.first != entry.first) continue;
           if (std::find(tried.begin(), tried.end(), c2) != tried.end()) continue;
@@ -293,7 +339,7 @@ namespace FunKit
           } else {
             if (oused[n2]) continue;
             if (d1.obj_keys[n1] != d2.obj_keys[n2]) continue;
-            if (w1.open_legs[n1] != w2.open_legs[n2]) continue;
+            if (w1.open_sig[n1] != w2.open_sig[n2]) continue;
             omap[n1] = n2;
             oused[n2] = 1;
             stack.push_back({n1, n2});
@@ -334,7 +380,7 @@ namespace FunKit
 
       for (Idx s2 = 0; s2 < n; ++s2) {
         if (d2.obj_keys[s2] != d1.obj_keys[s1]) continue;
-        if (w2.open_legs[s2] != w1.open_legs[s1]) continue;
+        if (w2.open_sig[s2] != w1.open_sig[s1]) continue;
         omap[s1] = s2;
         oused[s2] = 1;
         stack.assign(1, {s1, s2});
@@ -344,7 +390,8 @@ namespace FunKit
             loud_throw("internal error: incomplete object map on a connected term");
           double sign = 1;
           for (Idx o = 0; o < n; ++o)
-            sign *= object_alignment_sign(setup, t1[o], t2[omap[o]], w1.cids[o], imap, d2);
+            sign *= object_alignment_sign(setup, t1[o], t2[omap[o]], w1.cids[o], w1.ocls[o], w2.cids[omap[o]],
+                                          w2.ocls[omap[o]], imap, d2);
           return sign;
         }
         omap[s1] = -1;
@@ -352,6 +399,49 @@ namespace FunKit
         stack.clear();
       }
       return std::nullopt;
+    }
+
+    // TermsEqualPre analog over precomputed data: guards, cheap rejects,
+    // dispatch. Open legs compare by their equality class — exact labels when
+    // no orbits are active.
+    std::optional<double> terms_equal_impl(const Setup &setup, const FTerm &t1, const TermData &d1,
+                                           const WalkData &w1, const FTerm &t2, const TermData &d2,
+                                           const WalkData &w2)
+    {
+      // Bit-identical object lists are trivially equal — always sound, including
+      // for bare-Grassmann terms (a deliberate divergence from Mathematica's
+      // blanket GrassmannCount guard, which refuses even t1 === t2).
+      if (same_objects(t1, t2)) return 1.;
+
+      // Cheap rejects.
+      if (t1.size() != t2.size()) return std::nullopt;
+      if (d1.closed_labels.size() != d2.closed_labels.size()) return std::nullopt;
+      if (w1.global_sig != w2.global_sig) return std::nullopt;
+      if (w1.sorted_keys != w2.sorted_keys) return std::nullopt;
+      // No edges to walk and not bit-identical: with orbit matching the open
+      // legs may still pair up freely, but only for a single object.
+      if (d1.closed_labels.empty()) {
+        if (t1.size() != 1) return std::nullopt;
+        if (d1.obj_keys[0] != d2.obj_keys[0]) return std::nullopt;
+        if (w1.open_sig[0] != w2.open_sig[0]) return std::nullopt;
+        std::vector<Idx> imap; // no closed indices
+        return object_alignment_sign(setup, t1[0], t2[0], w1.cids[0], w1.ocls[0], w2.cids[0], w2.ocls[0], imap, d2);
+      }
+
+      // Disconnected terms need the per-component matcher (Phase 4) — the plain
+      // walk would map one component and wrongly declare success. Until it lands,
+      // conservatively refuse: unmerged terms are never wrong.
+      const bool disc1 = d1.n_components > 1 && t1.size() > 1;
+      const bool disc2 = d2.n_components > 1 && t2.size() > 1;
+      if (disc1 || disc2) return std::nullopt;
+
+      // Bare-Grassmann guard (mirrors TermsEqualAndSumPre): the walk maps objects
+      // regardless of their position in the term product, so the sign of commuting
+      // bare Grassmann fields past each other is not tracked. Such terms are only
+      // mergeable via the per-component path (Phase 4).
+      if (d1.grassmann_field_count != 0 || d2.grassmann_field_count != 0) return std::nullopt;
+
+      return match_connected(setup, t1, d1, w1, t2, d2, w2);
     }
   } // namespace
 
@@ -361,39 +451,11 @@ namespace FunKit
     if (has_AnyField(t1) || has_AnyField(t2))
       loud_throw("terms_equal requires fully truncated terms (no AnyField); run truncate first");
 
-    // Bit-identical object lists are trivially equal — always sound, including
-    // for bare-Grassmann terms (a deliberate divergence from Mathematica's
-    // blanket GrassmannCount guard, which refuses even t1 === t2).
-    if (same_objects(t1, t2)) return 1.;
-
-    // Cheap rejects. Equal open legs are required exactly: they are the
-    // externally visible legs of the diagram.
-    if (t1.size() != t2.size()) return std::nullopt;
-    if (d1.closed_labels.size() != d2.closed_labels.size()) return std::nullopt;
-    if (d1.open_legs != d2.open_legs) return std::nullopt;
-    {
-      auto k1 = d1.obj_keys, k2 = d2.obj_keys;
-      std::sort(k1.begin(), k1.end());
-      std::sort(k2.begin(), k2.end());
-      if (k1 != k2) return std::nullopt;
-    }
-    // No edges to walk and not bit-identical: the terms are just different.
-    if (d1.closed_labels.empty()) return std::nullopt;
-
-    // Disconnected terms need the per-component matcher (Phase 4) — the plain
-    // walk would map one component and wrongly declare success. Until it lands,
-    // conservatively refuse: unmerged terms are never wrong.
-    const bool disc1 = d1.n_components > 1 && t1.size() > 1;
-    const bool disc2 = d2.n_components > 1 && t2.size() > 1;
-    if (disc1 || disc2) return std::nullopt;
-
-    // Bare-Grassmann guard (mirrors TermsEqualAndSumPre): the walk maps objects
-    // regardless of their position in the term product, so the sign of commuting
-    // bare Grassmann fields past each other is not tracked. Such terms are only
-    // mergeable via the per-component path (Phase 4).
-    if (d1.grassmann_field_count != 0 || d2.grassmann_field_count != 0) return std::nullopt;
-
-    return match_connected(setup, t1, d1, t2, d2);
+    // No orbits: open legs must match exactly.
+    const OpenOrbits none;
+    const WalkData w1 = make_walk_data(t1, d1, none);
+    const WalkData w2 = make_walk_data(t2, d2, none);
+    return terms_equal_impl(setup, t1, d1, w1, t2, d2, w2);
   }
 
   std::optional<double> terms_equal(const Setup &setup, FTerm t1, FTerm t2)
@@ -454,7 +516,7 @@ namespace FunKit
                      " appears more than twice — equation malformed or derivatives unresolved");
       }
 
-    // Open / closed split. closed_labels must end up sorted (terms_equal resolves
+    // Open / closed split. closed_labels must end up sorted (the matcher resolves
     // labels to compact ids via lower_bound), so sort the table by name first.
     std::sort(occ.begin(), occ.end(), [](const IdxOcc &a, const IdxOcc &b) { return a.name < b.name; });
     for (const auto &e : occ) {
@@ -572,26 +634,16 @@ namespace FunKit
       return signed_idx;
     }
 
-    // Symmetry-transformed copies for a retry comparison. Rules only permute
-    // open labels, and canonicalize_indices(FEq&) keeps all closed labels above
-    // every open label, so closed legs and the derived data (adjacency, object
-    // keys, components) are untouched; only the open legs need re-sorting. The
-    // cached fingerprints go stale but are not used past bucketing.
+    // Symmetry-transformed copy for a retry comparison. Rules only permute open
+    // labels, and canonicalize_indices(FEq&) keeps all closed labels above every
+    // open label, so the TermData (adjacency, object keys, components) stays
+    // valid; only the term and its WalkData need rebuilding.
     FTerm apply_symmetry(const FTerm &term, const CompiledSymmetry &sym)
     {
       FTerm ret = term;
       for (auto &obj : ret)
         for (auto &leg : obj.legs)
           leg.second = apply_symmetry(leg.second, sym);
-      return ret;
-    }
-
-    TermData apply_symmetry(const TermData &data, const CompiledSymmetry &sym)
-    {
-      TermData ret = data;
-      for (auto &leg : ret.open_legs)
-        leg.second = apply_symmetry(leg.second, sym);
-      std::sort(ret.open_legs.begin(), ret.open_legs.end());
       return ret;
     }
   } // namespace
@@ -614,93 +666,191 @@ namespace FunKit
 
     const std::size_t before = feq.size();
     const Idx n = static_cast<Idx>(feq.size());
+    // Unlike truncate, nothing inside the parallel regions prints, and the
+    // leader scan is deterministic regardless of thread count — so parallelism
+    // stays on even at higher debug levels.
+    const bool parallel = true;
 
-    std::vector<TermData> td;
-    td.reserve(feq.size());
-    for (const auto &term : feq)
-      td.push_back(precompute_term_data(setup, term));
+    std::vector<TermData> td(feq.size());
+#pragma omp parallel for schedule(dynamic, 64) if (parallel)
+    for (Idx i = 0; i < n; ++i)
+      td[i] = precompute_term_data(setup, feq[i]);
 
-    // Expand the user-supplied symmetries (Setup::symmetries) against the
-    // equation's external legs — the FBuildSymmetryList analog.
-    std::vector<CompiledSymmetry> symmetries;
-    if (!setup.symmetries.empty()) {
-      std::vector<LegT> external;
-      for (const auto &data : td)
-        for (const auto &leg : data.open_legs)
-          if (std::find(external.begin(), external.end(), leg) == external.end()) external.push_back(leg);
-      symmetries = setup.symmetries.build(setup, external);
+    // --- Symmetry preparation -------------------------------------------------
+    // Gather the equation's external legs once.
+    std::vector<LegT> external;
+    for (const auto &data : td)
+      for (const auto &leg : data.open_legs)
+        if (std::find(external.begin(), external.end(), leg) == external.end()) external.push_back(leg);
+
+    // Identical commuting derivative legs form orbits: their labels are freely
+    // interchangeable inside the matcher (no sign, no enumeration of the k!
+    // permutations). Identical Grassmann derivative legs expand into pair
+    // swaps with factor -1 (make_symmetry_list on the Grassmann subset), and
+    // explicit Setup::symmetries cycles are compiled as-is; both are handled
+    // by transform-and-retry.
+    OpenOrbits orbits;
+    std::vector<CompiledSymmetry> rules;
+    if (!setup.derivatives.empty()) {
+      const auto external_field_of = [&](Idx label, FieldIdx expected) {
+        bool found = false;
+        for (const auto &leg : external)
+          if (std::abs(leg.second) == label) {
+            if (leg.first != expected)
+              loud_throw("Derivative leg " + std::to_string(label) + " carries field " +
+                         setup.idx_to_field(leg.first) + " in the equation, not " + setup.idx_to_field(expected) +
+                         ".");
+            found = true;
+          }
+        if (!found)
+          loud_throw("Derivative leg " + std::to_string(label) + " is not an external leg of the equation.");
+      };
+
+      std::vector<std::pair<FieldIdx, std::vector<Idx>>> groups;
+      for (const auto &leg : setup.derivatives) {
+        if (leg.first == AnyField) loud_throw("Derivative legs must carry concrete fields, not AnyField.");
+        const auto it =
+            std::find_if(groups.begin(), groups.end(), [&](const auto &g) { return g.first == leg.first; });
+        if (it == groups.end())
+          groups.push_back({leg.first, {leg.second}});
+        else
+          it->second.push_back(leg.second);
+      }
+      std::vector<LegT> grassmann_legs;
+      Idx orbit_id = 0;
+      for (const auto &[field, labels] : groups) {
+        if (setup.field_props(field).grassmann) {
+          for (const Idx label : labels)
+            grassmann_legs.push_back({field, label});
+          continue;
+        }
+        if (labels.size() < 2) continue;
+        for (const Idx label : labels) {
+          external_field_of(label, field);
+          orbits.label_to_orbit.push_back({label, orbit_id});
+        }
+        ++orbit_id;
+      }
+      std::sort(orbits.label_to_orbit.begin(), orbits.label_to_orbit.end());
+
+      if (!grassmann_legs.empty()) {
+        Symmetries gsyms;
+        for (auto &sym : make_symmetry_list(setup, grassmann_legs))
+          gsyms.add(std::move(sym));
+        gsyms.finalize();
+        rules = gsyms.build(setup, external);
+      }
     }
+    if (!setup.symmetries.empty()) {
+      auto explicit_rules = setup.symmetries.build(setup, external);
+      rules.insert(rules.end(), std::make_move_iterator(explicit_rules.begin()),
+                   std::make_move_iterator(explicit_rules.end()));
+    }
+    const bool symmetric = !orbits.empty() || !rules.empty();
 
-    // Bucket terms: terms in different buckets can never merge. With
-    // symmetries active the key must be blind to the open-leg labels, since
-    // symmetry-related terms differ exactly there.
+    std::vector<WalkData> wd(feq.size());
+#pragma omp parallel for schedule(dynamic, 64) if (parallel)
+    for (Idx i = 0; i < n; ++i)
+      wd[i] = make_walk_data(feq[i], td[i], orbits);
+
+    // --- Bucketing --------------------------------------------------------
+    // Terms in different buckets can never merge. With symmetries active the
+    // key must be blind to the open-leg labels, since symmetry-related terms
+    // differ exactly there.
     std::unordered_map<std::uint64_t, std::vector<Idx>> buckets;
     for (Idx i = 0; i < n; ++i)
-      buckets[symmetries.empty() ? td[i].fingerprint : symmetry_blind_fingerprint(td[i])].push_back(i);
-    std::vector<const std::vector<Idx> *> work;
-    for (const auto &[fp, bucket] : buckets)
-      if (bucket.size() > 1) work.push_back(&bucket);
+      buckets[symmetric ? symmetry_blind_fingerprint(td[i]) : td[i].fingerprint].push_back(i);
 
     std::vector<char> alive(feq.size(), 1);
 
-    // Merge every bucket: an exact-duplicate pre-pass (cheap, catches terms the
-    // canonical form already made bit-identical — sound for any Grassmann
-    // content), then the O(n^2) pairwise matcher loop. Merging always
-    // accumulates into the lower index and each bucket is processed serially,
-    // so the result is deterministic regardless of thread count.
-    const auto process = [&](const std::vector<Idx> &bucket) {
-      std::unordered_map<std::uint64_t, Idx> seen;
-      for (const Idx i : bucket) {
-        const std::uint64_t h = term_hash(feq[i]);
-        const auto it = seen.find(h);
-        if (it != seen.end() && same_objects(feq[it->second], feq[i])) {
-          feq[it->second].value += feq[i].value;
-          alive[i] = 0;
-        } else if (it == seen.end())
-          seen.emplace(h, i);
-        // hash collision with different objects: left to the pairwise loop
-      }
-
-      for (std::size_t a = 0; a < bucket.size(); ++a) {
-        const Idx i = bucket[a];
-        if (!alive[i]) continue;
-        for (std::size_t b = a + 1; b < bucket.size(); ++b) {
-          const Idx j = bucket[b];
-          if (!alive[j]) continue;
-          // Identity comparison first (cached data), then retry term j under
-          // each symmetry transformation — the SubFSimplify symmetry branch.
-          auto sign = terms_equal(setup, feq[i], td[i], feq[j], td[j]);
-          double factor = 1;
-          if (!sign)
-            for (const auto &sym : symmetries) {
-              const FTerm tj = apply_symmetry(feq[j], sym);
-              const TermData dj = apply_symmetry(td[j], sym);
-              sign = terms_equal(setup, feq[i], td[i], tj, dj);
-              if (sign) {
-                factor = sym.factor;
-                break;
-              }
-            }
-          if (!sign) continue;
-          feq[i].value += *sign * factor * feq[j].value;
-          alive[j] = 0;
-          if (is_close(feq[i].value, 0.)) { // full cancellation
-            alive[i] = 0;
-            break;
+    // --- Exact-duplicate pre-pass ------------------------------------------
+    // Catches terms the canonical form already made bit-identical (sound for
+    // any Grassmann content). One task per bucket; buckets are disjoint index
+    // sets, so tasks never touch shared state.
+    {
+      std::vector<std::vector<Idx> *> work;
+      for (auto &[fp, bucket] : buckets)
+        if (bucket.size() > 1) work.push_back(&bucket);
+#pragma omp parallel shared(feq, alive, work) if (parallel)
+#pragma omp single
+      for (std::size_t w = 0; w < work.size(); ++w) {
+#pragma omp task shared(feq, alive, work) firstprivate(w) if (parallel)
+        {
+          std::unordered_map<std::uint64_t, Idx> seen;
+          for (const Idx i : *work[w]) {
+            const std::uint64_t h = term_hash(feq[i]);
+            const auto it = seen.find(h);
+            if (it != seen.end() && same_objects(feq[it->second], feq[i])) {
+              feq[it->second].value += feq[i].value;
+              alive[i] = 0;
+            } else if (it == seen.end())
+              seen.emplace(h, i);
+            // hash collision with different objects: left to the leader scan
           }
         }
       }
+    }
+
+    // --- Parallel leader scan ------------------------------------------------
+    // For every term j, find the first surviving earlier term i of its bucket
+    // it matches (identity first, then each symmetry transformation). This is
+    // read-only and therefore embarrassingly parallel over j, and independent
+    // of the thread count. The merges are applied afterwards in one serial
+    // pass: leader chains resolve to their root with composed signs (equality
+    // is transitive — t_j = s1 t_i and t_i = s2 t_r give t_j = s1 s2 t_r).
+    const auto try_match = [&](Idx i, Idx j) -> std::optional<double> {
+      auto sign = terms_equal_impl(setup, feq[i], td[i], wd[i], feq[j], td[j], wd[j]);
+      if (sign) return sign;
+      for (const auto &sym : rules) {
+        const FTerm tj = apply_symmetry(feq[j], sym);
+        const WalkData wj = make_walk_data(tj, td[j], orbits);
+        sign = terms_equal_impl(setup, feq[i], td[i], wd[i], tj, td[j], wj);
+        if (sign) return *sign * sym.factor;
+      }
+      return std::nullopt;
     };
 
-    // One task per bucket (the truncate parallelism pattern). Buckets are
-    // disjoint index sets into feq/td/alive, so tasks never touch shared state.
-#pragma omp parallel shared(setup, feq, td, alive, work) if (setup.debug_level <= 0)
-#pragma omp single
-    {
-      for (std::size_t w = 0; w < work.size(); ++w) {
-#pragma omp task shared(setup, feq, td, alive, work) firstprivate(w) if (setup.debug_level <= 0)
-        process(*work[w]);
+    std::vector<std::vector<Idx>> scan_lists;
+    std::vector<std::pair<std::size_t, std::size_t>> items; // (list, position)
+    for (const auto &[fp, bucket] : buckets) {
+      std::vector<Idx> alive_terms;
+      for (const Idx i : bucket)
+        if (alive[i]) alive_terms.push_back(i);
+      if (alive_terms.size() < 2) continue;
+      scan_lists.push_back(std::move(alive_terms));
+      for (std::size_t pos = 1; pos < scan_lists.back().size(); ++pos)
+        items.push_back({scan_lists.size() - 1, pos});
+    }
+
+    std::vector<Idx> leader(feq.size(), -1);
+    std::vector<double> lsign(feq.size(), 1.);
+    const std::int64_t n_items = static_cast<std::int64_t>(items.size());
+#pragma omp parallel for schedule(dynamic, 8) if (parallel)
+    for (std::int64_t k = 0; k < n_items; ++k) {
+      const auto &[list, pos] = items[k];
+      const Idx j = scan_lists[list][pos];
+      for (std::size_t a = 0; a < pos; ++a) {
+        const Idx i = scan_lists[list][a];
+        const auto sign = try_match(i, j);
+        if (sign) {
+          leader[j] = i;
+          lsign[j] = *sign;
+          break;
+        }
       }
+    }
+
+    // Serial resolve: leaders always point to smaller indices, so one ascending
+    // pass accumulates every term into its root with the composed sign.
+    std::vector<Idx> root(feq.size());
+    std::vector<double> rsign(feq.size(), 1.);
+    std::iota(root.begin(), root.end(), Idx(0));
+    for (Idx j = 0; j < n; ++j) {
+      if (leader[j] == -1) continue;
+      root[j] = root[leader[j]];
+      rsign[j] = lsign[j] * rsign[leader[j]];
+      feq[root[j]].value += rsign[j] * feq[j].value;
+      alive[j] = 0;
     }
 
     // Compact to the surviving terms with non-vanishing coefficients.

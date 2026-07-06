@@ -64,6 +64,9 @@ AppendTo[
 
 (**********************************************************************************
     Metric Tests
+
+    Convention: \[Gamma]^{Psibar Psi} = \[Gamma]_{Psibar Psi} = +1 (antifield first),
+    cf. GrassOrder in FEDeriK/Metric.m.
 **********************************************************************************)
 
 AppendTo[
@@ -88,7 +91,7 @@ AppendTo[
             FunKit`Private`ReduceIndices[ySet, FTerm[AnyField[-i1], \[Gamma][{Psi, Psibar}, {i1, i2}], AnyField[-i2]]]
         ]
         ,
-        FTerm[AnyField[i2], AnyField[-i2]]
+        FTerm[-1, AnyField[i2], AnyField[-i2]]
         ,
         TestID -> "Metric test {Psi, Psibar}"
     ]
@@ -116,7 +119,7 @@ AppendTo[
             FunKit`Private`ReduceIndices[ySet, FTerm[AnyField[-i1], \[Gamma][{Psibar, Psi}, {i1, i2}], AnyField[-i2]]]
         ]
         ,
-        FTerm[-1, AnyField[i2], AnyField[-i2]]
+        FTerm[AnyField[i2], AnyField[-i2]]
         ,
         TestID -> "Metric test {Psibar, Psi}"
     ]

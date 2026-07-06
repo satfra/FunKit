@@ -183,6 +183,14 @@ namespace FunKit
     Truncation truncation;
     Symmetries symmetries;
 
+    // The derivative legs the equation's FDOps were built from (one (field,
+    // open label) leg per derivative) — an analytic statement that the
+    // underlying functional is (graded-)symmetric in them. simplify() treats
+    // identical commuting legs as freely interchangeable (orbit matching, no
+    // enumeration — full S_k would explode for many identical legs) and
+    // expands identical Grassmann legs into pair swaps with factor -1.
+    std::vector<LegT> derivatives;
+
   private:
     std::vector<FieldProps> m_field_props;
   };
