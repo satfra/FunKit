@@ -15,12 +15,13 @@
                                     (used by ReduceIndices)
 **********************************************************************************)
 
-(*AntiGrassmannField-GrassmannField gives 1, otherwise -1*)
+(*AntiGrassmannField-GrassmannField gives 1, otherwise -1. Keyed off f2 so that an
+unpaired Grassmann field (its own partner) also gives 1.*)
 
 GrassOrder[setup_, f1_, f2_, sign_] :=
     GrassOrder[setup, f1, f2, sign] =
         Module[{},
-            (2 * Boole[IsGrassmannField[setup, f1]] - 1) ^ Boole[!(sign === 1)]
+            (2 * Boole[IsGrassmannField[setup, f2]] - 1) ^ Boole[!(sign === 1)]
         ];
 
 (*Return 
