@@ -1,0 +1,33 @@
+# Boilerplate: fully file-driven scalar 2-point flow. The equation itself
+# carries the two FDOp derivative operators (external labels 101, 102), and
+# the "derivatives" list regenerates them as an analytic statement so the
+# parser can build the external-leg symmetry group (here: S_2 over 101, 102).
+
+equation = [
+  [
+  { prefactor = 0.5 },
+  { type = "FDOp", legs = [ [ "phi", 101 ] ] },
+  { type = "FDOp", legs = [ [ "phi", 102 ] ] },
+  { type = "Propagator", legs = [ [ "AnyField", 1 ], [ "AnyField", 2 ] ] },
+  { type = "Rdot", legs = [ [ "AnyField", -1 ], [ "AnyField", -2 ] ] }
+  ]
+]
+
+derivatives = [ [ "phi", 101 ], [ "phi", 102 ] ]
+
+[setup]
+debug = 0
+ordered = [ "Rdot" ]
+
+  [[setup.cFields]]
+  phi = [ ]
+
+[setup.truncation]
+Rdot = [ [ "phi", "phi" ] ]
+Propagator = [ [ "phi", "phi" ] ]
+GammaN = [
+  [ "phi" ],
+  [ "phi", "phi" ],
+  [ "phi", "phi", "phi" ],
+  [ "phi", "phi", "phi", "phi" ],
+]

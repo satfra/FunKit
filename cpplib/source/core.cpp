@@ -1,8 +1,10 @@
 #include "core.hpp"
 
 #include "exceptions.hpp"
+#include <algorithm>
 #include <iostream>
 #include <limits>
+#include <numeric>
 
 namespace FunKit
 {
@@ -244,6 +246,128 @@ namespace FunKit
   {
     if (!finalized) loud_throw("Cannot query a non-finalized Symmetries object.");
     return m_symmetries;
+  }
+
+  std::vector<CompiledSymmetry> Symmetries::build(const Setup &setup, const std::vector<LegT> &external_legs) const
+  {
+    if (!finalized) loud_throw("Cannot build a non-finalized Symmetries object.");
+
+    // Field carried by an external-leg label; throws on unknown labels and on
+    // labels that appear with two different fields (a malformed equation).
+    const auto field_of = [&](Idx label) {
+      FieldIdx field = AnyField;
+      bool found = false;
+      for (const auto &leg : external_legs)
+        if (std::abs(leg.second) == label) {
+          if (found && leg.first != field)
+            loud_throw("External leg label " + std::to_string(label) + " carries two different fields (" +
+                       setup.idx_to_field(field) + ", " + setup.idx_to_field(leg.first) + ").");
+          field = leg.first;
+          found = true;
+        }
+      if (!found)
+        loud_throw("Symmetry references label " + std::to_string(label) +
+                   ", which is not an external leg of the equation.");
+      return field;
+    };
+
+    std::vector<CompiledSymmetry> compiled;
+    compiled.reserve(m_symmetries.size());
+    for (const auto &sym : m_symmetries) {
+      CompiledSymmetry cs;
+      cs.factor = sym.factor;
+      for (const auto &cycle : sym.cycles) {
+        // An index-only permutation can only relate equal terms when all legs
+        // of the cycle carry the same field.
+        const FieldIdx field = field_of(cycle.front());
+        for (const Idx label : cycle)
+          if (field_of(label) != field)
+            loud_throw("Symmetry cycle mixes legs of different fields (" + setup.idx_to_field(field) + ", " +
+                       setup.idx_to_field(field_of(label)) + ").");
+        // (a b c) -> a->b, b->c, c->a, cf. buildCycle in FBuildSymmetryList.
+        for (std::size_t k = 0; k < cycle.size(); ++k)
+          cs.rules.emplace_back(cycle[k], cycle[(k + 1) % cycle.size()]);
+      }
+      compiled.push_back(std::move(cs));
+    }
+    return compiled;
+  }
+
+  std::vector<Symmetry> make_symmetry_list(const Setup &setup, const std::vector<LegT> &derivative_legs)
+  {
+    for (const auto &leg : derivative_legs) {
+      if (leg.first == AnyField) loud_throw("Derivative legs must carry concrete fields, not AnyField.");
+      if (leg.second <= 0)
+        loud_throw("Derivative leg labels must be positive, got " + std::to_string(leg.second) + ".");
+    }
+
+    // Group the labels by field, preserving order of appearance.
+    std::vector<std::pair<FieldIdx, std::vector<Idx>>> groups;
+    for (const auto &leg : derivative_legs) {
+      const auto it = std::find_if(groups.begin(), groups.end(), [&](const auto &g) { return g.first == leg.first; });
+      if (it == groups.end())
+        groups.push_back({leg.first, {leg.second}});
+      else
+        it->second.push_back(leg.second);
+    }
+
+    // Per-group symmetries, always including the identity (empty cycle set) so
+    // the outer product below composes correctly.
+    const auto group_symmetries = [&](const std::pair<FieldIdx, std::vector<Idx>> &group) {
+      const auto &labels = group.second;
+      const std::size_t k = labels.size();
+      std::vector<Symmetry> syms = {{{}, 1}};
+      if (k < 2) return syms;
+
+      if (setup.field_props(group.first).grassmann) {
+        // Grassmann: pairwise swaps only, each with a factor -1.
+        for (std::size_t i = 0; i < k; ++i)
+          for (std::size_t j = i + 1; j < k; ++j)
+            syms.push_back({{{labels[i], labels[j]}}, -1});
+        return syms;
+      }
+
+      // Commuting: every non-identity permutation, in disjoint-cycle form.
+      std::vector<std::size_t> perm(k);
+      std::iota(perm.begin(), perm.end(), std::size_t{0});
+      while (std::next_permutation(perm.begin(), perm.end())) {
+        Symmetry sym{{}, 1};
+        std::vector<char> used(k, 0);
+        for (std::size_t i = 0; i < k; ++i) {
+          if (used[i] || perm[i] == i) continue;
+          std::vector<Idx> cycle;
+          for (std::size_t j = i; !used[j]; j = perm[j]) {
+            used[j] = 1;
+            cycle.push_back(labels[j]);
+          }
+          sym.cycles.push_back(std::move(cycle));
+        }
+        syms.push_back(std::move(sym));
+      }
+      return syms;
+    };
+
+    // Outer product across the field groups: cycles are unioned (they act on
+    // disjoint labels), factors multiply — the symCombine of FMakeSymmetryList.
+    std::vector<Symmetry> combined = {{{}, 1}};
+    for (const auto &group : groups) {
+      const std::vector<Symmetry> subs = group_symmetries(group);
+      std::vector<Symmetry> next;
+      next.reserve(combined.size() * subs.size());
+      for (const auto &a : combined)
+        for (const auto &b : subs) {
+          Symmetry sym;
+          sym.cycles = a.cycles;
+          sym.cycles.insert(sym.cycles.end(), b.cycles.begin(), b.cycles.end());
+          sym.factor = a.factor * b.factor;
+          next.push_back(std::move(sym));
+        }
+      combined = std::move(next);
+    }
+
+    // Drop the identity; the simplify driver always tries it first anyway.
+    std::erase_if(combined, [](const Symmetry &sym) { return sym.cycles.empty(); });
+    return combined;
   }
 
   std::string sidx_to_string(KeyT _idx)

@@ -40,7 +40,7 @@ namespace FunKit
     }
   } // namespace
 
-  void canonicalize_indices(FTerm &term)
+  void canonicalize_indices(FTerm &term, Idx min_base)
   {
     // Per-distinct-index table. Terms are small, so a linear-scanned stack vector
     // beats a hashing map: no heap allocation, cache-hot, and every scan is over a
@@ -70,7 +70,7 @@ namespace FunKit
     // Classify + validate, and derive base = 1 + max over open (count-1) legs.
     // Open labels are externally visible and never renumbered, so closed labels
     // must start above all of them.
-    Idx base = 1;
+    Idx base = std::max<Idx>(1, min_base);
     for (const auto &e : table) {
       if (e.count == 1)
         base = std::max(base, e.name + 1);
@@ -96,8 +96,28 @@ namespace FunKit
 
   void canonicalize_indices(FEq &feq)
   {
+    // Common base above every open label of the equation: a symmetry
+    // permutation of open labels can then never collide with a closed label,
+    // and structurally equal terms get identical closed ranges regardless of
+    // which open legs they carry.
+    Idx min_base = 1;
+    for (const auto &term : feq) {
+      gch::small_vector<std::pair<Idx, int>, 16> counts;
+      for (const auto &obj : term)
+        for (const auto &leg : obj.legs) {
+          const Idx name = std::abs(leg.second);
+          const auto it =
+              std::find_if(counts.begin(), counts.end(), [name](const auto &e) { return e.first == name; });
+          if (it == counts.end())
+            counts.push_back({name, 1});
+          else
+            ++it->second;
+        }
+      for (const auto &[name, count] : counts)
+        if (count == 1) min_base = std::max(min_base, name + 1);
+    }
     for (auto &term : feq)
-      canonicalize_indices(term);
+      canonicalize_indices(term, min_base);
   }
 
   namespace
@@ -524,6 +544,56 @@ namespace FunKit
       }
       return h;
     }
+
+    // Symmetry-invariant bucket key: like TermData::fingerprint but without
+    // the open-leg index labels (their field multiset is kept — a symmetry
+    // only permutes labels among same-field legs). Terms related by a
+    // symmetry differ exactly in those labels and must land in one bucket,
+    // cf. the "Fingerprint is symmetry-invariant" comment in SubFSimplify.
+    std::uint64_t symmetry_blind_fingerprint(const TermData &data)
+    {
+      std::uint64_t fp = 1; // != the seed of the exact fingerprint
+      hash_combine(fp, static_cast<std::uint64_t>(data.obj_keys.size()));
+      hash_combine(fp, static_cast<std::uint64_t>(data.closed_labels.size()));
+      auto sorted_keys = data.obj_keys;
+      std::sort(sorted_keys.begin(), sorted_keys.end());
+      for (const std::uint64_t key : sorted_keys)
+        hash_combine(fp, key);
+      for (const auto &leg : data.open_legs) // sorted by (field, idx): fields are in order
+        hash_combine(fp, to_hashable(leg.first));
+      return fp;
+    }
+
+    Idx apply_symmetry(Idx signed_idx, const CompiledSymmetry &sym)
+    {
+      const Idx name = std::abs(signed_idx);
+      for (const auto &[from, to] : sym.rules)
+        if (from == name) return signed_idx > 0 ? to : -to;
+      return signed_idx;
+    }
+
+    // Symmetry-transformed copies for a retry comparison. Rules only permute
+    // open labels, and canonicalize_indices(FEq&) keeps all closed labels above
+    // every open label, so closed legs and the derived data (adjacency, object
+    // keys, components) are untouched; only the open legs need re-sorting. The
+    // cached fingerprints go stale but are not used past bucketing.
+    FTerm apply_symmetry(const FTerm &term, const CompiledSymmetry &sym)
+    {
+      FTerm ret = term;
+      for (auto &obj : ret)
+        for (auto &leg : obj.legs)
+          leg.second = apply_symmetry(leg.second, sym);
+      return ret;
+    }
+
+    TermData apply_symmetry(const TermData &data, const CompiledSymmetry &sym)
+    {
+      TermData ret = data;
+      for (auto &leg : ret.open_legs)
+        leg.second = apply_symmetry(leg.second, sym);
+      std::sort(ret.open_legs.begin(), ret.open_legs.end());
+      return ret;
+    }
   } // namespace
 
   void simplify(const Setup &setup, FEq &feq)
@@ -550,10 +620,23 @@ namespace FunKit
     for (const auto &term : feq)
       td.push_back(precompute_term_data(setup, term));
 
-    // Bucket terms by fingerprint: terms in different buckets can never merge.
+    // Expand the user-supplied symmetries (Setup::symmetries) against the
+    // equation's external legs — the FBuildSymmetryList analog.
+    std::vector<CompiledSymmetry> symmetries;
+    if (!setup.symmetries.empty()) {
+      std::vector<LegT> external;
+      for (const auto &data : td)
+        for (const auto &leg : data.open_legs)
+          if (std::find(external.begin(), external.end(), leg) == external.end()) external.push_back(leg);
+      symmetries = setup.symmetries.build(setup, external);
+    }
+
+    // Bucket terms: terms in different buckets can never merge. With
+    // symmetries active the key must be blind to the open-leg labels, since
+    // symmetry-related terms differ exactly there.
     std::unordered_map<std::uint64_t, std::vector<Idx>> buckets;
     for (Idx i = 0; i < n; ++i)
-      buckets[td[i].fingerprint].push_back(i);
+      buckets[symmetries.empty() ? td[i].fingerprint : symmetry_blind_fingerprint(td[i])].push_back(i);
     std::vector<const std::vector<Idx> *> work;
     for (const auto &[fp, bucket] : buckets)
       if (bucket.size() > 1) work.push_back(&bucket);
@@ -584,9 +667,22 @@ namespace FunKit
         for (std::size_t b = a + 1; b < bucket.size(); ++b) {
           const Idx j = bucket[b];
           if (!alive[j]) continue;
-          const auto sign = terms_equal(setup, feq[i], td[i], feq[j], td[j]);
+          // Identity comparison first (cached data), then retry term j under
+          // each symmetry transformation — the SubFSimplify symmetry branch.
+          auto sign = terms_equal(setup, feq[i], td[i], feq[j], td[j]);
+          double factor = 1;
+          if (!sign)
+            for (const auto &sym : symmetries) {
+              const FTerm tj = apply_symmetry(feq[j], sym);
+              const TermData dj = apply_symmetry(td[j], sym);
+              sign = terms_equal(setup, feq[i], td[i], tj, dj);
+              if (sign) {
+                factor = sym.factor;
+                break;
+              }
+            }
           if (!sign) continue;
-          feq[i].value += *sign * feq[j].value;
+          feq[i].value += *sign * factor * feq[j].value;
           alive[j] = 0;
           if (is_close(feq[i].value, 0.)) { // full cancellation
             alive[i] = 0;

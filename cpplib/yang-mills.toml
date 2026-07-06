@@ -10,12 +10,19 @@
 equation = [
   [
   { prefactor = 0.5 },
+  { type = "FDOp", legs = [ [ "A", 6 ] ] },
+  { type = "FDOp", legs = [ [ "A", 5 ] ] },
   { type = "FDOp", legs = [ [ "A", 4 ] ] },
   { type = "FDOp", legs = [ [ "A", 3 ] ] },
   { type = "Propagator", legs = [ [ "AnyField", 1 ], [ "AnyField", 2 ] ] },
   { type = "Rdot", legs = [ [ "AnyField", -1 ], [ "AnyField", -2 ] ] }
   ]
 ]
+
+# The derivatives the FDOps above were built from: asserts that the equation is
+# symmetric under permuting these external legs, letting the parser generate
+# the full S_4 symmetry group for simplify.
+derivatives = [ [ "A", 3 ], [ "A", 4 ], [ "A", 5 ], [ "A", 6 ] ]
 
 [setup]
 debug = 1

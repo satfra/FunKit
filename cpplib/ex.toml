@@ -14,6 +14,8 @@ equation = [
   ]
 ]
 
+derivatives = [ [ "phi", 3 ], [ "phi", 4 ], [ "phi", 5 ], [ "phi", 6 ], [ "phi", 7 ], [ "phi", 8 ], [ "phi", 9 ], [ "phi", 10 ] ]
+
 [setup]
 debug = 1
 in_deriv_trunc = true

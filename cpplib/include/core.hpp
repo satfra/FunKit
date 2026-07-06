@@ -90,6 +90,13 @@ namespace FunKit
     friend bool operator==(const Symmetry &, const Symmetry &) = default;
   };
 
+  // A symmetry expanded into a directly applicable form: a simultaneous
+  // permutation of external-leg labels plus the sign it contributes.
+  struct CompiledSymmetry {
+    std::vector<std::pair<Idx, Idx>> rules; // label -> label, applied all at once
+    double factor = 1;
+  };
+
   class Symmetries
   {
   private:
@@ -108,14 +115,28 @@ namespace FunKit
     std::size_t size() const;
     const std::vector<Symmetry> &all() const;
 
-    // --- Extension point for simplify (declared here, implemented later) ---
-    // Bind the label-based cycles to a term's actual external legs and expand
-    // into the compiled {index permutation, sign} list — the FBuildSymmetryList
-    // analog. Requires the external legs, so it cannot run at parse time.
-    //   std::vector<CompiledSymmetry> build(const Setup &, const std::vector<LegT> &external_legs) const;
+    // Bind the label-based cycles to the equation's actual external legs and
+    // expand each symmetry into its {label permutation, sign} form — the
+    // FBuildSymmetryList analog. Requires the external legs, so it cannot run
+    // at parse time. Throws if a cycle references an unknown label or mixes
+    // legs of different fields (an index-only permutation across different
+    // fields can never produce a matching term, so it indicates user error).
+    // The identity is not included; the driver tries it implicitly first.
+    std::vector<CompiledSymmetry> build(const Setup &setup, const std::vector<LegT> &external_legs) const;
 
     friend void print(const Setup &setup, std::ostream &os);
   };
+
+  // FMakeSymmetryList analog: generate the symmetry group of an equation from
+  // its derivative list (one (field, open label) leg per derivative). Legs of
+  // the same commuting field may be permuted arbitrarily (full S_k, factor +1);
+  // legs of the same Grassmann field may only be swapped pairwise, each swap
+  // contributing a factor -1. Groups of different fields combine by outer
+  // product (union of cycles, product of factors). The identity is omitted.
+  // Passing the derivative list is an analytic statement that the underlying
+  // functional is (graded-)symmetric in these derivatives — it cannot be
+  // inferred from the equation itself.
+  std::vector<Symmetry> make_symmetry_list(const Setup &setup, const std::vector<LegT> &derivative_legs);
 
   struct Setup {
     std::string input_file;

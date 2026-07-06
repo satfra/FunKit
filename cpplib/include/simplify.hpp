@@ -8,9 +8,12 @@
 namespace FunKit
 {
   // FixIndices analog: renumber the closed (dummy) indices of a term to a
-  // compact deterministic range disjoint from the open indices.
+  // compact deterministic range disjoint from the open indices; min_base can
+  // raise the start of that range. The FEq overload uses a common base above
+  // ALL open labels of the equation, so that a symmetry permutation of open
+  // labels can never collide with the closed labels of any term.
   // Precondition: call AFTER normalize (leg order feeds first-appearance order).
-  void canonicalize_indices(FTerm &term);
+  void canonicalize_indices(FTerm &term, Idx min_base = 1);
   void canonicalize_indices(FEq &feq);
 
   // Per-term cached analysis — the PrecomputeTermData analog.
@@ -41,10 +44,13 @@ namespace FunKit
   // precomputes, and dispatches to the connected or disconnected matcher.
   std::optional<double> terms_equal(const Setup &setup, FTerm t1, FTerm t2);
 
-  // FSimplifyNoSym analog: merge all terms that are the same diagram up to
+  // FSimplify analog: merge all terms that are the same diagram up to
   // closed-index relabeling and leg reordering, summing coefficients with the
-  // proper Grassmann signs and dropping cancellations. In-place. Requires a
-  // fully truncated equation (throws on AnyField); resolves leftover symbolic
-  // factors (prune) and normalizes as part of its pipeline.
+  // proper Grassmann signs and dropping cancellations. If Setup::symmetries is
+  // non-empty, terms are additionally identified up to those external-leg
+  // permutations, each contributing its factor to the merged coefficient (the
+  // symmetry branch of SubFSimplify). In-place. Requires a fully truncated
+  // equation (throws on AnyField); resolves leftover symbolic factors (prune)
+  // and normalizes as part of its pipeline.
   void simplify(const Setup &setup, FEq &feq);
 } // namespace FunKit

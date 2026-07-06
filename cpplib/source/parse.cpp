@@ -132,6 +132,21 @@ namespace FunKit
         setup.symmetries.add(std::move(sym));
       }
     }
+    // A "derivatives" list (top-level, sibling of "equation") generates the
+    // full symmetry group of the equation's external legs: each entry is a
+    // [field, label] pair naming one derivative. This asserts that the
+    // underlying functional is (graded-)symmetric in these derivatives.
+    if (data.contains("derivatives")) {
+      if (!data["derivatives"].is_array()) loud_throw("'derivatives' must be an array in JSON file.");
+      std::vector<LegT> derivative_legs;
+      for (const auto &entry : data["derivatives"]) {
+        if (!entry.is_array() || entry.size() != 2)
+          loud_throw("Each derivative must be a [field, label] pair in JSON file.");
+        derivative_legs.push_back({setup.field_to_idx(entry[0].get<std::string>()), entry[1].get<Idx>()});
+      }
+      for (auto &sym : make_symmetry_list(setup, derivative_legs))
+        setup.symmetries.add(std::move(sym));
+    }
     setup.symmetries.finalize();
 
     // Parse the equation
@@ -295,6 +310,22 @@ namespace FunKit
         if (entry.contains("factor")) sym.factor = static_cast<int>(entry.at("factor").as_integer());
         setup.symmetries.add(std::move(sym));
       }
+    }
+    // A "derivatives" list (top-level, sibling of "equation") generates the
+    // full symmetry group of the equation's external legs: each entry is a
+    // [field, label] pair naming one derivative. This asserts that the
+    // underlying functional is (graded-)symmetric in these derivatives.
+    if (data.contains("derivatives")) {
+      if (!data.at("derivatives").is_array()) loud_throw("'derivatives' must be an array in TOML file.");
+      std::vector<LegT> derivative_legs;
+      for (const auto &entry : data.at("derivatives").as_array()) {
+        if (!entry.is_array() || entry.as_array().size() != 2)
+          loud_throw("Each derivative must be a [field, label] pair in TOML file.");
+        derivative_legs.push_back({setup.field_to_idx(std::string(entry.as_array()[0].as_string())),
+                                   static_cast<Idx>(entry.as_array()[1].as_integer())});
+      }
+      for (auto &sym : make_symmetry_list(setup, derivative_legs))
+        setup.symmetries.add(std::move(sym));
     }
     setup.symmetries.finalize();
 

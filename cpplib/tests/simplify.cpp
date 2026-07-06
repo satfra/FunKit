@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <stdexcept>
 
 #include <catch2/catch_test_macros.hpp>
@@ -736,6 +737,198 @@ TEST_CASE("simplify: flow matrix cross-validated against Mathematica", "[simplif
     std::sort(coeffs.begin(), coeffs.end());
     REQUIRE(coeffs == flow.coeffs);
   }
+}
+
+// ---- Symmetry-aware simplification (Phase 5) --------------------------------
+// Symmetries are user-supplied (Setup::symmetries, parsed from the input file):
+// whether the equation is invariant under permuting its external legs is
+// analytic information about where the master equation came from and cannot be
+// decided from the equation alone. simplify() compiles them against the
+// equation's external legs (Symmetries::build) and retries failed pair
+// comparisons under each transformation, multiplying in the symmetry factor.
+
+namespace
+{
+  Symmetries make_symmetries(const std::vector<Symmetry> &list)
+  {
+    Symmetries syms;
+    for (const auto &sym : list)
+      syms.add(sym);
+    syms.finalize();
+    return syms;
+  }
+} // namespace
+
+TEST_CASE("make_symmetry_list generates the graded symmetry group", "[simplify][symmetry]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yang-mills.toml");
+  const FieldIdx A = setup.field_to_idx("A");
+  const FieldIdx cb = setup.field_to_idx("cb");
+  const FieldIdx c = setup.field_to_idx("c");
+
+  // Three identical bosons: the full S_3, i.e. 5 non-identity permutations,
+  // all with factor +1.
+  const auto s3 = make_symmetry_list(setup, {{A, 1}, {A, 2}, {A, 3}});
+  REQUIRE(s3.size() == 5);
+  for (const auto &sym : s3)
+    REQUIRE(sym.factor == 1);
+
+  // A Grassmann pair of the same field: one swap, factor -1.
+  const auto gswap = make_symmetry_list(setup, {{cb, 1}, {cb, 2}});
+  REQUIRE(gswap.size() == 1);
+  REQUIRE(gswap[0].cycles == std::vector<std::vector<Idx>>{{1, 2}});
+  REQUIRE(gswap[0].factor == -1);
+
+  // The mixed example A, cb, c, cb, c, A: S_2(A) x swap(cb) x swap(c) minus
+  // the identity = 2*2*2 - 1 = 7 entries; the four with an odd number of
+  // Grassmann swaps carry -1.
+  const auto mixed = make_symmetry_list(setup, {{A, 1}, {cb, 2}, {c, 3}, {cb, 4}, {c, 5}, {A, 6}});
+  REQUIRE(mixed.size() == 7);
+  REQUIRE(std::count_if(mixed.begin(), mixed.end(), [](const Symmetry &s) { return s.factor == -1; }) == 4);
+
+  // Pairwise-distinct fields admit no permutation symmetry.
+  REQUIRE(make_symmetry_list(setup, {{A, 1}, {cb, 2}, {c, 3}}).empty());
+
+  // AnyField legs and non-positive labels are rejected.
+  REQUIRE_THROWS_AS(make_symmetry_list(setup, {{AnyField, 1}, {A, 2}}), std::runtime_error);
+  REQUIRE_THROWS_AS(make_symmetry_list(setup, {{A, -1}, {A, 2}}), std::runtime_error);
+}
+
+TEST_CASE("Symmetries::build compiles cycles against external legs", "[simplify][symmetry]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+  const FieldIdx psi = setup.field_to_idx("psi");
+  const FieldIdx psibar = setup.field_to_idx("psibar");
+
+  const std::vector<LegT> external = {{phi, 1}, {phi, -2}, {phi, 3}, {psibar, 4}, {psi, 5}};
+
+  // (1 2 3) -> 1->2, 2->3, 3->1; position signs of the legs are irrelevant.
+  const Symmetries syms = make_symmetries({{{{1, 2, 3}}, 1}, {{{1, 2}}, -1}});
+  const auto compiled = syms.build(setup, external);
+  REQUIRE(compiled.size() == 2);
+  REQUIRE(compiled[0].rules == std::vector<std::pair<Idx, Idx>>{{1, 2}, {2, 3}, {3, 1}});
+  REQUIRE(compiled[0].factor == 1.);
+  REQUIRE(compiled[1].rules == std::vector<std::pair<Idx, Idx>>{{1, 2}, {2, 1}});
+  REQUIRE(compiled[1].factor == -1.);
+
+  // Unknown label and mixed-field cycles are user errors.
+  REQUIRE_THROWS_AS(make_symmetries({{{{1, 9}}, 1}}).build(setup, external), std::runtime_error);
+  REQUIRE_THROWS_AS(make_symmetries({{{{4, 5}}, -1}}).build(setup, external), std::runtime_error);
+}
+
+TEST_CASE("simplify: symmetry merge carries the factor", "[simplify][symmetry][driver]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx psi = setup.field_to_idx("psi");
+  const FieldIdx psibar = setup.field_to_idx("psibar");
+
+  // Two terms related exactly by the external swap 101 <-> 102 (both legs psi,
+  // so the swap is field-consistent). The distinct object types (Rdot vs
+  // GammaN) pin which external leg sits on which object, so they do NOT merge
+  // without the symmetry.
+  const KeyT rdot = setup.type_to_idx("Rdot");
+  const auto build_eq = [&]() {
+    FEq eq;
+    eq.push_back({});
+    eq[0].push_back({rdot, {{psi, 101}, {psibar, 6}}});
+    eq[0].push_back({ObjectType::GammaN, {{psi, 102}, {psibar, -6}}});
+    eq[0].value = 1.;
+    eq.push_back({});
+    eq[1].push_back({rdot, {{psi, 102}, {psibar, 7}}});
+    eq[1].push_back({ObjectType::GammaN, {{psi, 101}, {psibar, -7}}});
+    eq[1].value = 1.;
+    return eq;
+  };
+
+  FEq no_sym = build_eq();
+  simplify(setup, no_sym);
+  REQUIRE(no_sym.size() == 2);
+
+  // Antisymmetric under the swap: the pair cancels.
+  Setup odd = setup;
+  odd.symmetries = make_symmetries({{{{101, 102}}, -1}});
+  FEq cancels = build_eq();
+  simplify(odd, cancels);
+  REQUIRE(cancels.empty());
+
+  // Symmetric under the swap: the pair merges to coefficient 2.
+  Setup even = setup;
+  even.symmetries = make_symmetries({{{{101, 102}}, 1}});
+  FEq merges = build_eq();
+  simplify(even, merges);
+  REQUIRE(merges.size() == 1);
+  REQUIRE(merges[0].value == 2.);
+}
+
+TEST_CASE("simplify: flow matrix with symmetries matches the default Mathematica pipeline",
+          "[simplify][symmetry][driver][integration]")
+{
+  // Same flows as the no-symmetry matrix, but with the symmetry group
+  // generated from the derivative list (make_symmetry_list) — the same
+  // information FTakeDerivatives auto-builds and the Mathematica pipeline
+  // consumes by default. Reference values:
+  //   FTakeDerivatives[setup, WetterichEquation, dlist] // FTruncate // FSimplify
+  struct Flow {
+    std::string file;
+    std::vector<std::string> derivs;
+    std::vector<double> coeffs; // sorted coefficient multiset after simplify
+  };
+  const std::vector<Flow> flows = {
+      {"scalar.toml", {"phi", "phi"}, {-0.5, 1.}},
+      {"scalar.toml", {"phi", "phi", "phi"}, {-3., 3.}},
+      {"scalar.toml", {"phi", "phi", "phi", "phi"}, {-12., -6., 3., 12.}},
+      {"yukawa.toml", {"phi", "phi"}, {-2.}},
+      {"yukawa.toml", {"phi", "phi", "phi"}, {-6.}},
+      {"yukawa.toml", {"phi", "phi", "phi", "phi"}, {-24.}},
+      {"yang-mills.toml", {"A", "A"}, {-2., -0.5, 1.}},
+      {"yang-mills.toml", {"A", "A", "A"}, {-6., -3., 3.}},
+      {"yang-mills.toml", {"A", "A", "A", "A"}, {-24., -12., -6., 3., 12.}},
+  };
+
+  for (const auto &flow : flows) {
+    CAPTURE(flow.file, flow.derivs);
+    auto [setup, feq] = parse(BOILERPLATE_DIR + flow.file);
+    FTerm &term = feq[0];
+    std::vector<LegT> derivative_legs;
+    for (std::size_t i = flow.derivs.size(); i-- > 0;) {
+      const LegT leg = {setup.field_to_idx(flow.derivs[i]), Idx(101 + i)};
+      term.insert(term.begin(), {ObjectType::FDOp, {leg}});
+      derivative_legs.push_back(leg);
+    }
+    setup.symmetries = make_symmetries(make_symmetry_list(setup, derivative_legs));
+
+    resolve_derivatives(setup, feq);
+    truncate(setup, feq);
+    simplify(setup, feq);
+
+    std::vector<double> coeffs;
+    for (const auto &t : feq)
+      coeffs.push_back(t.value);
+    std::sort(coeffs.begin(), coeffs.end());
+    REQUIRE(coeffs == flow.coeffs);
+  }
+}
+
+TEST_CASE("simplify: fully file-driven flow with derivative symmetries", "[simplify][symmetry][integration]")
+{
+  // scalar-flow.toml carries the FDOps in the equation AND a "derivatives"
+  // list, from which the parser generates the S_2 symmetry over the external
+  // legs 101, 102. No programmatic setup needed.
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "scalar-flow.toml");
+  REQUIRE(setup.symmetries.size() == 1);
+  REQUIRE(setup.symmetries.all()[0].cycles == std::vector<std::vector<Idx>>{{101, 102}});
+  REQUIRE(setup.symmetries.all()[0].factor == 1);
+
+  resolve_derivatives(setup, feq);
+  truncate(setup, feq);
+  simplify(setup, feq);
+
+  std::vector<double> coeffs;
+  for (const auto &t : feq)
+    coeffs.push_back(t.value);
+  std::sort(coeffs.begin(), coeffs.end());
+  REQUIRE(coeffs == std::vector<double>{-0.5, 1.});
 }
 
 TEST_CASE("same_objects ignores the coefficient", "[simplify]")
