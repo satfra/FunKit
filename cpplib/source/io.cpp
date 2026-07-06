@@ -244,6 +244,22 @@ namespace FunKit
       }
     }
 
+    if (!setup.symmetries.m_symmetries.empty()) {
+      os_str += "\n  Symmetries:";
+      for (const auto &sym : setup.symmetries.m_symmetries) {
+        os_str += "\n    ";
+        for (const auto &cycle : sym.cycles) {
+          os_str += "(";
+          for (Idx k = 0; k < (Idx)cycle.size(); ++k) {
+            os_str += std::to_string(cycle[k]);
+            if (k < (Idx)cycle.size() - 1) os_str += " ";
+          }
+          os_str += ")";
+        }
+        os_str += " -> " + std::string(sym.factor < 0 ? "-1" : "+1");
+      }
+    }
+
     os << os_str;
   }
 } // namespace FunKit

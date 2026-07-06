@@ -79,6 +79,44 @@ namespace FunKit
     friend void print(const Setup &setup, std::ostream &os);
   };
 
+  // One user-specified symmetry: disjoint cycles over external-leg labels + a sign.
+  // The cycle entries are the positive integer index labels that appear on the
+  // equation's external (FDOp) legs; cf. the cycle-notation input of
+  // FBuildSymmetryList (AnSEL/Simplify.m).
+  struct Symmetry {
+    std::vector<std::vector<Idx>> cycles; // each cycle: >=2 external-leg labels
+    int factor = 1;                       // +1 or -1
+
+    friend bool operator==(const Symmetry &, const Symmetry &) = default;
+  };
+
+  class Symmetries
+  {
+  private:
+    std::vector<Symmetry> m_symmetries;
+    bool finalized = false;
+
+  public:
+    // Structurally validate a single entry and store it, cf. FBuildSymmetryList's
+    // per-symmetry checks (AnSEL/Simplify.m). The upper bound on the labels (they
+    // must match real external legs) is not known at parse time and is deferred
+    // to the later build step.
+    void add(Symmetry sym);
+    void finalize(); // de-dups and locks the container
+
+    bool empty() const;
+    std::size_t size() const;
+    const std::vector<Symmetry> &all() const;
+
+    // --- Extension point for simplify (declared here, implemented later) ---
+    // Bind the label-based cycles to a term's actual external legs and expand
+    // into the compiled {index permutation, sign} list — the FBuildSymmetryList
+    // analog. Requires the external legs, so it cannot run at parse time.
+    //   std::vector<CompiledSymmetry> build(const Setup &, const std::vector<LegT> &external_legs) const;
+
+    friend void print(const Setup &setup, std::ostream &os);
+  };
+
   struct Setup {
     std::string input_file;
     int debug_level = 0;
@@ -122,6 +160,7 @@ namespace FunKit
     std::string idx_to_type(KeyT type_idx) const;
 
     Truncation truncation;
+    Symmetries symmetries;
 
   private:
     std::vector<FieldProps> m_field_props;

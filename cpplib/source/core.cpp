@@ -193,6 +193,59 @@ namespace FunKit
     return m_all_field_pairs;
   }
 
+  void Symmetries::add(Symmetry sym)
+  {
+    if (finalized) loud_throw("Cannot add a symmetry to a finalized Symmetries object.");
+    if (sym.factor != 1 && sym.factor != -1)
+      loud_throw("Symmetry factor must be +1 or -1, got " + std::to_string(sym.factor) + ".");
+    if (sym.cycles.empty()) loud_throw("A symmetry must contain at least one cycle.");
+
+    // Every label must be a positive external-leg index, every cycle non-trivial,
+    // and the cycles of one symmetry must be disjoint (cf. the ContainsAny check
+    // in FBuildSymmetryList, AnSEL/Simplify.m).
+    std::vector<Idx> seen;
+    for (const auto &cycle : sym.cycles) {
+      if (cycle.size() < 2) loud_throw("A symmetry cycle must contain at least two legs.");
+      for (const Idx label : cycle) {
+        if (label <= 0) loud_throw("Symmetry leg labels must be positive, got " + std::to_string(label) + ".");
+        if (std::find(seen.begin(), seen.end(), label) != seen.end())
+          loud_throw("Symmetry leg label " + std::to_string(label) + " appears in more than one cycle.");
+        seen.push_back(label);
+      }
+    }
+
+    m_symmetries.push_back(std::move(sym));
+  }
+
+  void Symmetries::finalize()
+  {
+    if (finalized) loud_throw("Symmetries object is already finalized.");
+    // Drop exact duplicates while preserving order
+    std::vector<Symmetry> unique;
+    for (auto &sym : m_symmetries)
+      if (std::find(unique.begin(), unique.end(), sym) == unique.end()) unique.push_back(std::move(sym));
+    m_symmetries = std::move(unique);
+    finalized = true;
+  }
+
+  bool Symmetries::empty() const
+  {
+    if (!finalized) loud_throw("Cannot query a non-finalized Symmetries object.");
+    return m_symmetries.empty();
+  }
+
+  std::size_t Symmetries::size() const
+  {
+    if (!finalized) loud_throw("Cannot query a non-finalized Symmetries object.");
+    return m_symmetries.size();
+  }
+
+  const std::vector<Symmetry> &Symmetries::all() const
+  {
+    if (!finalized) loud_throw("Cannot query a non-finalized Symmetries object.");
+    return m_symmetries;
+  }
+
   std::string sidx_to_string(KeyT _idx)
   {
     if (_idx == 0) loud_throw("Got zero index while parsing");

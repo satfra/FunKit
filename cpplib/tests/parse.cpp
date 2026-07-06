@@ -92,6 +92,92 @@ TEST_CASE("Parse scalar JSON", "[parse][json]")
   }
 }
 
+TEST_CASE("Parse symmetries TOML", "[parse][toml][symmetries]")
+{
+  const auto path = write_tmp("funkit_syms.toml", R"(
+    equation = [ [ { type = "Propagator", legs = [ [ "phi", 1 ], [ "phi", 2 ] ] } ] ]
+
+    [setup]
+    debug = 0
+    [[setup.cFields]]
+    phi = [ ]
+
+    [[symmetries]]
+    cycles = [ [1, 2] ]
+    factor = -1
+
+    [[symmetries]]
+    cycles = [ [1, 2, 3] ]
+  )");
+  auto [setup, feq] = FunKit::parse(path);
+
+  REQUIRE(setup.symmetries.size() == 2);
+  const auto &syms = setup.symmetries.all();
+  REQUIRE(syms[0].cycles == std::vector<std::vector<FunKit::Idx>>{{1, 2}});
+  REQUIRE(syms[0].factor == -1);
+  REQUIRE(syms[1].cycles == std::vector<std::vector<FunKit::Idx>>{{1, 2, 3}});
+  REQUIRE(syms[1].factor == 1); // factor defaults to +1
+}
+
+TEST_CASE("Parse symmetries JSON mirrors TOML", "[parse][json][symmetries]")
+{
+  const auto tpath = write_tmp("funkit_syms_mirror.toml", R"(
+    equation = [ ]
+    [setup]
+    debug = 0
+    [[setup.cFields]]
+    phi = [ ]
+    [[symmetries]]
+    cycles = [ [1, 2] ]
+    factor = -1
+    [[symmetries]]
+    cycles = [ [3, 4], [5, 6] ]
+    factor = 1
+  )");
+  const auto jpath = write_tmp("funkit_syms_mirror.json", R"({
+    "setup": { "debug": 0, "cFields": [ { "phi": [] } ] },
+    "equation": [],
+    "symmetries": [
+      { "cycles": [[1, 2]], "factor": -1 },
+      { "cycles": [[3, 4], [5, 6]], "factor": 1 }
+    ]
+  })");
+  auto [setup_t, feq_t] = FunKit::parse(tpath);
+  auto [setup_j, feq_j] = FunKit::parse(jpath);
+
+  REQUIRE(setup_j.symmetries.all() == setup_t.symmetries.all());
+}
+
+TEST_CASE("Parse rejects malformed symmetries", "[parse][robustness][symmetries]")
+{
+  const std::string head = R"(
+    equation = [ ]
+    [setup]
+    debug = 0
+    [[setup.cFields]]
+    phi = [ ]
+  )";
+
+  // factor must be +-1
+  REQUIRE_THROWS(FunKit::parse(write_tmp("funkit_sym_factor.toml",
+    head + "[[symmetries]]\ncycles = [ [1, 2] ]\nfactor = 2\n")));
+  // empty cycles list
+  REQUIRE_THROWS(FunKit::parse(write_tmp("funkit_sym_empty.toml",
+    head + "[[symmetries]]\ncycles = [ ]\n")));
+  // singleton cycle
+  REQUIRE_THROWS(FunKit::parse(write_tmp("funkit_sym_single.toml",
+    head + "[[symmetries]]\ncycles = [ [1] ]\n")));
+  // non-positive label
+  REQUIRE_THROWS(FunKit::parse(write_tmp("funkit_sym_zero.toml",
+    head + "[[symmetries]]\ncycles = [ [0, 1] ]\n")));
+  // overlapping cycles within one symmetry
+  REQUIRE_THROWS(FunKit::parse(write_tmp("funkit_sym_overlap.toml",
+    head + "[[symmetries]]\ncycles = [ [1, 2], [2, 3] ]\n")));
+  // missing cycles key
+  REQUIRE_THROWS(FunKit::parse(write_tmp("funkit_sym_nocycles.toml",
+    head + "[[symmetries]]\nfactor = 1\n")));
+}
+
 TEST_CASE("Parse rejects malformed input", "[parse][robustness]")
 {
   // Missing sections

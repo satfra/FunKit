@@ -326,6 +326,52 @@ TEST_CASE("Truncation add_rule validation", "[core][truncation]")
   REQUIRE_THROWS(full.add_rule(FunKit::ObjectType::GammaN, {phi}));
 }
 
+TEST_CASE("Symmetries add/finalize/accessors", "[core][symmetries]")
+{
+  FunKit::Symmetries syms;
+
+  // Querying before finalize() must throw
+  REQUIRE_THROWS(syms.empty());
+  REQUIRE_THROWS(syms.size());
+  REQUIRE_THROWS(syms.all());
+
+  syms.add(FunKit::Symmetry{{{1, 2}}, -1});
+  syms.add(FunKit::Symmetry{{{1, 2, 3}}, 1});
+  syms.add(FunKit::Symmetry{{{1, 2}}, -1}); // exact duplicate, dropped on finalize
+  syms.finalize();
+
+  REQUIRE_FALSE(syms.empty());
+  REQUIRE(syms.size() == 2); // duplicate removed
+  REQUIRE(syms.all()[0].factor == -1);
+  REQUIRE(syms.all()[1].cycles == std::vector<std::vector<FunKit::Idx>>{{1, 2, 3}});
+
+  // No adding after finalize, no double finalize
+  REQUIRE_THROWS(syms.add(FunKit::Symmetry{{{4, 5}}, 1}));
+  REQUIRE_THROWS(syms.finalize());
+}
+
+TEST_CASE("Symmetries validation", "[core][symmetries]")
+{
+  const auto rejects = [](FunKit::Symmetry sym) {
+    FunKit::Symmetries s;
+    REQUIRE_THROWS(s.add(std::move(sym)));
+  };
+
+  rejects(FunKit::Symmetry{{{1, 2}}, 2});     // factor not +-1
+  rejects(FunKit::Symmetry{{{1, 2}}, 0});     // factor not +-1
+  rejects(FunKit::Symmetry{{}, 1});           // empty cycles list
+  rejects(FunKit::Symmetry{{{1}}, 1});        // singleton cycle
+  rejects(FunKit::Symmetry{{{0, 1}}, 1});     // non-positive label
+  rejects(FunKit::Symmetry{{{-1, 1}}, 1});    // non-positive label
+  rejects(FunKit::Symmetry{{{1, 2}, {2, 3}}, 1}); // overlapping cycles
+
+  // A symmetry with several disjoint cycles is fine
+  FunKit::Symmetries ok;
+  ok.add(FunKit::Symmetry{{{1, 2}, {3, 4}}, 1});
+  ok.finalize();
+  REQUIRE(ok.size() == 1);
+}
+
 TEST_CASE("is_close", "[core]")
 {
   REQUIRE(FunKit::is_close(1., 1.));

@@ -113,6 +113,27 @@ namespace FunKit
     }
     setup.truncation.finalize();
 
+    // Parse the symmetries (top-level, sibling of "equation"). Each entry is
+    // { cycles = [[label, ...], ...], factor = ±1 }; factor defaults to +1.
+    if (data.contains("symmetries")) {
+      if (!data["symmetries"].is_array()) loud_throw("'symmetries' must be an array in JSON file.");
+      for (const auto &entry : data["symmetries"]) {
+        Symmetry sym;
+        if (!entry.contains("cycles")) loud_throw("Each symmetry must have a 'cycles' array in JSON file.");
+        if (!entry["cycles"].is_array()) loud_throw("A symmetry's 'cycles' must be an array in JSON file.");
+        for (const auto &cycle : entry["cycles"]) {
+          if (!cycle.is_array()) loud_throw("Each symmetry cycle must be an array of leg labels in JSON file.");
+          std::vector<Idx> labels;
+          for (const auto &label : cycle)
+            labels.push_back(label.get<Idx>());
+          sym.cycles.push_back(std::move(labels));
+        }
+        if (entry.contains("factor")) sym.factor = entry["factor"].get<int>();
+        setup.symmetries.add(std::move(sym));
+      }
+    }
+    setup.symmetries.finalize();
+
     // Parse the equation
     for (const auto &term : data["equation"]) {
       FTerm fterm;
@@ -255,6 +276,27 @@ namespace FunKit
       }
     }
     setup.truncation.finalize();
+
+    // Parse the symmetries (top-level, sibling of "equation"). Each entry is a
+    // table { cycles = [[label, ...], ...], factor = ±1 }; factor defaults to +1.
+    if (data.contains("symmetries")) {
+      if (!data.at("symmetries").is_array()) loud_throw("'symmetries' must be an array of tables in TOML file.");
+      for (const auto &entry : data.at("symmetries").as_array()) {
+        Symmetry sym;
+        if (!entry.contains("cycles")) loud_throw("Each symmetry must have a 'cycles' array in TOML file.");
+        if (!entry.at("cycles").is_array()) loud_throw("A symmetry's 'cycles' must be an array in TOML file.");
+        for (const auto &cycle : entry.at("cycles").as_array()) {
+          if (!cycle.is_array()) loud_throw("Each symmetry cycle must be an array of leg labels in TOML file.");
+          std::vector<Idx> labels;
+          for (const auto &label : cycle.as_array())
+            labels.push_back(static_cast<Idx>(label.as_integer()));
+          sym.cycles.push_back(std::move(labels));
+        }
+        if (entry.contains("factor")) sym.factor = static_cast<int>(entry.at("factor").as_integer());
+        setup.symmetries.add(std::move(sym));
+      }
+    }
+    setup.symmetries.finalize();
 
     // Parse the equation
     for (const auto &term : data.at("equation").as_array()) {
