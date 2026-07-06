@@ -132,3 +132,155 @@ TEST_CASE("Canonicalize: index appearing 3+ times throws", "[simplify][canonical
 
   REQUIRE_THROWS_AS(canonicalize_indices(term), std::runtime_error);
 }
+
+// precompute_term_data caches everything the matcher needs about a term: the
+// sorted closed labels with their two (object, leg) endpoints, the sorted open
+// legs, per-object content keys, a bucket fingerprint, connected components,
+// and the bare-Grassmann-field count. See simplify.hpp.
+
+TEST_CASE("TermData: classification, adjacency, components", "[simplify][termdata]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+
+  // Gamma_{a c d} G^{d c} phi_b: open a=1, b=2, closed c=5, d=6.
+  FTerm term;
+  term.push_back({ObjectType::GammaN, {{phi, 1}, {phi, 5}, {phi, 6}}});
+  term.push_back({ObjectType::Propagator, {{phi, -6}, {phi, -5}}});
+  term.push_back({ObjectType::Field, {{phi, 2}}});
+
+  const TermData data = precompute_term_data(setup, term);
+
+  REQUIRE(data.closed_labels == std::vector<Idx>{5, 6});
+  // Endpoints of c=5: leg 1 of the GammaN and leg 1 of the Propagator;
+  // endpoints of d=6: leg 2 of the GammaN and leg 0 of the Propagator.
+  REQUIRE(data.adj.size() == 2);
+  REQUIRE(data.adj[0] == std::array<std::pair<Idx, Idx>, 2>{{{0, 1}, {1, 1}}});
+  REQUIRE(data.adj[1] == std::array<std::pair<Idx, Idx>, 2>{{{0, 2}, {1, 0}}});
+  REQUIRE(data.open_legs == std::vector<LegT>{{phi, 1}, {phi, 2}});
+  REQUIRE(data.obj_keys.size() == 3);
+
+  // GammaN and Propagator are joined by c and d; the bare field is a singleton.
+  REQUIRE(data.n_components == 2);
+  REQUIRE(data.component == std::vector<Idx>{0, 0, 1});
+  REQUIRE(data.grassmann_field_count == 0);
+}
+
+TEST_CASE("TermData: fingerprint invariance and separation", "[simplify][termdata]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+  const FieldIdx psi = setup.field_to_idx("psi");
+
+  FTerm a;
+  a.push_back({ObjectType::GammaN, {{phi, 1}, {phi, 5}, {phi, 6}}});
+  a.push_back({ObjectType::Propagator, {{phi, -6}, {phi, -5}}});
+  a.push_back({ObjectType::Field, {{phi, 2}}});
+
+  // Same diagram: objects permuted, closed indices relabeled, legs entered in a
+  // different order. The fingerprint keys only on index-free content + open legs,
+  // so it must not change.
+  FTerm b;
+  b.push_back({ObjectType::Field, {{phi, 2}}});
+  b.push_back({ObjectType::Propagator, {{phi, -8}, {phi, -9}}});
+  b.push_back({ObjectType::GammaN, {{phi, 9}, {phi, 8}, {phi, 1}}});
+
+  const TermData da = precompute_term_data(setup, a);
+  const TermData db = precompute_term_data(setup, b);
+  REQUIRE(da.fingerprint == db.fingerprint);
+
+  // Different field content -> different bucket.
+  FTerm c = a;
+  c[2].legs[0].first = psi;
+  REQUIRE(precompute_term_data(setup, c).fingerprint != da.fingerprint);
+
+  // Different open leg -> different bucket (refinement over the Mathematica fp:
+  // external legs of mergeable terms must agree exactly).
+  FTerm d = a;
+  d[2].legs[0].second = 3;
+  REQUIRE(precompute_term_data(setup, d).fingerprint != da.fingerprint);
+}
+
+TEST_CASE("TermData: connected term has one component", "[simplify][termdata]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+
+  // A single closed loop: G^{c}{}_{c} traced against a 2-point vertex.
+  FTerm term;
+  term.push_back({ObjectType::Propagator, {{phi, 1}, {phi, 2}}});
+  term.push_back({ObjectType::GammaN, {{phi, -1}, {phi, -2}}});
+
+  const TermData data = precompute_term_data(setup, term);
+  REQUIRE(data.n_components == 1);
+  REQUIRE(data.component == std::vector<Idx>{0, 0});
+  REQUIRE(data.open_legs.empty());
+}
+
+TEST_CASE("TermData: product of two loops", "[simplify][termdata]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+
+  // Two disjoint self-contractions.
+  FTerm term;
+  term.push_back({ObjectType::Propagator, {{phi, 1}, {phi, -1}}});
+  term.push_back({ObjectType::Propagator, {{phi, 2}, {phi, -2}}});
+
+  const TermData data = precompute_term_data(setup, term);
+  REQUIRE(data.n_components == 2);
+  REQUIRE(data.component == std::vector<Idx>{0, 1});
+  // Self-loop adjacency: both endpoints on the same object.
+  REQUIRE(data.adj[0] == std::array<std::pair<Idx, Idx>, 2>{{{0, 0}, {0, 1}}});
+  REQUIRE(data.adj[1] == std::array<std::pair<Idx, Idx>, 2>{{{1, 0}, {1, 1}}});
+}
+
+TEST_CASE("TermData: bare Grassmann field count", "[simplify][termdata]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+  const FieldIdx psi = setup.field_to_idx("psi");
+  const FieldIdx psibar = setup.field_to_idx("psibar");
+
+  FTerm term;
+  term.push_back({ObjectType::Field, {{psi, 1}}});
+  term.push_back({ObjectType::Field, {{psibar, 2}}});
+  term.push_back({ObjectType::Field, {{phi, 3}}});
+  // Grassmann legs inside correlation functions do NOT count — only bare fields.
+  term.push_back({ObjectType::Propagator, {{psi, 4}, {psibar, -4}}});
+  // AnyField bare fields are skipped: their Grassmann nature is undetermined.
+  term.push_back({ObjectType::Field, {{AnyField, 5}}});
+
+  const TermData data = precompute_term_data(setup, term);
+  REQUIRE(data.grassmann_field_count == 2);
+}
+
+TEST_CASE("TermData: index appearing 3+ times throws", "[simplify][termdata]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+
+  FTerm term;
+  term.push_back({ObjectType::GammaN, {{phi, 5}, {phi, 5}, {phi, 5}}});
+  REQUIRE_THROWS_AS(precompute_term_data(setup, term), std::runtime_error);
+}
+
+TEST_CASE("same_objects ignores the coefficient", "[simplify]")
+{
+  FTerm a;
+  a.push_back({ObjectType::Propagator, {{0, 1}, {0, 2}}});
+  a.value = 1.;
+
+  FTerm b = a;
+  b.value = -3.5;
+  REQUIRE(same_objects(a, b));
+
+  // Any structural difference breaks equality: leg index, field, type, count.
+  FTerm c = a;
+  c[0].legs[1].second = 3;
+  REQUIRE_FALSE(same_objects(a, c));
+
+  FTerm d = a;
+  d.push_back({ObjectType::Field, {{0, 3}}});
+  REQUIRE_FALSE(same_objects(a, d));
+}

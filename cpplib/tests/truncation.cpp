@@ -173,9 +173,9 @@ TEST_CASE("Truncate resolves SymmetryFactor objects after field assignment", "[t
     REQUIRE(t.size() == 1); // SymmetryFactor resolved into the prefactor
     REQUIRE(t[0].type == FunKit::ObjectType::Propagator);
     // (phi, phi) gives 1/2!; the Grassmann channels have distinct fields, so factor 1, with a
-    // -1 from normalize when it sorts a (psi, psibar) propagator into canonical order
+    // -1 from normalize when it sorts a (psibar, psi) propagator into canonical (descending) order
     const FunKit::FieldIdx f1 = fields_by_index(t, FunKit::ObjectType::Propagator)[0];
-    const double expected = f1 == phi ? 0.5 : (f1 == psi ? -1. : 1.);
+    const double expected = f1 == phi ? 0.5 : (f1 == psi ? 1. : -1.);
     REQUIRE(t.value == expected);
   }
 }
@@ -279,7 +279,11 @@ TEST_CASE("Truncate expands an AnyField propagator over the truncation rules", "
   std::set<std::vector<FunKit::FieldIdx>> prop_legs;
   for (const auto &term : out) {
     REQUIRE_FALSE(FunKit::has_AnyField(term));
-    REQUIRE(term.value == 0.5);
+    // The bosonic channel keeps the bare 1/2; the fermionic channels pick up the
+    // fermion-loop -1 from normalize (Propagator legs descending, Rdot ascending:
+    // exactly one of the two Grassmann objects gets its legs swapped per channel).
+    const FunKit::FieldIdx f1 = fields_by_index(term, FunKit::ObjectType::Propagator)[0];
+    REQUIRE(term.value == (f1 == phi ? 0.5 : -0.5));
     // The contracted Rdot legs must carry the same fields as the propagator
     REQUIRE(fields_by_index(term, FunKit::ObjectType::Propagator) == fields_by_index(term, rdot));
     prop_legs.insert(fields_by_index(term, FunKit::ObjectType::Propagator));
@@ -299,8 +303,11 @@ TEST_CASE("Truncate filters rules by concrete legs", "[truncation]")
 
   const FunKit::FEq out = FunKit::truncate(setup, term);
   REQUIRE(out.size() == 1);
-  REQUIRE(out[0][0].legs[0].first == psibar);
-  REQUIRE(out[0][0].legs[1].first == psi);
+  // The assigned (psibar, psi) propagator is normalized into descending leg
+  // order, swapping the two Grassmann legs and picking up a -1.
+  REQUIRE(out[0][0].legs[0].first == psi);
+  REQUIRE(out[0][0].legs[1].first == psibar);
+  REQUIRE(out[0].value == -1.);
 }
 
 TEST_CASE("Truncate drops terms with no matching rule", "[truncation]")
@@ -393,7 +400,7 @@ TEST_CASE("Truncate without any rules expands over all fields", "[truncation]")
 TEST_CASE("Truncate resolves FMinus factors after field assignment", "[truncation]")
 {
   auto [setup, feq] = FunKit::parse(BOILERPLATE_DIR + "yukawa.toml");
-  const FunKit::FieldIdx psi = setup.field_to_idx("psi");
+  const FunKit::FieldIdx psibar = setup.field_to_idx("psibar");
 
   // (-1)^{aa} G^{ab}: the FMinus legs share the propagator's first index
   FunKit::FTerm term;
@@ -406,10 +413,10 @@ TEST_CASE("Truncate resolves FMinus factors after field assignment", "[truncatio
     REQUIRE(t.size() == 1); // FMinus resolved into the prefactor
     REQUIRE(t[0].type == FunKit::ObjectType::Propagator);
     // The FMinus contributes -1 for a Grassmann field on index 1; normalize contributes another
-    // -1 when it sorts a (psi, psibar) propagator into canonical order
+    // -1 when it sorts a (psibar, psi) propagator into canonical (descending) order
     const FunKit::FieldIdx f1 = fields_by_index(t, FunKit::ObjectType::Propagator)[0];
     const double fminus = setup.is_gField(f1) ? -1. : 1.;
-    const double norm = f1 == psi ? -1. : 1.;
+    const double norm = f1 == psibar ? -1. : 1.;
     REQUIRE(t.value == fminus * norm);
   }
 }

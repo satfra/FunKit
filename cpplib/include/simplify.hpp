@@ -2,6 +2,7 @@
 
 #include "core.hpp"
 
+#include <array>
 #include <optional>
 
 namespace FunKit
@@ -13,6 +14,9 @@ namespace FunKit
   void canonicalize_indices(FEq &feq);
 
   // Per-term cached analysis — the PrecomputeTermData analog.
+  // Precondition (like canonicalize_indices): every index appears at most twice,
+  // i.e. symbolic FMinus/SymmFactor objects have been resolved (prune) first —
+  // their legs duplicate indices that already occur elsewhere in the term.
   struct TermData {
     std::vector<Idx> closed_labels; // sorted positive labels of closed indices
     std::vector<LegT> open_legs;    // sorted (field, signed idx) of open legs
