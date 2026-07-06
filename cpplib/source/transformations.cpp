@@ -21,14 +21,24 @@ namespace FunKit
     // every leg it jumps over, not just the swapped pair).
     double sign = 1;
     const Idx n = Idx(obj.legs.size());
-    for (Idx i = 0; i < n; ++i) {
-      for (Idx j = 0; j + 1 < n - i; ++j) {
-        if (obj.legs[j] > obj.legs[j + 1]) {
-          sign *= std::get<0>(commute_sign(setup, obj.legs[j], obj.legs[j + 1]));
-          std::swap(obj.legs[j], obj.legs[j + 1]);
+    if (obj.type != ObjectType::Propagator)
+      for (Idx i = 0; i < n; ++i) {
+        for (Idx j = 0; j + 1 < n - i; ++j) {
+          if (obj.legs[j] > obj.legs[j + 1]) {
+            sign *= std::get<0>(commute_sign(setup, obj.legs[j], obj.legs[j + 1]));
+            std::swap(obj.legs[j], obj.legs[j + 1]);
+          }
         }
       }
-    }
+    else
+      for (Idx i = 0; i < n; ++i) {
+        for (Idx j = 0; j + 1 < n - i; ++j) {
+          if (obj.legs[j] < obj.legs[j + 1]) {
+            sign *= std::get<0>(commute_sign(setup, obj.legs[j], obj.legs[j + 1]));
+            std::swap(obj.legs[j], obj.legs[j + 1]);
+          }
+        }
+      }
     return sign;
   }
 
