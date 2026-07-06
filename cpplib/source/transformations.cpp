@@ -14,14 +14,18 @@ namespace FunKit
     // Refuse to normalize objects with AnyField legs, since they are symbolic and cannot be resolved
     if (has_AnyField(obj)) return 1;
 
-    // Sort the legs of the object by field index and then by leg index.
-    // Each commutation of two legs contributes a sign factor to the object value.
+    // Sort the legs of the object by field index and then by leg index using a
+    // bubble sort, so that every swap is a nearest-neighbour transposition. Each
+    // such adjacent commutation contributes its own sign factor, which correctly
+    // accumulates the Grassmann sign (a non-adjacent swap would pick up signs from
+    // every leg it jumps over, not just the swapped pair).
     double sign = 1;
-    for (Idx i = 0; i < Idx(obj.legs.size()); ++i) {
-      for (Idx j = i + 1; j < Idx(obj.legs.size()); ++j) {
-        if (obj.legs[i] > obj.legs[j]) {
-          std::swap(obj.legs[i], obj.legs[j]);
-          sign *= std::get<0>(commute_sign(setup, obj.legs[i], obj.legs[j]));
+    const Idx n = Idx(obj.legs.size());
+    for (Idx i = 0; i < n; ++i) {
+      for (Idx j = 0; j + 1 < n - i; ++j) {
+        if (obj.legs[j] > obj.legs[j + 1]) {
+          sign *= std::get<0>(commute_sign(setup, obj.legs[j], obj.legs[j + 1]));
+          std::swap(obj.legs[j], obj.legs[j + 1]);
         }
       }
     }

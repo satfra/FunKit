@@ -18,6 +18,7 @@ set(SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/source/io.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/source/parse.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/source/derivatives.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/source/simplify.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/source/transformations.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/source/truncation.cpp)
 

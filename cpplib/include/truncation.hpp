@@ -8,5 +8,5 @@ namespace FunKit
   void prune(const Setup &setup, FEq &feq);
 
   FEq truncate(const Setup &setup, FTerm fterm);
-  FEq &truncate(const Setup &setup, FEq &feq);
+  void truncate(const Setup &setup, FEq &feq);
 } // namespace FunKit

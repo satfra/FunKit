@@ -32,6 +32,8 @@ namespace FunKit
     if (data["setup"].contains("debug")) setup.debug_level = data["setup"]["debug"];
     if (data["setup"].contains("outputFile")) setup.outputFile = data["setup"]["outputFile"];
     if (data["setup"].contains("in_deriv_trunc")) setup.in_deriv_trunc = data["setup"]["in_deriv_trunc"];
+    if (data["setup"].contains("do_truncate")) setup.do_truncate = data["setup"]["do_truncate"];
+    if (data["setup"].contains("do_simplify")) setup.do_simplify = data["setup"]["do_simplify"];
 
     // Read commuting fields
     if (data["setup"].contains("cFields"))

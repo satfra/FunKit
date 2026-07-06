@@ -22,6 +22,9 @@ objects = [ ]
 ordered = [ "Rdot" ]
 correlators = [ ]
 
+do_truncate = true
+do_simplify = true
+
   [[setup.cFields]]
   phi = [ ]
 

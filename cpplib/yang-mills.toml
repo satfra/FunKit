@@ -18,9 +18,12 @@ equation = [
 ]
 
 [setup]
-debug = 0
+debug = 1
 ordered = [ "Rdot" ]
 correlators = [ ]
+
+do_truncate = true
+do_simplify = true
 
   [[setup.cFields]]
   A = [ "v", "col" ]

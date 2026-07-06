@@ -5,5 +5,6 @@
 #include "exceptions.hpp"
 #include "io.hpp"
 #include "parse.hpp"
+#include "simplify.hpp"
 #include "transformations.hpp"
 #include "truncation.hpp"

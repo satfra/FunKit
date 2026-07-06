@@ -5,6 +5,7 @@
 #include "derivatives.hpp"
 #include "io.hpp"
 #include "parse.hpp"
+#include "simplify.hpp"
 #include "truncation.hpp"
 
 int main(int argc, char **argv)
@@ -63,18 +64,36 @@ int main(int argc, char **argv)
       std::cout << std::fixed << std::setprecision(1) << (ms / 1000.0) << " s" << std::endl;
   }
 
-  result = FunKit::truncate(setup, result);
+  if (setup.do_truncate) {
+    const auto trunc_start = std::chrono::high_resolution_clock::now();
+    FunKit::truncate(setup, result);
+    const auto trunc_end = std::chrono::high_resolution_clock::now();
 
-  const auto trunc_end = std::chrono::high_resolution_clock::now();
+    if (setup.debug_level > 0) {
+      std::cout << "Time taken for truncation: ";
+      const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(trunc_end - trunc_start).count();
+      if (ms < 1000)
+        std::cout << ms << " ms" << std::endl;
+      else
+        // output with 1 decimal place
+        std::cout << std::fixed << std::setprecision(1) << (ms / 1000.0) << " s" << std::endl;
+    }
+  }
 
-  if (setup.debug_level > 0) {
-    std::cout << "Time taken for truncation: ";
-    const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(trunc_end - deriv_end).count();
-    if (ms < 1000)
-      std::cout << ms << " ms" << std::endl;
-    else
-      // output with 1 decimal place
-      std::cout << std::fixed << std::setprecision(1) << (ms / 1000.0) << " s" << std::endl;
+  if (setup.do_simplify) {
+    const auto simpl_start = std::chrono::high_resolution_clock::now();
+    FunKit::simplify(setup, result);
+    const auto simpl_end = std::chrono::high_resolution_clock::now();
+
+    if (setup.debug_level > 0) {
+      std::cout << "Time taken for simplification: ";
+      const auto ms = std::chrono::duration_cast<std::chrono::milliseconds>(simpl_end - simpl_start).count();
+      if (ms < 1000)
+        std::cout << ms << " ms" << std::endl;
+      else
+        // output with 1 decimal place
+        std::cout << std::fixed << std::setprecision(1) << (ms / 1000.0) << " s" << std::endl;
+    }
   }
 
   if (setup.debug_level > 0) {

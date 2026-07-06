@@ -372,7 +372,7 @@ namespace FunKit
     return out;
   }
 
-  FEq &truncate(const Setup &setup, FEq &feq)
+  void truncate(const Setup &setup, FEq &feq)
   {
     if (setup.debug_level > 0) std::cout << "\n===========> Truncating..." << std::endl;
 
@@ -393,12 +393,11 @@ namespace FunKit
           std::vector<FTerm> work;
           for (Idx i = begin; i < end; ++i)
             truncate_into(setup, std::move(feq[i]), work, results[c]);
+          normalize(setup, results[c]);
         }
       }
     }
 
     feq = merge_feq(std::move(results));
-
-    return feq;
   }
 } // namespace FunKit

@@ -85,6 +85,9 @@ namespace FunKit
     std::string outputFile = "";
     bool in_deriv_trunc = true;
 
+    bool do_truncate = true;
+    bool do_simplify = true;
+
     std::vector<std::string> objects;
 
     Idx correlationFunctions = 2;
@@ -127,6 +130,8 @@ namespace FunKit
   struct Object {
     KeyT type = ObjectType::None;
     gch::small_vector<LegT, 4> legs;
+
+    friend bool operator==(const Object &, const Object &) = default;
   };
 
   struct FTerm : std::vector<Object> {
