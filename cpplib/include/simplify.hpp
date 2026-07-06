@@ -41,6 +41,10 @@ namespace FunKit
   // precomputes, and dispatches to the connected or disconnected matcher.
   std::optional<double> terms_equal(const Setup &setup, FTerm t1, FTerm t2);
 
-  // FSimplifyNoSym analog. In-place.
+  // FSimplifyNoSym analog: merge all terms that are the same diagram up to
+  // closed-index relabeling and leg reordering, summing coefficients with the
+  // proper Grassmann signs and dropping cancellations. In-place. Requires a
+  // fully truncated equation (throws on AnyField); resolves leftover symbolic
+  // factors (prune) and normalizes as part of its pipeline.
   void simplify(const Setup &setup, FEq &feq);
 } // namespace FunKit

@@ -265,6 +265,479 @@ TEST_CASE("TermData: index appearing 3+ times throws", "[simplify][termdata]")
   REQUIRE_THROWS_AS(precompute_term_data(setup, term), std::runtime_error);
 }
 
+// terms_equal decides whether two terms are the same diagram up to renaming of
+// closed indices and reordering of legs within objects, and returns the
+// relative Grassmann sign. The convenience overload normalizes and
+// canonicalizes copies first, so tests can write terms in any equivalent form.
+
+TEST_CASE("terms_equal: bit-identical terms match with +1", "[simplify][match]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+  const FieldIdx psi = setup.field_to_idx("psi");
+
+  FTerm t;
+  t.push_back({ObjectType::GammaN, {{phi, 1}, {phi, 5}, {phi, 6}}});
+  t.push_back({ObjectType::Propagator, {{phi, -6}, {phi, -5}}});
+
+  auto res = terms_equal(setup, t, t);
+  REQUIRE(res.has_value());
+  REQUIRE(*res == 1.);
+
+  // The fast path is sound even for bare-Grassmann terms: identical strings
+  // are trivially equal (deliberate divergence from Mathematica's guard).
+  FTerm g;
+  g.push_back({ObjectType::Field, {{psi, 5}}});
+  g.push_back({ObjectType::GammaN, {{phi, 1}, {setup.field_to_idx("psibar"), -5}}});
+  res = terms_equal(setup, g, g);
+  REQUIRE(res.has_value());
+  REQUIRE(*res == 1.);
+}
+
+TEST_CASE("terms_equal: relabeled and permuted tadpole matches with +1", "[simplify][match]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+
+  FTerm t1;
+  t1.push_back({ObjectType::GammaN, {{phi, 1}, {phi, 2}, {phi, 5}, {phi, 6}}});
+  t1.push_back({ObjectType::Propagator, {{phi, -5}, {phi, -6}}});
+
+  // Same diagram: objects permuted, closed indices relabeled, legs entered in
+  // a different order. Bosonic, so no signs anywhere.
+  FTerm t2;
+  t2.push_back({ObjectType::Propagator, {{phi, -8}, {phi, -7}}});
+  t2.push_back({ObjectType::GammaN, {{phi, 7}, {phi, 8}, {phi, 1}, {phi, 2}}});
+
+  const auto res = terms_equal(setup, t1, t2);
+  REQUIRE(res.has_value());
+  REQUIRE(*res == 1.);
+}
+
+TEST_CASE("terms_equal: swapped Grassmann legs give -1", "[simplify][match]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx psi = setup.field_to_idx("psi");
+  const FieldIdx psibar = setup.field_to_idx("psibar");
+  const KeyT rdot = setup.type_to_idx("Rdot");
+
+  // G^{ab} Rdot_{ab} with a fermionic loop.
+  FTerm t1;
+  t1.push_back({ObjectType::Propagator, {{psi, 5}, {psibar, 6}}});
+  t1.push_back({rdot, {{psi, -5}, {psibar, -6}}});
+
+  // The same term with the propagator's two Grassmann legs written in swapped
+  // order: as a tensor structure this is -t1.
+  FTerm t2;
+  t2.push_back({ObjectType::Propagator, {{psibar, 6}, {psi, 5}}});
+  t2.push_back({rdot, {{psi, -5}, {psibar, -6}}});
+
+  const auto res = terms_equal(setup, t1, t2);
+  REQUIRE(res.has_value());
+  REQUIRE(*res == -1.);
+}
+
+TEST_CASE("terms_equal: the two fermionic flow channels merge with +1", "[simplify][match]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+
+  // Truncating 1/2 G^{AB} Rdot_{BA} yields one bosonic and two fermionic
+  // channels; the fermionic pair is the same diagram with the loop index
+  // relabeled, i.e. G^{ab} Rdot_{ba} summed in the two possible orders.
+  const FEq out = truncate(setup, feq[0]);
+  REQUIRE(out.size() == 3);
+
+  std::vector<Idx> fermionic, bosonic;
+  for (Idx i = 0; i < Idx(out.size()); ++i) {
+    const auto &prop = *std::find_if(out[i].begin(), out[i].end(),
+                                     [](const Object &o) { return o.type == ObjectType::Propagator; });
+    (setup.is_gField(prop.legs[0].first) ? fermionic : bosonic).push_back(i);
+  }
+  REQUIRE(fermionic.size() == 2);
+  REQUIRE(bosonic.size() == 1);
+
+  const auto res = terms_equal(setup, out[fermionic[0]], out[fermionic[1]]);
+  REQUIRE(res.has_value());
+  REQUIRE(*res == 1.);
+
+  // Different field content never matches.
+  REQUIRE_FALSE(terms_equal(setup, out[bosonic[0]], out[fermionic[0]]).has_value());
+}
+
+TEST_CASE("terms_equal: crossed Grassmann edges give -1 through the walk", "[simplify][match]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+  const FieldIdx psi = setup.field_to_idx("psi");
+  const FieldIdx psibar = setup.field_to_idx("psibar");
+  const KeyT rdot = setup.type_to_idx("Rdot");
+
+  // A vertex with two psi legs, one connected to a Propagator and one to an
+  // Rdot. In t2 the two edges are crossed: the psi leg that reached the
+  // Propagator now reaches the Rdot and vice versa. Relabeling t2 back onto t1
+  // swaps the vertex's two Grassmann legs, so the terms are equal with sign -1
+  // — and here the sign comes from the walk's alignment permutation, not from
+  // normalize (both terms are already in canonical leg order).
+  FTerm t1;
+  t1.push_back({ObjectType::GammaN, {{psi, 5}, {psi, 6}}});
+  t1.push_back({ObjectType::Propagator, {{psibar, -5}, {phi, 1}}});
+  t1.push_back({rdot, {{phi, 2}, {psibar, -6}}});
+
+  FTerm t2;
+  t2.push_back({ObjectType::GammaN, {{psi, 7}, {psi, 8}}});
+  t2.push_back({ObjectType::Propagator, {{psibar, -8}, {phi, 1}}});
+  t2.push_back({rdot, {{phi, 2}, {psibar, -7}}});
+
+  const auto res = terms_equal(setup, t1, t2);
+  REQUIRE(res.has_value());
+  REQUIRE(*res == -1.);
+}
+
+TEST_CASE("terms_equal: sunset does not match double-bubble", "[simplify][match]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+
+  // Same fingerprint (two GammaN{phi,phi,phi}, three closed indices, no open
+  // legs) but different topology: three parallel edges vs. one edge plus a
+  // self-loop on each vertex.
+  FTerm sunset;
+  sunset.push_back({ObjectType::GammaN, {{phi, 5}, {phi, 6}, {phi, 7}}});
+  sunset.push_back({ObjectType::GammaN, {{phi, -5}, {phi, -6}, {phi, -7}}});
+
+  FTerm bubbles;
+  bubbles.push_back({ObjectType::GammaN, {{phi, 5}, {phi, -5}, {phi, 7}}});
+  bubbles.push_back({ObjectType::GammaN, {{phi, 6}, {phi, -6}, {phi, -7}}});
+
+  REQUIRE_FALSE(terms_equal(setup, sunset, bubbles).has_value());
+
+  // Control: the sunset matches its own permuted, relabeled, scrambled copy —
+  // this exercises the backtracking over the 3! pairings of parallel edges.
+  FTerm sunset2;
+  sunset2.push_back({ObjectType::GammaN, {{phi, -11}, {phi, -9}, {phi, -10}}});
+  sunset2.push_back({ObjectType::GammaN, {{phi, 9}, {phi, 10}, {phi, 11}}});
+
+  const auto res = terms_equal(setup, sunset, sunset2);
+  REQUIRE(res.has_value());
+  REQUIRE(*res == 1.);
+}
+
+TEST_CASE("terms_equal: same open legs on different objects do not match", "[simplify][match]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+
+  // Both terms carry open legs {1, 2} and identical object content, but leg 1
+  // sits on the vertex in t1 and on the propagator in t2.
+  FTerm t1;
+  t1.push_back({ObjectType::GammaN, {{phi, 1}, {phi, 5}}});
+  t1.push_back({ObjectType::Propagator, {{phi, 2}, {phi, -5}}});
+
+  FTerm t2;
+  t2.push_back({ObjectType::GammaN, {{phi, 2}, {phi, 5}}});
+  t2.push_back({ObjectType::Propagator, {{phi, 1}, {phi, -5}}});
+
+  REQUIRE_FALSE(terms_equal(setup, t1, t2).has_value());
+}
+
+TEST_CASE("terms_equal: multi-edge bubble matches its permuted copy", "[simplify][match]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+
+  FTerm t1;
+  t1.push_back({ObjectType::GammaN, {{phi, 1}, {phi, 5}, {phi, 6}}});
+  t1.push_back({ObjectType::GammaN, {{phi, 2}, {phi, -5}, {phi, -6}}});
+
+  FTerm t2;
+  t2.push_back({ObjectType::GammaN, {{phi, 2}, {phi, -7}, {phi, -8}}});
+  t2.push_back({ObjectType::GammaN, {{phi, 1}, {phi, 7}, {phi, 8}}});
+
+  const auto res = terms_equal(setup, t1, t2);
+  REQUIRE(res.has_value());
+  REQUIRE(*res == 1.);
+}
+
+TEST_CASE("terms_equal: guards", "[simplify][match]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+  const FieldIdx psi = setup.field_to_idx("psi");
+  const FieldIdx psibar = setup.field_to_idx("psibar");
+
+  // AnyField makes equality undecidable: require full truncation first.
+  FTerm any;
+  any.push_back({ObjectType::Propagator, {{AnyField, 1}, {AnyField, 2}}});
+  REQUIRE_THROWS_AS(terms_equal(setup, any, any), std::runtime_error);
+
+  // Connected terms with bare Grassmann fields are refused unless bit-identical:
+  // the walk does not track the sign of commuting bare fields past each other.
+  FTerm g1;
+  g1.push_back({ObjectType::Field, {{psi, 5}}});
+  g1.push_back({ObjectType::GammaN, {{phi, 1}, {psibar, -5}}});
+  FTerm g2;
+  g2.push_back({ObjectType::GammaN, {{phi, 1}, {psibar, -5}}});
+  g2.push_back({ObjectType::Field, {{psi, 5}}});
+  REQUIRE_FALSE(terms_equal(setup, g1, g2).has_value());
+
+  // Disconnected terms are conservatively refused until the per-component
+  // matcher (Phase 4) lands.
+  FTerm d1;
+  d1.push_back({ObjectType::Propagator, {{phi, 5}, {phi, -5}}});
+  d1.push_back({ObjectType::GammaN, {{phi, 6}, {phi, 7}}});
+  d1.push_back({ObjectType::Propagator, {{phi, -6}, {phi, -7}}});
+  FTerm d2;
+  d2.push_back({ObjectType::GammaN, {{phi, 8}, {phi, 9}}});
+  d2.push_back({ObjectType::Propagator, {{phi, -8}, {phi, -9}}});
+  d2.push_back({ObjectType::Propagator, {{phi, 10}, {phi, -10}}});
+  REQUIRE_FALSE(terms_equal(setup, d1, d2).has_value());
+}
+
+// simplify(setup, feq) is the driver: prune -> normalize -> canonicalize ->
+// fingerprint buckets -> per-bucket merging (exact-duplicate pre-pass + the
+// pairwise matcher), then compaction of survivors with non-vanishing
+// coefficients.
+
+TEST_CASE("simplify: relabeled copies merge into one term", "[simplify][driver]")
+{
+  // Scalar fixture: its truncation contains the pure-phi vertices used below
+  // (simplify prunes anything outside the truncation).
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "scalar.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+
+  // Three copies of the same tadpole: closed indices relabeled, objects
+  // permuted, legs scrambled.
+  FEq eq;
+  eq.push_back({});
+  eq[0].push_back({ObjectType::GammaN, {{phi, 1}, {phi, 2}, {phi, 5}, {phi, 6}}});
+  eq[0].push_back({ObjectType::Propagator, {{phi, -5}, {phi, -6}}});
+  eq[0].value = 0.5;
+  eq.push_back({});
+  eq[1].push_back({ObjectType::GammaN, {{phi, 1}, {phi, 2}, {phi, 8}, {phi, 7}}});
+  eq[1].push_back({ObjectType::Propagator, {{phi, -7}, {phi, -8}}});
+  eq[1].value = 0.25;
+  eq.push_back({});
+  eq[2].push_back({ObjectType::Propagator, {{phi, -9}, {phi, -11}}});
+  eq[2].push_back({ObjectType::GammaN, {{phi, 2}, {phi, 11}, {phi, 1}, {phi, 9}}});
+  eq[2].value = 0.125;
+
+  simplify(setup, eq);
+  REQUIRE(eq.size() == 1);
+  REQUIRE(eq[0].value == 0.875);
+}
+
+TEST_CASE("simplify: cancelling terms vanish", "[simplify][driver]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "scalar.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+
+  FEq eq;
+  eq.push_back({});
+  eq[0].push_back({ObjectType::GammaN, {{phi, 1}, {phi, 5}, {phi, 6}}});
+  eq[0].push_back({ObjectType::Propagator, {{phi, -5}, {phi, -6}}});
+  eq[0].value = 0.75;
+  eq.push_back({});
+  eq[1].push_back({ObjectType::Propagator, {{phi, -7}, {phi, -8}}});
+  eq[1].push_back({ObjectType::GammaN, {{phi, 1}, {phi, 8}, {phi, 7}}});
+  eq[1].value = -0.75;
+
+  simplify(setup, eq);
+  REQUIRE(eq.empty());
+}
+
+TEST_CASE("simplify: throws on an untruncated equation", "[simplify][driver]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  // The master equation carries AnyField trace legs.
+  REQUIRE_THROWS_AS(simplify(setup, feq), std::runtime_error);
+}
+
+TEST_CASE("simplify: bare-Grassmann terms merge only when bit-identical", "[simplify][driver]")
+{
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+  const FieldIdx psi = setup.field_to_idx("psi");
+  const FieldIdx psibar = setup.field_to_idx("psibar");
+
+  // Two identical connected terms with a bare Grassmann field: the canonical
+  // form makes them bit-identical, so the exact-duplicate pre-pass sums them.
+  // The GammaN carries fields {psibar, psi} — inside the yukawa truncation.
+  FEq eq;
+  eq.push_back({});
+  eq[0].push_back({ObjectType::Field, {{psi, 5}}});
+  eq[0].push_back({ObjectType::GammaN, {{psibar, -5}, {psi, 1}}});
+  eq[0].value = 1.;
+  eq.push_back({});
+  eq[1].push_back({ObjectType::Field, {{psi, 7}}});
+  eq[1].push_back({ObjectType::GammaN, {{psibar, -7}, {psi, 1}}});
+  eq[1].value = 2.;
+
+  // The same content with the objects in swapped order is NOT merged: the
+  // matcher cannot track the sign of commuting bare Grassmann fields.
+  eq.push_back({});
+  eq[2].push_back({ObjectType::GammaN, {{psibar, -6}, {psi, 1}}});
+  eq[2].push_back({ObjectType::Field, {{psi, 6}}});
+  eq[2].value = 4.;
+
+  simplify(setup, eq);
+  REQUIRE(eq.size() == 2);
+  REQUIRE(eq[0].value == 3.);
+  REQUIRE(eq[1].value == 4.);
+}
+
+TEST_CASE("simplify: scalar 2-point flow", "[simplify][driver][integration]")
+{
+  // Full pipeline on the scalar fixture: two phi-derivatives of the Wetterich
+  // RHS 1/2 G^{ab} Rdot_{ba}, truncated, then simplified. The two polarization
+  // diagrams (P G3 P G3 P Rdot, +1/2 each) merge to coefficient 1; the tadpole
+  // (P G4 P Rdot, -1/2) stays. This reproduces the textbook flow of the scalar
+  // two-point function, Tr[G G3 G G3 G Rdot] - 1/2 Tr[G G4 G Rdot].
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "scalar.toml");
+  FTerm &term = feq[0];
+  const FieldIdx phi = setup.field_to_idx("phi");
+  term.insert(term.begin(), {ObjectType::FDOp, {{phi, 4}}});
+  term.insert(term.begin(), {ObjectType::FDOp, {{phi, 3}}});
+
+  resolve_derivatives(setup, feq);
+  truncate(setup, feq);
+  REQUIRE(feq.size() == 3);
+
+  simplify(setup, feq);
+  REQUIRE(feq.size() == 2);
+
+  std::vector<double> values;
+  std::vector<std::size_t> sizes;
+  for (const auto &t : feq) {
+    values.push_back(t.value);
+    sizes.push_back(t.size());
+  }
+  std::sort(values.begin(), values.end());
+  std::sort(sizes.begin(), sizes.end());
+  REQUIRE(values == std::vector<double>{-0.5, 1.});
+  REQUIRE(sizes == std::vector<std::size_t>{4, 6}); // tadpole, polarization
+
+  // Idempotence, semantically: a second pass merges nothing further and keeps
+  // every term equal to its snapshot up to the canonical form. (Bit-level
+  // identity is not guaranteed: renumbering can change the relative order of
+  // equal-field legs, which the next normalize re-sorts.)
+  const FEq snapshot = feq;
+  simplify(setup, feq);
+  REQUIRE(feq.size() == snapshot.size());
+  for (std::size_t i = 0; i < feq.size(); ++i) {
+    REQUIRE(feq[i].value == snapshot[i].value);
+    const auto res = terms_equal(setup, feq[i], snapshot[i]);
+    REQUIRE(res.has_value());
+    REQUIRE(*res == 1.);
+  }
+}
+
+TEST_CASE("simplify: yukawa 2-point flow", "[simplify][driver][integration]")
+{
+  // Two phi-derivatives of the yukawa flow: the four fermion-loop polarization
+  // terms (-1/2 each) merge pairwise into the two loop orientations at -1
+  // each. The orientations are genuinely different index structures with the
+  // external legs i1, i2 fixed; identifying them requires the external-leg
+  // exchange symmetry i1 <-> i2, which is Phase 5 (symmetry-aware simplify),
+  // NOT the plain matcher.
+  //
+  // The full Mathematica pipeline outputs 1 term at -2 instead — because
+  // FTakeDerivatives attaches an S_2 "Symmetries" annotation and FTruncate
+  // internally re-runs FSimplify with it (Truncation.m:910). With the
+  // annotations stripped from the raw derivative output, the Mathematica
+  // no-symmetry result is the same as here.
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  FTerm &term = feq[0];
+  const FieldIdx phi = setup.field_to_idx("phi");
+  term.insert(term.begin(), {ObjectType::FDOp, {{phi, 4}}});
+  term.insert(term.begin(), {ObjectType::FDOp, {{phi, 3}}});
+
+  resolve_derivatives(setup, feq);
+  truncate(setup, feq);
+  REQUIRE(feq.size() == 4);
+
+  simplify(setup, feq);
+  REQUIRE(feq.size() == 2);
+  for (const auto &t : feq) {
+    REQUIRE(t.value == -1.);
+    REQUIRE(t.size() == 6);
+  }
+}
+
+TEST_CASE("simplify: flow matrix cross-validated against Mathematica", "[simplify][driver][integration]")
+{
+  // Full pipeline (derivatives -> truncate -> simplify) for 2-, 3-, and
+  // 4-point Wetterich flows of all three fixtures, checked against the
+  // NO-SYMMETRY Mathematica reference: FTakeDerivatives, then the Symmetries
+  // annotations stripped BEFORE FTruncate (FTruncate internally re-runs
+  // FSimplify with any attached annotations, Truncation.m:910), then
+  // FSimplify.
+  //
+  // With Mathematica's derivative-time symmetry features additionally
+  // disabled (FSetAutoBuildSymmetryList[False]; FSetAutoSimplify[False]),
+  // EVERY row below matches the reference exactly — term counts and
+  // coefficient multisets. With those features at their defaults, the
+  // same-field 2-/3-point flows come out collapsed instead (representative
+  // terms with the S_n orbit multiplicity in the coefficient, e.g.
+  // yukawa-phi2 as one term at -2): FTakeDerivatives auto-builds the
+  // external-leg symmetry list and re-runs FSimplify with it after each
+  // derivative pass, guarded by Length[ret] < 32 && Length[symmetries] <= 6
+  // (Derivatives.m:173) — which is why 4-point flows (S_4 = 24 rules) stay
+  // expanded and match here even with the defaults on. Reproducing the
+  // collapsed form is Phase 5 (symmetry-aware simplify).
+  struct Flow {
+    std::string file;
+    std::vector<std::string> derivs;
+    std::size_t truncated;      // terms after truncate
+    std::vector<double> coeffs; // sorted coefficient multiset after simplify
+  };
+  const std::vector<Flow> flows = {
+      // scalar
+      {"scalar.toml", {"phi", "phi"}, 3, {-0.5, 1.}},
+      {"scalar.toml", {"phi", "phi", "phi"}, 12, {-1., -1., -1., 1., 1., 1.}},
+      {"scalar.toml", {"phi", "phi", "phi", "phi"}, 66,
+       {-1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1.,
+        1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.}},
+      // yukawa
+      {"yukawa.toml", {"phi", "phi"}, 4, {-1., -1.}},
+      {"yukawa.toml", {"psibar", "psi"}, 4, {-1., -1.}},
+      {"yukawa.toml", {"psibar", "psi", "phi"}, 6, {-1., -1., -1.}},
+      {"yukawa.toml", {"phi", "phi", "phi"}, 12, {-1., -1., -1., -1., -1., -1.}},
+      {"yukawa.toml", {"phi", "phi", "phi", "phi"}, 48,
+       {-1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1.,
+        -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1.}},
+      // yang-mills
+      {"yang-mills.toml", {"A", "A"}, 7, {-1., -1., -0.5, 1.}},
+      {"yang-mills.toml", {"cb", "c"}, 4, {-1., -1.}},
+      {"yang-mills.toml", {"cb", "c", "A"}, 12, {-1., -1., -1., 1., 1., 1.}},
+      {"yang-mills.toml", {"A", "A", "A"}, 24,
+       {-1., -1., -1., -1., -1., -1., -1., -1., -1., 1., 1., 1.}},
+      {"yang-mills.toml", {"A", "A", "A", "A"}, 114,
+       {-1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1.,
+        -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1., -1.,
+        -1., -1., -1., -1., 1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.,  1.}},
+  };
+
+  for (const auto &flow : flows) {
+    CAPTURE(flow.file, flow.derivs);
+    auto [setup, feq] = parse(BOILERPLATE_DIR + flow.file);
+    FTerm &term = feq[0];
+    for (std::size_t i = flow.derivs.size(); i-- > 0;)
+      term.insert(term.begin(),
+                  {ObjectType::FDOp, {{setup.field_to_idx(flow.derivs[i]), Idx(101 + i)}}});
+
+    resolve_derivatives(setup, feq);
+    truncate(setup, feq);
+    REQUIRE(feq.size() == flow.truncated);
+
+    simplify(setup, feq);
+    std::vector<double> coeffs;
+    for (const auto &t : feq)
+      coeffs.push_back(t.value);
+    std::sort(coeffs.begin(), coeffs.end());
+    REQUIRE(coeffs == flow.coeffs);
+  }
+}
+
 TEST_CASE("same_objects ignores the coefficient", "[simplify]")
 {
   FTerm a;
