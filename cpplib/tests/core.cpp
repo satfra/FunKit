@@ -114,7 +114,8 @@ TEST_CASE("Truncation queries", "[core][truncation]")
   const FunKit::FieldIdx phi = setup.field_to_idx("phi");
 
   REQUIRE(setup.truncation.in_truncation({FunKit::ObjectType::GammaN, {{phi, 0}, {phi, 1}, {phi, 2}}}));
-  REQUIRE_FALSE(setup.truncation.in_truncation({FunKit::ObjectType::GammaN, {{phi, 0}, {phi, 0}, {phi, 0}}}));
+  REQUIRE_FALSE(setup.truncation.in_truncation(
+      {FunKit::ObjectType::GammaN, {{phi, 0}, {phi, 1}, {phi, 2}, {phi, 3}, {phi, 4}}}));
   REQUIRE(setup.truncation.in_truncation({setup.type_to_idx("Rdot"), {{phi, 0}, {phi, 0}}}));
   // No rules for a type means everything is allowed
   REQUIRE(setup.truncation.in_truncation({FunKit::ObjectType::Field, {{phi, 0}}}));
