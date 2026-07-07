@@ -319,6 +319,10 @@ StyleBox[\"FTest\",\nFontColor->RGBColor[1, 0.5, 0]]\)[]."];
 
 
 (* ::Input::Initialization:: *)
+Get[$FunKitDirectory<>"modules/CoBra.m"];
+
+
+(* ::Input::Initialization:: *)
 FInfo[]:=Module[{},
 Print["To see an overview and some examples for the syntax of \!\(\*
 StyleBox[\"FEDeriK\",\nFontWeight->\"Bold\"]\), which forms the basis for all of \!\(\*

@@ -40,6 +40,10 @@ else()
     PRIVATE "-march=native;-ftree-vectorize;-fno-math-errno;-fno-trapping-math")
 endif()
 
-# add tests
-enable_testing()
-add_subdirectory(tests)
+# add tests (OFF skips the Catch2 FetchContent, which needs network on the
+# first configure — used by FSetBackendCpp["RunTests" -> False])
+option(FUNKIT_BUILD_TESTING "Build the cpplib test suite" ON)
+if(FUNKIT_BUILD_TESTING)
+  enable_testing()
+  add_subdirectory(tests)
+endif()

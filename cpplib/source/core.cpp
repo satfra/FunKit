@@ -471,6 +471,9 @@ namespace FunKit
   {
     if (type_name == "FDOp") return ObjectType::FDOp;
     if (type_name == "FMinus") return ObjectType::FMinus;
+    if (type_name == "Field") return ObjectType::Field;
+    if (type_name == "gamma") return ObjectType::gamma;
+    if (type_name == "SymmFactor") return ObjectType::SymmFactor;
     if (type_name == "Propagator") return ObjectType::Propagator;
     if (type_name == "GammaN") return ObjectType::GammaN;
     for (KeyT i = 0; i < objects.size(); ++i) {
@@ -479,10 +482,20 @@ namespace FunKit
     loud_throw("Unknown object name: " + type_name);
   }
 
+  Idx Setup::unordered_legs(KeyT type_idx) const
+  {
+    const KeyT i = type_idx - predef_correlation_functions;
+    if (i < 0 || i >= KeyT(unordered_leg_counts.size())) return 0;
+    return unordered_leg_counts[i];
+  }
+
   std::string Setup::idx_to_type(KeyT type_idx) const
   {
     if (type_idx == ObjectType::FDOp) return "FDOp";
     if (type_idx == ObjectType::FMinus) return "FMinus";
+    if (type_idx == ObjectType::Field) return "Field";
+    if (type_idx == ObjectType::gamma) return "gamma";
+    if (type_idx == ObjectType::SymmFactor) return "SymmFactor";
     if (type_idx == ObjectType::Propagator) return "Propagator";
     if (type_idx == ObjectType::GammaN) return "GammaN";
     if (type_idx >= predef_correlation_functions && type_idx < predef_correlation_functions + objects.size())

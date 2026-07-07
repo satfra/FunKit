@@ -31,6 +31,7 @@ namespace FunKit
     setup.input_file = filename;
     if (data["setup"].contains("debug")) setup.debug_level = data["setup"]["debug"];
     if (data["setup"].contains("outputFile")) setup.outputFile = data["setup"]["outputFile"];
+    if (data["setup"].contains("output_format")) setup.output_format = data["setup"]["output_format"];
     if (data["setup"].contains("in_deriv_trunc")) setup.in_deriv_trunc = data["setup"]["in_deriv_trunc"];
     if (data["setup"].contains("do_truncate")) setup.do_truncate = data["setup"]["do_truncate"];
     if (data["setup"].contains("do_simplify")) setup.do_simplify = data["setup"]["do_simplify"];
@@ -91,6 +92,18 @@ namespace FunKit
         setup.objects.push_back(object);
         setup.orderedObjects++;
         setup.indexedObjects++;
+      }
+
+    // Read unordered trailing-leg counts (e.g. Phidot's pinned "field" slot)
+    setup.unordered_leg_counts.assign(setup.objects.size(), 0);
+    if (data["setup"].contains("unordered"))
+      for (const auto &entry : data["setup"]["unordered"].items()) {
+        const KeyT type_idx = setup.type_to_idx(entry.key());
+        if (type_idx < predef_correlation_functions)
+          loud_throw("'unordered' may only be set for user object types, not '" + entry.key() + "'.");
+        const Idx count = entry.value().get<Idx>();
+        if (count < 0) loud_throw("'unordered' count for '" + entry.key() + "' must be non-negative.");
+        setup.unordered_leg_counts[type_idx - predef_correlation_functions] = count;
       }
 
     // Parse the truncation rules
@@ -189,6 +202,8 @@ namespace FunKit
     setup.input_file = filename;
     if (data.at("setup").contains("debug")) setup.debug_level = data.at("setup").at("debug").as_integer();
     if (data.at("setup").contains("outputFile")) setup.outputFile = data.at("setup").at("outputFile").as_string();
+    if (data.at("setup").contains("output_format"))
+      setup.output_format = data.at("setup").at("output_format").as_string();
     if (data.at("setup").contains("in_deriv_trunc"))
       setup.in_deriv_trunc = data.at("setup").at("in_deriv_trunc").as_boolean();
     if (data.at("setup").contains("do_truncate")) setup.do_truncate = data.at("setup").at("do_truncate").as_boolean();
@@ -265,6 +280,20 @@ namespace FunKit
         setup.objects.push_back(object.as_string());
         setup.orderedObjects++;
         setup.indexedObjects++;
+      }
+    }
+
+    // Read unordered trailing-leg counts (e.g. Phidot's pinned "field" slot)
+    setup.unordered_leg_counts.assign(setup.objects.size(), 0);
+    if (data.at("setup").contains("unordered")) {
+      if (!data.at("setup").at("unordered").is_table()) loud_throw("'unordered' must be a table in TOML file.");
+      for (const auto &entry : data.at("setup").at("unordered").as_table()) {
+        const KeyT type_idx = setup.type_to_idx(entry.first);
+        if (type_idx < predef_correlation_functions)
+          loud_throw("'unordered' may only be set for user object types, not '" + entry.first + "'.");
+        const Idx count = static_cast<Idx>(entry.second.as_integer());
+        if (count < 0) loud_throw("'unordered' count for '" + entry.first + "' must be non-negative.");
+        setup.unordered_leg_counts[type_idx - predef_correlation_functions] = count;
       }
     }
 

@@ -99,6 +99,29 @@ to the truncation definition above.
 
 You can of course define arbitrary master equations besides the pre-defined `WetterichEquation` and `FMakeDSE` ones (among others), see the documentation for details.
 
+## The C++ backend
+
+For large derivations, `FunKit` ships a C++ engine (`cpplib/`, module **CoBra**) that runs the whole `FTakeDerivatives // FTruncate // FSimplify` pipeline in a single, highly optimized external process. Activate it with
+
+```Mathematica
+FSetBackendCpp[]     (* first call: compiles the engine with CMake and runs its test suite *)
+```
+
+Requirements: CMake ≥ 3.20, a C++20 compiler with OpenMP (plus network access on the first build to fetch the test framework — or pass `"RunTests" -> False`). The backend refuses to activate if the build or its tests fail.
+
+With the backend active, `FTakeDerivatives` returns a lightweight *deferred handle* instead of the (potentially huge) intermediate expression; passing it to `FTruncate`, `FSimplify` or `FEvaluate` runs **one fused C++ call** — derivatives, truncation and simplification together, so the untruncated intermediate never materializes:
+
+```Mathematica
+FSetGlobalSetup[setup];
+FSetBackendCpp[];
+flow = WetterichEquation // FTakeDerivatives[#, {Phi[i1], Phi[i2]}]& // FTruncate
+(* identical in shape and (exact, rational) coefficients to the pure-Mathematica result *)
+```
+
+`FMakeDSE` and further derivatives of DSEs route through the engine automatically. Results are cached on disk keyed by their full input (see `FClearCppCache`, `FSetCppCacheDirectory`).
+
+The C++ engine supports purely numeric coefficients and the standard object types; unsupported input (symbolic prefactors, source fields, custom `FAddFDRule` rules, ...) gives a hard error — never a silently different result. Opt out globally with `FSetBackendMathematica[]` or per call via the `"Backend" -> "Mathematica"` option. `FExportCppInput` and `FExportToml` write stand-alone input files for the `funkit` executable (see `cpplib/README.md`).
+
 ## Examples
 
 To learn how to compute more complicated systems, you may want to see some typical examples on how to use `FunKit` to deal with common QFTs of interest. 

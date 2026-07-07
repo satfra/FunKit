@@ -92,6 +92,122 @@ TEST_CASE("Parse scalar JSON", "[parse][json]")
   }
 }
 
+TEST_CASE("Parse output_format", "[parse]")
+{
+  const auto tpath = write_tmp("funkit_outfmt.toml", R"(
+    equation = [ ]
+    [setup]
+    output_format = "json"
+    [[setup.cFields]]
+    phi = [ ]
+  )");
+  auto [setup_t, feq_t] = FunKit::parse(tpath);
+  REQUIRE(setup_t.output_format == "json");
+
+  const auto jpath = write_tmp("funkit_outfmt.json", R"({
+    "setup": { "output_format": "json", "cFields": [ { "phi": [] } ] },
+    "equation": []
+  })");
+  auto [setup_j, feq_j] = FunKit::parse(jpath);
+  REQUIRE(setup_j.output_format == "json");
+
+  // Default is empty (text output, unless outputFile ends in .json)
+  auto [setup_d, feq_d] = FunKit::parse(BOILERPLATE_DIR + "scalar.toml");
+  REQUIRE(setup_d.output_format.empty());
+}
+
+TEST_CASE("Parse and differentiate bare Field objects", "[parse][field]")
+{
+  // DSE-shaped input: a functional derivative acting on a bare field
+  const auto path = write_tmp("funkit_field.toml", R"(
+    equation = [ [
+      { type = "FDOp", legs = [ [ "phi", 101 ] ] },
+      { type = "Field", legs = [ [ "phi", 1 ] ] },
+      { type = "Rdot", legs = [ [ "phi", -1 ], [ "phi", -2 ] ] }
+    ] ]
+    [setup]
+    do_simplify = false
+    ordered = [ "Rdot" ]
+    [[setup.cFields]]
+    phi = [ ]
+    [setup.truncation]
+    Rdot = [ [ "phi", "phi" ] ]
+  )");
+  auto [setup, feq] = FunKit::parse(path);
+
+  const FunKit::FieldIdx phi = setup.field_to_idx("phi");
+  REQUIRE(feq[0][1].type == FunKit::ObjectType::Field);
+  REQUIRE(feq[0][1].legs[0] == FunKit::LegT{phi, 1});
+
+  // d/dphi^101 (phi^1 Rdot_{12}): the Field derivative leaves a gamma...
+  FunKit::resolve_derivatives(setup, feq);
+  REQUIRE(feq.size() == 1);
+  REQUIRE(feq[0].size() == 2);
+  REQUIRE(feq[0][0].type == FunKit::ObjectType::gamma);
+  REQUIRE(feq[0][0].legs[0] == FunKit::LegT{phi, -101});
+  REQUIRE(feq[0][0].legs[1] == FunKit::LegT{phi, 1});
+
+  // ...which truncation's prune contracts: gamma_101^1 Rdot_{12} = Rdot_{101,2}
+  FunKit::truncate(setup, feq);
+  REQUIRE(feq.size() == 1);
+  REQUIRE(feq[0].value == 1.0);
+  REQUIRE(feq[0].size() == 1);
+  REQUIRE(feq[0][0].type == setup.type_to_idx("Rdot"));
+  REQUIRE(feq[0][0].legs[0] == FunKit::LegT{phi, -101});
+  REQUIRE(feq[0][0].legs[1] == FunKit::LegT{phi, -2});
+}
+
+TEST_CASE("Parse unordered leg counts", "[parse][unordered]")
+{
+  // Phidot-like objects: the trailing leg(s) are pinned and never reordered
+  const auto tpath = write_tmp("funkit_unordered.toml", R"(
+    equation = [ ]
+    [setup]
+    correlators = [ "Phidot" ]
+    ordered = [ "R", "Rdot" ]
+    [setup.unordered]
+    Phidot = 1
+    [[setup.cFields]]
+    phi = [ ]
+  )");
+  auto [setup_t, feq_t] = FunKit::parse(tpath);
+  REQUIRE(setup_t.unordered_legs(setup_t.type_to_idx("Phidot")) == 1);
+  REQUIRE(setup_t.unordered_legs(setup_t.type_to_idx("R")) == 0);
+  REQUIRE(setup_t.unordered_legs(FunKit::ObjectType::Propagator) == 0);
+  REQUIRE(setup_t.unordered_legs(FunKit::ObjectType::GammaN) == 0);
+
+  const auto jpath = write_tmp("funkit_unordered.json", R"({
+    "setup": {
+      "correlators": [ "Phidot" ],
+      "ordered": [ "R", "Rdot" ],
+      "unordered": { "Phidot": 1 },
+      "cFields": [ { "phi": [] } ]
+    },
+    "equation": []
+  })");
+  auto [setup_j, feq_j] = FunKit::parse(jpath);
+  REQUIRE(setup_j.unordered_legs(setup_j.type_to_idx("Phidot")) == 1);
+
+  // Unknown type names and negative counts are rejected
+  REQUIRE_THROWS(FunKit::parse(write_tmp("funkit_unordered_bad.toml", R"(
+    equation = [ ]
+    [setup]
+    [setup.unordered]
+    Nope = 1
+    [[setup.cFields]]
+    phi = [ ]
+  )")));
+  REQUIRE_THROWS(FunKit::parse(write_tmp("funkit_unordered_neg.toml", R"(
+    equation = [ ]
+    [setup]
+    correlators = [ "Phidot" ]
+    [setup.unordered]
+    Phidot = -1
+    [[setup.cFields]]
+    phi = [ ]
+  )")));
+}
+
 TEST_CASE("Parse symmetries TOML", "[parse][toml][symmetries]")
 {
   const auto path = write_tmp("funkit_syms.toml", R"(

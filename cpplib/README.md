@@ -111,11 +111,16 @@ Composable with `derivatives`.
 [setup]
 debug = 1                       # 0 = silent, higher = more progress output
 outputFile = "out.m"            # write the result here (default: stdout)
+output_format = ""              # "json" for structured output; empty = Mathematica-
+                                # syntax text, unless outputFile ends in ".json"
 in_deriv_trunc = true           # truncate already while taking derivatives
 do_truncate = true              # run the truncation stage
 do_simplify = true              # run the simplification stage
 ordered = [ "Rdot" ]            # user object types with ordered legs (e.g. regulators)
 correlators = [ ]               # user correlation-function types
+
+[setup.unordered]               # pinned trailing legs per user type (optional)
+Phidot = 1                      # Phidot's last leg (the "field" slot) is never reordered
 
   [[setup.cFields]]             # one table per commuting field (or pair)
   phi = [ ]                     # field name = list of internal index names
@@ -146,6 +151,17 @@ contents it may carry. During truncation, `AnyField` legs are expanded over
 these rules and objects with contents outside the rules drop the whole term.
 A type with no listed rule for `Field` objects means "all fields allowed".
 
+Unordered legs: `[setup.unordered]` gives, per user type, the number of
+trailing legs that are pinned in place — canonical leg ordering only sorts the
+legs before them. This is the counterpart of Mathematica's
+`FSetUnorderedIndices` and is what makes objects like `Phidot` (the flowing
+field expectation value, whose last leg is the "field" slot rather than a
+derivative leg) work: derivatives prepend their new leg at the front, so the
+pinned slot stays last through the entire pipeline. Truncation and diagram
+matching are unaffected — rule matching is order-insensitive, and the
+upper/lower index discipline already keeps the pinned (upper) slot from ever
+being aligned with a (lower) derivative leg.
+
 ### JSON equivalent
 
 The same structure, with tables as objects and `[[...]]` arrays-of-tables as
@@ -174,6 +190,39 @@ arrays of objects:
   }
 }
 ```
+
+## JSON output
+
+With `output_format = "json"` (or an `outputFile` ending in `.json`) the
+result is written in a structured schema instead of Mathematica-syntax text.
+The `equation` entry reuses the *input* term/object tables, so a result can be
+inspected — or re-fed — with the same mental model:
+
+```json
+{
+ "funkit_output_version": 1,
+ "input_file": "scalar-flow.toml",
+ "stages": {"derivatives": true, "truncate": true, "simplify": true},
+ "equation": [
+  [{"prefactor": 1},
+   {"type": "Propagator", "legs": [["phi",103],["phi",104]]},
+   {"type": "GammaN", "legs": [["phi",-105],["phi",-103],["phi",-101]]},
+   "..."]
+ ]
+}
+```
+
+Coefficients are printed in the shortest form that round-trips the `double`
+exactly. Untruncated runs may contain the engine-internal object types
+`Field` (a bare field), `gamma` (a metric contraction) and `FMinus` /
+`SymmFactor` (unresolved sign/symmetry factors on `AnyField` legs); all of
+them are also accepted on input. Note that the *text* printer emits the head
+`FEq[...]`, which corresponds to `FEx` on the Mathematica side.
+
+This is the wire format of the FunKit Mathematica package's C++ backend
+(`FSetBackendCpp[]`, module CoBra), which drives this engine via
+JSON-in/JSON-out; `FExportToml`/`FExportCppInput` produce compatible input
+files from Mathematica-side setups and expressions.
 
 ## A complete example
 

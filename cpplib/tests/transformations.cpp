@@ -1,6 +1,20 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <filesystem>
+#include <fstream>
+
 #include "funkit.hpp"
+
+namespace
+{
+  std::string write_tmp(const std::string &name, const std::string &content)
+  {
+    const auto path = (std::filesystem::temp_directory_path() / name).string();
+    std::ofstream file(path);
+    file << content;
+    return path;
+  }
+} // namespace
 
 TEST_CASE("Reduce", "[transformations]")
 {
@@ -91,6 +105,58 @@ TEST_CASE("Commute forward", "[transformations]")
 
   // Can't commute past the end
   REQUIRE_THROWS(FunKit::commute_forward(setup, term, term.size() - 1));
+}
+
+TEST_CASE("Normalize keeps unordered trailing legs pinned", "[transformations][unordered]")
+{
+  auto [setup, feq] = FunKit::parse(write_tmp("funkit_norm_unordered.toml", R"(
+    equation = [ ]
+    [setup]
+    correlators = [ "Phidot" ]
+    ordered = [ "R" ]
+    [setup.unordered]
+    Phidot = 1
+    [[setup.cFields]]
+    phi = [ ]
+    [[setup.gFields]]
+    psibar = [ ]
+    psi = [ ]
+  )"));
+  const FunKit::FieldIdx phi = setup.field_to_idx("phi");
+  const FunKit::FieldIdx psi = setup.field_to_idx("psi");
+  const FunKit::FieldIdx psibar = setup.field_to_idx("psibar");
+  const FunKit::KeyT phidot = setup.type_to_idx("Phidot");
+
+  // The head legs sort canonically, the tail leg stays last even though it
+  // would sort first
+  FunKit::Object pd = {phidot, {{phi, -5}, {phi, -3}, {phi, 1}}};
+  REQUIRE(FunKit::normalize(setup, pd) == 1.);
+  REQUIRE(pd.legs[0] == FunKit::LegT{phi, -5});
+  REQUIRE(pd.legs[1] == FunKit::LegT{phi, -3});
+  REQUIRE(pd.legs[2] == FunKit::LegT{phi, 1});
+
+  FunKit::Object pd2 = {phidot, {{phi, -3}, {phi, -5}, {phi, 1}}};
+  REQUIRE(FunKit::normalize(setup, pd2) == 1.);
+  REQUIRE(pd2.legs[0] == FunKit::LegT{phi, -5});
+  REQUIRE(pd2.legs[2] == FunKit::LegT{phi, 1});
+
+  // Grassmann head legs still accumulate their commutation sign
+  FunKit::Object gpd = {phidot, {{psi, -3}, {psibar, -5}, {phi, 1}}};
+  const double sign = FunKit::normalize(setup, gpd);
+  REQUIRE(sign == -1.);
+  REQUIRE(gpd.legs[0] == FunKit::LegT{psibar, -5});
+  REQUIRE(gpd.legs[1] == FunKit::LegT{psi, -3});
+  REQUIRE(gpd.legs[2] == FunKit::LegT{phi, 1});
+
+  // A single-leg Phidot (the tail is the only leg) is untouched
+  FunKit::Object pd1 = {phidot, {{phi, 7}}};
+  REQUIRE(FunKit::normalize(setup, pd1) == 1.);
+  REQUIRE(pd1.legs[0] == FunKit::LegT{phi, 7});
+
+  // Fully ordered types are unaffected
+  FunKit::Object r = {setup.type_to_idx("R"), {{phi, -3}, {phi, -5}}};
+  FunKit::normalize(setup, r);
+  REQUIRE(r.legs[0] == FunKit::LegT{phi, -5});
 }
 
 TEST_CASE("Merge FEqs", "[transformations]")

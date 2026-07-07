@@ -440,8 +440,15 @@ SuperIndicesValid[setup_, expr_] :=
 
 FSetSymmetricObject::emptyFields = "The field list must not be empty. Use FSetSymmetricObject[obj, {field1, field2, ...}].";
 
+(*Registry of heads with installed symmetry rules -- the rules themselves live
+  as DownValues on the object head; the registry lets other modules (e.g. the
+  C++ backend eligibility check) know such rules exist.*)
+
+$symmetricObjects = {};
+
 FSetSymmetricObject[obj_, {f__}] :=
     Module[{},
+        AppendTo[$symmetricObjects, obj];
         Unprotect[obj];
         obj[{f}, {any__}] /; Not @ OrderedQ[{any}] := obj[{f}, Sort @ {any}];
         Protect[obj];
@@ -449,6 +456,7 @@ FSetSymmetricObject[obj_, {f__}] :=
 
 FSetSymmetricObject[obj_, {f__}, {i__Integer}] :=
     Module[{},
+        AppendTo[$symmetricObjects, obj];
         Unprotect[obj];
         obj[{f}, {any__}] /; Not @ OrderedQ[{any}[[{i}]]] :=
             Module[{new = {any}},

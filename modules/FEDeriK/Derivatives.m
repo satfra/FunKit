@@ -130,10 +130,10 @@ FResolveFDOp[setup_, expr_] :=
 FResolveDerivatives::argument = "The given argument is neither an FTerm nor a FEx.
 The argument was `1`";
 
-Options[FResolveDerivatives] = {"Symmetries" -> {}};
+Options[FResolveDerivatives] = {"Symmetries" -> {}, "Backend" -> Automatic};
 
-FResolveDerivatives[setup_, term_FTerm, OptionsPattern[]] :=
-    FResolveDerivatives[setup, FEx[term], "Symmetries" -> OptionValue["Symmetries"]]
+FResolveDerivatives[setup_, term_FTerm, opts : OptionsPattern[]] :=
+    FResolveDerivatives[setup, FEx[term], opts]
 
 FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
     Module[{ret = eq, annotations, fw, bw, i, symmetries},
@@ -141,6 +141,10 @@ FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
         FunKitDebug[1, "Resolving derivatives"];
         If[FreeQ[ret, FDOp[__], Infinity],
             Return[ReduceFEx[setup, FEx[ret]]]
+        ];
+(*C++ backend: resolve the embedded FDOps in one fused external run (CoBra)*)
+        If[CppBackendActiveQ[OptionValue["Backend"]],
+            Return[CppResolveDerivatives[setup, eq, OptionValue["Symmetries"]]]
         ];
         {ret, annotations} = SeparateFExAnnotations[ret];
         symmetries =
@@ -199,15 +203,21 @@ FResolveDerivatives[setup_, a___] :=
     FTakeDerivatives : Take several functional derivatives on a given expression.
 **********************************************************************************)
 
-Options[FTakeDerivatives] = {"Symmetries" -> {}};
+Options[FTakeDerivatives] = {"Symmetries" -> {}, "Backend" -> Automatic};
 
-FTakeDerivatives[setup_, expr_FTerm, derivativeList_, OptionsPattern[]] :=
-    FTakeDerivatives[setup, FEx[expr], derivativeList, "Symmetries" -> OptionValue["Symmetries"]];
+FTakeDerivatives[setup_, expr_FTerm, derivativeList_, opts : OptionsPattern[]] :=
+    FTakeDerivatives[setup, FEx[expr], derivativeList, opts];
 
 FTakeDerivatives[setup_, expr_FEx, derivativeList_, OptionsPattern[]] :=
     Module[{result, externalIndexNames, outputReplacements, derivativeListSIDX, symmetries, annotations},
         AssertFSetup[setup];
         AssertDerivativeList[setup, derivativeList];
+(*C++ backend: return a lazy handle; FTruncate/FSimplify/FEvaluate on it run
+  one fused external call -- derivatives, truncation and simplification in a
+  single process (CoBra)*)
+        If[CppBackendActiveQ[OptionValue["Backend"]],
+            Return[CppDeferTakeDerivatives[setup, expr, derivativeList, OptionValue["Symmetries"]]]
+        ];
         (*We take them in reverse order.*)
         derivativeListSIDX = derivativeList;
         (***)
@@ -215,7 +225,7 @@ FTakeDerivatives[setup_, expr_FEx, derivativeList_, OptionsPattern[]] :=
         (*First, fix the indices in the input equation, i.e. make everything have unique names*)
         result = FixIndices[setup, result];
         If[Length[derivativeListSIDX] === 0,
-            Return[FResolveDerivatives[setup, result, "Symmetries" -> OptionValue["Symmetries"]]]
+            Return[FResolveDerivatives[setup, result, "Symmetries" -> OptionValue["Symmetries"], "Backend" -> OptionValue["Backend"]]]
         ];
         If[ModuleLoaded[AnSEL] && OptionValue["Symmetries"] === {} && $AutoBuildSymmetryList === True,
             FunKitDebug[2, "Auto-building symmetry list for derivatives"];
@@ -233,7 +243,7 @@ FTakeDerivatives[setup_, expr_FEx, derivativeList_, OptionsPattern[]] :=
         ];
         FunKitDebug[1, "Adding the derivative operator ", (FTerm @@ (FDOp /@ derivativeListSIDX))];
         (*Perform all the derivatives, one after the other*)
-        result = FResolveDerivatives[setup, (FTerm @@ (FDOp /@ derivativeListSIDX)) ** (FEx @@ result)];
+        result = FResolveDerivatives[setup, (FTerm @@ (FDOp /@ derivativeListSIDX)) ** (FEx @@ result), "Backend" -> OptionValue["Backend"]];
         (*Finally, reduce indices again to clean up any duplicates introduced by the derivatives*)
         Return[result];
     ];

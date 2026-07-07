@@ -110,6 +110,25 @@ install(
   PATTERN "*.mx"
   PATTERN "*.nb")
 
+# install the C++ engine sources (built on demand by FSetBackendCpp[]); the
+# vendored headers ship via *.hpp/*.h, the boilerplate inputs via *.toml so
+# ctest works from the installed tree
+install(
+  DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/cpplib
+  MESSAGE_NEVER
+  DESTINATION ${WOLFRAM_APP_DIR}/FunKit
+  FILES_MATCHING
+  PATTERN "build" EXCLUDE
+  PATTERN ".cache" EXCLUDE
+  PATTERN "cmake_install.cmake" EXCLUDE
+  PATTERN "*.cpp"
+  PATTERN "*.hpp"
+  PATTERN "*.h"
+  PATTERN "CMakeLists.txt"
+  PATTERN "*.toml"
+  PATTERN "*.json"
+  PATTERN "*.md")
+
 # ##############################################################################
 # Testing
 # ##############################################################################

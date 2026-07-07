@@ -230,6 +230,10 @@ Activates the field[index] object notation: obj[field1[index1], field2[index2], 
 In this notation each argument to a correlation function directly pairs its field with its index.
 Call FSetNotationA[] to restore the default two-list notation.";
 
+$FunKitBackend::usage = "$FunKitBackend
+The active computation backend for FTakeDerivatives, FResolveDerivatives, FTruncate and FSimplify: \"Mathematica\" (default) or \"Cpp\".
+Switch backends with FSetBackendCpp[] and FSetBackendMathematica[] (provided by the CoBra module).";
+
 (* ::Section:: *)
 
 (* Begin Private *)

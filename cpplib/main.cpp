@@ -102,9 +102,15 @@ int main(int argc, char **argv)
     std::cout << "\n=================================\n\n";
   }
 
+  const bool json_out =
+      setup.output_format == "json" || (setup.output_format.empty() && setup.outputFile.ends_with(".json"));
+
   if (setup.outputFile != "") {
     std::ofstream ofs(setup.outputFile);
-    FunKit::print(setup, result, ofs);
+    if (json_out)
+      FunKit::print_json(setup, result, ofs);
+    else
+      FunKit::print(setup, result, ofs);
     const auto out_end = std::chrono::high_resolution_clock::now();
     if (setup.debug_level > 0) {
       std::cout << "\nOutput written to " << setup.outputFile << std::endl;
@@ -118,7 +124,10 @@ int main(int argc, char **argv)
         std::cout << std::fixed << std::setprecision(1) << (ms / 1000.0) << " s" << std::endl;
     }
   } else {
-    FunKit::print(setup, result);
+    if (json_out)
+      FunKit::print_json(setup, result);
+    else
+      FunKit::print(setup, result);
   }
 
   return 0;

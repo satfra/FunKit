@@ -34,6 +34,24 @@ BenchmarkThunk[label_String, thunk_, nWarm_Integer:2, nRuns_Integer:5] :=
     ];
 
 (**********************************************************************************
+    C++ backend availability (memoized; builds the engine on first call)
+**********************************************************************************)
+
+CppBackendBenchAvailableQ[] :=
+    CppBackendBenchAvailableQ[] =
+        Quiet @ CheckAbort[
+            Check[
+                FSetBackendCpp[];
+                FSetBackendMathematica[];
+                True
+                ,
+                False
+            ]
+            ,
+            False
+        ];
+
+(**********************************************************************************
     Wetterich / Flow Equation Benchmarks
 **********************************************************************************)
 
@@ -98,6 +116,25 @@ BenchmarkCase[title_String, derivList_List, fkSetup_Association, qmesSetup_, doF
                 ,
                 nRuns
             ];
+        (* C++ backend, same fused derivation (AutoSimplify still off for fairness);
+           the result cache is cleared per run so the engine really executes *)
+        If[CppBackendBenchAvailableQ[],
+            FSetBackendCpp[];
+            results["FunKit-Cpp-Full"] =
+                BenchmarkThunk[
+                    "FunKit C++ Full"
+                    ,
+                    Function[{},
+                        FClearCppCache[];
+                        FTakeDerivatives[fkSetup, WetterichEquation, derivList] // FTruncate
+                    ]
+                    ,
+                    nWarm
+                    ,
+                    nRuns
+                ];
+            FSetBackendMathematica[];
+        ];
         (* Restore AutoSimplify *)
         FSetAutoSimplify[True];
         (* QMeS — without ReduceIdenticalFlowDiagrams for fair comparison *)
@@ -223,6 +260,31 @@ BenchmarkDSECase[title_String, field_, derivList_List, fkSetup_Association, qmes
                 ,
                 nRuns
             ];
+        (* C++ backend, same fused derivation (AutoSimplify still off for fairness);
+           the result cache is cleared per run so the engine really executes *)
+        If[CppBackendBenchAvailableQ[],
+            FSetBackendCpp[];
+            results["FunKit-Cpp-Full"] =
+                BenchmarkThunk[
+                    "FunKit C++ Full"
+                    ,
+                    Function[{},
+                        FClearCppCache[];
+                        Module[{d},
+                            d = FMakeDSE[fkSetup, field];
+                            If[Length[derivList] > 0,
+                                d = FTakeDerivatives[fkSetup, d, derivList]
+                            ];
+                            d // FTruncate
+                        ]
+                    ]
+                    ,
+                    nWarm
+                    ,
+                    nRuns
+                ];
+            FSetBackendMathematica[];
+        ];
         (* Restore AutoSimplify *)
         FSetAutoSimplify[True];
         (* QMeS — for DSE, the derivative list includes the DSE field as the last entry *)
@@ -309,6 +371,9 @@ PrintBenchmarkTable[bench_Association] :=
                     ]
                 }
             };
+        If[KeyExistsQ[res, "FunKit-Cpp-Full"],
+            AppendTo[rows, {"Full (C++ backend)", FormatTime[res["FunKit-Cpp-Full"]], "    -    ", "    -    "}];
+        ];
         (* Separator marker *)
         AppendTo[rows, "sep"];
         (* Individual FunKit stages *)
@@ -408,6 +473,9 @@ BenchmarkResultToCSVRows[bench_Association] :=
                 }
             ];
         addRow["Full derivation", "FunKit-Full", "QMeS-Full", "DoFun-Full"];
+        If[KeyExistsQ[res, "FunKit-Cpp-Full"],
+            addRow["Full derivation (C++)", "FunKit-Cpp-Full", None, None]
+        ];
         If[isDSE,
             addRow["FMakeDSE", "FunKit-FMakeDSE", None, None]
         ];

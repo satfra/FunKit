@@ -73,10 +73,10 @@ FTruncateOpenIndices[expr_] :=
     );
 
 FTakeDerivatives[expr_, derivativeList_] /; Head[$GlobalSetup] =!= Symbol :=
-    FTakeDerivatives[$GlobalSetup, expr, derivativeList, "Symmetries" -> {}];
+    FTakeDerivatives[$GlobalSetup, expr, derivativeList];
 
-FTakeDerivatives[expr_, derivativeList_, OptionsPattern[]] /; Head[$GlobalSetup] =!= Symbol :=
-    FTakeDerivatives[$GlobalSetup, expr, derivativeList, "Symmetries" -> OptionValue["Symmetries"]];
+FTakeDerivatives[expr_, derivativeList_, opts : OptionsPattern[FTakeDerivatives]] /; Head[$GlobalSetup] =!= Symbol :=
+    FTakeDerivatives[$GlobalSetup, expr, derivativeList, opts];
 
 FTakeDerivatives[expr_, derivativeList_] :=
     (
@@ -154,10 +154,10 @@ FMakeDSE[field_] :=
     );
 
 FResolveDerivatives[expr_] /; Head[$GlobalSetup] =!= Symbol :=
-    FResolveDerivatives[$GlobalSetup, expr, "Symmetries" -> {}];
+    FResolveDerivatives[$GlobalSetup, expr];
 
-FResolveDerivatives[expr_, OptionsPattern[]] /; Head[$GlobalSetup] =!= Symbol :=
-    FResolveDerivatives[$GlobalSetup, expr, "Symmetries" -> OptionValue["Symmetries"]];
+FResolveDerivatives[expr_, opts : OptionsPattern[FResolveDerivatives]] /; Head[$GlobalSetup] =!= Symbol :=
+    FResolveDerivatives[$GlobalSetup, expr, opts];
 
 FResolveDerivatives[expr_] :=
     (
@@ -351,6 +351,34 @@ FSetAutoSimplify[flag_] /; BooleanQ[flag] :=
 FSetAutoSimplify[flag_] :=
     (
         Message[FSetAutoSimplify::notBoolean, flag];
+        Abort[]
+    );
+
+(**********************************************************************************
+    Computation backend selection. The default is the pure-Mathematica pipeline;
+    the CoBra module switches this to "Cpp" via FSetBackendCpp[]. Declared here
+    so FEDeriK works standalone even when CoBra is not loaded.
+**********************************************************************************)
+
+$FunKitBackend = "Mathematica";
+
+(*Guard used at the pipeline branch points; the per-call "Backend" option
+  overrides the global flag*)
+
+CppBackendActiveQ[Automatic] :=
+    $FunKitBackend === "Cpp";
+
+CppBackendActiveQ["Cpp"] :=
+    True;
+
+CppBackendActiveQ["Mathematica"] :=
+    False;
+
+FunKit::invalidBackend = "The \"Backend\" option must be Automatic, \"Cpp\" or \"Mathematica\", but `1` was given.";
+
+CppBackendActiveQ[x_] :=
+    (
+        Message[FunKit::invalidBackend, x];
         Abort[]
     );
 

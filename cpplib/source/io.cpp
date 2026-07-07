@@ -9,29 +9,8 @@ namespace FunKit
 {
   void print(const Setup &setup, const Object &object, std::string &os)
   {
-    // Print the head - either predefined:
-    switch (object.type) {
-    case ObjectType::FDOp:
-      os += "FDOp";
-      break;
-    case ObjectType::FMinus:
-      os += "FMinus";
-      break;
-    case ObjectType::Propagator:
-      os += "Propagator";
-      break;
-    case ObjectType::GammaN:
-      os += "GammaN";
-      break;
-    default:
-      // Or custom:
-      if (object.type >= predef_correlation_functions &&
-          object.type < predef_correlation_functions + setup.objects.size()) {
-        os += setup.objects[object.type - predef_correlation_functions];
-      } else {
-        loud_throw("Unknown object type: " + std::to_string(object.type));
-      }
-    }
+    // Print the head (idx_to_type covers built-in and custom types)
+    os += setup.idx_to_type(object.type);
 
     // Print the legs
     os += "[{";
@@ -97,6 +76,97 @@ namespace FunKit
       }
     }
     buf += "\n ]";
+    os << buf;
+  }
+
+  namespace
+  {
+    // Minimal JSON string escaping (quote, backslash, control characters);
+    // field/type names are plain identifiers, but input_file is a user path
+    std::string escape_json(const std::string &s)
+    {
+      std::string out;
+      out.reserve(s.size());
+      for (const char c : s) {
+        switch (c) {
+        case '"':
+          out += "\\\"";
+          break;
+        case '\\':
+          out += "\\\\";
+          break;
+        case '\n':
+          out += "\\n";
+          break;
+        case '\t':
+          out += "\\t";
+          break;
+        case '\r':
+          out += "\\r";
+          break;
+        default:
+          if (static_cast<unsigned char>(c) < 0x20)
+            std::format_to(std::back_inserter(out), "\\u{:04x}", static_cast<unsigned>(c));
+          else
+            out += c;
+        }
+      }
+      return out;
+    }
+
+    void append_json_header(const Setup &setup, std::string &os)
+    {
+      os += "{\n \"funkit_output_version\": 1,\n";
+      os += " \"input_file\": \"" + escape_json(setup.input_file) + "\",\n";
+      std::format_to(std::back_inserter(os),
+                     " \"stages\": {{\"derivatives\": true, \"truncate\": {}, \"simplify\": {}}},\n", setup.do_truncate,
+                     setup.do_simplify);
+      os += " \"equation\": [";
+    }
+
+    void append_json_term(const Setup &setup, const FTerm &term, std::string &os)
+    {
+      os += "\n  [";
+      // std::format emits the shortest representation that round-trips the
+      // double exactly — lossless coefficient transport
+      std::format_to(std::back_inserter(os), "{{\"prefactor\": {}}}", term.value);
+      for (const auto &obj : term) {
+        os += ",\n   {\"type\": \"" + setup.idx_to_type(obj.type) + "\", \"legs\": [";
+        for (const auto &leg : obj.legs) {
+          std::format_to(std::back_inserter(os), "[\"{}\",{}]", setup.idx_to_field(leg.first), leg.second);
+          if (&leg != &obj.legs.back()) os += ",";
+        }
+        os += "]}";
+      }
+      os += "]";
+    }
+  } // namespace
+
+  void print_json(const Setup &setup, const FEq &feq, std::string &os)
+  {
+    append_json_header(setup, os);
+    for (const auto &term : feq) {
+      append_json_term(setup, term, os);
+      if (&term != &feq.back()) os += ",";
+    }
+    os += "\n ]\n}\n";
+  }
+
+  void print_json(const Setup &setup, const FEq &feq, std::ostream &os)
+  {
+    std::string buf;
+    append_json_header(setup, buf);
+    for (const auto &term : feq) {
+      append_json_term(setup, term, buf);
+      if (&term != &feq.back()) buf += ",";
+
+      // Flush the buffer if it gets > 8MB to avoid excessive memory usage
+      if (buf.size() > 8e6) {
+        os << buf;
+        buf.clear();
+      }
+    }
+    buf += "\n ]\n}\n";
     os << buf;
   }
 

@@ -142,6 +142,9 @@ namespace FunKit
     std::string input_file;
     int debug_level = 0;
     std::string outputFile = "";
+    // "json" selects structured JSON output; empty means Mathematica-syntax
+    // text, unless outputFile ends in ".json"
+    std::string output_format = "";
     bool in_deriv_trunc = true;
 
     bool do_truncate = true;
@@ -179,6 +182,12 @@ namespace FunKit
 
     KeyT type_to_idx(const std::string &type_name) const;
     std::string idx_to_type(KeyT type_idx) const;
+
+    // Per user type: number of trailing legs pinned in place (never reordered
+    // by normalize) -- e.g. Phidot's "field" slot. Parallel to `objects`;
+    // built-in types always have 0.
+    std::vector<Idx> unordered_leg_counts;
+    Idx unordered_legs(KeyT type_idx) const;
 
     Truncation truncation;
     Symmetries symmetries;

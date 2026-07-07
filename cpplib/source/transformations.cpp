@@ -19,11 +19,14 @@ namespace FunKit
     // such adjacent commutation contributes its own sign factor, which correctly
     // accumulates the Grassmann sign (a non-adjacent swap would pick up signs from
     // every leg it jumps over, not just the swapped pair).
+    // Types with unordered trailing legs (e.g. Phidot's "field" slot) keep those
+    // legs pinned in place: only the head range takes part in the sort.
     double sign = 1;
     const Idx n = Idx(obj.legs.size());
+    const Idx n_sort = n - std::min<Idx>(n, setup.unordered_legs(obj.type));
     if (obj.type != ObjectType::Propagator)
-      for (Idx i = 0; i < n; ++i) {
-        for (Idx j = 0; j + 1 < n - i; ++j) {
+      for (Idx i = 0; i < n_sort; ++i) {
+        for (Idx j = 0; j + 1 < n_sort - i; ++j) {
           if (obj.legs[j] > obj.legs[j + 1]) {
             sign *= std::get<0>(commute_sign(setup, obj.legs[j], obj.legs[j + 1]));
             std::swap(obj.legs[j], obj.legs[j + 1]);
