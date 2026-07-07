@@ -74,6 +74,34 @@ namespace FunKit
           loud_throw("Fields can be provided at most in pairs!");
       }
 
+    // Read source fields: single unpaired entries appended after the regular
+    // fields, excluded from the AnyField expansion
+    if (data["setup"].contains("cSources"))
+      for (const auto &pair : data["setup"]["cSources"]) {
+        if (pair.size() != 1) loud_throw("Source fields must be single fields, not pairs!");
+        for (const auto &field : pair.items()) {
+          Field f;
+          f.name = field.key();
+          for (const auto &index : field.value())
+            f.indices.push_back(index);
+          setup.cFields.push_back(std::make_pair(f, Field{}));
+          setup.cSourceCount++;
+        }
+      }
+
+    if (data["setup"].contains("gSources"))
+      for (const auto &pair : data["setup"]["gSources"]) {
+        if (pair.size() != 1) loud_throw("Source fields must be single fields, not pairs!");
+        for (const auto &field : pair.items()) {
+          Field f;
+          f.name = field.key();
+          for (const auto &index : field.value())
+            f.indices.push_back(index);
+          setup.gFields.push_back(std::make_pair(f, Field{}));
+          setup.gSourceCount++;
+        }
+      }
+
     // All fields are known now: build the per-field property table
     setup.finalize_fields();
 
@@ -252,6 +280,38 @@ namespace FunKit
           setup.gFields.push_back(std::make_pair(entries[0], entries[1]));
         else
           loud_throw("Fields can be provided at most in pairs!");
+      }
+    }
+
+    // Read source fields: single unpaired entries appended after the regular
+    // fields, excluded from the AnyField expansion
+    if (data.at("setup").contains("cSources")) {
+      if (!data.at("setup").at("cSources").is_array()) loud_throw("'cSources' must be an array of tables in TOML file.");
+      for (const auto &entry : data.at("setup").at("cSources").as_array()) {
+        if (entry.as_table().size() != 1) loud_throw("Source fields must be single fields, not pairs!");
+        for (const auto &field : entry.as_table()) {
+          Field f;
+          f.name = field.first;
+          for (const auto &index : field.second.as_array())
+            f.indices.push_back(index.as_string());
+          setup.cFields.push_back(std::make_pair(f, Field{}));
+          setup.cSourceCount++;
+        }
+      }
+    }
+
+    if (data.at("setup").contains("gSources")) {
+      if (!data.at("setup").at("gSources").is_array()) loud_throw("'gSources' must be an array of tables in TOML file.");
+      for (const auto &entry : data.at("setup").at("gSources").as_array()) {
+        if (entry.as_table().size() != 1) loud_throw("Source fields must be single fields, not pairs!");
+        for (const auto &field : entry.as_table()) {
+          Field f;
+          f.name = field.first;
+          for (const auto &index : field.second.as_array())
+            f.indices.push_back(index.as_string());
+          setup.gFields.push_back(std::make_pair(f, Field{}));
+          setup.gSourceCount++;
+        }
       }
     }
 

@@ -1,12 +1,22 @@
 #include <catch2/catch_test_macros.hpp>
 
 #include <algorithm>
+#include <filesystem>
+#include <fstream>
 #include <set>
 
 #include "funkit.hpp"
 
 namespace
 {
+  std::string write_tmp(const std::string &name, const std::string &content)
+  {
+    const auto path = (std::filesystem::temp_directory_path() / name).string();
+    std::ofstream file(path);
+    file << content;
+    return path;
+  }
+
   bool contains_type(const FunKit::FTerm &term, FunKit::KeyT type)
   {
     return std::any_of(term.begin(), term.end(), [&](const FunKit::Object &o) { return o.type == type; });
@@ -42,6 +52,55 @@ namespace
     return {};
   }
 } // namespace
+
+TEST_CASE("Source fields are excluded from AnyField expansion", "[truncation][sources]")
+{
+  // Unrestricted types expand AnyField over all fields -- but never sources
+  auto [setup, feq] = FunKit::parse(write_tmp("funkit_trunc_sources.toml", R"(
+    equation = [
+      [ { type = "GammaN", legs = [ [ "AnyField", 1 ] ] } ],
+      [ { type = "Propagator", legs = [ [ "AnyField", 2 ], [ "AnyField", 3 ] ] } ]
+    ]
+    [setup]
+    do_simplify = false
+    [[setup.cFields]]
+    phi = [ ]
+    [[setup.cSources]]
+    Q = [ ]
+  )"));
+  const FunKit::FieldIdx phi = setup.field_to_idx("phi");
+  const FunKit::FieldIdx q = setup.field_to_idx("Q");
+
+  FunKit::truncate(setup, feq);
+
+  // Only phi assignments survive: one 1pt child and one 2pt child
+  REQUIRE(feq.size() == 2);
+  for (const auto &term : feq)
+    for (const auto &obj : term)
+      for (const auto &leg : obj.legs) {
+        REQUIRE(leg.first == phi);
+        REQUIRE(leg.first != q);
+      }
+
+  // Explicit source legs pass through truncation untouched
+  auto [setup2, feq2] = FunKit::parse(write_tmp("funkit_trunc_sources2.toml", R"(
+    equation = [
+      [ { type = "GammaN", legs = [ [ "Q", -1 ], [ "phi", -2 ] ] } ]
+    ]
+    [setup]
+    do_simplify = false
+    [[setup.cFields]]
+    phi = [ ]
+    [[setup.cSources]]
+    Q = [ ]
+    [setup.truncation]
+    GammaN = [ [ "Q", "phi" ] ]
+  )"));
+  FunKit::truncate(setup2, feq2);
+  REQUIRE(feq2.size() == 1);
+  REQUIRE(std::find(feq2[0][0].legs.begin(), feq2[0][0].legs.end(),
+                    FunKit::LegT{setup2.field_to_idx("Q"), -1}) != feq2[0][0].legs.end());
+}
 
 TEST_CASE("Prune resolves FMinus factors", "[truncation][prune]")
 {

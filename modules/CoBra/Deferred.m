@@ -53,9 +53,14 @@ CppDeferTakeDerivatives[setup_, expr_, derivList_, optSyms_] :=
                 "AutoSymmetries" -> TrueQ[$AutoBuildSymmetryList] && syms === {},
                 "Created" -> Now
             |>];
-        (*Fail fast: a dry serialization runs the full eligibility gate now,
-          not when the user finally forces the handle*)
-        CppSerializeInput[setup, ex, derivList, syms, <|"Truncate" -> False, "Simplify" -> False, "EmitDerivatives" -> False|>];
+        (*Fail fast: a dry serialization (per symbolic-prefactor group) runs
+          the full eligibility gate now, not when the user finally forces the
+          handle*)
+        Scan[
+            CppSerializeInput[setup, FEx @@ #[[2]], derivList, syms, <|"Truncate" -> False, "Simplify" -> False, "EmitDerivatives" -> False|>]&
+            ,
+            CppPartitionTerms[setup, List @@ ex]
+        ];
         handle
     ];
 
@@ -76,7 +81,7 @@ AddDeferredSymmetries[FDeferred[data_Association], syms_List] :=
 **********************************************************************************)
 
 CppRunPipeline[d_FDeferred, truncate_, simplify_] :=
-    Module[{data = First[d], cppSimplify, input, map, openSyms, openInverse, result},
+    Module[{data = First[d], cppSimplify, groups, results, result},
         If[!CppBackendReadyQ[],
             Message[FunKit::cppNotBuilt];
             Abort[];
@@ -86,11 +91,46 @@ CppRunPipeline[d_FDeferred, truncate_, simplify_] :=
           the same call as truncation; untruncated results are simplified by
           the native FSimplify below instead*)
         cppSimplify = TrueQ[simplify] && TrueQ[truncate];
+        (*One engine run per symbolic-prefactor group (usually a single group
+          with prefactor 1); the prefactor is re-attached to every result term*)
+        groups = CppPartitionTerms[data["Setup"], List @@ data["Expression"]];
+        results =
+            Map[
+                Function[group,
+                    Module[{res},
+                        res = CppRunGroup[data, group[[1]], FEx @@ group[[2]], truncate, cppSimplify];
+                        If[group[[1]] === 1,
+                            res
+                            ,
+                            FEx @@ Map[Function[term, FTerm[group[[1]], ##]& @@ term], List @@ res]
+                        ]
+                    ]
+                ]
+                ,
+                groups
+            ];
+        result = FEx @@ Join @@ (List @@@ results);
+        result = CppAttachSymmetries[data, result];
+        If[TrueQ[simplify] && !cppSimplify,
+            result = FunKit`FSimplify[data["Setup"], result]
+        ];
+        result
+    ];
+
+(*One fused engine run for one symbolic-prefactor group*)
+
+CppRunGroup[data_Association, tag_, ex_FEx, truncate_, cppSimplify_] :=
+    Module[{input, map, openSyms, openInverse, result},
         {input, map} =
             CppSerializeInput[
-                data["Setup"], data["Expression"], data["DerivativeList"], data["Symmetries"],
+                data["Setup"], ex, data["DerivativeList"], data["Symmetries"],
                 <|"Truncate" -> truncate, "Simplify" -> cppSimplify, "EmitDerivatives" -> TrueQ[data["AutoSymmetries"]]|>
             ];
+        (*A symbolic prefactor must be a scalar: it may not reference any
+          superindex of its terms*)
+        If[tag =!= 1 && IntersectingQ[GetAllSymbols[tag], Keys[map]],
+            CppAbort["the coefficient " <> ToString[tag, InputForm] <> ", which depends on a superindex of its term"]
+        ];
         (*Open legs keep their symbols through the round trip; everything else
           gets fresh names. Open = odd occurrence count within a term of the
           serialized equation, which covers derivative legs, embedded FDOps
@@ -120,10 +160,6 @@ CppRunPipeline[d_FDeferred, truncate_, simplify_] :=
                     ,
                     Function[term, !AnyTrue[List @@ term, couldBeField[#] && MemberQ[GetAllFields[data["Setup"]], Head[#]]&]]
                 ]
-        ];
-        result = CppAttachSymmetries[data, result];
-        If[TrueQ[simplify] && !cppSimplify,
-            result = FunKit`FSimplify[data["Setup"], result]
         ];
         result
     ];

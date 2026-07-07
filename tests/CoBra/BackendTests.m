@@ -46,6 +46,8 @@ yukawaSetup = GetFunKitSetupYukawa[];
 
 ymSetup = GetFunKitSetupYangMills[];
 
+srcSetup = GetFunKitSetupWithSources[];
+
 wetterich := FEx[FTerm[1/2, Propagator[{AnyField, AnyField}, {a, b}], Rdot[{AnyField, AnyField}, {-a, -b}]]];
 
 negateTerm[t_FTerm] := FTerm[-1, ##]& @@ t;
@@ -339,6 +341,55 @@ AppendTo[tests,
         {True, True, True}
         ,
         "CoBra-Parity-ScalarDSE2Point"
+    ]
+];
+
+(**********************************************************************************
+    Parity: symbolic prefactors (per-group engine runs)
+**********************************************************************************)
+
+AppendTo[tests,
+    cppTest[
+        Module[{eq, derivs, cpp, native},
+            (*a coupling-dressed Wetterich equation: g * (1/2 G Rdot)*)
+            eq = FEx[FTerm[Global`g, 1/2, Propagator[{AnyField, AnyField}, {a, b}], Rdot[{AnyField, AnyField}, {-a, -b}]]];
+            derivs = {Phi[i1], Phi[i2]};
+            cpp = FTruncate[scalarSetup, FTakeDerivatives[scalarSetup, eq, derivs, "Backend" -> "Cpp"]];
+            native = FTruncate[scalarSetup, FTakeDerivatives[scalarSetup, eq, derivs]];
+            {
+                (*every term carries the exact symbolic factor g*)
+                AllTrue[List @@ FunKit`Private`DropFExAnnotations[cpp], MemberQ[List @@ #, Global`g]&],
+                equivalentQ[scalarSetup, cpp, native, derivs]
+            }
+        ]
+        ,
+        {True, True}
+        ,
+        "CoBra-Parity-SymbolicPrefactor"
+    ]
+];
+
+(**********************************************************************************
+    Parity: source fields (spectators in the flow, excluded from AnyField)
+**********************************************************************************)
+
+AppendTo[tests,
+    cppTest[
+        Module[{derivs, cpp, native},
+            derivs = {Phi[i1], Phi[i2]};
+            cpp = FTruncate[srcSetup, FTakeDerivatives[srcSetup, wetterich, derivs, "Backend" -> "Cpp"]];
+            native = FTruncate[srcSetup, FTakeDerivatives[srcSetup, wetterich, derivs]];
+            {
+                (*AnyField expansion must not produce source fields*)
+                FreeQ[cpp, J] && FreeQ[cpp, eta],
+                exactCoefficientsQ[cpp],
+                equivalentQ[srcSetup, cpp, native, derivs]
+            }
+        ]
+        ,
+        {True, True, True}
+        ,
+        "CoBra-Parity-SourceFieldFlow"
     ]
 ];
 

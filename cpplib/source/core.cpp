@@ -398,14 +398,17 @@ namespace FunKit
     m_field_props.assign(2 * (cFields.size() + gFields.size()), FieldProps{});
     for (Idx i = 0; i < Idx(cFields.size()); ++i) {
       const bool paired = !cFields[i].second.name.empty();
-      m_field_props[2 * i] = {true, false, paired ? FieldIdx(2 * i + 1) : FieldIdx(2 * i)};
-      if (paired) m_field_props[2 * i + 1] = {true, false, FieldIdx(2 * i)};
+      const bool source = i >= Idx(cFields.size()) - cSourceCount;
+      m_field_props[2 * i] = {true, false, source, paired ? FieldIdx(2 * i + 1) : FieldIdx(2 * i)};
+      if (paired) m_field_props[2 * i + 1] = {true, false, source, FieldIdx(2 * i)};
     }
     const FieldIdx offset = 2 * cFields.size();
     for (Idx i = 0; i < Idx(gFields.size()); ++i) {
       const bool paired = !gFields[i].second.name.empty();
-      m_field_props[offset + 2 * i] = {true, true, paired ? FieldIdx(offset + 2 * i + 1) : FieldIdx(offset + 2 * i)};
-      if (paired) m_field_props[offset + 2 * i + 1] = {true, true, FieldIdx(offset + 2 * i)};
+      const bool source = i >= Idx(gFields.size()) - gSourceCount;
+      m_field_props[offset + 2 * i] = {true, true, source,
+                                       paired ? FieldIdx(offset + 2 * i + 1) : FieldIdx(offset + 2 * i)};
+      if (paired) m_field_props[offset + 2 * i + 1] = {true, true, source, FieldIdx(offset + 2 * i)};
     }
   }
 
@@ -536,14 +539,15 @@ namespace FunKit
   std::vector<FieldIdx> Setup::all_fields() const
   {
     // All valid field indices, skipping the padding indices of unpaired fields
+    // and all source fields (sources never enter the AnyField expansion)
     std::vector<FieldIdx> fields;
     fields.reserve(2 * (cFields.size() + gFields.size()));
-    for (Idx i = 0; i < Idx(cFields.size()); ++i) {
+    for (Idx i = 0; i < Idx(cFields.size()) - cSourceCount; ++i) {
       fields.push_back(2 * i);
       if (!cFields[i].second.name.empty()) fields.push_back(2 * i + 1);
     }
     const FieldIdx offset = 2 * cFields.size();
-    for (Idx i = 0; i < Idx(gFields.size()); ++i) {
+    for (Idx i = 0; i < Idx(gFields.size()) - gSourceCount; ++i) {
       fields.push_back(offset + 2 * i);
       if (!gFields[i].second.name.empty()) fields.push_back(offset + 2 * i + 1);
     }

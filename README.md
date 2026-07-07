@@ -120,7 +120,7 @@ flow = WetterichEquation // FTakeDerivatives[#, {Phi[i1], Phi[i2]}]& // FTruncat
 
 `FMakeDSE` and further derivatives of DSEs route through the engine automatically. Results are cached on disk keyed by their full input (see `FClearCppCache`, `FSetCppCacheDirectory`).
 
-The C++ engine supports purely numeric coefficients and the standard object types; unsupported input (symbolic prefactors, source fields, custom `FAddFDRule` rules, ...) gives a hard error — never a silently different result. Opt out globally with `FSetBackendMathematica[]` or per call via the `"Backend" -> "Mathematica"` option. `FExportCppInput` and `FExportToml` write stand-alone input files for the `funkit` executable (see `cpplib/README.md`).
+The backend covers the standard object types (including `Phidot`-style objects with pinned legs), source fields, and index-free symbolic prefactors — couplings, `Z`-factors and `I` are stripped per term, run through the engine per group, and re-attached exactly. Genuinely unsupported input (custom `FAddFDRule` rules, routed/explicit indices, index-dependent coefficients) gives a hard error — never a silently different result. Opt out globally with `FSetBackendMathematica[]` or per call via the `"Backend" -> "Mathematica"` option. `FExportCppInput` and `FExportToml` write stand-alone input files for the `funkit` executable (see `cpplib/README.md`).
 
 ## Examples
 

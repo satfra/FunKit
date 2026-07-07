@@ -129,6 +129,12 @@ Phidot = 1                      # Phidot's last leg (the "field" slot) is never 
   psibar = [ "a" ]              # e.g. a Dirac index "a"
   psi = [ "a" ]
 
+  [[setup.cSources]]            # commuting source fields (optional)
+  Q = [ ]                       # sources are single fields, never pairs
+
+  [[setup.gSources]]            # Grassmann source fields (optional)
+  QA = [ "v" ]
+
 [setup.truncation]              # allowed field content per object type
 Rdot = [ [ "phi", "phi" ], [ "psi", "psibar" ] ]
 Propagator = [ [ "phi", "phi" ], [ "psi", "psibar" ] ]
@@ -145,6 +151,13 @@ one field, or a conjugate pair written as two entries in **(antifield, field)
 order** (e.g. `psibar` before `psi`, `cb` before `c`). The value of each entry
 lists the field's internal indices (Lorentz, color, ...) — informational names
 for printing.
+
+Source fields: `[[setup.cSources]]` / `[[setup.gSources]]` declare external
+sources (e.g. the BRST sources of an mSTI). They behave like unpaired fields —
+valid on any leg, in truncation rules, and as derivative variables, with the
+declared Grassmann parity — but are **excluded from the AnyField expansion**:
+truncation never sums over them. This mirrors the Mathematica
+`"CommutingSource"`/`"GrassmannSource"` field-space keys.
 
 Truncation: `[setup.truncation]` maps an object type to the list of field
 contents it may carry. During truncation, `AnyField` legs are expanded over

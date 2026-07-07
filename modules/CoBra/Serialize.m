@@ -218,12 +218,14 @@ CppSerializeTruncation[setup_, hasBareFields_, doTruncate_] :=
     declares the derivative legs as an analytic graded-symmetry statement.
 **********************************************************************************)
 
-(*Distribute factor-level sums over the term: FTerm[a, p1 + p2, b] ->
-  {FTerm[a, p1, b], FTerm[a, p2, b]}, recursively*)
+(*Distribute factor-level sums that contain sign objects over the term:
+  FTerm[a, p1 + p2, b] -> {FTerm[a, p1, b], FTerm[a, p2, b]}, recursively.
+  Purely scalar sums (e.g. g1 + g2) stay intact -- they are handled as
+  symbolic prefactors instead.*)
 
 CppExpandSignSums[t_FTerm] :=
     Module[{lst = List @@ t, pos},
-        pos = Position[lst, _Plus, {1}, 1, Heads -> False];
+        pos = Position[lst, p_Plus /; !AllTrue[$allObjects, FreeQ[p, #]&], {1}, 1, Heads -> False];
         If[pos === {},
             {t}
             ,
@@ -232,6 +234,43 @@ CppExpandSignSums[t_FTerm] :=
             ]
         ]
     ];
+
+(**********************************************************************************
+    Symbolic prefactors. The pipeline stages are linear and the engine only
+    merges terms within one run, so terms may be partitioned by their
+    index-free symbolic prefactor (couplings, Z-factors, I, ...), run through
+    the engine per group with the prefactor stripped, and recombined -- the
+    symbolic factor never enters C++ and stays exact.
+**********************************************************************************)
+
+CppSymbolicPrefactorQ[setup_, f_] :=
+    !(NumericQ[f] && Im[N[f]] == 0) &&
+    AllTrue[$allObjects, FreeQ[f, #]&] &&
+    FreeQ[f, FDOp] &&
+    FreeQ[f, (Alternatives @@ Join[GetAllFields[setup], {AnyField}])[___]];
+
+(*One term -> {symbolic prefactor (1 if none), term with the prefactor stripped}*)
+
+CppExtractSymbolicPrefactor[setup_, term_FTerm] :=
+    Module[{factors, sym = 1, kept = {}},
+        factors = Replace[List @@ term, f_Times :> Sequence @@ (List @@ f), {1}];
+        Scan[
+            If[CppSymbolicPrefactorQ[setup, #],
+                sym *= #
+                ,
+                AppendTo[kept, #]
+            ]&
+            ,
+            factors
+        ];
+        {sym, FTerm @@ kept}
+    ];
+
+(*Partition a term list by symbolic prefactor: {{tag, {cleanTerms...}}, ...},
+  groups ordered by first occurrence*)
+
+CppPartitionTerms[setup_, terms_List] :=
+    List @@@ Normal @ GroupBy[CppExtractSymbolicPrefactor[setup, #]& /@ terms, First -> Last];
 
 CppValidateDerivativeList[setup_, derivList_] :=
     (
@@ -266,9 +305,6 @@ CppSerializeInput[setup_, expr_FEx, derivList_List, symmetries_List, stages_Asso
         doSimp = TrueQ[stages["Simplify"]];
         emitDerivs = TrueQ[stages["EmitDerivatives"]];
         (*Global eligibility: concepts with no C++ counterpart*)
-        If[GetAllSourceFields[setup] =!= {},
-            CppAbort["source fields in the field space"]
-        ];
         If[$userRules =!= {},
             CppAbort["user-defined derivative rules (added with FAddFDRule)"]
         ];
@@ -398,14 +434,22 @@ CppSerializeInput[setup_, expr_FEx, derivList_List, symmetries_List, stages_Asso
                 setupAssoc["unordered"] = unord
             ];
         ];
-        Module[{cf, gf},
+        Module[{cf, gf, cs, gs},
             cf = CppFieldEntry /@ Lookup[setup["FieldSpace"], "Commuting", {}];
             gf = CppFieldEntry /@ Lookup[setup["FieldSpace"], "Grassmann", {}];
+            cs = CppFieldEntry /@ Lookup[setup["FieldSpace"], "CommutingSource", {}];
+            gs = CppFieldEntry /@ Lookup[setup["FieldSpace"], "GrassmannSource", {}];
             If[cf =!= {},
                 setupAssoc["cFields"] = cf
             ];
             If[gf =!= {},
                 setupAssoc["gFields"] = gf
+            ];
+            If[cs =!= {},
+                setupAssoc["cSources"] = cs
+            ];
+            If[gs =!= {},
+                setupAssoc["gSources"] = gs
             ];
         ];
         If[truncAssoc =!= <||>,

@@ -19,7 +19,7 @@ Options:
   \"SourceDirectory\" -> Automatic   cpplib source location (default: the cpplib directory shipped with FunKit)
   \"BuildDirectory\" -> Automatic    persistent build directory (default: $UserBaseDirectory/ApplicationData/FunKit/cpp-build)
   \"Jobs\" -> Automatic      parallel build jobs (default: $ProcessorCount)
-Note that the C++ backend only supports purely numeric term coefficients; unsupported input leads to a hard error, never to a silent fallback.";
+Term coefficients may be numeric or index-free symbolic prefactors (couplings, Z-factors, I); the symbolic part never enters C++ and stays exact. Unsupported input (e.g. FAddFDRule rules or routed indices) leads to a hard error, never to a silent fallback.";
 
 FSetBackendMathematica::usage = "FSetBackendMathematica[]
 Deactivates the C++ backend; all pipeline functions use the pure-Mathematica implementation again (the default).";

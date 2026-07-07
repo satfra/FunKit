@@ -1,5 +1,6 @@
 #include <catch2/catch_test_macros.hpp>
 
+#include <algorithm>
 #include <filesystem>
 #include <fstream>
 
@@ -205,6 +206,58 @@ TEST_CASE("Parse unordered leg counts", "[parse][unordered]")
     Phidot = -1
     [[setup.cFields]]
     phi = [ ]
+  )")));
+}
+
+TEST_CASE("Parse source fields", "[parse][sources]")
+{
+  const auto tpath = write_tmp("funkit_sources.toml", R"(
+    equation = [ ]
+    [setup]
+    [[setup.cFields]]
+    phi = [ ]
+    [[setup.cSources]]
+    Q = [ ]
+    [[setup.gSources]]
+    QA = [ "v" ]
+  )");
+  auto [setup, feq] = FunKit::parse(tpath);
+
+  const FunKit::FieldIdx phi = setup.field_to_idx("phi");
+  const FunKit::FieldIdx q = setup.field_to_idx("Q");
+  const FunKit::FieldIdx qa = setup.field_to_idx("QA");
+
+  REQUIRE_FALSE(setup.field_props(phi).source);
+  REQUIRE(setup.field_props(q).source);
+  REQUIRE_FALSE(setup.field_props(q).grassmann);
+  REQUIRE(setup.field_props(qa).source);
+  REQUIRE(setup.field_props(qa).grassmann);
+
+  // Sources never appear in the AnyField expansion universe
+  const auto fields = setup.all_fields();
+  REQUIRE(std::find(fields.begin(), fields.end(), phi) != fields.end());
+  REQUIRE(std::find(fields.begin(), fields.end(), q) == fields.end());
+  REQUIRE(std::find(fields.begin(), fields.end(), qa) == fields.end());
+
+  // The JSON mirror parses identically
+  const auto jpath = write_tmp("funkit_sources.json", R"({
+    "setup": {
+      "cFields": [ { "phi": [] } ],
+      "cSources": [ { "Q": [] } ],
+      "gSources": [ { "QA": ["v"] } ]
+    },
+    "equation": []
+  })");
+  auto [setup_j, feq_j] = FunKit::parse(jpath);
+  REQUIRE(setup_j.field_props(setup_j.field_to_idx("Q")).source);
+
+  // Sources are single fields, never pairs
+  REQUIRE_THROWS(FunKit::parse(write_tmp("funkit_sources_pair.toml", R"(
+    equation = [ ]
+    [setup]
+    [[setup.cSources]]
+    Qb = [ ]
+    Q = [ ]
   )")));
 }
 

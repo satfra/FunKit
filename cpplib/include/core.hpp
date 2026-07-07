@@ -25,6 +25,7 @@ namespace FunKit
   struct FieldProps {
     bool valid = false; // false for the padding index of an unpaired field
     bool grassmann = false;
+    bool source = false;  // source fields never enter the AnyField expansion
     FieldIdx partner = 0; // the conjugate partner, or the field itself if unpaired
   };
 
@@ -163,6 +164,13 @@ namespace FunKit
 
     std::vector<std::pair<Field, Field>> cFields;
     std::vector<std::pair<Field, Field>> gFields;
+
+    // Source fields (external sources, e.g. the BRST sources of an mSTI) are
+    // stored as the LAST cSourceCount/gSourceCount unpaired entries of
+    // cFields/gFields: they share the whole field-index machinery but are
+    // excluded from all_fields(), so AnyField expansion never produces them.
+    Idx cSourceCount = 0;
+    Idx gSourceCount = 0;
 
     // Build the per-field property table; must be called after cFields/gFields are filled
     void finalize_fields();

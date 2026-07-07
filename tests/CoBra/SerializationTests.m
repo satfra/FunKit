@@ -234,19 +234,60 @@ AppendTo[tests,
     ]
 ];
 
-(*Source fields in the setup*)
+(*Source fields serialize into their own cSources/gSources blocks*)
 
 AppendTo[tests,
     VerificationTest[
-        CheckAbort[
-            Quiet @ serialize[srcSetup, wetterich, {Phi[i1], Phi[i2]}]
-            ,
-            $Aborted
+        Module[{input},
+            input = First @ serialize[srcSetup, wetterich, {Phi[i1], Phi[i2]}];
+            (*the internal index name of eta is a Module-local symbol in the
+              boilerplate setup, so only its presence is checked*)
+            {
+                input["setup"]["cSources"],
+                Keys /@ input["setup"]["gSources"],
+                Length[input["setup"]["gSources"][[1, 1]]]
+            }
         ]
         ,
-        $Aborted
+        {{<|"J" -> {}|>}, {{"eta"}}, 1}
         ,
-        TestID -> "CoBra-Gate-SourceFields"
+        TestID -> "CoBra-Serialize-SourceFields"
+    ]
+];
+
+(*Symbolic prefactors partition terms into per-tag groups; scalar sums stay
+  whole while numeric factors remain with the term*)
+
+AppendTo[tests,
+    VerificationTest[
+        Module[{groups},
+            groups =
+                FunKit`Private`CppPartitionTerms[
+                    scalarSetup
+                    ,
+                    {
+                        FTerm[Global`g, 1/2, Propagator[{AnyField, AnyField}, {a, b}], Rdot[{AnyField, AnyField}, {-a, -b}]],
+                        FTerm[1/2, Propagator[{AnyField, AnyField}, {a, b}], Rdot[{AnyField, AnyField}, {-a, -b}]],
+                        FTerm[I, GammaN[{Phi, Phi}, {-i1, -i2}]],
+                        FTerm[Global`g1 + Global`g2, GammaN[{Phi, Phi}, {-i1, -i2}]]
+                    }
+                ];
+            {
+                Length[groups],
+                groups[[All, 1]],
+                groups[[1, 2]],
+                groups[[2, 2, 1, 1]]
+            }
+        ]
+        ,
+        {
+            4,
+            {Global`g, 1, I, Global`g1 + Global`g2},
+            {FTerm[1/2, Propagator[{AnyField, AnyField}, {a, b}], Rdot[{AnyField, AnyField}, {-a, -b}]]},
+            1/2
+        }
+        ,
+        TestID -> "CoBra-Partition-SymbolicPrefactors"
     ]
 ];
 
