@@ -417,6 +417,73 @@ AppendTo[tests,
 ];
 
 (**********************************************************************************
+    The "Automatic" default: first pipeline use activates the C++ backend
+**********************************************************************************)
+
+AppendTo[tests,
+    cppTest[
+        Module[{h, activated},
+            Unprotect[FunKit`$FunKitBackend];
+            FunKit`$FunKitBackend = "Automatic";
+            Protect[FunKit`$FunKitBackend];
+            h = FTakeDerivatives[scalarSetup, wetterich, {Phi[i1], Phi[i2]}];
+            activated = FunKit`$FunKitBackend;
+            FSetBackendMathematica[];
+            {FDeferredQ[h], activated}
+        ]
+        ,
+        {True, "Cpp"}
+        ,
+        "CoBra-Backend-AutomaticDefault"
+    ]
+];
+
+(**********************************************************************************
+    Warn-and-fallback: unsupported input runs natively instead of aborting
+**********************************************************************************)
+
+(*Deferral time: the branch falls through to the native implementation*)
+
+AppendTo[tests,
+    cppTest[
+        Module[{res, native},
+            FSetBackendCpp[];
+            FAddFDRule[Global`X[{f1_}, {j1_}], Phi[Global`jj_], 0];
+            res = Quiet @ CheckAbort[FTakeDerivatives[scalarSetup, wetterich, {Phi[i1], Phi[i2]}], $Aborted];
+            FClearFDRules[];
+            FSetBackendMathematica[];
+            native = FTakeDerivatives[scalarSetup, wetterich, {Phi[i1], Phi[i2]}];
+            {res =!= $Aborted, FDeferredQ[res], Head[res], equivalentQ[scalarSetup, FTruncate[scalarSetup, res], FTruncate[scalarSetup, native], {Phi[i1], Phi[i2]}]}
+        ]
+        ,
+        {True, False, FEx, True}
+        ,
+        "CoBra-Fallback-DeferralTime"
+    ]
+];
+
+(*Force time: the handle's instructions are replayed through the native path*)
+
+AppendTo[tests,
+    cppTest[
+        Module[{h, res, native},
+            FSetBackendCpp[];
+            h = FTakeDerivatives[scalarSetup, wetterich, {Phi[i1], Phi[i2]}];
+            FAddFDRule[Global`X[{f1_}, {j1_}], Phi[Global`jj_], 0];
+            res = Quiet @ CheckAbort[FTruncate[scalarSetup, h], $Aborted];
+            FClearFDRules[];
+            FSetBackendMathematica[];
+            native = FTruncate[scalarSetup, FTakeDerivatives[scalarSetup, wetterich, {Phi[i1], Phi[i2]}]];
+            {res =!= $Aborted, Head[res], equivalentQ[scalarSetup, res, native, {Phi[i1], Phi[i2]}]}
+        ]
+        ,
+        {True, FEx, True}
+        ,
+        "CoBra-Fallback-ForceTime"
+    ]
+];
+
+(**********************************************************************************
     FDeferred traps: incompatible consumers give an actionable hard error
 **********************************************************************************)
 

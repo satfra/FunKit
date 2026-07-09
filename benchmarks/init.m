@@ -26,6 +26,12 @@ Import[$mDir <> "tests/boilerplate/setups.m"];
 (* Load benchmark utilities *)
 Import[FileNameJoin[{DirectoryName[$InputFileName], "util", "BenchmarkLib.m"}]];
 
+(* The native FunKit rows must run the Mathematica pipeline: pin the backend
+   so the "Automatic" default cannot route them through the C++ engine. The
+   dedicated C++ row switches explicitly. *)
+
+FSetBackendMathematica[];
+
 (* Launch parallel kernels *)
 If[Length[Kernels[]] <= 1,
     LaunchKernels[];

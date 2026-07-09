@@ -101,26 +101,21 @@ You can of course define arbitrary master equations besides the pre-defined `Wet
 
 ## The C++ backend
 
-For large derivations, `FunKit` ships a C++ engine (`cpplib/`, module **CoBra**) that runs the whole `FTakeDerivatives // FTruncate // FSimplify` pipeline in a single, highly optimized external process. Activate it with
+For large derivations, `FunKit` ships a C++ engine (`cpplib/`, module **CoBra**) that runs the whole `FTakeDerivatives // FTruncate // FSimplify` pipeline in a single, highly optimized external process. **It is on by default**: the first pipeline call of a session activates it, compiling the engine once with CMake and running its test suite (later sessions re-use the build). If the toolchain is missing or the build fails, `FunKit` warns once and uses the pure-Mathematica implementation instead.
 
-```Mathematica
-FSetBackendCpp[]     (* first call: compiles the engine with CMake and runs its test suite *)
-```
-
-Requirements: CMake ≥ 3.20, a C++20 compiler with OpenMP (plus network access on the first build to fetch the test framework — or pass `"RunTests" -> False`). The backend refuses to activate if the build or its tests fail.
+Requirements: CMake ≥ 3.20, a C++20 compiler with OpenMP (plus network access on the first build to fetch the test framework). `FSetBackendCpp[]` runs the activation explicitly — useful to control the build (`"Rebuild"`, `"RunTests"`, `"Jobs"` options) or to see why an automatic activation failed.
 
 With the backend active, `FTakeDerivatives` returns a lightweight *deferred handle* instead of the (potentially huge) intermediate expression; passing it to `FTruncate`, `FSimplify` or `FEvaluate` runs **one fused C++ call** — derivatives, truncation and simplification together, so the untruncated intermediate never materializes:
 
 ```Mathematica
 FSetGlobalSetup[setup];
-FSetBackendCpp[];
 flow = WetterichEquation // FTakeDerivatives[#, {Phi[i1], Phi[i2]}]& // FTruncate
 (* identical in shape and (exact, rational) coefficients to the pure-Mathematica result *)
 ```
 
 `FMakeDSE` and further derivatives of DSEs route through the engine automatically. Results are cached on disk keyed by their full input (see `FClearCppCache`, `FSetCppCacheDirectory`).
 
-The backend covers the standard object types (including `Phidot`-style objects with pinned legs), source fields, and index-free symbolic prefactors — couplings, `Z`-factors and `I` are stripped per term, run through the engine per group, and re-attached exactly. Genuinely unsupported input (custom `FAddFDRule` rules, routed/explicit indices, index-dependent coefficients) gives a hard error — never a silently different result. Opt out globally with `FSetBackendMathematica[]` or per call via the `"Backend" -> "Mathematica"` option. `FExportCppInput` and `FExportToml` write stand-alone input files for the `funkit` executable (see `cpplib/README.md`).
+The backend covers the standard object types (including `Phidot`-style objects with pinned legs), source fields, and index-free symbolic prefactors — couplings, `Z`-factors and `I` are stripped per term, run through the engine per group, and re-attached exactly. Input the engine genuinely cannot represent (custom `FAddFDRule` rules, routed/explicit indices, index-dependent coefficients) issues a `FunKit::cppFallback` warning and runs through the Mathematica implementation — results are always produced, and never silently different. Opt out globally with `FSetBackendMathematica[]` or per call via the `"Backend" -> "Mathematica"` option. `FExportCppInput` and `FExportToml` write stand-alone input files for the `funkit` executable (see `cpplib/README.md`).
 
 ## Examples
 

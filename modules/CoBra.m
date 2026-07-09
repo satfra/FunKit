@@ -11,7 +11,8 @@
 (* ::Input::Initialization:: *)
 
 FSetBackendCpp::usage = "FSetBackendCpp[]
-Activates the C++ backend for FTakeDerivatives, FResolveDerivatives, FTruncate and FSimplify.
+Explicitly activates the C++ backend for FTakeDerivatives, FResolveDerivatives, FTruncate and FSimplify.
+Note that under the default $FunKitBackend === \"Automatic\" this happens by itself on first pipeline use; calling FSetBackendCpp[] directly is mainly useful to control the build or to see why an automatic activation failed.
 On first use (and whenever the cpplib sources changed) the funkit executable is compiled with CMake and its test suite is run; the backend is only activated if build and tests succeed.
 Options:
   \"Rebuild\" -> False       force a full reconfigure and rebuild
@@ -19,7 +20,7 @@ Options:
   \"SourceDirectory\" -> Automatic   cpplib source location (default: the cpplib directory shipped with FunKit)
   \"BuildDirectory\" -> Automatic    persistent build directory (default: $UserBaseDirectory/ApplicationData/FunKit/cpp-build)
   \"Jobs\" -> Automatic      parallel build jobs (default: $ProcessorCount)
-Term coefficients may be numeric or index-free symbolic prefactors (couplings, Z-factors, I); the symbolic part never enters C++ and stays exact. Unsupported input (e.g. FAddFDRule rules or routed indices) leads to a hard error, never to a silent fallback.";
+Term coefficients may be numeric or index-free symbolic prefactors (couplings, Z-factors, I); the symbolic part never enters C++ and stays exact. Unsupported input (e.g. FAddFDRule rules or routed indices) issues a FunKit::cppFallback warning and runs through the Mathematica implementation instead.";
 
 FSetBackendMathematica::usage = "FSetBackendMathematica[]
 Deactivates the C++ backend; all pipeline functions use the pure-Mathematica implementation again (the default).";

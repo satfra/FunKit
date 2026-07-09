@@ -231,8 +231,9 @@ In this notation each argument to a correlation function directly pairs its fiel
 Call FSetNotationA[] to restore the default two-list notation.";
 
 $FunKitBackend::usage = "$FunKitBackend
-The active computation backend for FTakeDerivatives, FResolveDerivatives, FTruncate and FSimplify: \"Mathematica\" (default) or \"Cpp\".
-Switch backends with FSetBackendCpp[] and FSetBackendMathematica[] (provided by the CoBra module).";
+The active computation backend for FTakeDerivatives, FResolveDerivatives, FTruncate and FSimplify: \"Automatic\" (default), \"Cpp\" or \"Mathematica\".
+Under \"Automatic\", the C++ backend is built and activated on first pipeline use; if that fails, the Mathematica implementation is used with a warning.
+Switch explicitly with FSetBackendCpp[] and FSetBackendMathematica[] (provided by the CoBra module).";
 
 (* ::Section:: *)
 

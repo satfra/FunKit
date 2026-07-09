@@ -32,15 +32,24 @@ COLORS = {"FunKit": "#FF7F0E", "QMeS": "#2077B4", "DoFun": "#2CA02C"}
 
 # ── Script ───────────────────────────────────────────────────────────────────
 
-df = pd.read_csv(CSV_FILE)
+df_all = pd.read_csv(CSV_FILE)
 
-# Keep only "Full derivation" rows (cross-tool comparison)
-df = df[df["Stage"] == "Full derivation"].copy()
+# Cross-tool comparison uses the "Full derivation" rows, except that the FunKit
+# column is taken from the C++ backend stage ("Full derivation (C++)") so that
+# FunKit is represented by its C++ numbers rather than the bare derivation.
+df = df_all[df_all["Stage"] == "Full derivation"].copy()
+cpp = df_all[df_all["Stage"] == "Full derivation (C++)"].copy()
 
 # Convert numeric columns (empty strings → NaN)
-for tool in TOOLS:
-    df[f"{tool}_Mean"] = pd.to_numeric(df[f"{tool}_Mean"], errors="coerce")
-    df[f"{tool}_StdDev"] = pd.to_numeric(df[f"{tool}_StdDev"], errors="coerce")
+for frame in (df, cpp):
+    for tool in TOOLS:
+        frame[f"{tool}_Mean"] = pd.to_numeric(frame[f"{tool}_Mean"], errors="coerce")
+        frame[f"{tool}_StdDev"] = pd.to_numeric(frame[f"{tool}_StdDev"], errors="coerce")
+
+# Overwrite FunKit means/stddevs with the C++ backend numbers (matched by Title)
+cpp_funkit = cpp.set_index("Title")[["FunKit_Mean", "FunKit_StdDev"]]
+df["FunKit_Mean"] = df["Title"].map(cpp_funkit["FunKit_Mean"])
+df["FunKit_StdDev"] = df["Title"].map(cpp_funkit["FunKit_StdDev"])
 
 # Optional title filter
 if SELECTED_TITLES is not None:

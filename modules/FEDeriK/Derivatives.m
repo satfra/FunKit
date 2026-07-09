@@ -142,9 +142,21 @@ FResolveDerivatives[setup_, eq_FEx, OptionsPattern[]] :=
         If[FreeQ[ret, FDOp[__], Infinity],
             Return[ReduceFEx[setup, FEx[ret]]]
         ];
-(*C++ backend: resolve the embedded FDOps in one fused external run (CoBra)*)
+(*C++ backend: resolve the embedded FDOps in one fused external run (CoBra).
+  Unsupported input warns and falls through to the Mathematica implementation
+  below.*)
         If[CppBackendActiveQ[OptionValue["Backend"]],
-            Return[CppResolveDerivatives[setup, eq, OptionValue["Symmetries"]]]
+            Module[{cppResult},
+                cppResult = Block[{$CppSoftFail = True}, Catch[CppResolveDerivatives[setup, eq, OptionValue["Symmetries"]], $CppFallbackTag]];
+                Return[
+                    If[cppResult =!= $CppFallbackMarker,
+                        cppResult
+                        ,
+                        (*rerun with the backend pinned, so internal calls cannot re-enter the C++ path*)
+                        FResolveDerivatives[setup, eq, "Symmetries" -> OptionValue["Symmetries"], "Backend" -> "Mathematica"]
+                    ]
+                ];
+            ];
         ];
         {ret, annotations} = SeparateFExAnnotations[ret];
         symmetries =
@@ -214,9 +226,20 @@ FTakeDerivatives[setup_, expr_FEx, derivativeList_, OptionsPattern[]] :=
         AssertDerivativeList[setup, derivativeList];
 (*C++ backend: return a lazy handle; FTruncate/FSimplify/FEvaluate on it run
   one fused external call -- derivatives, truncation and simplification in a
-  single process (CoBra)*)
+  single process (CoBra). Unsupported input warns and falls through to the
+  Mathematica implementation below.*)
         If[CppBackendActiveQ[OptionValue["Backend"]],
-            Return[CppDeferTakeDerivatives[setup, expr, derivativeList, OptionValue["Symmetries"]]]
+            Module[{cppHandle},
+                cppHandle = Block[{$CppSoftFail = True}, Catch[CppDeferTakeDerivatives[setup, expr, derivativeList, OptionValue["Symmetries"]], $CppFallbackTag]];
+                Return[
+                    If[cppHandle =!= $CppFallbackMarker,
+                        cppHandle
+                        ,
+                        (*rerun with the backend pinned, so internal calls cannot re-enter the C++ path*)
+                        FTakeDerivatives[setup, expr, derivativeList, "Symmetries" -> OptionValue["Symmetries"], "Backend" -> "Mathematica"]
+                    ]
+                ];
+            ];
         ];
         (*We take them in reverse order.*)
         derivativeListSIDX = derivativeList;

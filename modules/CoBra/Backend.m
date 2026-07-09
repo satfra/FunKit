@@ -203,6 +203,7 @@ FSetBackendCpp[OptionsPattern[]] :=
             !FileExistsQ[stampFile] ||
             Quiet[Import[stampFile, "Text"]] =!= hash;
         If[needBuild,
+            Print["FunKit: compiling the C++ backend (one-time, sources changed or first build)..."];
             FunKitDebug[1, "Building the C++ backend in ", bld];
             CppCheckToolchain[];
             CppConfigure[src, bld, OptionValue["RunTests"]];
@@ -239,6 +240,29 @@ FSetBackendCpp[a___] :=
 (**********************************************************************************
     FSetBackendMathematica : deactivate the C++ backend
 **********************************************************************************)
+
+(**********************************************************************************
+    Auto-activation for the default $FunKitBackend === "Automatic": build and
+    activate the C++ backend on first pipeline use; on failure, warn once and
+    settle on the Mathematica implementation for the session. The outcome is
+    recorded in $FunKitBackend itself ("Cpp" or "Mathematica"), so this runs
+    at most once per session.
+**********************************************************************************)
+
+FunKit::cppAutoUnavailable = "The C++ backend could not be built or its tests failed (call FSetBackendCpp[] directly to see the reason; it requires CMake >= 3.20 and a C++20 compiler with OpenMP). Using the Mathematica implementation for this session.";
+
+CppBackendAutoQ[] :=
+    Module[{res},
+        FunKitDebug[1, "Auto-activating the C++ backend (first pipeline use)"];
+        res = Quiet @ CheckAbort[Check[FSetBackendCpp[], $Failed], $Failed];
+        If[res === $Failed,
+            Message[FunKit::cppAutoUnavailable];
+            FSetBackendMathematica[];
+            False
+            ,
+            True
+        ]
+    ];
 
 FSetBackendMathematica[] :=
     Module[{},

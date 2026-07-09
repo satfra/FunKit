@@ -355,18 +355,38 @@ FSetAutoSimplify[flag_] :=
     );
 
 (**********************************************************************************
-    Computation backend selection. The default is the pure-Mathematica pipeline;
-    the CoBra module switches this to "Cpp" via FSetBackendCpp[]. Declared here
-    so FEDeriK works standalone even when CoBra is not loaded.
+    Computation backend selection. The default is "Automatic": the CoBra
+    module activates the C++ backend on first pipeline use (building it if
+    necessary) and falls back to the pure-Mathematica implementation with a
+    warning when that fails. FSetBackendCpp[]/FSetBackendMathematica[] switch
+    explicitly. Declared here so FEDeriK works standalone even when CoBra is
+    not loaded (in which case "Automatic" resolves to the Mathematica path).
 **********************************************************************************)
 
-$FunKitBackend = "Mathematica";
+$FunKitBackend = "Automatic";
 
 (*Guard used at the pipeline branch points; the per-call "Backend" option
-  overrides the global flag*)
+  overrides the global flag. CppBackendAutoQ is redefined by CoBra with the
+  real auto-activation.*)
+
+CppBackendAutoQ[] :=
+    False;
 
 CppBackendActiveQ[Automatic] :=
-    $FunKitBackend === "Cpp";
+    Which[
+        $FunKitBackend === "Cpp",
+            True
+        ,
+        $FunKitBackend === "Mathematica",
+            False
+        ,
+        $FunKitBackend === "Automatic",
+            CppBackendAutoQ[]
+        ,
+        True,
+            Message[FunKit::invalidBackend, $FunKitBackend];
+            Abort[]
+    ];
 
 CppBackendActiveQ["Cpp"] :=
     True;

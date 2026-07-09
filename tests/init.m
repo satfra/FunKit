@@ -16,6 +16,12 @@ Block[{Print},
 
 Print["  Using FunKit version: " <> ToString[FunKit`$FunKitVersion]];
 
+(* The suites test the native pipeline: pin the Mathematica backend so the
+   "Automatic" default cannot route them through the C++ engine. Backend
+   tests opt in explicitly. *)
+
+FSetBackendMathematica[];
+
 If[Length[Kernels[]] <= 1,
     Print["  Launching parallel kernels..."];
     LaunchKernels[];

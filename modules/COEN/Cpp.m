@@ -923,13 +923,19 @@ MakeCppClass[OptionsPattern[]] :=
                     ,
                     ""
                 ] <>
+                (* Each access-specifier section must start on its OWN line: the
+                   previous section's last member may end with a "// clang-format on"
+                   directive, and fixClangFormatOffIndentation discards anything
+                   appended after "// clang-format on" on the same line -- which would
+                   silently swallow this section header and its members (observed for
+                   AD flows whose last public member is a long, wrapped declaration). *)
                 If[Length[OptionValue["MembersProtected"]] > 0,
-                    "protected: " <> StringRiffle[OptionValue["MembersProtected"], "\n\n"]
+                    "\nprotected: " <> StringRiffle[OptionValue["MembersProtected"], "\n\n"]
                     ,
                     ""
                 ] <>
                 If[Length[OptionValue["MembersPrivate"]] > 0,
-                    "private: " <> StringRiffle[OptionValue["MembersPrivate"], "\n\n"]
+                    "\nprivate: " <> StringRiffle[OptionValue["MembersPrivate"], "\n\n"]
                     ,
                     ""
                 ] <> "\n};";

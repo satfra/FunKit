@@ -80,12 +80,49 @@ AddDeferredSymmetries[FDeferred[data_Association], syms_List] :=
     The fused-call driver
 **********************************************************************************)
 
+(*Force a handle: attempt the fused C++ run; unsupported input discovered at
+  force time warns and falls back to the native pipeline, reconstructed from
+  the instructions captured in the handle*)
+
 CppRunPipeline[d_FDeferred, truncate_, simplify_] :=
-    Module[{data = First[d], cppSimplify, groups, results, result},
+    Module[{data = First[d], attempt},
         If[!CppBackendReadyQ[],
             Message[FunKit::cppNotBuilt];
             Abort[];
         ];
+        attempt = Block[{$CppSoftFail = True}, Catch[CppRunPipelineCore[data, truncate, simplify], $CppFallbackTag]];
+        If[attempt === $CppFallbackMarker,
+            CppNativeFallback[data, truncate, simplify]
+            ,
+            attempt
+        ]
+    ];
+
+(*The native equivalent of a fused run, for the force-time fallback*)
+
+CppNativeFallback[data_Association, truncate_, simplify_] :=
+    Module[{setup = data["Setup"], res},
+        res =
+            If[data["DerivativeList"] === {},
+                FResolveDerivatives[setup, data["Expression"], "Symmetries" -> data["Symmetries"], "Backend" -> "Mathematica"]
+                ,
+                FTakeDerivatives[
+                    setup, data["Expression"], data["DerivativeList"],
+                    "Symmetries" -> If[TrueQ[data["AutoSymmetries"]], {}, data["Symmetries"]],
+                    "Backend" -> "Mathematica"
+                ]
+            ];
+        If[TrueQ[truncate],
+            res = FTruncate[setup, res]
+        ];
+        If[TrueQ[simplify],
+            res = FunKit`FSimplify[setup, res]
+        ];
+        res
+    ];
+
+CppRunPipelineCore[data_Association, truncate_, simplify_] :=
+    Module[{cppSimplify, groups, results, result},
         (*The engine's simplify requires a fully truncated equation (derivative
           resolution generically introduces AnyField legs), so it only runs in
           the same call as truncation; untruncated results are simplified by

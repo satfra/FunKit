@@ -22,13 +22,25 @@
 **********************************************************************************)
 
 FunKit::cppUnsupported = "The C++ backend cannot handle this input: `1`.
-Either switch back globally with FSetBackendMathematica[], or pass the option \"Backend\" -> \"Mathematica\" to this call. No silent fallback is performed.";
+Either switch back globally with FSetBackendMathematica[], or pass the option \"Backend\" -> \"Mathematica\" to this call.";
+
+FunKit::cppFallback = "The C++ backend cannot handle this input: `1`. Falling back to the Mathematica implementation.";
+
+(*Unsupported input: at the pipeline call sites (which can transparently fall
+  back to the native implementation) $CppSoftFail is Block'ed to True and this
+  warns and throws to the enclosing Catch; everywhere else (the exporters,
+  direct serializer use) it is a hard error.*)
+
+$CppSoftFail = False;
 
 CppAbort[reason_String] :=
-    (
+    If[TrueQ[$CppSoftFail],
+        Message[FunKit::cppFallback, reason];
+        Throw[$CppFallbackMarker, $CppFallbackTag]
+        ,
         Message[FunKit::cppUnsupported, reason];
         Abort[]
-    );
+    ];
 
 (**********************************************************************************
     Type and field names
