@@ -382,11 +382,11 @@ namespace FunKit
     const Idx n_chunks = (Idx(feq.size()) + chunk_size - 1) / chunk_size;
     std::vector<FEq> results(n_chunks);
 
-#pragma omp parallel shared(setup, feq, results) if (setup.debug_level <= 0)
+#pragma omp parallel shared(setup, feq, results) if (setup.debug_level <= 0 && Idx(feq.size()) >= FUNKIT_OMP_MIN)
 #pragma omp single
     {
       for (Idx c = 0; c < n_chunks; ++c) {
-#pragma omp task shared(setup, feq, results) firstprivate(c) if (setup.debug_level <= 0)
+#pragma omp task shared(setup, feq, results) firstprivate(c) if (setup.debug_level <= 0 && Idx(feq.size()) >= FUNKIT_OMP_MIN)
         {
           const Idx begin = c * chunk_size;
           const Idx end = std::min<Idx>(begin + chunk_size, Idx(feq.size()));

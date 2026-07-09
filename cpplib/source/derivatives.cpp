@@ -202,7 +202,7 @@ namespace FunKit
     while (has_FDOp(feq)) {
       std::vector<FEq> results(feq.size());
 
-      if (setup.debug_level <= 0) {
+      if (setup.debug_level <= 0 && Idx(feq.size()) >= FUNKIT_OMP_MIN) {
 #pragma omp parallel for schedule(dynamic, 64)
         for (Idx i = 0; i < feq.size(); ++i) {
           results[i] = resolve_fdop(setup, std::move(feq[i]));

@@ -16,6 +16,13 @@ namespace FunKit
 
   static constexpr FieldIdx AnyField = -1;
 
+  // Minimum number of terms in a loop before it is worth entering an OpenMP
+  // parallel region. Below this, spinning up the (per-process, first-touch)
+  // thread pool costs far more than the loop saves -- so small derivations run
+  // serially and never pay the pool-creation overhead, which dominates the
+  // fixed cost of a C++-backend call for small problems.
+  static constexpr Idx FUNKIT_OMP_MIN = 256;
+
   struct Field {
     std::string name = "";
     std::vector<std::string> indices;

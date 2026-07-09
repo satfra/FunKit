@@ -69,13 +69,22 @@ FClearCppCache[a___] :=
 CppInputHash[input_Association] :=
     Module[{canon = input, stamp},
         canon["setup"] = KeyDrop[canon["setup"], {"outputFile", "output_format", "debug"}];
+        (*The engine build stamp is stashed at activation time (FSetBackendCpp);
+          only re-read it from disk if that memoized value is missing*)
         stamp =
-            If[StringQ[$CppBackendBinary],
-                Quiet @ Import[FileNameJoin[{DirectoryName[$CppBackendBinary], "funkit-source.hash"}], "Text"]
+            Which[
+                StringQ[$CppEngineStamp],
+                    $CppEngineStamp
                 ,
-                None
+                StringQ[$CppBackendBinary],
+                    Quiet @ Import[FileNameJoin[{DirectoryName[$CppBackendBinary], "funkit-source.hash"}], "Text"]
+                ,
+                True,
+                    None
             ];
-        IntegerString[Hash[{ExportString[canon, "RawJSON"], stamp}, "SHA256"], 16, 64]
+        (*Hash the canonical input expression directly -- no JSON encode; the
+          full serialization happens once, in CppExecute, for the input file*)
+        IntegerString[Hash[{canon, stamp}, "SHA256"], 16, 64]
     ];
 
 (**********************************************************************************

@@ -18,6 +18,11 @@
 
 $CppBackendBinary = None;
 
+(*The engine source-hash stamp, memoized at activation so the result-cache key
+  computation (CppInputHash) need not re-read funkit-source.hash on every call*)
+
+$CppEngineStamp = None;
+
 CppBackendSourceDir[Automatic] :=
     FileNameJoin[{$FunKitDirectory, "cpplib"}];
 
@@ -220,12 +225,13 @@ FSetBackendCpp[OptionsPattern[]] :=
             FunKitDebug[1, "C++ backend is up to date"];
         ];
         $CppBackendBinary = binPath;
+        $CppEngineStamp = hash;
         Unprotect[FunKit`$FunKitBackend];
         FunKit`$FunKitBackend = "Cpp";
         Protect[FunKit`$FunKitBackend];
         (*Make the switch visible on any already-launched subkernels*)
         If[Length[Kernels[]] > 0,
-            DistributeDefinitions[$FunKitBackend, $CppBackendBinary]
+            DistributeDefinitions[$FunKitBackend, $CppBackendBinary, $CppEngineStamp]
         ];
         FunKitDebug[1, "C++ backend active: ", binPath];
         binPath
