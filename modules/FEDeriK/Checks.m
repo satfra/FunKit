@@ -70,38 +70,74 @@ AssertFieldDef[expr_] :=
 
 FieldSpaceDefQ::association = "The field space definition must be an Association.";
 
-FieldSpaceDefQ::keys = "The field space definition may only contain the keys {\"Commuting\",\"Grassmann\",\"CommutingSource\",\"GrassmannSource\"}. Unknown keys were provided.";
+FieldSpaceDefQ::keys = "The field space definition may only contain the keys {\"Commuting\",\"Grassmann\",\"CommutingSource\",\"GrassmannSource\",\"FermiStatistics\",\"BoseStatistics\"}. Unknown keys were provided.";
 
 FieldSpaceDefQ::list = "The entries of the field space definition must be lists.";
 
 FieldSpaceDefQ::fields = "The entries of the field space definition must contain valid field definitions.";
 
+FieldSpaceDefQ::statisticsList = "The \"FermiStatistics\" and \"BoseStatistics\" entries must be lists of field heads (plain symbols), e.g. \"BoseStatistics\" -> {c}.";
+
+FieldSpaceDefQ::statisticsUnknown = "The field head `1`, declared in \"`2`\", is not part of the field space.";
+
+FieldSpaceDefQ::statisticsConflict = "The field head `1` is declared in both \"FermiStatistics\" and \"BoseStatistics\".";
+
+(* NOTE on the control flow below: this used to validate the field keys with
+
+       Do[ ... Message[...]; Return[False] ... , {optionalKey, allowedKeys}]
+
+   which does not work -- Return inside Do exits only the Do, so the function emitted its Message
+   and then fell straight through to Return[True]. FieldSpaceDefQ therefore ACCEPTED every
+   malformed field definition it was ever given. Hence the flat, Do-free structure here. *)
+
 FieldSpaceDefQ[fieldSpace_] :=
-    Module[{keys, allowedKeys, optionalKey},
+    Module[{keys, fieldKeys, statisticsKeys, allowedKeys, present, declaredHeads, declared, offender, both},
         If[Head[fieldSpace] =!= Association,
             Message[FieldSpaceDefQ::association];
             Return[False]
         ];
         keys = Keys[fieldSpace];
-        allowedKeys = {"Commuting", "Grassmann", "CommutingSource", "GrassmannSource"};
+        (*The field keys hold field DEFINITIONS (Phi[p, {a}]); the statistics keys hold bare
+          field HEADS (c). They are validated separately.*)
+        fieldKeys = {"Commuting", "Grassmann", "CommutingSource", "GrassmannSource"};
+        statisticsKeys = {"FermiStatistics", "BoseStatistics"};
+        allowedKeys = Join[fieldKeys, statisticsKeys];
         If[Not @ ContainsAll[allowedKeys, keys],
             Message[FieldSpaceDefQ::keys];
             Return[False]
         ];
-        (* Validate all keys when present *)
-        Do[
-            If[KeyExistsQ[fieldSpace, optionalKey],
-                If[Not @ ListQ[fieldSpace[optionalKey]],
-                    Message[FieldSpaceDefQ::list];
-                    Return[False]
-                ];
-                If[Not @ (And @@ Map[FieldDefQ, fieldSpace[optionalKey]]),
-                    Message[FieldSpaceDefQ::fields];
-                    Return[False]
-                ];
-            ];
-            ,
-            {optionalKey, allowedKeys}
+        (*The field keys: lists of valid field definitions.*)
+        present = Select[fieldKeys, KeyExistsQ[fieldSpace, #]&];
+        If[AnyTrue[present, Not @ ListQ[fieldSpace[#]]&],
+            Message[FieldSpaceDefQ::list];
+            Return[False]
+        ];
+        If[AnyTrue[present, Not @ AllTrue[fieldSpace[#], FieldDefQ]&],
+            Message[FieldSpaceDefQ::fields];
+            Return[False]
+        ];
+        (*The statistics keys: lists of bare heads that are actually declared as fields. Flatten
+          unwraps the {anti, field} pairs; it does not descend into a field definition such as
+          cb[p, {col}], whose head is cb rather than List.*)
+        present = Select[statisticsKeys, KeyExistsQ[fieldSpace, #]&];
+        If[AnyTrue[present, Not @ ListQ[fieldSpace[#]] || Not @ AllTrue[fieldSpace[#], MatchQ[_Symbol]]&],
+            Message[FieldSpaceDefQ::statisticsList];
+            Return[False]
+        ];
+        declaredHeads = Map[Head, Flatten @ Map[Lookup[fieldSpace, #, {}]&, fieldKeys]];
+        declared = Flatten[Map[Function[key, Map[{#, key}&, fieldSpace[key]]], present], 1];
+        offender = SelectFirst[declared, Not @ MemberQ[declaredHeads, First[#]]&];
+        If[Not @ MissingQ[offender],
+            Message[FieldSpaceDefQ::statisticsUnknown, offender[[1]], offender[[2]]];
+            Return[False]
+        ];
+        (*A field declared as both is a contradiction. This only catches a DIRECT overlap; the
+          partner-closed case ("FermiStatistics" -> {c}, "BoseStatistics" -> {cb}) needs the setup's
+          field pairs and is caught by HasFermiStatistics.*)
+        both = Intersection[Lookup[fieldSpace, "FermiStatistics", {}], Lookup[fieldSpace, "BoseStatistics", {}]];
+        If[Length[both] > 0,
+            Message[FieldSpaceDefQ::statisticsConflict, First[both]];
+            Return[False]
         ];
         Return[True];
     ];

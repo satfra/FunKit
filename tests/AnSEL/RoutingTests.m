@@ -29,6 +29,15 @@ scalar4ptFlow =
     FTruncate //
     FSimplify;
 
+(* The same flow WITHOUT the final FSimplify. This is what a production pipeline hands to FRoute
+   (cf. NumTracer: FTakeDerivatives // FTruncate // FRoute), and it is the input the leg-order tests
+   below need: FSimplify re-canonicalises the legs of a vertex, so permuting them on a simplified
+   flow is undone before FRoute ever sees it, and any leg-order test built on it passes vacuously. *)
+
+scalar4ptFlowRaw =
+    FTakeDerivatives[scalarSetup, WetterichEquation, {Phi[i1], Phi[i2], Phi[i3], Phi[i4]}] //
+    FTruncate;
+
 (* Yukawa flows *)
 FSetGlobalSetup[yukawaSetup];
 
@@ -240,29 +249,10 @@ AppendTo[
     tests
     ,
     VerificationTest[
-        Module[{result, expr, rdotInstances},
-            FSetRoutingAlgorithm["Regulator"];
-            result = FRoute[yukawaSetup, yukawaVertexFlow];
-            FSetRoutingAlgorithm["Default"];
-            expr = result["1-Loop"]["Expression"];
-            rdotInstances = Cases[expr, _Rdot, Infinity];
-            Length[rdotInstances] > 0 && FreeQ[rdotInstances, p1] && FreeQ[rdotInstances, p2] && FreeQ[rdotInstances, p3]
-        ]
-        ,
-        True
-        ,
-        TestID -> "FRoute Regulator: Yukawa vertex Rdot is free of external momenta (fermionic)"
-    ]
-];
-
-AppendTo[
-    tests
-    ,
-    VerificationTest[
         Module[{result},
             FSetRoutingAlgorithm["Regulator"];
             result = FRoute[scalarSetup, scalar4ptFlow];
-            FSetRoutingAlgorithm["Default"];
+            FSetRoutingAlgorithm["Canonical"];
             Head[result] === Association && KeyExistsQ[result, "1-Loop"] && Length[result["1-Loop"]["LoopMomenta"]] === 1
         ]
         ,
@@ -272,30 +262,29 @@ AppendTo[
     ]
 ];
 
-(* Behavioural assertion: in Regulator mode, every Rdot's two leg-momenta sum to zero
-   AND involve no external momentum — i.e. the regulator carries a pure loop pair {x, -x}. *)
+(* THE HAZARD, pinned. "Regulator" mode freezes the Rdot's loop momentum with
+   FirstCase[rdotMoms, loopMomentum[__, _]] — the `_` matches EITHER Grassmann tag — so with
+   fermionic external legs it can hand a wrong-parity momentum to a line, i.e. route a fermionic
+   Matsubara frequency through a bosonic propagator. That is wrong at finite T. The statistics
+   post-condition in FRoute now catches it and aborts, rather than silently emitting a wrong
+   kernel. This test exists so that nobody promotes "Regulator" to the default. *)
 
 AppendTo[
     tests
     ,
     VerificationTest[
-        Module[{result, expr, rdotInstances, momPairs, externalSyms},
+        Module[{result},
             FSetRoutingAlgorithm["Regulator"];
-            result = FRoute[yukawaSetup, yukawaVertexFlow];
-            FSetRoutingAlgorithm["Default"];
-            expr = result["1-Loop"]["Expression"];
-            rdotInstances = Cases[expr, _Rdot, Infinity];
-            (* NotationA: Rdot[{fields}, {leg1Idx, leg2Idx}], each legIdx is {momentum, grpIdx, ...}. *)
-            momPairs = (#[[2, All, 1]])& /@ rdotInstances;
-            externalSyms = {p1, p2, p3};
-            Length[momPairs] > 0 &&
-                AllTrue[momPairs, Simplify[Total[#]] === 0&] &&
-                AllTrue[momPairs, FreeQ[#, Alternatives @@ externalSyms]&]
+            result = CheckAbort[FRoute[yukawaSetup, yukawaVertexFlow], "AbortTriggered"];
+            FSetRoutingAlgorithm["Canonical"];
+            result
         ]
         ,
-        True
+        "AbortTriggered"
         ,
-        TestID -> "FRoute Regulator: Yukawa vertex Rdot legs sum to zero and have no external momenta"
+        {FRoute::statistics}
+        ,
+        TestID -> "FRoute Regulator: Yukawa vertex aborts — it violates Matsubara statistics"
     ]
 ];
 
@@ -311,6 +300,7 @@ AppendTo[
             (* Default mode — explicitly assert no algorithm change is in effect *)
             FSetRoutingAlgorithm["Default"];
             result = FRoute[yukawaSetup, yukawaVertexFlow];
+            FSetRoutingAlgorithm["Canonical"];
             expr = result["1-Loop"]["Expression"];
             rdotInstances = Cases[expr, _Rdot, Infinity];
             Or @@ (Not @ FreeQ[rdotInstances, #]& /@ {p1, p2, p3})
@@ -319,6 +309,271 @@ AppendTo[
         True
         ,
         TestID -> "FRoute Default sanity: Yukawa vertex Rdot does carry external momenta"
+    ]
+];
+
+(**********************************************************************************
+    FSetRoutingAlgorithm["Canonical"] — the default.
+
+    A routed diagram still carries the relabelling freedom l -> +-l + Delta (a change of
+    integration variable). "Default" resolves it by accident: it eliminates whichever momentum
+    its vertex-by-vertex solver happens to meet first, which inherits Mathematica's canonical
+    order over Unique-generated symbol names and the order of the objects inside the FTerm.
+    "Canonical" fixes it on physical grounds instead — see modules/AnSEL/Routing.m.
+**********************************************************************************)
+
+(* Helper: the physical fingerprint of a routing — the multiset, per term, of the {field,
+   momentum} of every internal line. A line is a {l, -l} pair with no intrinsic direction, and
+   the two backends order those two legs differently, so orient each momentum by making the
+   loop-momentum coefficient positive. What survives is exactly the integrand's identity. *)
+
+routingFingerprint[ex_] :=
+    Sort @ Map[
+        Function[term,
+            Sort @ Cases[
+                term
+                ,
+                (Propagator | Rdot | R)[flds_, idxs_] :>
+                    Module[{m = idxs[[1, 1]]},
+                        {
+                            flds[[1]]
+                            ,
+                            If[Coefficient[m, l1] < 0 || Coefficient[m, lf1] < 0,
+                                -m
+                                ,
+                                m
+                            ]
+                        }
+                    ]
+                ,
+                Infinity
+            ]
+        ]
+        ,
+        List @@ ex
+    ];
+
+routedFingerprint[setup_, flow_] := routingFingerprint[FRoute[setup, flow]["1-Loop"]["Expression"]];
+
+(* (1) THE GUARANTEE: d_t R always carries the bare loop momentum.
+
+   This is what keeps the regulator shell centred on the radial integration variable, and hence what
+   keeps the kernel cheap to integrate: d_t R_k is a shell of radius ~k, loop integrals are done in
+   spherical coordinates centred at l = 0, so a d_t R sitting on l + P with |P| >> k becomes a thin
+   off-centre shell, sharply peaked in the angles.
+
+   "Bare" means the Rdot's two legs are a pure {l, -l} pair, on EITHER a bosonic l_i or a fermionic
+   lf_i — which one is decided by the statistics of the regulated field, see (2). Checked across
+   every fixture, including the ones with fermionic external legs where this used to be impossible. *)
+
+allRdotsBareQ[setup_, flow_] :=
+    Module[{rdotMoms},
+        rdotMoms = (#[[2, All, 1]])& /@ Cases[FRoute[setup, flow]["1-Loop"]["Expression"], _Rdot, Infinity];
+        Length[rdotMoms] > 0 &&
+            AllTrue[rdotMoms, MatchQ[Sort[#], {-l1, l1} | {-lf1, lf1}]&]
+    ];
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        {
+            allRdotsBareQ[scalarSetup, scalar2ptFlow],
+            allRdotsBareQ[scalarSetup, scalar4ptFlow],
+            allRdotsBareQ[yukawaSetup, yukawa2ptFlow],
+            allRdotsBareQ[yukawaSetup, yukawaVertexFlow]
+        }
+        ,
+        {True, True, True, True}
+        ,
+        TestID -> "FRoute Canonical: d_t R always carries the bare loop momentum"
+    ]
+];
+
+(* (2) The rule, stated exactly:
+
+       THE LOOP MOMENTUM IS THE MOMENTUM FLOWING THROUGH d_t R, AND ITS STATISTICS IS THAT OF THE
+       REGULATED FIELD.
+
+   The Yukawa vertex flow is the sharp test, because it has fermionic external legs. Reaching a bare
+   loop momentum on a fermion-regulated term REQUIRES shifting by a fermionic external, which flips
+   the loop momentum's statistics — so the boson-regulated terms must come out on a bosonic l1 and
+   the fermion-regulated ones on a fermionic lf1, and both must be BARE. An earlier version of this
+   canonicaliser only admitted statistics-preserving shifts, which forced it to leave d_t R
+   displaced on exactly these terms. *)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{expr, rdots},
+            expr = FRoute[yukawaSetup, yukawaVertexFlow]["1-Loop"]["Expression"];
+            rdots = Cases[expr, Rdot[flds_, idxs_] :> {flds[[1]], idxs[[1, 1]]}, Infinity];
+            Length[rdots] > 0 &&
+                AllTrue[rdots, MatchQ[#, {Phi, l1 | -l1} | {Psi | Psibar, lf1 | -lf1}]&]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute Canonical: loop momentum statistics follows the regulated field"
+    ]
+];
+
+(* ...and both statistics really do occur in that flow, so the assertion above is not vacuous. *)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{expr},
+            expr = FRoute[yukawaSetup, yukawaVertexFlow]["1-Loop"]["Expression"];
+            {Not @ FreeQ[expr, l1], Not @ FreeQ[expr, lf1]}
+        ]
+        ,
+        {True, True}
+        ,
+        TestID -> "FRoute Canonical: Yukawa vertex flow carries both a bosonic and a fermionic loop"
+    ]
+];
+
+(* (3) Invariance under the three things that can move the routing today.
+
+   (3a) Backend. The C++ and the Mathematica backend emit the legs of identical-field vertices in
+        opposite slot order, which feeds straight into FRoute's greedy object reordering. *)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{flowMma, flowCpp},
+            FSetGlobalSetup[scalarSetup];   (* FTruncate reads $GlobalSetup *)
+            FSetBackendMathematica[];
+            flowMma = FTakeDerivatives[scalarSetup, WetterichEquation, {Phi[i1], Phi[i2], Phi[i3], Phi[i4]}] // FTruncate;
+            FSetBackendCpp[];
+            flowCpp = FTakeDerivatives[scalarSetup, WetterichEquation, {Phi[i1], Phi[i2], Phi[i3], Phi[i4]}] // FTruncate;
+            FSetBackendMathematica[];
+            FSetGlobalSetup[yukawaSetup];
+            routedFingerprint[scalarSetup, flowMma] === routedFingerprint[scalarSetup, flowCpp]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute Canonical: routing is independent of the evaluation backend"
+    ]
+];
+
+(* (3b) Leg order inside identical-field vertices — the mechanism behind (3a) — lives in
+        tests/CoBra/BackendTests.m ("CoBra-Routing-LegOrder*"). It needs the C++ backend to have
+        any teeth: the Mathematica backend's canonical leg order happens to be a fixed point of the
+        vertex-leg rotations, so under it even "Default" is (accidentally) invariant, and a test
+        placed here would pass vacuously. The C++ leg order is not, and that is precisely the
+        configuration NumTracer ships. *)
+
+(* (3c) The Unique counter. FRoute names the internal momenta with Unique[], and its solve-for
+        choice inherits Mathematica's canonical order over those names — which compares them as
+        STRINGS, so p$1000 sorts before p$998. The routing must not depend on where in the
+        session the counter happens to sit. *)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{before, after},
+            before = routedFingerprint[scalarSetup, scalar4ptFlow];
+            Do[Unique["p"], {2000}];
+            after = routedFingerprint[scalarSetup, scalar4ptFlow];
+            before === after
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute Canonical: routing is independent of the Unique counter state"
+    ]
+];
+
+(* (4) The statistics post-condition itself, on the routings we actually ship: every line must
+   carry the Matsubara parity of its field — Grassmann lines odd, commuting lines even. FRoute
+   aborts if not, so reaching a result at all is the assertion; check a fermionic setup where the
+   condition has teeth. *)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{expr, lines, parity, required},
+            expr = FRoute[yukawaSetup, yukawaVertexFlow]["1-Loop"]["Expression"];
+            (* Externals of {Psi[i1], Psibar[i2], Phi[i3]} are p1 (Grassmann), p2 (Grassmann) and
+               the dependent leg -p1-p2 (commuting). Loop momenta are l1 (commuting) and lf1
+               (Grassmann). A momentum's Matsubara parity is the Z2 sum of the coefficients of the
+               Grassmann momenta among them. *)
+            parity[m_] := Mod[Total[Coefficient[m, #]& /@ {lf1, p1, p2}], 2];
+            required = <|Psi -> 1, Psibar -> 1, Phi -> 0|>;
+            lines = Cases[expr, (Propagator | Rdot)[flds_, idxs_] :> {flds[[1]], idxs[[1, 1]]}, Infinity];
+            Length[lines] > 0 && AllTrue[lines, parity[#[[2]]] === required[#[[1]]]&]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute Canonical: every line carries the Matsubara parity of its field"
+    ]
+];
+
+(**********************************************************************************
+    Statistics are NOT Grassmann parity: ghosts.
+
+    Faddeev-Popov ghosts anticommute (Grassmann) but obey PERIODIC boundary conditions in
+    imaginary time, so they carry BOSONIC Matsubara frequencies. FunKit has no notion of a
+    "ghost" — only of Grassmann — so this has to be declared, via the field space's
+    "BoseStatistics". Routing keys off that trait (HasFermiStatistics), while signs keep
+    keying off IsGrassmann, so ghosts still anticommute.
+**********************************************************************************)
+
+ymSetup = GetFunKitSetupYangMills[];   (* declares "BoseStatistics" -> {c} *)
+
+(* The ghost loop of the gluon 2-point flow must be routed with a BOSONIC loop momentum. *)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{expr, ghostLines},
+            FSetGlobalSetup[ymSetup];
+            expr = FRoute[ymSetup,
+                FTakeDerivatives[ymSetup, WetterichEquation, {A[i1], A[i2]}] // FTruncate
+            ]["1-Loop"]["Expression"];
+            ghostLines = Cases[expr, (Propagator | Rdot)[flds_, idxs_] /; MemberQ[{c, cb}, flds[[1]]] :> idxs[[1, 1]], Infinity];
+            Length[ghostLines] > 0 && AllTrue[ghostLines, FreeQ[#, lf1]&]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute Canonical: ghost lines carry bosonic momenta (BoseStatistics)"
+    ]
+];
+
+(* Discriminating sanity: drop the declaration and the ghost loop goes back to a FERMIONIC lf1 —
+   the old, finite-T-wrong behaviour. This shows the trait is doing the work, and pins the
+   back-compat fallback (undeclared Grassmann => Fermi) at the same time. *)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{bare, expr, ghostLines},
+            bare = ymSetup;
+            bare["FieldSpace"] = KeyDrop[bare["FieldSpace"], "BoseStatistics"];
+            FSetGlobalSetup[bare];
+            expr = FRoute[bare,
+                FTakeDerivatives[bare, WetterichEquation, {A[i1], A[i2]}] // FTruncate
+            ]["1-Loop"]["Expression"];
+            FSetGlobalSetup[ymSetup];
+            ghostLines = Cases[expr, (Propagator | Rdot)[flds_, idxs_] /; MemberQ[{c, cb}, flds[[1]]] :> idxs[[1, 1]], Infinity];
+            Length[ghostLines] > 0 && AllTrue[ghostLines, Not @ FreeQ[#, lf1]&]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FRoute Canonical: without BoseStatistics ghosts fall back to fermionic momenta"
     ]
 ];
 

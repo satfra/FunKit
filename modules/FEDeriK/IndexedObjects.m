@@ -15,6 +15,8 @@
       GetGrassmannSourceFields   -- Returns Grassmann source field heads
       GetAllSourceFields         -- Returns all source field heads
       GetNonSourceFields         -- Returns all non-source field heads
+      GetFermiStatisticsFields   -- Returns field heads declared to have Fermi statistics
+      GetBoseStatisticsFields    -- Returns field heads declared to have Bose statistics
 
     Public API (field predicates, all memoized):
       FieldNameQ                 -- True if symbol is a known field name
@@ -23,8 +25,12 @@
       IsAntiGrassmannField       -- True if field is anti-Grassmann
       IsCommutingField           -- True if field is commuting (not anti)
       IsAntiCommutingField       -- True if field is anti-commuting
-      IsGrassmann                -- True if field has Grassmann statistics
-      IsCommuting                -- True if field has commuting statistics
+      IsGrassmann                -- True if field is Grassmann-valued (anticommutes)
+      IsCommuting                -- True if field is commuting-valued
+      HasFermiStatistics         -- True if field obeys Fermi statistics (antiperiodic in
+                                    imaginary time -> fermionic Matsubara frequencies).
+                                    NOT the same as IsGrassmann: ghosts anticommute but are
+                                    periodic, i.e. Grassmann-valued with Bose statistics.
       IsCSource                  -- True if field is a commuting source
       IsGrassmannSource          -- True if field is a Grassmann source
       IsSource                   -- True if field is any source field
@@ -159,6 +165,41 @@ GetAllFields[setup_] :=
     GetAllFields[setup] = Join[Flatten @ GetFieldPairs[setup], Map[Head[#]&, Select[Join[Lookup[setup["FieldSpace"], "Grassmann", {}], Lookup[setup["FieldSpace"], "Commuting", {}]], Head[#] =!= List&]], GetAllSourceFields[setup]];
 
 (**********************************************************************************
+    Statistics accessors
+
+    A field's *statistics* (Fermi/Bose) is what fixes the Matsubara character of the momenta
+    flowing through it, and it is NOT the same thing as its Grassmann parity. Faddeev-Popov
+    ghosts are the standard counterexample: they anticommute (Grassmann), but they obey
+    PERIODIC boundary conditions in imaginary time, so they carry bosonic Matsubara
+    frequencies. FunKit has no notion of "ghost" -- only of Grassmann -- so this cannot be
+    inferred and has to be declared:
+
+        "FieldSpace" -> <|
+            "Commuting"       -> {A[p, {v, col}]},
+            "Grassmann"       -> {{cb[p, {col}], c[p, {col}]}, {qb[...], q[...]}},
+            "BoseStatistics"  -> {c}          (* ghosts *)
+        |>
+
+    Declaring one member of a pair covers its partner (c => cb). Any field declared in
+    neither list falls back to the natural default, Grassmann -> Fermi and Commuting -> Bose,
+    so setups that do not use the trait keep behaving exactly as before.
+**********************************************************************************)
+
+(*Statistics are a property of the pair, not of a single member, so close the declared heads
+  under partnership. GetPartnerField returns the field itself when it is unpaired.*)
+
+closeUnderPartners[setup_, fields_] :=
+    DeleteDuplicates @ Flatten @ Map[{#, GetPartnerField[setup, #]}&, fields];
+
+GetFermiStatisticsFields[setup_] :=
+    GetFermiStatisticsFields[setup] =
+        closeUnderPartners[setup, Lookup[setup["FieldSpace"], "FermiStatistics", {}]];
+
+GetBoseStatisticsFields[setup_] :=
+    GetBoseStatisticsFields[setup] =
+        closeUnderPartners[setup, Lookup[setup["FieldSpace"], "BoseStatistics", {}]];
+
+(**********************************************************************************
     Source field accessors
 **********************************************************************************)
 
@@ -216,6 +257,33 @@ IsGrassmann[setup_, field_] :=
 
 IsCommuting[setup_, field_] :=
     IsCommuting[setup, field] = IsCommutingField[setup, field] || IsAntiCommutingField[setup, field] || IsCSource[setup, field];
+
+(*Fermi/Bose statistics -- see the "Statistics accessors" block above. This is what momentum
+  routing must key off; IsGrassmann is what SIGNS must key off. The two agree for every field
+  except ones explicitly declared otherwise (in practice: ghosts).*)
+
+HasFermiStatistics::conflict = "The field `1` is declared in both \"FermiStatistics\" and \"BoseStatistics\" of the setup's field space.";
+
+HasFermiStatistics[setup_, field_] :=
+    HasFermiStatistics[setup, field] =
+        Which[
+            MemberQ[GetFermiStatisticsFields[setup], field] && MemberQ[GetBoseStatisticsFields[setup], field],
+                Message[HasFermiStatistics::conflict, field];
+                Abort[]
+            ,
+            MemberQ[GetFermiStatisticsFields[setup], field],
+                True
+            ,
+            MemberQ[GetBoseStatisticsFields[setup], field],
+                False
+            ,
+            True,
+                (*Undeclared: Grassmann -> Fermi, commuting -> Bose.*)
+                IsGrassmann[setup, field]
+        ];
+
+HasFermiStatistics[setup_, field_[__]] :=
+    HasFermiStatistics[setup, field];
 
 (**********************************************************************************
     Source field predicates

@@ -46,6 +46,8 @@ yukawaSetup = GetFunKitSetupYukawa[];
 
 ymSetup = GetFunKitSetupYangMills[];
 
+qcdSetup = GetFunKitSetupQCD[];
+
 srcSetup = GetFunKitSetupWithSources[];
 
 wetterich := FEx[FTerm[1/2, Propagator[{AnyField, AnyField}, {a, b}], Rdot[{AnyField, AnyField}, {-a, -b}]]];
@@ -246,6 +248,251 @@ AppendTo[tests,
         {True, True}
         ,
         "CoBra-Parity-YangMillsGluon2Point"
+    ]
+];
+
+(**********************************************************************************
+    Parity: QCD vertex flows.
+
+    These are the two flows the NumTracer generators derive (ZA4 and ZAqbq1), and
+    they cover the two cases the engine's auto-symmetry machinery treats by
+    *different* algorithms (cpplib/source/simplify.cpp:686):
+
+      {A,A,A,A} -- four identical commuting legs collapse into one orbit, and the
+                   matcher becomes blind to which of them it is looking at, instead
+                   of enumerating the permutation group the way FMakeSymmetryList
+                   does on the native side.
+      {A,qb,q}  -- no orbit at all (single A leg; qb and q are distinct fields), so
+                   the engine falls back to exact open-leg matching.
+
+    A wrong merge in either case is invisible to cpplib/tests/simplify.cpp, which
+    only compares a sorted multiset of coefficients.
+**********************************************************************************)
+
+AppendTo[tests,
+    cppTest[
+        Module[{derivs, h, cpp, native},
+            derivs = {A[i1], qb[i2], q[i3]};
+            h = FTakeDerivatives[qcdSetup, wetterich, derivs, "Backend" -> "Cpp"];
+            cpp = FTruncate[qcdSetup, h];
+            native = FTruncate[qcdSetup, FTakeDerivatives[qcdSetup, wetterich, derivs]];
+            {
+                Length[FunKit`Private`DropFExAnnotations[cpp]],
+                exactCoefficientsQ[cpp],
+                equivalentQ[qcdSetup, cpp, native, derivs]
+            }
+        ]
+        ,
+        {6, True, True}
+        ,
+        "CoBra-Parity-QCDQuarkGluonVertex"
+    ]
+];
+
+AppendTo[tests,
+    cppTest[
+        Module[{derivs, h, cpp, native},
+            derivs = {A[i1], A[i2], A[i3], A[i4]};
+            h = FTakeDerivatives[qcdSetup, wetterich, derivs, "Backend" -> "Cpp"];
+            cpp = FTruncate[qcdSetup, h];
+            native = FTruncate[qcdSetup, FTakeDerivatives[qcdSetup, wetterich, derivs]];
+            {
+                Length[FunKit`Private`DropFExAnnotations[cpp]],
+                exactCoefficientsQ[cpp],
+                equivalentQ[qcdSetup, cpp, native, derivs]
+            }
+        ]
+        ,
+        {6, True, True}
+        ,
+        "CoBra-Parity-QCDFourGluonVertex"
+    ]
+];
+
+(**********************************************************************************
+    Backend parity of the ROUTED expression.
+
+    equivalentQ above cannot see a routing difference: it is applied BEFORE FRoute and knows
+    nothing about loop-momentum shifts, so two backends can agree on the derivation and still
+    hand FRoute inputs whose legs are ordered differently — which used to change the loop-momentum
+    routing, and with it the integrand at fixed |l| (the integral is unchanged; the pointwise
+    kernel is not). That is what forced NumTracer to pin the backend.
+
+    With FSetRoutingAlgorithm["Canonical"] the routing is fixed by the diagram alone, so the two
+    backends must now produce the same integrand. Compare the physical fingerprint: the multiset,
+    per term, of the {field, momentum} of every internal line. A line is a {l, -l} pair with no
+    intrinsic direction and the backends order those two legs differently, so orient each momentum
+    by making the loop-momentum coefficient positive.
+**********************************************************************************)
+
+routedFingerprint[setup_, flow_] :=
+    Sort @ Map[
+        Function[term,
+            Sort @ Cases[
+                term
+                ,
+                (Propagator | Rdot | R)[flds_, idxs_] :>
+                    Module[{m = idxs[[1, 1]]},
+                        {
+                            flds
+                            ,
+                            If[Coefficient[m, l1] < 0 || Coefficient[m, lf1] < 0,
+                                -m
+                                ,
+                                m
+                            ]
+                        }
+                    ]
+                ,
+                Infinity
+            ]
+        ]
+        ,
+        List @@ FRoute[setup, flow]["1-Loop"]["Expression"]
+    ];
+
+Do[
+    AppendTo[tests,
+        cppTest[
+            Module[{h, cpp, native},
+                h = FTakeDerivatives[qcdSetup, wetterich, derivs, "Backend" -> "Cpp"];
+                cpp = FTruncate[qcdSetup, h];
+                native = FTruncate[qcdSetup, FTakeDerivatives[qcdSetup, wetterich, derivs]];
+                routedFingerprint[qcdSetup, cpp] === routedFingerprint[qcdSetup, native]
+            ]
+            ,
+            True
+            ,
+            "CoBra-Parity-Routing-" <> StringJoin[ToString /@ (Head /@ derivs)]
+        ]
+    ]
+    ,
+    {derivs, {{A[i1], A[i2], A[i3]}, {A[i1], A[i2], A[i3], A[i4]}, {A[i1], qb[i2], q[i3]}}}
+];
+
+(**********************************************************************************
+    Determinism of the routing — the actual defect behind the NumTracer report.
+
+    FRoute never *chooses* a routing on physical grounds. It solves momentum conservation
+    vertex-by-vertex and eliminates whichever momentum comes first:
+
+        mom = availMomenta[[1]]                       (modules/AnSEL/Routing.m)
+
+    availMomenta is built by flattening a Plus, so "first" means Mathematica's canonical order over
+    the Unique-generated symbol names of the internal momenta (p$127, p$99, ...) — and those are
+    compared as STRINGS, so p$1000 sorts before p$998. Every FRoute call allocates fresh names, so
+    as the session's Unique counter crosses a digit boundary the choice flips.
+
+    The consequence is stark: routing THE SAME EXPRESSION TWICE IN ONE SESSION can give two
+    different routings. The integral is unchanged (it is a relabelling of the integration variable)
+    but the integrand at fixed |l| is not, and the routing it drifts to can be far more sharply
+    peaked. That is what NumTracer saw, and it is why pinning the backend did not actually fix it:
+    the routing was never a function of the diagram in the first place.
+
+    Under FSetRoutingAlgorithm["Canonical"] the leftover freedom is resolved by a physical criterion
+    instead, so the routing is a function of the diagram alone and this cannot happen.
+
+    Guarded to the C++ backend because that is where it bites — and the C++ backend is the one
+    FunKit auto-activates ($FunKitBackend = "Automatic"), i.e. what production actually runs. The
+    Mathematica backend's momentum names happen to sit away from a digit boundary for this diagram,
+    so "Default" comes out stable under it and the test would pass vacuously.
+**********************************************************************************)
+
+(* The C++-derived scalar 4-point flow. Built through the pinned-C++ fused pipeline, i.e. the way a
+   production script gets it. *)
+
+cppScalar4ptFlow[] :=
+    Module[{flow},
+        FSetBackendCpp[];
+        flow = FTruncate[scalarSetup, FTakeDerivatives[scalarSetup, wetterich, {Phi[i1], Phi[i2], Phi[i3], Phi[i4]}]];
+        FSetBackendMathematica[];
+        flow
+    ];
+
+(* The global Unique counter, and a burn that parks it just short of the next power of ten. Reading
+   it is the only way to make this test deterministic: the defect only fires when the momentum names
+   FRoute allocates straddle a digit boundary, and where the counter sits at this point in the suite
+   depends on everything that ran before. *)
+
+uniqueCounter[] :=
+    ToExpression @ StringJoin @ StringCases[SymbolName[Unique["fkCtr"]], DigitCharacter];
+
+burnUniqueToDigitBoundary[] :=
+    Module[{target},
+        target = 10^Ceiling[Log10[uniqueCounter[] + 20]];
+        Do[Unique["fkBurn"], {Max[0, target - uniqueCounter[] - 6]}];
+    ];
+
+(* Route the same expression on both sides of the boundary. Same diagram, same input, so the same
+   routing must come out. *)
+
+routingSurvivesCounterBoundary[] :=
+    Module[{flow, before, after},
+        flow = cppScalar4ptFlow[];
+        before = routedFingerprint[scalarSetup, flow];
+        burnUniqueToDigitBoundary[];
+        after = routedFingerprint[scalarSetup, flow];
+        before === after
+    ];
+
+AppendTo[tests,
+    cppTest[
+        Module[{res},
+            FSetRoutingAlgorithm["Canonical"];
+            res = routingSurvivesCounterBoundary[];
+            res
+        ]
+        ,
+        True
+        ,
+        "CoBra-Routing-DeterministicAcrossUniqueBoundary"
+    ]
+];
+
+(* Discriminating sanity: "Default" really does re-route the SAME expression when the Unique counter
+   crosses a digit boundary. Without this, the determinism asserted above could be a property every
+   mode has, and would prove nothing. This is the NumTracer bug, reduced: the routing was never a
+   function of the diagram, so pinning the backend could not have fixed it. *)
+
+AppendTo[tests,
+    cppTest[
+        Module[{res},
+            FSetRoutingAlgorithm["Default"];
+            res = routingSurvivesCounterBoundary[];
+            FSetRoutingAlgorithm["Canonical"];
+            res
+        ]
+        ,
+        False
+        ,
+        "CoBra-Routing-NondeterminismHazard"
+    ]
+];
+
+(*The engine only simplifies when it also truncates in the same call
+  (CppRunPipelineCore, modules/CoBra/Deferred.m:130). Running the four-gluon flow
+  with the engine's simplify switched off and the native FSimplify applied instead
+  pins the orbit matcher specifically: if it ever over-merges, this disagrees with
+  the fully-C++ result above.*)
+
+AppendTo[tests,
+    cppTest[
+        Module[{derivs, h, cppFull, cppNativeSimplify},
+            derivs = {A[i1], A[i2], A[i3], A[i4]};
+            cppFull = FTruncate[qcdSetup, FTakeDerivatives[qcdSetup, wetterich, derivs, "Backend" -> "Cpp"]];
+            h = FTakeDerivatives[qcdSetup, wetterich, derivs, "Backend" -> "Cpp"];
+            cppNativeSimplify =
+                FSimplify[
+                    qcdSetup,
+                    FEvaluate[qcdSetup, h, "Truncate" -> True, "Simplify" -> False],
+                    "Symmetries" -> FMakeSymmetryList[qcdSetup, derivs]
+                ];
+            equivalentQ[qcdSetup, cppFull, cppNativeSimplify, derivs]
+        ]
+        ,
+        True
+        ,
+        "CoBra-Parity-QCDFourGluonOrbitSimplify"
     ]
 ];
 

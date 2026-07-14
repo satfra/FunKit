@@ -391,3 +391,96 @@ AppendTo[tests, VerificationTest[FunKit`Private`IsGrassmann[srcSetup, J], False,
 AppendTo[tests, VerificationTest[MemberQ[FunKit`Private`GetSingleFields[srcSetup], J], True, TestID -> "GetSingleFields: includes J"]];
 
 AppendTo[tests, VerificationTest[MemberQ[FunKit`Private`GetSingleFields[srcSetup], eta], True, TestID -> "GetSingleFields: includes eta"]];
+
+(**********************************************************************************
+    HasFermiStatistics Tests
+
+    A field's Fermi/Bose STATISTICS fixes the Matsubara character of the momenta flowing
+    through it, and it is not the same thing as its Grassmann parity. Ghosts anticommute
+    (Grassmann) but are periodic in imaginary time, hence Bose. FunKit cannot infer this —
+    it is declared via the field space's "BoseStatistics" / "FermiStatistics".
+**********************************************************************************)
+
+(* Default: no declaration => Grassmann is Fermi, commuting is Bose. Existing setups are unaffected. *)
+
+AppendTo[tests, VerificationTest[FunKit`Private`HasFermiStatistics[ySetup, Psi], True, TestID -> "HasFermiStatistics default: Grassmann Psi is Fermi"]];
+
+AppendTo[tests, VerificationTest[FunKit`Private`HasFermiStatistics[ySetup, Psibar], True, TestID -> "HasFermiStatistics default: anti-Grassmann Psibar is Fermi"]];
+
+AppendTo[tests, VerificationTest[FunKit`Private`HasFermiStatistics[ySetup, Phi], False, TestID -> "HasFermiStatistics default: commuting Phi is Bose"]];
+
+AppendTo[tests, VerificationTest[FunKit`Private`HasFermiStatistics[ySetup, Psi[i1]], True, TestID -> "HasFermiStatistics default: Psi[i1] (indexed) is Fermi"]];
+
+(* Declared: the Yang-Mills fixture declares "BoseStatistics" -> {c}. The ghost is still Grassmann
+   (so it still anticommutes, and signs are unaffected) but its statistics is Bose. *)
+
+ymStatSetup = GetFunKitSetupYangMills[];
+
+AppendTo[tests, VerificationTest[FunKit`Private`IsGrassmann[ymStatSetup, c], True, TestID -> "HasFermiStatistics: ghost c is still Grassmann (signs unaffected)"]];
+
+AppendTo[tests, VerificationTest[FunKit`Private`HasFermiStatistics[ymStatSetup, c], False, TestID -> "HasFermiStatistics: declared ghost c is Bose"]];
+
+(* Partner propagation: only c is declared; cb must follow. *)
+
+AppendTo[tests, VerificationTest[FunKit`Private`HasFermiStatistics[ymStatSetup, cb], False, TestID -> "HasFermiStatistics: partner cb inherits Bose from c"]];
+
+AppendTo[tests, VerificationTest[FunKit`Private`HasFermiStatistics[ymStatSetup, A], False, TestID -> "HasFermiStatistics: gluon A is Bose"]];
+
+(* A Grassmann field that is NOT declared keeps the default. QCD declares only the ghost. *)
+
+qcdStatSetup = GetFunKitSetupQCD[];
+
+AppendTo[tests, VerificationTest[FunKit`Private`HasFermiStatistics[qcdStatSetup, q], True, TestID -> "HasFermiStatistics: undeclared quark q keeps the Fermi default"]];
+
+AppendTo[tests, VerificationTest[FunKit`Private`HasFermiStatistics[qcdStatSetup, qb], True, TestID -> "HasFermiStatistics: undeclared quark qb keeps the Fermi default"]];
+
+AppendTo[tests, VerificationTest[FunKit`Private`HasFermiStatistics[qcdStatSetup, c], False, TestID -> "HasFermiStatistics: QCD ghost c is Bose"]];
+
+(* A field declared in both lists is a contradiction and must be rejected by the field-space check. *)
+
+AppendTo[tests, VerificationTest[
+    Quiet @ FunKit`Private`FieldSpaceDefQ[<|
+        "Commuting" -> {A[p, {v, col}]},
+        "Grassmann" -> {{cb[p, {col}], c[p, {col}]}},
+        "BoseStatistics" -> {c},
+        "FermiStatistics" -> {c}
+    |>],
+    False,
+    TestID -> "FieldSpaceDefQ: a field declared both Fermi and Bose is rejected"
+]];
+
+(* A statistics entry that is not a declared field head is a typo and must be rejected. *)
+
+AppendTo[tests, VerificationTest[
+    Quiet @ FunKit`Private`FieldSpaceDefQ[<|
+        "Commuting" -> {A[p, {v, col}]},
+        "Grassmann" -> {{cb[p, {col}], c[p, {col}]}},
+        "BoseStatistics" -> {ghost}
+    |>],
+    False,
+    TestID -> "FieldSpaceDefQ: an unknown field head in BoseStatistics is rejected"
+]];
+
+(* Statistics entries are HEADS, not field definitions. *)
+
+AppendTo[tests, VerificationTest[
+    Quiet @ FunKit`Private`FieldSpaceDefQ[<|
+        "Commuting" -> {A[p, {v, col}]},
+        "Grassmann" -> {{cb[p, {col}], c[p, {col}]}},
+        "BoseStatistics" -> {c[p, {col}]}
+    |>],
+    False,
+    TestID -> "FieldSpaceDefQ: a field definition (not a head) in BoseStatistics is rejected"
+]];
+
+(* The well-formed case is accepted. *)
+
+AppendTo[tests, VerificationTest[
+    FunKit`Private`FieldSpaceDefQ[<|
+        "Commuting" -> {A[p, {v, col}]},
+        "Grassmann" -> {{cb[p, {col}], c[p, {col}]}},
+        "BoseStatistics" -> {c}
+    |>],
+    True,
+    TestID -> "FieldSpaceDefQ: a well-formed BoseStatistics declaration is accepted"
+]];

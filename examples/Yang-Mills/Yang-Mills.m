@@ -27,7 +27,12 @@ DefineFormExecutable["/usr/bin/tform -w16"]
 
 fields= <|
 "Commuting"-> {A[p,{v, c}]},
-"Grassmann"->{{cb[p,{c}],c[p,{c}]}}
+"Grassmann"->{{cb[p,{c}],c[p,{c}]}},
+(*Ghosts anticommute, but they are periodic in imaginary time and so carry bosonic
+Matsubara frequencies. Declaring this routes the ghost loop with a bosonic momentum (l1
+rather than lf1). It matters at finite temperature; in the vacuum it only spares us the
+lf1->l1 substitution below.*)
+"BoseStatistics"->{c}
 |>;
 
 

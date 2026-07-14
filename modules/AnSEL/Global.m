@@ -112,6 +112,8 @@ FSetLoopMomentumName[___] :=
 FSetRoutingAlgorithm[algorithm_String] :=
     Module[{},
         Switch[algorithm,
+            "Canonical",
+                $routingAlgorithm = "Canonical",
             "Default",
                 $routingAlgorithm = "Default",
             "Regulator",
@@ -128,4 +130,4 @@ FSetRoutingAlgorithm[___] :=
         Abort[]
     );
 
-FSetRoutingAlgorithm["Default"];
+FSetRoutingAlgorithm["Canonical"];
