@@ -44,11 +44,26 @@ FSimplify[expr_FTerm] /; Head[$GlobalSetup] =!= Symbol :=
 FSimplify[expr_FEx, OptionsPattern[]] /; Head[$GlobalSetup] =!= Symbol :=
     FSimplify[$GlobalSetup, expr, (Sequence @@ Thread[Rule @@ {#, OptionValue[FSimplify, #]}]& @ Keys[Options[FSimplify]])];
 
+(*Must come before the fields_List overload below, which would otherwise capture a list of
+  FSymmetry objects and forward it to the field-based constructor.*)
+
+FMakeSymmetryList[syms : {__FSymmetry}] :=
+    FMakeSymmetryList @@ syms;
+
 FMakeSymmetryList[fields_List] /; Head[$GlobalSetup] =!= Symbol :=
     FMakeSymmetryList[$GlobalSetup, fields];
 
 FMakeSymmetryList[fields_List, indices_List] /; Head[$GlobalSetup] =!= Symbol :=
     FMakeSymmetryList[$GlobalSetup, fields, indices];
+
+FSymmetrise[expr_FEx, syms_List] /; Head[$GlobalSetup] =!= Symbol :=
+    FSymmetrise[$GlobalSetup, expr, syms];
+
+FSymmetrise[expr_FEx] /; Head[$GlobalSetup] =!= Symbol :=
+    FSymmetrise[$GlobalSetup, expr];
+
+FCheckSymmetry[expr_FEx, syms_List] /; Head[$GlobalSetup] =!= Symbol :=
+    FCheckSymmetry[$GlobalSetup, expr, syms];
 
 (* Fallback definitions when $GlobalSetup is not set *)
 
@@ -74,6 +89,15 @@ FSimplify[expr_FTerm] :=
     (Message[FunKit::noGlobalSetup]; Abort[]);
 
 FMakeSymmetryList[fields_List] :=
+    (Message[FunKit::noGlobalSetup]; Abort[]);
+
+FSymmetrise[expr_FEx, syms_List] :=
+    (Message[FunKit::noGlobalSetup]; Abort[]);
+
+FSymmetrise[expr_FEx] :=
+    (Message[FunKit::noGlobalSetup]; Abort[]);
+
+FCheckSymmetry[expr_FEx, syms_List] :=
     (Message[FunKit::noGlobalSetup]; Abort[]);
 
 (**********************************************************************************

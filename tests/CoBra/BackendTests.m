@@ -162,7 +162,12 @@ AppendTo[tests,
 AppendTo[tests,
     cppTest[
         Module[{h, cpp, ann},
-            h = FTakeDerivatives[scalarSetup, wetterich, {Phi[i1], Phi[i2]}, "Backend" -> "Cpp"];
+            (*$AutoBuildSymmetryList defaults to False, so an annotation only exists
+              when symmetries are declared. Declare them and check the C++ result
+              carries them exactly as the native one does.*)
+            h = FTakeDerivatives[scalarSetup, wetterich, {Phi[i1], Phi[i2]},
+                "Symmetries" -> FMakeSymmetryList[FSymmetry[Symmetric, {i1, i2}]],
+                "Backend" -> "Cpp"];
             cpp = FTruncate[scalarSetup, h];
             ann = FunKit`Private`SeparateFExAnnotations[cpp][[2]];
             KeyExistsQ[ann, "Symmetries"]
@@ -291,11 +296,14 @@ AppendTo[tests,
 
 AppendTo[tests,
     cppTest[
-        Module[{derivs, h, cpp, native},
+        Module[{derivs, syms, h, cpp, native},
+            (*Six diagrams is the count with the full permutation symmetry of the four
+              identical external gluons, which now has to be declared explicitly.*)
             derivs = {A[i1], A[i2], A[i3], A[i4]};
-            h = FTakeDerivatives[qcdSetup, wetterich, derivs, "Backend" -> "Cpp"];
+            syms = FMakeSymmetryList[qcdSetup, derivs];
+            h = FTakeDerivatives[qcdSetup, wetterich, derivs, "Symmetries" -> syms, "Backend" -> "Cpp"];
             cpp = FTruncate[qcdSetup, h];
-            native = FTruncate[qcdSetup, FTakeDerivatives[qcdSetup, wetterich, derivs]];
+            native = FTruncate[qcdSetup, FTakeDerivatives[qcdSetup, wetterich, derivs, "Symmetries" -> syms]];
             {
                 Length[FunKit`Private`DropFExAnnotations[cpp]],
                 exactCoefficientsQ[cpp],

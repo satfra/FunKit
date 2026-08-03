@@ -80,8 +80,12 @@ FunKitResF2 =
 
 (**** Scalar Propagator ****)
 
+(*Two identical external bosons. DoFun and QMeS present this flow in its
+  exchange-symmetric form, so the exchange has to be declared here -- since
+  $AutoBuildSymmetryList defaults to False, FunKit no longer assumes it.*)
 FunKitResS2 =
-    FTakeDerivatives[yFunKitSetup, WetterichEquation, {Phi[i1], Phi[i2]}] //
+    FTakeDerivatives[yFunKitSetup, WetterichEquation, {Phi[i1], Phi[i2]},
+        "Symmetries" -> FMakeSymmetryList[FSymmetry[Symmetric, {i1, i2}]]] //
     FTruncate //
     FSimplify;
 

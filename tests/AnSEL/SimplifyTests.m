@@ -300,7 +300,7 @@ AppendTo[
                 FTakeDerivatives[setup, WetterichEquation, {Phi[i1], Phi[i2]}] //
                 FTruncate //
                 FSimplify;
-            Length[result] - 1
+            Count[List @@ result, _FTerm]
         ]
         ,
         2
@@ -316,16 +316,20 @@ AppendTo[
         Module[{setup, result},
             setup = GetFunKitSetupScalar[];
             FSetGlobalSetup[setup];
+            (*The four external legs are identical bosons and the intended projection is
+              symmetric in them, so the full permutation group may be used -- but it now has
+              to be stated explicitly, since $AutoBuildSymmetryList defaults to False.*)
             result =
-                FTakeDerivatives[setup, WetterichEquation, {Phi[i1], Phi[i2], Phi[i3], Phi[i4]}] //
+                FTakeDerivatives[setup, WetterichEquation, {Phi[i1], Phi[i2], Phi[i3], Phi[i4]},
+                    "Symmetries" -> FMakeSymmetryList[setup, {Phi[i1], Phi[i2], Phi[i3], Phi[i4]}]] //
                 FTruncate //
                 FSimplify;
-            Length[result] - 1
+            Count[List @@ result, _FTerm]
         ]
         ,
         4
         ,
-        TestID -> "FSimplify: scalar 4-point flow has 4 terms (1 diagram with two 4-point vertices, 2 diagrams with one 4-point vertex, 1 diagram with no 4-point vertices)"
+        TestID -> "FSimplify: scalar 4-point flow has 4 terms with the full permutation symmetry declared"
     ]
 ];
 
@@ -421,7 +425,7 @@ AppendTo[
                 FTakeDerivatives[setup, WetterichEquation, {Psi[i1], Psibar[i2]}] //
                 FTruncate //
                 FSimplify;
-            Length[result] - 1
+            Count[List @@ result, _FTerm]
         ]
         ,
         2
@@ -437,16 +441,19 @@ AppendTo[
         Module[{setup, result},
             setup = GetFunKitSetupYukawa[];
             FSetGlobalSetup[setup];
+            (*Two identical external bosons; a symmetric two-point projection licenses the
+              exchange, which must now be declared.*)
             result =
-                FTakeDerivatives[setup, WetterichEquation, {Phi[i1], Phi[i2]}] //
+                FTakeDerivatives[setup, WetterichEquation, {Phi[i1], Phi[i2]},
+                    "Symmetries" -> FMakeSymmetryList[FSymmetry[Symmetric, {i1, i2}]]] //
                 FTruncate //
                 FSimplify;
-            Length[result] - 1
+            Count[List @@ result, _FTerm]
         ]
         ,
         1
         ,
-        TestID -> "FSimplify Yukawa: scalar propagator flow has 1 term (tadpole)"
+        TestID -> "FSimplify Yukawa: scalar propagator flow has 1 term (tadpole) with the leg exchange declared"
     ]
 ];
 
@@ -461,7 +468,7 @@ AppendTo[
                 FTakeDerivatives[setup, WetterichEquation, {Psi[i1], Psibar[i2], Phi[i3]}] //
                 FTruncate //
                 FSimplify;
-            Length[result] - 1
+            Count[List @@ result, _FTerm]
         ]
         ,
         3
@@ -519,7 +526,7 @@ AppendTo[
                 FTakeDerivatives[setup, WetterichEquation, {Psi[i1], Psibar[i2]}] //
                 FTruncate //
                 FSimplify;
-            Length[result] - 1
+            Count[List @@ result, _FTerm]
         ]
         ,
         1
@@ -536,15 +543,16 @@ AppendTo[
             setup = GetFunKitSetupFourFermion[];
             FSetGlobalSetup[setup];
             result =
-                FTakeDerivatives[setup, WetterichEquation, {Psi[i1], Psibar[i2], Psi[i3], Psibar[i4]}] //
+                FTakeDerivatives[setup, WetterichEquation, {Psi[i1], Psibar[i2], Psi[i3], Psibar[i4]},
+                    "Symmetries" -> FMakeSymmetryList[setup, {Psi[i1], Psibar[i2], Psi[i3], Psibar[i4]}]] //
                 FTruncate //
                 FSimplify;
-            Length[result] - 1
+            Count[List @@ result, _FTerm]
         ]
         ,
         2
         ,
-        TestID -> "FSimplify 4F: fermion 4-point flow term count (two diagrams with different topologies)"
+        TestID -> "FSimplify 4F: fermion 4-point flow term count with the exchange symmetries declared"
     ]
 ];
 

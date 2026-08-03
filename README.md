@@ -186,7 +186,7 @@ To the end of deriving flow equations, other useful software already exists, in 
 
 `FunKit` depends on, and builds upon
 -  [![FormTracer](https://img.shields.io/badge/FormTracer-4e94cb?style=for-the-badge&logo=github)](https://github.com/FormTracer/FormTracer) to perform traces over group indices in the derived functional equations,
--  [![TensorBases](https://img.shields.io/badge/TensorBases-bb1a1a?style=for-the-badge&logo=github)](https://github.com/satfra/TensorBases) to handle tensor bases and projections.
+-  [![TensorBases](https://img.shields.io/badge/TensorBases-bb1a1a?style=for-the-badge&logo=github)](https://github.com/satfra/TensorBases) to handle tensor bases and projections. **Version 1.3.0 or newer is required** — from 1.3.0 on, `TBMakePropagator` expands the inverse propagator with all momenta incoming, which is the convention `FMakeDiagrammaticRules` assumes. Older versions return every momentum-odd propagator dressing, such as the quark's $p\!\!\!/$ dressing, with the wrong sign.
 
 These two packages are automatically installed when you import `FunKit` for the first time in a Mathematica notebook or session.
 

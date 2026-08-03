@@ -16,10 +16,41 @@ The name should be a string (e.g., \"l\", \"k\", \"q\") that will be used to gen
 Also creates fermionic variants (lf1, lf2, ...) and bosonic variants for different loop types.
 Default setting is \"l\".";
 
-FMakeSymmetryList::usage = "FMakeSymmetryList[setup, {f1, f2, ...}]
-Generates a list of symmetries for functional expressions based on the provided fields.
-Each field fi should be a valid field symbol defined in the setup.
+FMakeSymmetryList::usage = "FMakeSymmetryList[s1, s2, ...]
+Assembles FSymmetry objects into a symmetry list, adding the identity if it is missing.
+This is the recommended form: symmetries must normally be stated by hand, because whether a
+given symmetry may be used depends on the contraction you will apply, which FunKit cannot know.
+
+FMakeSymmetryList[setup, {f1, f2, ...}]
+Generates the FULL permutation group of the given fields. Use with care: that group is a
+property of the correlation function, not of an individual diagram, so reducing with it yields
+an expression equal to the original only after symmetrisation. It is correct only if your
+contraction is covariant under every element. See SYMMETRY-REDUCTION-DESIGN.md.
 Returns a list of symmetry rules that can be used in FSimplify to identify identical diagrams.";
+
+FSymmetry::usage = "FSymmetry[Symmetric, {i1,i2}, {i3,i4}]
+Describes a single symmetry of a correlation function: the exchange i1<->i2 performed together
+with i3<->i4, carrying the factor +1. Each argument after the head is a cycle of superindices;
+all cycles are applied simultaneously and must be disjoint.
+The head fixes the factor: Symmetric -> +1, Antisymmetric -> -1, or give a number directly.
+  FSymmetry[Antisymmetric, {i1,i2}]     the exchange i1<->i2 with factor -1
+  FSymmetry[Symmetric, {i1,i2,i3}]      the 3-cycle i1->i2->i3->i1 with factor +1
+Pass the assembled list via FMakeSymmetryList to FTakeDerivatives[..., \"Symmetries\" -> syms];
+it is carried on the resulting FEx and picked up by FTruncate and FSimplify.";
+
+FSymmetrise::usage = "FSymmetrise[setup, expr, syms]
+Applies (1/|G|) sum_sigma f_sigma sigma(.) to an FEx, i.e. explicitly symmetrises it over the
+given symmetry list. FSymmetrise[setup, expr] uses the symmetry list carried by expr.
+An expression that was simplified with symmetries equals the original only after this
+operation, so this is the way to repair one that must be contracted with something that does
+not share those symmetries.";
+
+FCheckSymmetry::usage = "FCheckSymmetry[setup, expr, syms]
+Returns True if expr already has the given symmetries, i.e. if FSymmetrise leaves it unchanged.
+Reducing with a symmetry that the expression does not actually possess silently returns a
+different object, so this is the precondition to check before passing a hand-made symmetry list
+to FSimplify -- in particular for hand-built expressions or subsets of terms, which generally
+carry only part of an orbit.";
 
 FDisconnectedQ::usage = "FDisconnectedQ[setup, expr]
 Checks whether a functional expression contains disconnected diagrams.

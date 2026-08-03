@@ -208,6 +208,161 @@ FMakeSymmetryList[setup_, {fields___}, {indices___}] :=
         Return[symmetries];
     ];
 
+(**********************************************************************************
+    FSymmetry -- user-facing constructor for a single symmetry
+
+    FMakeSymmetryList[setup, fields, indices] builds the FULL permutation group of the
+    correlator. That group is a property of the correlation function, not of any one
+    diagram, so reducing with it produces an expression that is only equal to the
+    original after symmetrisation -- see SYMMETRY-REDUCTION-DESIGN.md. Which subgroup
+    may actually be used depends on the contraction the user will apply, which FunKit
+    cannot know. Hence symmetries are supplied by hand, and this is the ergonomic way
+    to write them down:
+
+        FSymmetry[Symmetric,     {i1,i2}, {i3,i4}]   i1<->i2 together with i3<->i4, +1
+        FSymmetry[Antisymmetric, {i1,i2}]            i1<->i2, -1
+        FSymmetry[Symmetric,     {i1,i2,i3}]         the 3-cycle i1->i2->i3->i1, +1
+        FSymmetry[-1,            {i1,i2}, {i3,i4}]   explicit factor
+
+    Each argument after the head is a cycle of superindices; all cycles are applied
+    simultaneously and must be disjoint. Unlike FBuildSymmetryList, which is keyed on
+    POSITIONS in the derivative list, these are the indices themselves.
+**********************************************************************************)
+
+FSymmetry::badFactor = "The first argument of FSymmetry must be Symmetric, Antisymmetric or a number, not `1`.";
+
+FSymmetry::badCycle = "FSymmetry cycles must be lists of at least two distinct superindices; received `1`.";
+
+FSymmetry::notDisjoint = "The cycles of `1` are not disjoint: the index `2` appears more than once.";
+
+FSymmetry::noCycles = "FSymmetry requires at least one cycle.";
+
+symmetryFactor[Symmetric] :=
+    1;
+
+symmetryFactor[Antisymmetric] :=
+    -1;
+
+symmetryFactor[f_ /; NumericQ[f]] :=
+    f;
+
+symmetryFactor[f_] :=
+    (
+        Message[FSymmetry::badFactor, f];
+        Abort[]
+    );
+
+(*Lower one FSymmetry to the internal <|"Rule" -> ..., "Factor" -> ...|> form.*)
+
+lowerFSymmetry[s : FSymmetry[head_, cycles___List]] :=
+    Module[{cyc = {cycles}, all},
+        If[Length[cyc] === 0,
+            Message[FSymmetry::noCycles];
+            Abort[]
+        ];
+        If[AnyTrue[cyc, Length[#] < 2 || Length[DeleteDuplicates[#]] =!= Length[#]&],
+            Message[FSymmetry::badCycle, SelectFirst[cyc, Length[#] < 2 || Length[DeleteDuplicates[#]] =!= Length[#]&]];
+            Abort[]
+        ];
+        all = Flatten[cyc];
+        If[Length[DeleteDuplicates[all]] =!= Length[all],
+            Message[FSymmetry::notDisjoint, s, First @ Cases[Tally[all], {x_, n_} /; n > 1 :> x]];
+            Abort[]
+        ];
+        (*Sort to match the canonical form produced by symCombine in FMakeSymmetryList, so that
+          the same symmetry written two ways compares equal under DeleteDuplicates.*)
+        <|"Rule" -> Sort @ Flatten[Map[Thread[# -> RotateLeft[#]]&, cyc]], "Factor" -> symmetryFactor[head]|>
+    ];
+
+lowerFSymmetry[x_] :=
+    (
+        Message[FunKit::invalidArguments, FSymmetry];
+        Abort[]
+    );
+
+(*Assemble FSymmetry objects into a symmetry list, adding the identity if missing.
+  Note that the list need NOT be closed under composition: each merge under a given
+  sigma is exact provided the user's contraction is covariant under that sigma,
+  independently of the other elements. Closure only matters if the symmetriser is to
+  be a projector (FSymmetrise).*)
+
+$identitySymmetry = <|"Rule" -> {}, "Factor" -> 1|>;
+
+FMakeSymmetryList[syms__FSymmetry] :=
+    Module[{lowered},
+        lowered = DeleteDuplicates[lowerFSymmetry /@ {syms}];
+        If[Not @ MemberQ[lowered, $identitySymmetry],
+            lowered = Prepend[lowered, $identitySymmetry]
+        ];
+        lowered
+    ];
+
+(*The list form FMakeSymmetryList[{s1, s2, ...}] is declared in AnSEL/Global.m, ahead of the
+  fields_List overload there, which would otherwise capture it.*)
+
+(**********************************************************************************
+    FSymmetrise / FCheckSymmetry
+
+    FSymmetrise[expr, syms] applies (1/|G|) sum_sigma f_sigma sigma(.) to an FEx.
+    FCheckSymmetry[expr, syms] tests whether expr already has that symmetry, i.e.
+    whether FSymmetrise is the identity on it. Reducing with a symmetry the expression
+    does not actually possess silently returns a different object, so this is the
+    precondition to check before passing a hand-made list to FSimplify.
+**********************************************************************************)
+
+(*Accept either an FEx or a bare list of FTerms: SeparateFExAnnotations returns the terms in
+  whichever of the two the caller handed in.*)
+
+negateFEx[expr_] :=
+    FEx @@ ((FTerm[-1] ** #)& /@ (List @@ expr));
+
+FSymmetrise[setup_, expr_FEx, syms_List] :=
+    Module[{terms, annotations},
+        AssertFSetup[setup];
+        If[syms === {},
+            Return[expr]
+        ];
+        {terms, annotations} = SeparateFExAnnotations[expr];
+        MergeFExAnnotations[
+            FEx @@ Flatten @ Table[
+                List @@ ((FEx @@ ((FTerm[s["Factor"] / Length[syms]] ** #)& /@ (List @@ terms))) /. s["Rule"])
+                ,
+                {s, syms}
+            ]
+            ,
+            annotations
+        ]
+    ];
+
+FSymmetrise[setup_, expr_FEx] :=
+    Module[{annotations},
+        annotations = SeparateFExAnnotations[expr][[2]];
+        FSymmetrise[setup, expr, If[KeyExistsQ[annotations, "Symmetries"], annotations["Symmetries"], {}]]
+    ];
+
+FSymmetrise[___] :=
+    (
+        Message[FunKit::invalidArguments, FSymmetrise];
+        Abort[]
+    );
+
+FCheckSymmetry[setup_, expr_FEx, syms_List] :=
+    Module[{terms, symmetrised},
+        AssertFSetup[setup];
+        terms = SeparateFExAnnotations[expr][[1]];
+        symmetrised = SeparateFExAnnotations[FSymmetrise[setup, FEx @@ terms, syms]][[1]];
+        (*Go through FSimplify, not FSimplifyNoSym: the former first applies FOrderFields and
+          FixIndices, without which the matcher does not see equal terms as equal. Both inputs
+          are annotation-free, so no symmetries are picked up and the comparison stays exact.*)
+        Length @ FSimplify[setup, FEx @@ Join[List @@ terms, List @@ negateFEx[symmetrised]]] === 0
+    ];
+
+FCheckSymmetry[___] :=
+    (
+        Message[FunKit::invalidArguments, FCheckSymmetry];
+        Abort[]
+    );
+
 (*Get viable starting points for a comparison of two diagrams.
   Requires pre-computed object lists (from PrecomputeTermData). *)
 

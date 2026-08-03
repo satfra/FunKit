@@ -322,7 +322,18 @@ FShowCorrelationFunctions[] :=
     construction of symmetry lists when taking derivatives
 **********************************************************************************)
 
-$AutoBuildSymmetryList = True;
+(*Default OFF. Auto-building the full permutation group of the correlator and reducing
+  with it is only correct if the contraction the user will apply is covariant under every
+  element of that group -- which FunKit cannot know. The group is a property of the
+  correlation function, not of an individual diagram, so the reduced expression equals the
+  original only after symmetrisation. Supply the symmetries you can license by hand:
+
+      syms = FMakeSymmetryList[FSymmetry[Symmetric, {i1,i2}], ...];
+      FTakeDerivatives[WetterichEquation, {...}, "Symmetries" -> syms]
+
+  See SYMMETRY-REDUCTION-DESIGN.md.*)
+
+$AutoBuildSymmetryList = False;
 
 FSetAutoBuildSymmetryList::notBoolean = "The argument `1` must be True or False.";
 

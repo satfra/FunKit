@@ -83,14 +83,19 @@ execute_process(
   OUTPUT_STRIP_TRAILING_WHITESPACE)
 message(STATUS "Wolfram Language application directory: ${WOLFRAM_APP_DIR}")
 
-# Install dependencies if we are NOT on windows
+# Install dependencies if we are NOT on windows.
+# The installer enforces a TensorBases minimum version and fails if it is not
+# met, so its exit code must not be swallowed.
 if(WIN32)
   execute_process(COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/install.bat
-                          ${WOLFRAM_APP_DIR})
+                          ${WOLFRAM_APP_DIR} RESULT_VARIABLE DEPENDENCY_RESULT)
 else()
   execute_process(
     COMMAND bash ${CMAKE_CURRENT_SOURCE_DIR}/dependencies/install.sh
-            ${WOLFRAM_APP_DIR})
+            ${WOLFRAM_APP_DIR} RESULT_VARIABLE DEPENDENCY_RESULT)
+endif()
+if(NOT DEPENDENCY_RESULT EQUAL 0)
+  message(FATAL_ERROR "Dependency installation failed (exit code ${DEPENDENCY_RESULT}).")
 endif()
 
 # install the Mathematica package

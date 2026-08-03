@@ -23,6 +23,9 @@ to restrict to multiple elements, just list them:
 GammaN -> {{A, qb, q} -> {\"AqbqDirect\", 1, 4, 7}}
 Furthermore, suppose you have called your ghosts d and db instead of c and cb, you can add this information to the rule, so FunKit can match against the fields specified in the basis:
 GammaN -> {{A, cb, c} -> {\"Acbc\", 1, c -> d, cb -> db}}
+
+Rules for Propagator are, by default, not taken at face value: the annotated basis is read as the INVERSE propagator and inverted, so the dressings appearing in the rule are dressing[InverseProp, ...]. Set \"DerivePropagators\" -> False to treat Propagator like any other object instead.
+The inversion goes through TBMakePropagator and, like all of FunKit, takes every momentum to be incoming. This requires TensorBases 1.3.0 or newer; older versions expand the inverse propagator at -p and therefore return every momentum-odd dressing -- for instance the pslash dressing of the quark propagator -- with the wrong sign relative to the momentum-even ones.
 ";
 
 FSetSymmetricDressing::usage = "FSetSymmetricDressing[object, fields]

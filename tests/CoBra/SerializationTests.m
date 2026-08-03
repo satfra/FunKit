@@ -453,7 +453,12 @@ AppendTo[tests,
     VerificationTest[
         Module[{file, reimported},
             file = FileNameJoin[{$TemporaryDirectory, "cobra-test-scalar.json"}];
-            FExportCppInput[scalarSetup, wetterich, {Phi[i1], Phi[i2]}, file];
+            (*The "derivatives" declaration states the graded permutation symmetry of the
+              derivative legs; it is emitted only when that symmetry may be assumed, which
+              is now opt-in ($AutoBuildSymmetryList defaults to False).*)
+            Block[{FunKit`Private`$AutoBuildSymmetryList = True},
+                FExportCppInput[scalarSetup, wetterich, {Phi[i1], Phi[i2]}, file];
+            ];
             reimported = Import[file, "RawJSON"];
             DeleteFile[file];
             {
@@ -473,7 +478,12 @@ AppendTo[tests,
     VerificationTest[
         Module[{file, text},
             file = FileNameJoin[{$TemporaryDirectory, "cobra-test-scalar.toml"}];
-            FExportToml[scalarSetup, wetterich, {Phi[i1], Phi[i2]}, file];
+            (*The "derivatives" declaration states the graded permutation symmetry of the
+              derivative legs; it is emitted only when that symmetry may be assumed, which
+              is now opt-in ($AutoBuildSymmetryList defaults to False).*)
+            Block[{FunKit`Private`$AutoBuildSymmetryList = True},
+                FExportToml[scalarSetup, wetterich, {Phi[i1], Phi[i2]}, file];
+            ];
             text = Import[file, "Text"];
             DeleteFile[file];
             {

@@ -120,11 +120,13 @@ StyleBox[\"TensorBases\",\nFontWeight->\"Bold\"]\) to run."];Abort[];
 ];
 ];
 
-Module[{tbDir,tbPaclet,tbVersion,tbVerList,requiredVersion="1.1.6",requiredList},requiredList=ToExpression/@StringSplit[requiredVersion,"."];tbDir=SelectFirst[Join[{FileNameJoin[{$UserBaseDirectory,"Applications","TensorBases"}],FileNameJoin[{$BaseDirectory,"Applications","TensorBases"}],FileNameJoin[{$InstallationDirectory,"AddOns","Applications","TensorBases"}],FileNameJoin[{$InstallationDirectory,"AddOns","Packages","TensorBases"}],FileNameJoin[{$InstallationDirectory,"AddOns","ExtraPackages","TensorBases"}]},Select[$Path,StringContainsQ[#1,"TensorBases"]&]],DirectoryQ[#1]&];
+FunKitLoad::tensorBasesVersion="FunKit requires TensorBases `1` or newer, but version `2` is installed in `3`. From `1` on, TBMakePropagator expands the inverse propagator with all momenta incoming; with an older TensorBases every momentum-odd propagator dressing -- for instance the pslash dressing of the quark propagator -- is returned with the wrong sign relative to the momentum-even ones, and silently so. Re-run dependencies/install.sh or update TensorBases.";
+Module[{tbDir,tbPaclet,tbVersion,tbVerList,requiredVersion="1.3.0",requiredList},requiredList=PadRight[ToExpression/@StringSplit[requiredVersion,"."],3,0];tbDir=SelectFirst[Join[{FileNameJoin[{$UserBaseDirectory,"Applications","TensorBases"}],FileNameJoin[{$BaseDirectory,"Applications","TensorBases"}],FileNameJoin[{$InstallationDirectory,"AddOns","Applications","TensorBases"}],FileNameJoin[{$InstallationDirectory,"AddOns","Packages","TensorBases"}],FileNameJoin[{$InstallationDirectory,"AddOns","ExtraPackages","TensorBases"}]},Select[$Path,StringContainsQ[#1,"TensorBases"]&]],DirectoryQ[#1]&];
 tbPaclet=Quiet[Check[(List@@Import[FileNameJoin[{tbDir,"PacletInfo.m"}]])[[1]],$Failed]];
 tbVersion=If[AssociationQ[tbPaclet]&&KeyExistsQ[tbPaclet,"Version"],tbPaclet["Version"],"0.0.0"];
-tbVerList=ToExpression/@StringSplit[tbVersion,"."];
+tbVerList=PadRight[ToExpression/@StringSplit[tbVersion,"."],3,0];
 If[!OrderedQ[{requiredList,tbVerList}],
+If[$FrontEnd===Null||$Notebooks===False,Message[FunKitLoad::tensorBasesVersion,requiredVersion,tbVersion,tbDir];Abort[];];
 If[ChoiceDialog[TemplateApply["FunKit requires TensorBases version `r` or newer. The installed TensorBases is version `i`. Do you want to update now?",Association["r"->requiredVersion,"i"->tbVersion]],WindowTitle->"Update TensorBases",WindowSize->{Medium,All}],
 Import["https://raw.githubusercontent.com/satfra/TensorBases/main/TensorBasesInstaller.m"],
 Print["\!\(\*StyleBox[\"FunKit\",FontWeight->\"Bold\"]\) requires \!\(\*StyleBox[\"TensorBases\",FontWeight->\"Bold\"]\) version "<>requiredVersion<>" or newer."];Abort[];];

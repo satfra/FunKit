@@ -208,7 +208,19 @@ Used in generalized flow equations where field expectation values are time-depen
 This is a predefined correlation function with special index ordering rules.";
 
 FSetAutoBuildSymmetryList::usage = "FSetAutoBuildSymmetryList[flag]
-Sets whether a symmetry list should be automatically built when taking derivatives. Default is True."
+Sets whether the full permutation group of the correlator should be built automatically when
+taking derivatives, and used to simplify. Default is False.
+
+Turning this on asserts that the contraction you will apply -- your projector, trace and
+dressing rules -- is covariant under EVERY element of that group. It is a property of the
+correlation function, not of an individual diagram: reducing with it produces an expression
+that equals the original only after symmetrisation, so contracting it with something that
+lacks those symmetries (a single tensor-basis element, say) gives a wrong answer.
+
+Normally supply the symmetries you can license by hand instead:
+  syms = FMakeSymmetryList[FSymmetry[Symmetric, {i1,i2}], FSymmetry[Symmetric, {i2,i3}]];
+  FTakeDerivatives[WetterichEquation, {A[i1],A[i2],A[i3]}, \"Symmetries\" -> syms]
+See SYMMETRY-REDUCTION-DESIGN.md."
 
 FSetAutoSimplify::usage = "FSetAutoSimplify[flag]
 Sets whether automatic simplification should be applied when taking derivatives and truncating. Default is True."
