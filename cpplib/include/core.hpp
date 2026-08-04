@@ -234,13 +234,16 @@ namespace FunKit
 
   template <typename... O> LegT fresh_sidx(const FTerm &term, const O &...other)
   {
-    // Simply do an std::max over all indices and choose the highest value
-    Idx max_idx = -1;
-    (..., (max_idx = std::max(max_idx, other.second)));
+    // Simply do an std::max over all indices and choose the highest value.
+    // Index *names* are the magnitudes — the sign only encodes the leg position — so the
+    // max must be taken over |leg.second|. Comparing signed values would miss a name that
+    // currently occurs only as a lower index and hand it out again as "fresh".
+    Idx max_idx = 0;
+    (..., (max_idx = std::max<Idx>(max_idx, std::abs(other.second))));
     // Also iterate over all elements in term
     for (const auto &obj : term)
       for (const auto &leg : obj.legs)
-        max_idx = std::max(max_idx, leg.second);
+        max_idx = std::max<Idx>(max_idx, std::abs(leg.second));
     // Return an AnyField
     return {AnyField, max_idx + 1};
   }

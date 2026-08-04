@@ -90,6 +90,19 @@ TEST_CASE("fresh_sidx", "[core]")
   REQUIRE(FunKit::fresh_sidx(term) == FunKit::LegT{FunKit::AnyField, 5});
   // Extra legs are taken into account
   REQUIRE(FunKit::fresh_sidx(term, FunKit::LegT{0, 7}) == FunKit::LegT{FunKit::AnyField, 8});
+
+  // Index names are the magnitudes: a name that currently occurs only as a lower
+  // index still blocks that value. Handing out 10 here would silently contract the
+  // fresh index with the existing -10 leg.
+  FunKit::FTerm lower;
+  lower.push_back({FunKit::ObjectType::GammaN, {{0, -9}, {0, -10}}});
+  REQUIRE(FunKit::fresh_sidx(lower) == FunKit::LegT{FunKit::AnyField, 11});
+  REQUIRE(FunKit::fresh_sidx(lower, FunKit::LegT{0, -12}) == FunKit::LegT{FunKit::AnyField, 13});
+
+  // The all-lower case must still produce a usable (non-zero) index
+  FunKit::FTerm single;
+  single.push_back({FunKit::ObjectType::Field, {{0, -1}}});
+  REQUIRE(FunKit::fresh_sidx(single).second > 0);
 }
 
 TEST_CASE("has_FDOp", "[core]")

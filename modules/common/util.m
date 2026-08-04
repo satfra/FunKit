@@ -93,8 +93,22 @@ BalancedMap[f_, list_List] :=
         Return[Flatten[ret, 1]]
     ];
 
+(*Going parallel is not free: if the subkernel pool is still down the first
+  ParallelMap launches it, and every kernel then loads FunKit and receives
+  DistributeDefinitions -- seconds of one-time cost. Even with the pool up, each
+  call pays DistributeDefinitions plus a BinarySerialize round trip per element.
+  Below either bound the serial Map is done long before that overhead is repaid,
+  so guard the same way BalancedMap above already does. Two bounds because the
+  callers differ: FSimplify's groups are tiny in bytes but numerous, while
+  BalancedMap-style work is few large items.*)
+
+$PMapMinItems = 32;
+
 PMap[f_, list_List] :=
     Module[{ret},
+        If[Length[list] < $PMapMinItems && ByteCount[list] < $ParallelSwitchByteThreshold,
+            Return[Map[f, list]]
+        ];
         DistributeDefinitions[f];
         ret = ParallelMapSerialized[f, list];
         Return[ret]

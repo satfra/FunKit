@@ -599,6 +599,39 @@ AppendTo[tests,
     ]
 ];
 
+(*Two derivatives of a DSE: the first one hits a bare Field and leaves the (large)
+  derivative label sitting on a lower gamma leg, the second one differentiates a
+  propagator and has to invent two fresh indices. The fresh indices are picked as
+  max+1 over the term's index names, so a lower-only label must be seen -- else the
+  "fresh" index collides with the still-open derivative leg and the term ends up
+  with an index appearing three times*)
+
+AppendTo[tests,
+    cppTest[
+        Module[{cpp, native, derivs},
+            derivs = {Phi[i2], Phi[i3]};
+            FSetBackendCpp[];
+            cpp =
+                CheckAbort[
+                    FTruncate[scalarSetup, FTakeDerivatives[scalarSetup, FMakeDSE[scalarSetup, Phi[i1]], derivs]]
+                    ,
+                    $Aborted
+                ];
+            FSetBackendMathematica[];
+            native = FTruncate[scalarSetup, FTakeDerivatives[scalarSetup, FMakeDSE[scalarSetup, Phi[i1]], derivs]];
+            {
+                cpp =!= $Aborted,
+                exactCoefficientsQ[cpp],
+                equivalentQ[scalarSetup, cpp, native, derivs]
+            }
+        ]
+        ,
+        {True, True, True}
+        ,
+        "CoBra-Parity-ScalarDSE3Point"
+    ]
+];
+
 (**********************************************************************************
     Parity: symbolic prefactors (per-group engine runs)
 **********************************************************************************)
@@ -757,5 +790,44 @@ AppendTo[tests,
         {$Aborted, $Aborted, $Aborted, $Aborted}
         ,
         "CoBra-Backend-DeferredTraps"
+    ]
+];
+
+(**********************************************************************************
+    No subkernel pool for a small derivation.
+
+    FSimplify parallelises exactly when every term group is small
+    (AnSEL/Simplify.m useParallel) and used to reach PMap with no lower bound on
+    the work at all, so a six-term scalar DSE spun up the whole subkernel pool --
+    seconds of one-time cost for a tenth of a second of algebra. The C++ backend
+    could not avoid it: CppRunPipelineCore falls back to the native FSimplify for
+    untruncated (AnyField-carrying) results, which is every DSE intermediate.
+
+    Asserted by spying on PMap's parallel branch rather than by inspecting
+    Kernels[]: an explicit CloseKernels[] does NOT reproduce a fresh session
+    (WL then declines to relaunch and quietly runs sequentially), and the suite
+    itself runs with kernels already up.
+**********************************************************************************)
+
+AppendTo[tests,
+    cppTest[
+        Module[{wentParallel = False, cpp, native},
+            FSetBackendCpp[];
+            cpp =
+                Block[{FunKit`Private`ParallelMapSerialized = (wentParallel = True; Map[#1, #2])&},
+                    FMakeDSE[scalarSetup, Phi[i1]]
+                ];
+            FSetBackendMathematica[];
+            native = FMakeDSE[scalarSetup, Phi[i1]];
+            {
+                wentParallel,
+                Head[cpp],
+                equivalentQ[scalarSetup, FTruncate[scalarSetup, cpp], FTruncate[scalarSetup, native]]
+            }
+        ]
+        ,
+        {False, FEx, True}
+        ,
+        "CoBra-Perf-ScalarDSEStaysSerial"
     ]
 ];
