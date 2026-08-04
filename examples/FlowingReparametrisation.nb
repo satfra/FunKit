@@ -39642,7 +39642,7 @@ Cell[BoxData[
      RowBox[{
       RowBox[{
        RowBox[{
-        RowBox[{"fRG\[Sigma]\[Sigma]RHS", "[", "\"\<0-Loop\>\"", "]"}], "[", 
+        RowBox[{"fRG\[Sigma]\[Sigma]", "[", "\"\<0-Loop\>\"", "]"}], "[", 
         "\"\<Expression\>\"", "]"}], "/.", 
        RowBox[{"FMakeDiagrammaticRules", "[", "]"}]}], "/.", "PhidotRules"}], 
      "]"}], "//", "Total"}], "//", "Simplify"}]}]], "Input",
@@ -39699,7 +39699,7 @@ Cell[BoxData[
      RowBox[{
       RowBox[{
        RowBox[{
-        RowBox[{"fRG\[Sigma]\[Sigma]RHS", "[", "\"\<1-Loop\>\"", "]"}], "[", 
+        RowBox[{"fRG\[Sigma]\[Sigma]", "[", "\"\<1-Loop\>\"", "]"}], "[", 
         "\"\<Expression\>\"", "]"}], "/.", 
        RowBox[{"FMakeDiagrammaticRules", "[", "]"}]}], "/.", "PhidotRules"}], 
      "]"}], "//", "Total"}], "//", "Simplify"}]}]], "Input",
@@ -43519,7 +43519,7 @@ Cell[BoxData[
      RowBox[{
       RowBox[{
        RowBox[{
-        RowBox[{"fRGVRHS", "[", "\"\<1-Loop\>\"", "]"}], "[", 
+        RowBox[{"fRGV", "[", "\"\<1-Loop\>\"", "]"}], "[", 
         "\"\<Expression\>\"", "]"}], "/.", 
        RowBox[{"FMakeDiagrammaticRules", "[", "]"}]}], "/.", "PhidotRules"}], 
      "]"}], "//", "Total"}], "//", "Simplify"}]}]], "Input",
