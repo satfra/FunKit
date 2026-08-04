@@ -132,7 +132,10 @@ install(
   PATTERN "CMakeLists.txt"
   PATTERN "*.toml"
   PATTERN "*.json"
-  PATTERN "*.md")
+  PATTERN "*.md"
+  # The vendored third-party headers (nlohmann/json, toml11, gch/small_vector) carry their own
+  # licenses; those must travel with the sources they cover.
+  PATTERN "LICENSE")
 
 # ##############################################################################
 # Testing

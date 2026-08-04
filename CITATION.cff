@@ -1,7 +1,7 @@
 cff-version: 1.2.0
 message: "If you use FunKit in your research, please cite both the software and the accompanying paper."
 title: FunKit
-version: 1.0.0
+version: 1.1.0
 url: "https://github.com/satfra/FunKit"
 repository-code: "https://github.com/satfra/FunKit"
 license: GPL-3.0-or-later
