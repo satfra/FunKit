@@ -676,6 +676,8 @@ AppendTo[
         ,
         "AbortTriggered"
         ,
+        {FunKit`FMakeSymmetryList::fieldIndexMismatch}
+        ,
         TestID -> "FMakeSymmetryList: mismatched lengths aborts"
     ]
 ];
@@ -730,6 +732,8 @@ AppendTo[
         ]
         ,
         "AbortTriggered"
+        ,
+        {FunKit`Private`FBuildSymmetryList::invalidCycle}
         ,
         TestID -> "FBuildSymmetryList: invalid cycle aborts"
     ]

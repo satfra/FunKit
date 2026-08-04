@@ -1,7 +1,7 @@
 (* BuildZA4Cache.m -- one-time builder for the four-gluon-vertex codegen benchmark.
 
-   Reproduces the upstream of examples/Yang-Mills/Yang-Mills.m (setup + the A4
-   derivation/trace, lines 28-246) to obtain FlowA4 -- the integrand handed to
+   Reproduces the upstream of examples/Yang-Mills/Yang-Mills.wl (setup + the A4
+   derivation/trace) to obtain FlowA4 -- the integrand handed to
    MakeKernel -- and DumpSaves it to ZA4Flow.mx so ProfileCodegen.m can time code
    generation repeatedly without re-running the expensive symbolic+FORM pipeline.
 

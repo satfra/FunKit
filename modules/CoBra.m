@@ -27,6 +27,7 @@ Deactivates the C++ backend; all pipeline functions use the pure-Mathematica imp
 
 FEvaluate::usage = "FEvaluate[deferred]
 Forces a deferred C++ backend computation (as returned by FTakeDerivatives when the C++ backend is active) and returns a concrete FEx.
+An FEx or FTerm is returned unchanged, so FEvaluate[FTakeDerivatives[...]] is backend-agnostic: use it before handing a derivation to a consumer that cannot take a deferred handle (QMeSForm, DoFunForm, FPlot, FPrint, FRoute, DExpand, ...).
 Options:
   \"Truncate\" -> False      also truncate in the same C++ run
   \"Simplify\" -> Automatic  simplify in the same C++ run (Automatic follows $AutoSimplify)";

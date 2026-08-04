@@ -152,6 +152,25 @@ DoFundiagAAAA = wrapDoFun[ymDoFunSetup <> "doRGE[actionYMSymbolic,{A,A,A,A}]"];
 
 DoFunResAAAA = FunKitForm[ymFunKitSetup, DoFundiagAAAA];
 
+(* Symmetries for the derivations and the cross-test comparisons.
+   FSimplify treats external indices as fixed labels — without explicit symmetries,
+   it cannot match equivalent diagrams that differ by external index permutations.
+   These used to be built automatically inside FTakeDerivatives, but symmetry
+   construction is opt-in now ($AutoBuildSymmetryList defaults to False), so both the
+   FunKit side and the manually constructed comparison FEx need them stated. *)
+
+symsAA = FMakeSymmetryList[ymFunKitSetup, {A[i1], A[i2]}];
+
+symscbc = FunKit`Private`FBuildSymmetryList[ymFunKitSetup, {{{1, 2}, -1}}, {cb[i1], c[i2]}];
+
+symsAcbc = FunKit`Private`FBuildSymmetryList[ymFunKitSetup, {{{1, 2}, -1}}, {cb[i1], c[i2], A[i3]}];
+
+symsAcbc2 = FunKit`Private`FBuildSymmetryList[ymFunKitSetup, {{{2, 3}, -1}}, {cb[i1], c[i2], A[i3]}];
+
+symsAAA = FMakeSymmetryList[ymFunKitSetup, {A[i1], A[i2], A[i3]}];
+
+symsAAAA = FMakeSymmetryList[ymFunKitSetup, {A[i1], A[i2], A[i3], A[i4]}];
+
 (**********************************************************************************
     FunKit — DSE (with AutoSimplify disabled for raw diagram counts)
 **********************************************************************************)
@@ -172,29 +191,11 @@ FunKitRescbcDSERaw = FTakeDerivatives[ymFunKitSetup, FMakeDSE[ymFunKitSetup, c[i
 
 FSetAutoSimplify[True];
 
-FunKitResAADSE = FSimplify[FunKitResAADSERaw];
+FunKitResAADSE = FSimplify[FunKitResAADSERaw, "Symmetries" -> symsAA];
 
-FunKitResAcbcDSE = FSimplify[FunKitResAcbcDSERaw];
+FunKitResAcbcDSE = FSimplify[FunKitResAcbcDSERaw, "Symmetries" -> symsAcbc];
 
-FunKitRescbcDSE = FSimplify[FunKitRescbcDSERaw];
-
-(* Symmetries for cross-test comparisons.
-   FSimplify treats external indices as fixed labels — without explicit symmetries,
-   it cannot match equivalent diagrams that differ by external index permutations.
-   FunKit's pipeline auto-builds these via FTakeDerivatives, but the manually
-   constructed comparison FEx lacks them. *)
-
-symsAA = FMakeSymmetryList[ymFunKitSetup, {A[i1], A[i2]}];
-
-symscbc = FunKit`Private`FBuildSymmetryList[ymFunKitSetup, {{{1, 2}, -1}}, {cb[i1], c[i2]}];
-
-symsAcbc = FunKit`Private`FBuildSymmetryList[ymFunKitSetup, {{{1, 2}, -1}}, {cb[i1], c[i2], A[i3]}];
-
-symsAcbc2 = FunKit`Private`FBuildSymmetryList[ymFunKitSetup, {{{2, 3}, -1}}, {cb[i1], c[i2], A[i3]}];
-
-symsAAA = FMakeSymmetryList[ymFunKitSetup, {A[i1], A[i2], A[i3]}];
-
-symsAAAA = FMakeSymmetryList[ymFunKitSetup, {A[i1], A[i2], A[i3], A[i4]}];
+FunKitRescbcDSE = FSimplify[FunKitRescbcDSERaw, "Symmetries" -> symscbc];
 
 (**********************************************************************************
     FunKit — Wetterich flow

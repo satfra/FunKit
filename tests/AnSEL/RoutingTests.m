@@ -355,6 +355,23 @@ routingFingerprint[ex_] :=
 
 routedFingerprint[setup_, flow_] := routingFingerprint[FRoute[setup, flow]["1-Loop"]["Expression"]];
 
+(* Put $FunKitBackend back to a previously saved value. "Cpp" and "Mathematica" have public
+   setters; "Automatic" (the package default) has none, so it is restored directly. *)
+
+restoreBackend["Cpp"] := FSetBackendCpp[];
+
+restoreBackend["Mathematica"] := FSetBackendMathematica[];
+
+restoreBackend[other_] :=
+    (
+        Unprotect[FunKit`$FunKitBackend];
+        FunKit`$FunKitBackend = other;
+        Protect[FunKit`$FunKitBackend];
+        If[Length[Kernels[]] > 0,
+            DistributeDefinitions[FunKit`$FunKitBackend]
+        ];
+    );
+
 (* (1) THE GUARANTEE: d_t R always carries the bare loop momentum.
 
    This is what keeps the regulator shell centred on the radial integration variable, and hence what
@@ -445,13 +462,16 @@ AppendTo[
     tests
     ,
     VerificationTest[
-        Module[{flowMma, flowCpp},
+        (* The backend is global state, so it must be put back exactly as it was found: this file
+           runs third alphabetically, and leaving it pinned silently forced every later suite in
+           the same kernel onto that backend regardless of what tests/init.m had selected. *)
+        Module[{flowMma, flowCpp, savedBackend = FunKit`$FunKitBackend},
             FSetGlobalSetup[scalarSetup];   (* FTruncate reads $GlobalSetup *)
             FSetBackendMathematica[];
             flowMma = FTakeDerivatives[scalarSetup, WetterichEquation, {Phi[i1], Phi[i2], Phi[i3], Phi[i4]}] // FTruncate;
             FSetBackendCpp[];
             flowCpp = FTakeDerivatives[scalarSetup, WetterichEquation, {Phi[i1], Phi[i2], Phi[i3], Phi[i4]}] // FTruncate;
-            FSetBackendMathematica[];
+            restoreBackend[savedBackend];
             FSetGlobalSetup[yukawaSetup];
             routedFingerprint[scalarSetup, flowMma] === routedFingerprint[scalarSetup, flowCpp]
         ]

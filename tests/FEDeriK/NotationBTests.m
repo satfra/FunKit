@@ -81,7 +81,7 @@ Module[{setup, dse, derived},
         FEx,
         TestID -> "NotationB: Scalar FMakeDSE produces FEx"
     ]];
-    derived = FunKit`FTakeDerivatives[dse, {Phi[i2]}];
+    derived = FunKit`FEvaluate[FunKit`FTakeDerivatives[dse, {Phi[i2]}]];
     AppendTo[tests, VerificationTest[
         Head[derived],
         FEx,
@@ -100,7 +100,7 @@ Module[{setup, dse, derived},
         FEx,
         TestID -> "NotationB: Yang-Mills FMakeDSE produces FEx"
     ]];
-    derived = FunKit`FTakeDerivatives[dse, {A[i2]}];
+    derived = FunKit`FEvaluate[FunKit`FTakeDerivatives[dse, {A[i2]}]];
     AppendTo[tests, VerificationTest[
         Head[derived],
         FEx,

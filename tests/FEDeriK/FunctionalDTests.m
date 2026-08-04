@@ -52,7 +52,7 @@ AppendTo[tests, VerificationTest[FunKit`Private`FunctionalD[testSetup, GammaN[{a
 
 (* Test that FunctionalD fails appropriately for FEx *)
 
-AppendTo[tests, VerificationTest[CheckAbort[FunKit`Private`FunctionalD[testSetup, FEx[a], Phi[i]], "AbortTriggered"], "AbortTriggered", TestID -> "FunctionalD of FEx should abort"]];
+AppendTo[tests, VerificationTest[CheckAbort[FunKit`Private`FunctionalD[testSetup, FEx[a], Phi[i]], "AbortTriggered"], "AbortTriggered", {FunKit`Private`FunctionalD::malformed}, TestID -> "FunctionalD of FEx should abort"]];
 
 (**********************************************************************************
     User-Defined Rules Tests
@@ -86,7 +86,7 @@ AppendTo[tests, VerificationTest[Head[FunKit`Private`SymmetricDerivative[{Phi, P
 
 (* Test that SymmetricDerivative fails with mismatched field counts *)
 
-AppendTo[tests, VerificationTest[CheckAbort[FunKit`Private`SymmetricDerivative[{Phi}, {i}, {Phi, Psi}, {j, k}], "AbortTriggered"], "AbortTriggered", TestID -> "SymmetricDerivative with mismatched fields should abort"]];
+AppendTo[tests, VerificationTest[CheckAbort[FunKit`Private`SymmetricDerivative[{Phi}, {i}, {Phi, Psi}, {j, k}], "AbortTriggered"], "AbortTriggered", {FunKit`Private`SymmetricDerivative::malformed}, TestID -> "SymmetricDerivative with mismatched fields should abort"]];
 
 (**********************************************************************************
     Multi-Index Functional Derivatives

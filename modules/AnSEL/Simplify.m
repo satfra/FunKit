@@ -152,10 +152,17 @@ FMergeSymmetries[sym1_, sym2_] :=
 (*Build a symmetry list from a set of fields*)
 
 FMakeSymmetryList[f___] :=
-    (
+    Module[{args = {f}},
+        (*Reaching the catch-all with a first argument that was meant to be a setup: report the bad
+          setup rather than a generic argument error. The setup is both the likelier mistake and the
+          more actionable message, and it is what the caller sees from every other entry point.
+          Association (a valid-shaped setup) and the FSymmetry forms are not setup-taking calls.*)
+        If[Length[args] >= 2 && Head[First[args]] =!= Association && Head[First[args]] =!= FSymmetry && Head[First[args]] =!= List,
+            AssertFSetup[First[args]]
+        ];
         Message[FunKit::invalidArguments, FMakeSymmetryList];
         Abort[]
-    );
+    ];
 
 FMakeSymmetryList[setup_, {fields___}] /; AllTrue[{fields}, Length[#] == 1&] :=
     FMakeSymmetryList[setup, Head[#]& /@ {fields}, #[[1]]& /@ {fields}];

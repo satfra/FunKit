@@ -195,7 +195,13 @@ CppReadResult[setup_, file_, openInverse_Association] :=
                                     fresh[l]
                                 ,
                                 True,
-                                    fresh[l] = Symbol[SymbolName[Unique["si"]]]
+                                    (*Same "ci" prefix the Mathematica path uses for fresh closed
+                                      indices (cf. Cleaning.m), so printed and plotted output looks
+                                      the same whichever backend produced it. The numeric suffix
+                                      still comes from the session-global Unique counter and so
+                                      differs between the two -- the expressions are equal, but not
+                                      literally identical.*)
+                                    fresh[l] = Symbol[SymbolName[Unique["ci"]]]
                             ];
                         If[n < 0,
                             -s

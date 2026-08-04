@@ -62,7 +62,7 @@ AppendTo[
     tests
     ,
     VerificationTest[
-        Module[{res = FTakeDerivatives[yukawaSetup, FEx[FTerm[GammaN[{Psi, Psibar, Phi}, {i1, i2, i3}]]], {Phi[k]}]},
+        Module[{res = FEvaluate[FTakeDerivatives[yukawaSetup, FEx[FTerm[GammaN[{Psi, Psibar, Phi}, {i1, i2, i3}]]], {Phi[k]}]]},
             Head[res] === FEx && Not @ FreeQ[res, GammaN[{_, _, _, _}, _], Infinity]
         ]
         ,
@@ -81,6 +81,8 @@ AppendTo[
         CheckAbort[FResolveFDOp[scalarSetup, 42], "AbortTriggered"]
         ,
         "AbortTriggered"
+        ,
+        {FunKit`FunKit::invalidArguments}
         ,
         TestID -> "FResolveFDOp: invalid input type aborts"
     ]
@@ -116,6 +118,8 @@ AppendTo[
         ,
         "AbortTriggered"
         ,
+        {FunKit`FResolveDerivatives::argument}
+        ,
         TestID -> "FResolveDerivatives: invalid argument aborts"
     ]
 ];
@@ -130,7 +134,7 @@ AppendTo[
     tests
     ,
     VerificationTest[
-        Module[{res = FTakeDerivatives[scalarSetup, FEx[FTerm[GammaN[{Phi, Phi}, {i1, i2}]]], {Phi[k]}]},
+        Module[{res = FEvaluate[FTakeDerivatives[scalarSetup, FEx[FTerm[GammaN[{Phi, Phi}, {i1, i2}]]], {Phi[k]}]]},
             Head[res] === FEx && Not @ FreeQ[res, GammaN[{Phi, Phi, Phi}, _], Infinity]
         ]
         ,
@@ -146,7 +150,7 @@ AppendTo[
     tests
     ,
     VerificationTest[
-        Module[{res = FTakeDerivatives[scalarSetup, FEx[FTerm[GammaN[{Phi, Phi, Phi}, {i1, i2, i3}]]], {Phi[k], Phi[l]}]},
+        Module[{res = FEvaluate[FTakeDerivatives[scalarSetup, FEx[FTerm[GammaN[{Phi, Phi, Phi}, {i1, i2, i3}]]], {Phi[k], Phi[l]}]]},
             Head[res] === FEx && Not @ FreeQ[res, GammaN[{Phi, Phi, Phi, Phi, Phi}, _], Infinity]
         ]
         ,
@@ -162,7 +166,7 @@ AppendTo[
     tests
     ,
     VerificationTest[
-        Module[{res = FTakeDerivatives[scalarSetup, FEx[FTerm[GammaN[{Phi}, {-i1}]]], {Phi[k]}]},
+        Module[{res = FEvaluate[FTakeDerivatives[scalarSetup, FEx[FTerm[GammaN[{Phi}, {-i1}]]], {Phi[k]}]]},
             Head[res] === FEx && Not @ FreeQ[res, GammaN[{Phi, Phi}, _], Infinity]
         ]
         ,
@@ -178,7 +182,7 @@ AppendTo[
     tests
     ,
     VerificationTest[
-        Module[{res = FTakeDerivatives[scalarSetup, FEx[FTerm[GammaN[{Phi, Phi, Phi, Phi}, {i1, i2, i3, i4}]]], {Phi[k], Phi[l], Phi[m]}]},
+        Module[{res = FEvaluate[FTakeDerivatives[scalarSetup, FEx[FTerm[GammaN[{Phi, Phi, Phi, Phi}, {i1, i2, i3, i4}]]], {Phi[k], Phi[l], Phi[m]}]]},
             FreeQ[res, FDOp, Infinity]
         ]
         ,
@@ -220,6 +224,11 @@ AppendTo[
     ]
 ];
 
+(* Nested FDOp[G[...]] is one of the inputs the C++ engine cannot represent, so under that
+   backend these two emit FunKit::cppFallback and run through the Mathematica implementation.
+   That is the intended behaviour and the result is the same either way, but the message would
+   otherwise put the test in TestReport's "failed with messages" bucket. *)
+
 (* Derivative through the entropy term Log[FTerm[G[...]]]. The chain rule
    in FunctionalD inserts an inner FDOp; FResolveDerivatives should
    fully resolve it. *)
@@ -228,7 +237,7 @@ AppendTo[
     tests
     ,
     VerificationTest[
-        Module[{res = FResolveDerivatives[scalarSetup, FEx[FTerm[FDOp[G[{Phi, Phi}, {g, h}]], -1/2, Log[FTerm[G[{Phi, Phi}, {i, -i}]]]]]]},
+        Module[{res = Quiet[FResolveDerivatives[scalarSetup, FEx[FTerm[FDOp[G[{Phi, Phi}, {g, h}]], -1/2, Log[FTerm[G[{Phi, Phi}, {i, -i}]]]]]], FunKit::cppFallback]},
             Head[res] === FEx
                 && FreeQ[res, FDOp, Infinity]
                 && FreeQ[res, G[{___, G, ___}, _], Infinity]
@@ -256,8 +265,10 @@ AppendTo[
                 FTerm[-(1/2), Log[FTerm[G[{Phi, Phi}, {i, -i}]]]],
                 FTerm[S[{Phi, Phi}, {i, j}], G[{Phi, Phi}, {-i, -j}]]
             ];
-            res = FResolveDerivatives[scalarSetup,
-                FEx[FTerm[FDOp[G[{Phi, Phi}, {g, h}]]]] ** Gamma3PIInteraction];
+            res = Quiet[
+                FResolveDerivatives[scalarSetup,
+                    FEx[FTerm[FDOp[G[{Phi, Phi}, {g, h}]]]] ** Gamma3PIInteraction],
+                FunKit::cppFallback];
             Head[res] === FEx
                 && FreeQ[res, FDOp, Infinity]
                 && FreeQ[res, G[{___, G, ___}, _], Infinity]

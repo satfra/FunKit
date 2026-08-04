@@ -374,3 +374,37 @@ AppendTo[
         TestID -> "FTruncateOpenIndices: AnyField in both propagator slots fully expands"
     ]
 ];
+
+(* FTruncate prunes by construction: CTrunc is trusted to emit only in-truncation terms, and the
+   truncation rule list is applied only on its early-exit paths. That left a gap. An object is
+   checked against the truncation by getObjectCandidates only while it still carries an AnyField
+   leg on a closed index; if a neighbour's expansion fills that last slot in first, the object is
+   accepted unconstrained and nothing downstream re-checks it. Here the propagator resolves the
+   middle leg of the three-point vertex, and no three-point vertex is in the truncation at all --
+   so every GammaN in the result must be one of the listed two-point ones. *)
+
+AppendTo[
+    tests
+    ,
+    VerificationTest[
+        Module[{setup, expr, res, allowed, seen},
+            setup = <|
+                "FieldSpace" -> <|"Commuting" -> {A[p], Q[p]}, "Grassmann" -> {{cb[p], c[p]}}|>,
+                "Truncation" -> <|GammaN -> {{A, A}, {cb, c}, {c, Q}}, Propagator -> {{A, A}, {cb, c}}|>
+            |>;
+            expr = FEx[FTerm[
+                GammaN[{AnyField, AnyField}, {-a, -b}],
+                Propagator[{AnyField, AnyField}, {b, c1}],
+                GammaN[{AnyField, Q}, {-c1, a}]
+            ]];
+            res = FTruncate[setup, FTakeDerivatives[setup, expr, {A[i1]}]];
+            allowed = Sort /@ setup["Truncation"][GammaN];
+            seen = DeleteDuplicates @ Cases[res, GammaN[f_List, _] :> Sort[f], Infinity];
+            AllTrue[seen, MemberQ[allowed, #]&]
+        ]
+        ,
+        True
+        ,
+        TestID -> "FTruncate: vertices resolved by a neighbour are still checked against the truncation"
+    ]
+];

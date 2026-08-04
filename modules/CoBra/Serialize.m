@@ -369,6 +369,22 @@ CppSerializeInput[setup_, expr_FEx, derivList_List, symmetries_List, stages_Asso
             ,
             idxList
         ];
+        (*The derivative indices are not the only externally visible ones: any index the input
+          expression leaves open is an external leg of the result too (the field index of an
+          FMakeDSE equation, say). Those must be declared to the engine as well, or a rewriting
+          step is free to rename them away -- which is what used to cost the Yang-Mills gluon DSE
+          its i1 leg. An index is open in a term when it occurs exactly once there.*)
+        openIdx =
+            DeleteDuplicates @ Flatten @ Map[
+                Function[td,
+                    Module[{occ = makePosIdx /@ Flatten[Map[#[[3]]&, td[[2]]]]},
+                        Cases[Tally[occ], {ix_, 1} :> ix]
+                    ]
+                ]
+                ,
+                termData
+            ];
+        extIdx = DeleteDuplicates @ Join[extIdx, Select[openIdx, MemberQ[idxList, #]&]];
         internal = Select[idxList, !MemberQ[extIdx, #]&];
         extBase = Max[100, Length[internal]];
         map =
@@ -437,6 +453,11 @@ CppSerializeInput[setup_, expr_FEx, derivList_List, symmetries_List, stages_Asso
         ];
         If[ordr =!= {},
             setupAssoc["ordered"] = ordr
+        ];
+        (*The externally visible index labels: the engine must never rename these away, since they
+          name the external legs of the result*)
+        If[extIdx =!= {},
+            setupAssoc["externals"] = Lookup[map, extIdx]
         ];
         (*Unordered trailing-leg counts (FSetUnorderedIndices, e.g. Phidot's
           pinned "field" slot) -- the engine keeps these legs in place*)

@@ -105,7 +105,7 @@ With[{res = FunKit`Private`PrototypeObjectPattern[Propagator]},
 (* FTakeDerivatives: result is an FEx in NotationB format with all FDOp resolved.
    Use makeObj to build a NotationB-format input. *)
 
-With[{res = FTakeDerivatives[testSetup, FEx[FTerm[makeObj[GammaN, {Phi, Phi}, {i1, i2}]]], {Phi[k]}]},
+With[{res = FEvaluate[FTakeDerivatives[testSetup, FEx[FTerm[makeObj[GammaN, {Phi, Phi}, {i1, i2}]]], {Phi[k]}]]},
     AppendTo[tests, VerificationTest[Head[res] === FEx && FreeQ[res, FDOp, Infinity], True, TestID -> "NotationB: FTakeDerivatives returns FEx with no unresolved FDOp"]]
 ];
 

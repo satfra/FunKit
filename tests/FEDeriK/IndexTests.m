@@ -286,7 +286,7 @@ AppendTo[tests, VerificationTest[FunKit`Private`SuperIndicesValid[sSetup, FTerm[
 
 AppendTo[tests, VerificationTest[FunKit`Private`SuperIndicesValid[sSetup, FTerm[Phi[i1], Propagator[{Phi, Phi}, {i1, i2}]]], True, TestID -> "SuperIndicesValid scalar: open but valid expression returns True"]];
 
-AppendTo[tests, VerificationTest[FunKit`Private`SuperIndicesValid[sSetup, FTerm[Phi[i1], Propagator[{Phi, Phi}, {i1, i2}], GammaN[{Phi, Phi}, {i1, i2}], Phi[i2]]], False, TestID -> "SuperIndicesValid scalar: index appearing >2 times returns False"]];
+AppendTo[tests, VerificationTest[FunKit`Private`SuperIndicesValid[sSetup, FTerm[Phi[i1], Propagator[{Phi, Phi}, {i1, i2}], GammaN[{Phi, Phi}, {i1, i2}], Phi[i2]]], False, {FunKit`Private`SuperIndices::undeterminedSums}, TestID -> "SuperIndicesValid scalar: index appearing >2 times returns False"]];
 
 (**********************************************************************************
     replFields / unreplFields Tests

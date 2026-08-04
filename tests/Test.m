@@ -40,9 +40,22 @@ RunAndReportTests[exprText_String, testFileName_String] :=
             TestReport[tests, ProgressReporting -> False],
             TestReport[tests]
         ];
-        (* Key names changed between versions *)
+        (* Key names changed between versions.
+           A VerificationTest can fail in three ways: a wrong result, an unexpected message, or an
+           error. Counting only the wrong-result bucket meant the other two were reported as neither
+           passed nor failed -- they simply vanished from the totals, so a suite could silently stop
+           exercising tests and still print a clean summary. All three are counted here. *)
         succeededKeys = If[$VersionNumber >= 12.0, result["TestsSucceededKeys"], result["TestsSucceededIndices"]];
-        failedKeys = If[$VersionNumber >= 12.0, result["TestsFailedWrongResultsKeys"], result["TestsFailedWrongResultsIndices"]];
+        failedKeys =
+            If[$VersionNumber >= 12.0,
+                Join[
+                    result["TestsFailedWrongResultsKeys"],
+                    result["TestsFailedWithMessagesKeys"],
+                    result["TestsFailedWithErrorsKeys"]
+                ]
+                ,
+                result["TestsFailedIndices"]
+            ];
         successCount = Length[succeededKeys];
         failureCount = Length[failedKeys];
         Print[Style["  ✓ " <> ToString[successCount] <> " passed", mGreen], "    ", Style["x " <> ToString[failureCount] <> " failed", mRed]];
@@ -57,6 +70,9 @@ RunAndReportTests[exprText_String, testFileName_String] :=
                     Print["\n", Style["  Test:", mRed, Bold], " ", #["TestID"]];
                     Print["    Expected: ", #["ExpectedOutput"]];
                     Print["    Actual:   ", #["ActualOutput"]];
+                    If[#["ActualMessages"] =!= {},
+                        Print["    Messages: ", #["ActualMessages"]]
+                    ];
                 )&
                 ,
                 Values[KeyTake[result["TestResults"], failedKeys]]
@@ -123,6 +139,11 @@ result =
         Scan[
             (
                 Print["Running tests from: " <> FileNameTake[#, -2]];
+                (* Re-assert the configured backend before every file. Several suites switch it
+                   deliberately for backend-comparison tests; any one of them leaving it changed
+                   used to silently retarget every later file in this kernel, which is how the
+                   C++ path went untested even when init.m selected it. *)
+                ApplyTestBackend[];
                 exprText = Import[#, "Text"];
                 If[StringContainsQ[exprText, "tests ="] || StringContainsQ[exprText, "tests="],
                     Module[{results},

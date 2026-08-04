@@ -426,7 +426,10 @@ AppendTo[tests, VerificationTest[validFExQ[fQmesFullRT3] && FreeQ[fQmesFullRT3, 
     FTerm content rather than the annotated FEx.)
 **********************************************************************************)
 
-fkDerived = FTakeDerivatives[testSetup, FEx[FTerm[GammaN[{Phi, Phi}, {i1, i2}]]], {Phi[k]}];
+(* Under the C++ backend FTakeDerivatives returns a deferred handle, which QMeSForm cannot
+   consume; FEvaluate forces it to a concrete FEx and is the identity on one already. *)
+
+fkDerived = FEvaluate[FTakeDerivatives[testSetup, FEx[FTerm[GammaN[{Phi, Phi}, {i1, i2}]]], {Phi[k]}]];
 
 fkRoundtrip = FunKitForm[testSetup, QMeSForm[testSetup, fkDerived]];
 

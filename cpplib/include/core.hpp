@@ -79,6 +79,10 @@ namespace FunKit
     void finalize();
 
     bool in_truncation(const Object &obj) const;
+    // True if this type carries an actual, restricted rule list at this order. False both for
+    // unrestricted types (no rules at all) and for orders outside the truncation, so that callers
+    // can use it to decide whether expanding over the rules is meaningful.
+    bool has_rules(KeyT type_idx, Idx order) const;
     Idx max_truncation(KeyT type_idx) const;
     const std::vector<std::vector<FieldIdx>> &truncation_rules(KeyT type_idx) const;
     const std::vector<std::vector<FieldIdx>> &truncation_rules(KeyT type_idx, Idx order) const;
@@ -183,8 +187,27 @@ namespace FunKit
     void finalize_fields();
     const FieldProps &field_props(FieldIdx field_idx) const;
 
+    // Index labels that are externally visible: the equation's open legs (the derivative indices
+    // and any index left open by the input expression, e.g. the field index of a DSE). They name
+    // the result's external legs, so they must survive every rewriting step -- unlike closed
+    // labels, which are private to the term and may be renamed at will. Empty when the caller did
+    // not declare any, in which case nothing is treated as external.
+    std::vector<Idx> external_labels;
+
+    bool is_external_label(Idx label) const;
+
     bool is_cField(FieldIdx field_idx) const;
     bool is_gField(FieldIdx field_idx) const;
+    bool is_source(FieldIdx field_idx) const;
+
+    // Leg sort key mirroring OrderFields/FieldOrderLess (FEDeriK/Ordering.m). Ordinary fields keep
+    // their raw field-index order, which already reproduces FunKit's convention: cFields occupy the
+    // low indices and carry the highest FieldOrderLess weight, and within a Grassmann pair the
+    // anti-field precedes the field. Sources are the exception -- they are appended at the end of
+    // cFields/gFields and so sit at LOW raw indices relative to the Grassmann block, while
+    // FieldOrderLess gives them the lowest weight of all, i.e. they must sort last. Hence the
+    // explicit source rank; cSources before gSources then falls out of the raw index order.
+    std::pair<int, FieldIdx> leg_sort_key(FieldIdx field_idx) const;
 
     bool has_partner(FieldIdx field_idx) const;
     FieldIdx partner_field(FieldIdx field_idx) const;

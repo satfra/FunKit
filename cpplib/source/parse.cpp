@@ -122,6 +122,11 @@ namespace FunKit
         setup.indexedObjects++;
       }
 
+    // Read the externally visible index labels (the equation's open legs)
+    if (data["setup"].contains("externals"))
+      for (const auto &label : data["setup"]["externals"])
+        setup.external_labels.push_back(std::abs(label.get<Idx>()));
+
     // Read unordered trailing-leg counts (e.g. Phidot's pinned "field" slot)
     setup.unordered_leg_counts.assign(setup.objects.size(), 0);
     if (data["setup"].contains("unordered"))
@@ -341,6 +346,13 @@ namespace FunKit
         setup.orderedObjects++;
         setup.indexedObjects++;
       }
+    }
+
+    // Read the externally visible index labels (the equation's open legs)
+    if (data.at("setup").contains("externals")) {
+      if (!data.at("setup").at("externals").is_array()) loud_throw("'externals' must be an array in TOML file.");
+      for (const auto &label : data.at("setup").at("externals").as_array())
+        setup.external_labels.push_back(std::abs(static_cast<Idx>(label.as_integer())));
     }
 
     // Read unordered trailing-leg counts (e.g. Phidot's pinned "field" slot)

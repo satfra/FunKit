@@ -251,6 +251,18 @@ FEvaluate[d_FDeferred, OptionsPattern[]] :=
 FEvaluate[setup_, d_FDeferred, opts : OptionsPattern[]] :=
     FEvaluate[ReSetup[d, setup], opts];
 
+(*Forcing an already-concrete expression is the identity. FTakeDerivatives returns an FDeferred
+  under the C++ backend and a plain FEx under the Mathematica one, so without this every caller
+  that wants to hand the result to a non-pipeline consumer (QMeSForm, DoFunForm, FPlot, ...)
+  would have to branch on FDeferredQ. The options only describe work the engine would do, so
+  there is nothing to apply here.*)
+
+FEvaluate[e : _FEx | _FTerm, OptionsPattern[]] :=
+    e;
+
+FEvaluate[setup_, e : _FEx | _FTerm, opts : OptionsPattern[]] :=
+    e;
+
 FEvaluate[a___] :=
     (
         Message[FunKit::invalidArguments, FEvaluate];
@@ -331,8 +343,60 @@ Scan[
         ]
     ]
     ,
-    {"FunKit`FPrint", "FunKit`FPlot", "FunKit`FRoute", "FunKit`FUnroute"}
+    {"FunKit`FRoute", "FunKit`FUnroute"}
 ];
+
+(**********************************************************************************
+    FPlot and FPrint are the exceptions: both display their argument and return it unchanged, so a
+    deferred computation need not be collapsed to be shown. Force a copy for the picture, then hand
+    the handle straight back, leaving the pipeline deferred -- FTakeDerivatives[...] // FPlot //
+    FTruncate keeps running the fused C++ call it would have without the FPlot.
+
+    The forced copy resolves the derivatives without truncating, which is what the diagram should
+    show at that point, and is then discarded. It is real work: the later FTruncate on the handle
+    runs the engine again under different stage flags, so it is a separate cache entry rather than
+    a hit. Headless there is nothing to display, so the handle passes through untouched and nothing
+    is forced at all.
+
+    FRoute and FUnroute stay trapped above: they genuinely transform the expression, so returning
+    the untouched handle from them would silently discard the routing the caller asked for.
+**********************************************************************************)
+
+FunKit`FPlot[setup_, d_FDeferred] /; ($FrontEnd === Null || TrueQ[$Notebooks === False]) :=
+    d;
+
+FunKit`FPlot[d_FDeferred] /; ($FrontEnd === Null || TrueQ[$Notebooks === False]) :=
+    d;
+
+FunKit`FPlot[setup_, d_FDeferred] :=
+    (
+        FunKit`FPlot[setup, FEvaluate[ReSetup[d, setup]]];
+        d
+    );
+
+FunKit`FPlot[d_FDeferred] :=
+    (
+        FunKit`FPlot[FEvaluate[d]];
+        d
+    );
+
+FunKit`FPrint[setup_, d_FDeferred] /; ($FrontEnd === Null || TrueQ[$Notebooks === False]) :=
+    d;
+
+FunKit`FPrint[d_FDeferred] /; ($FrontEnd === Null || TrueQ[$Notebooks === False]) :=
+    d;
+
+FunKit`FPrint[setup_, d_FDeferred] :=
+    (
+        FunKit`FPrint[setup, FEvaluate[ReSetup[d, setup]]];
+        d
+    );
+
+FunKit`FPrint[d_FDeferred] :=
+    (
+        FunKit`FPrint[FEvaluate[d]];
+        d
+    );
 
 FDeferred /: NonCommutativeMultiply[___, _FDeferred, ___] :=
     (

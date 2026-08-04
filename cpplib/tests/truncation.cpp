@@ -690,3 +690,109 @@ TEST_CASE("Derivatives followed by truncation close the yukawa flow", "[truncati
     }
   }
 }
+
+// Regression: an ordered object that is not a correlation function (R, Rdot, S, and anything added
+// with FAddOrderedObject) used to be excluded from the expansion entirely. Its legs were only ever
+// filled in by emit_child's propagation from an expanded neighbour, which suffices whenever every
+// leg contracts with a correlator that is itself expanded -- R between two propagators, the ordinary
+// Wetterich/DSE case. It does NOT suffice when a leg contracts with one that is concrete in the
+// input and so never expanded, which is exactly the source leg of an mSTI vertex: the opposite R leg
+// stayed AnyField, which then also blocked FMinus/gamma resolution (wrong overall sign) and finally
+// tripped the no-AnyField guard in simplify.
+TEST_CASE("Truncate expands ordered non-correlator objects against a source leg", "[truncation][sources]")
+{
+  const auto tpath = write_tmp("funkit_ordered_source.toml", R"(
+    equation = [ ]
+    [setup]
+    ordered = [ "R" ]
+    gSources = [ { QA = [ ] } ]
+    [[setup.cFields]]
+    A = [ ]
+    [[setup.gFields]]
+    cb = [ ]
+    c = [ ]
+    [setup.truncation]
+    GammaN = [ [ "A", "A" ], [ "cb", "c" ], [ "c", "QA" ] ]
+    Propagator = [ [ "A", "A" ], [ "cb", "c" ] ]
+    R = [ [ "A", "A" ], [ "cb", "c" ] ]
+  )");
+  auto [setup, feq] = FunKit::parse(tpath);
+
+  const FunKit::FieldIdx cb = setup.field_to_idx("cb");
+  const FunKit::FieldIdx c = setup.field_to_idx("c");
+  const FunKit::FieldIdx qa = setup.field_to_idx("QA");
+  const FunKit::KeyT rType = setup.type_to_idx("R");
+
+  // R_{ab} G^{bc} Gamma_{c}{}^{QA}: the R leg carrying index a meets the concrete QA leg, so only
+  // R's own rules can fix it. The GammaN rules admit only (c, QA), which forces the ghost channel,
+  // and the R rule (cb, c) then fixes the remaining leg.
+  FunKit::FTerm term;
+  term.push_back({rType, {{FunKit::AnyField, -1}, {FunKit::AnyField, -2}}});
+  term.push_back({FunKit::ObjectType::Propagator, {{FunKit::AnyField, 2}, {FunKit::AnyField, 3}}});
+  term.push_back({FunKit::ObjectType::GammaN, {{FunKit::AnyField, -3}, {qa, 1}}});
+
+  const FunKit::FEq out = FunKit::truncate(setup, term);
+  REQUIRE(out.size() == 1);
+  REQUIRE_FALSE(FunKit::has_AnyField(out[0]));
+  REQUIRE(fields_of(out[0], rType) == std::vector<FunKit::FieldIdx>{cb, c});
+  // The unresolved leg also used to leave FMinus unresolved, flipping the sign to -1
+  REQUIRE(FunKit::is_close(out[0].value, 1.));
+}
+
+// normalize() sorts legs by field index, which reproduces FunKit's FieldOrderLess for ordinary
+// fields but not for sources: sources are appended at the end of cFields/gFields and so carry LOW
+// raw indices relative to the Grassmann block, while FieldOrderLess ranks them lowest of all, i.e.
+// last. A commuting source among Grassmann fields used to come out first, e.g. GammaN[{Qc, c, c}]
+// where the Mathematica OrderFields gives GammaN[{c, c, Qc}].
+TEST_CASE("Normalize sorts source legs last, as FieldOrderLess does", "[truncation][sources]")
+{
+  const auto tpath = write_tmp("funkit_source_order.toml", R"(
+    equation = [ ]
+    [setup]
+    cSources = [ { Qc = [ ] } ]
+    [[setup.cFields]]
+    A = [ ]
+    [[setup.gFields]]
+    cb = [ ]
+    c = [ ]
+  )");
+  auto [setup, feq] = FunKit::parse(tpath);
+
+  const FunKit::FieldIdx c = setup.field_to_idx("c");
+  const FunKit::FieldIdx qc = setup.field_to_idx("Qc");
+  REQUIRE(qc < c); // the raw index order that used to drive the sort puts the source first
+
+  FunKit::FTerm term;
+  term.push_back({FunKit::ObjectType::GammaN, {{qc, 1}, {c, -2}, {c, -3}}});
+  FunKit::normalize(setup, term);
+
+  REQUIRE(fields_of(term, FunKit::ObjectType::GammaN) == std::vector<FunKit::FieldIdx>{c, c, qc});
+}
+
+// Regression: external index labels must survive truncation. contract_gamma eliminated whichever
+// of the metric's two labels also occurred elsewhere in the term, with no notion of which labels
+// name the equation's external legs. An external label is carried both by the FDOp and by the
+// object the derivative produced, so it looks "closed" at that point and was renamed away -- the
+// Yang-Mills gluon DSE lost its i1 leg on 8 of 34 terms, which then failed to merge and left the
+// result fragmented (the QMeS and DoFun cross-checks caught it as leftover 1/24 pieces).
+TEST_CASE("Truncation preserves the declared external legs", "[truncation][externals]")
+{
+  auto [setup, feq] = FunKit::parse(BOILERPLATE_DIR + "yang-mills-dse.toml");
+  REQUIRE(setup.external_labels.size() == 2);
+
+  FunKit::resolve_derivatives(setup, feq);
+  FunKit::truncate(setup, feq);
+  REQUIRE_FALSE(feq.empty());
+
+  for (const auto &term : feq) {
+    // Every external label must occur exactly once, i.e. still be an open leg of the term
+    for (const auto label : setup.external_labels) {
+      FunKit::Idx count = 0;
+      for (const auto &obj : term)
+        for (const auto &leg : obj.legs)
+          if (std::abs(leg.second) == label) ++count;
+      INFO("external label " << label << " occurs " << count << " times");
+      REQUIRE(count == 1);
+    }
+  }
+}

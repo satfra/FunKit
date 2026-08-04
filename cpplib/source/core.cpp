@@ -166,6 +166,13 @@ namespace FunKit
     return m_truncation_table[1 + type_idx];
   }
 
+  bool Truncation::has_rules(KeyT type_idx, Idx order) const
+  {
+    const auto &rules = truncation_rules(type_idx, order);
+    // An empty list means "unrestricted"; a single empty rule means "nothing accepted at this order"
+    return !rules.empty() && !rules.front().empty();
+  }
+
   const std::vector<std::vector<FieldIdx>> &Truncation::truncation_rules(KeyT type_idx, Idx order) const
   {
     static const std::vector<std::vector<FieldIdx>> empty_list_of_empty_list(1, std::vector<FieldIdx>{});
@@ -433,6 +440,20 @@ namespace FunKit
   bool Setup::is_cField(FieldIdx field_idx) const { return !field_props(field_idx).grassmann; }
 
   bool Setup::is_gField(FieldIdx field_idx) const { return field_props(field_idx).grassmann; }
+
+  bool Setup::is_external_label(Idx label) const
+  {
+    const Idx name = std::abs(label);
+    return std::find(external_labels.begin(), external_labels.end(), name) != external_labels.end();
+  }
+
+  bool Setup::is_source(FieldIdx field_idx) const { return field_props(field_idx).source; }
+
+  std::pair<int, FieldIdx> Setup::leg_sort_key(FieldIdx field_idx) const
+  {
+    if (field_idx == AnyField) return {0, field_idx};
+    return {field_props(field_idx).source ? 1 : 0, field_idx};
+  }
 
   FieldIdx Setup::field_to_idx(const std::string &field_name) const
   {

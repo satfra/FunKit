@@ -19,7 +19,11 @@ namespace FunKit
     // Contract a resolved metric factor: rename its closed index to the surviving open one, cf. the index
     // replacement in ReduceGamma (FEDeriK/Metric.m). If both gamma indices have the same position, the surviving
     // index switches position.
-    void contract_gamma(FTerm &term, Idx gamma_idx)
+    // Returns false and leaves the term untouched when the metric cannot be contracted because
+    // both of its indices name external legs -- cf. ReduceGamma (FEDeriK/Metric.m), which excludes
+    // exactly that case ("if we have two gammas [...] and one open index each, we cannot replace
+    // both"). Collapsing those would merge two distinct external legs into one.
+    bool contract_gamma(const Setup &setup, FTerm &term, Idx gamma_idx)
     {
       const Idx i1 = term[gamma_idx].legs[0].second;
       const Idx i2 = term[gamma_idx].legs[1].second;
@@ -36,13 +40,24 @@ namespace FunKit
           }
       }
 
-      const Idx from = closed1 ? i1 : i2;
-      const Idx to = closed1 ? i2 : i1;
+      // The surviving label is normally the one that is NOT contracted elsewhere. That choice is
+      // wrong whenever the eliminated label happens to be an external one: an external label is
+      // carried by the FDOp and again by the object the derivative produced, so it looks "closed"
+      // here and would be renamed away, silently costing the result an external leg. External
+      // labels therefore always win.
+      const bool ext1 = setup.is_external_label(i1);
+      const bool ext2 = setup.is_external_label(i2);
+      if (ext1 && ext2) return false;
+
+      const bool keepFirst = ext1 || (!ext2 && !closed1);
+      const Idx from = keepFirst ? i2 : i1;
+      const Idx to = keepFirst ? i1 : i2;
       for (Idx j = 0; j < Idx(term.size()); ++j) {
         if (j == gamma_idx) continue;
         for (auto &leg : term[j].legs)
           if (std::abs(leg.second) == std::abs(from)) leg.second = (leg.second < 0 ? -1 : 1) * flip * std::abs(to);
       }
+      return true;
     }
 
     // Index of the open correlation function or Field object with the fewest legs, or -1 if
@@ -51,20 +66,41 @@ namespace FunKit
     // Expansions never create new AnyField legs, so lower orders cannot reappear once they are
     // exhausted. Lower orders have fewer rules, so this keeps the branching narrow and drops
     // out-of-truncation terms early.
+    //
+    // Ordered objects that are not correlation functions (R, Rdot, S, and user objects added with
+    // FAddOrderedObject) are a deliberate second tier. Normally their legs need no expansion at
+    // all: they are filled in by emit_child's propagation from an expanded neighbour, which is
+    // what happens whenever every leg contracts with a correlator that is itself expanded -- the
+    // ordinary Wetterich/DSE case, where R sits between two propagators. That breaks down when a
+    // leg contracts with one that is concrete in the input and therefore never expanded, e.g. the
+    // source leg of an mSTI vertex GammaN[{AnyField, QA}]: no propagation event ever reaches the
+    // R leg opposite it and it stays AnyField. Expanding such an object over its own truncation
+    // rules resolves it, exactly as the Mathematica FTruncate does. Keeping it a strict second
+    // tier means the hot path is bit-for-bit unchanged wherever propagation already suffices.
     Idx first_open_correlator(const Setup &setup, const FTerm &term)
     {
-      Idx best = -1;
+      Idx best = -1, fallback = -1;
       size_t best_arity = std::numeric_limits<size_t>::max();
+      size_t fallback_arity = std::numeric_limits<size_t>::max();
       for (Idx i = 0; i < Idx(term.size()); ++i) {
         const auto &obj = term[i];
-        if (!(setup.is_correlationFunction(obj.type) || obj.type == ObjectType::Field) || !has_AnyField(obj)) continue;
-        if (obj.legs.size() < best_arity) {
-          best = i;
-          best_arity = obj.legs.size();
-          if (best_arity == 1) break;
+        if (!has_AnyField(obj)) continue;
+        if (setup.is_correlationFunction(obj.type) || obj.type == ObjectType::Field) {
+          if (obj.legs.size() < best_arity) {
+            best = i;
+            best_arity = obj.legs.size();
+            if (best_arity == 1) break;
+          }
+        } else if (setup.is_orderedObject(obj.type) && setup.truncation.has_rules(obj.type, Idx(obj.legs.size()))) {
+          // Only with a restricted rule list: an unrestricted ordered object would otherwise
+          // expand over every field pair, which propagation never did and which no rule prunes.
+          if (obj.legs.size() < fallback_arity) {
+            fallback = i;
+            fallback_arity = obj.legs.size();
+          }
         }
       }
-      return best;
+      return best != -1 ? best : fallback;
     }
 
     // Assign the fields (one per leg) to the correlation function at obj_idx, propagate each field
@@ -329,12 +365,18 @@ namespace FunKit
       }
       case ObjectType::gamma: {
         if (has_AnyField(obj)) break;
+        {
+          // A metric joining two external legs cannot be collapsed; leave it in place rather than
+          // merging the legs. Evaluate its value only once we know it will be removed.
+          const Idx g1 = obj.legs[0].second, g2 = obj.legs[1].second;
+          if (setup.is_external_label(g1) && setup.is_external_label(g2)) break;
+        }
         term.value *= setup.gamma(obj.legs[0], obj.legs[1]);
         if (is_close(term.value, 0.)) {
           term.clear();
           return;
         }
-        contract_gamma(term, oi);
+        if (!contract_gamma(setup, term, oi)) break;
         term[oi].type = ObjectType::None;
         changed = true;
         break;

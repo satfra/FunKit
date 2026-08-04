@@ -50,26 +50,73 @@ jobs:
           echo "total=$total"   >> "$GITHUB_OUTPUT"
           echo "### Tests: ${passed}/${total} passing" >> "$GITHUB_STEP_SUMMARY"
 
+      # The same suite again through the C++ engine (CoBra). This is what users actually get:
+      # $FunKitBackend defaults to "Automatic", which activates the engine on the first pipeline
+      # call, so the C++ path -- not the Mathematica one -- is the default configuration and has
+      # to be green. It went untested for a long time, which is how several backend-only bugs
+      # shipped. Needs CMake >= 3.20 and a C++20 compiler with OpenMP on the runner, plus network
+      # access on the very first configure to fetch the test framework; with FUNKIT_TEST_BACKEND
+      # set, tests/init.m calls FSetBackendCpp[] outright, so a missing toolchain fails loudly
+      # here instead of silently falling back to the Mathematica implementation.
+      - name: Run tests (C++ backend)
+        id: tests_cpp
+        run: |
+          cd "$GITHUB_WORKSPACE/build"
+          set -o pipefail
+          set +e
+          FUNKIT_TEST_BACKEND=Cpp make test 2>&1 | tee make-test-cpp.log
+          set -e
+          {
+            echo "## Test output (C++ backend)"
+            echo '```'
+            cat make-test-cpp.log
+            echo '```'
+          } >> "$GITHUB_STEP_SUMMARY"
+          summary=$(grep -E '[0-9]+ passed[[:space:]]+.*[0-9]+ failed' make-test-cpp.log | tail -1 || true)
+          passed=$(printf '%s' "$summary" | grep -oE '[0-9]+ passed' | grep -oE '[0-9]+' || echo 0)
+          failed=$(printf '%s' "$summary" | grep -oE '[0-9]+ failed' | grep -oE '[0-9]+' || echo 0)
+          total=$((${passed:-0} + ${failed:-0}))
+          echo "passed=$passed" >> "$GITHUB_OUTPUT"
+          echo "failed=$failed" >> "$GITHUB_OUTPUT"
+          echo "total=$total"   >> "$GITHUB_OUTPUT"
+          echo "### Tests (C++ backend): ${passed}/${total} passing" >> "$GITHUB_STEP_SUMMARY"
+
       # Decide the badge text/colour. Runs even if the build failed (always()), so a
       # broken build shows a red "build failed" badge instead of leaving the gist at
-      # its stale value.
+      # its stale value. Both backends run the same suite, so a green badge reports the
+      # shared count; either one failing turns it red and names the culprit, so a
+      # backend-only regression can never hide behind a green badge.
       - name: Compute badge content
         id: badge
         if: always() && github.event_name == 'push'
+        env:
+          MMA_PASSED: ${{ steps.tests.outputs.passed }}
+          MMA_FAILED: ${{ steps.tests.outputs.failed }}
+          MMA_TOTAL:  ${{ steps.tests.outputs.total }}
+          CPP_PASSED: ${{ steps.tests_cpp.outputs.passed }}
+          CPP_FAILED: ${{ steps.tests_cpp.outputs.failed }}
+          CPP_TOTAL:  ${{ steps.tests_cpp.outputs.total }}
         run: |
           if [ "${{ steps.build.outcome }}" != "success" ]; then
             echo "message=build failed" >> "$GITHUB_OUTPUT"
             echo "color=red"            >> "$GITHUB_OUTPUT"
-          elif [ -z "${{ steps.tests.outputs.total }}" ] || [ "${{ steps.tests.outputs.total }}" = "0" ]; then
+          elif [ -z "$MMA_TOTAL" ] || [ "$MMA_TOTAL" = "0" ] \
+            || [ -z "$CPP_TOTAL" ] || [ "$CPP_TOTAL" = "0" ]; then
             echo "message=no tests run" >> "$GITHUB_OUTPUT"
             echo "color=red"            >> "$GITHUB_OUTPUT"
+          elif [ "$MMA_FAILED" != "0" ] && [ "$CPP_FAILED" != "0" ]; then
+            echo "message=$MMA_FAILED failed (mma), $CPP_FAILED failed (c++)" >> "$GITHUB_OUTPUT"
+            echo "color=red" >> "$GITHUB_OUTPUT"
+          elif [ "$MMA_FAILED" != "0" ]; then
+            echo "message=$MMA_FAILED failed (mma)" >> "$GITHUB_OUTPUT"
+            echo "color=red" >> "$GITHUB_OUTPUT"
+          elif [ "$CPP_FAILED" != "0" ]; then
+            echo "message=$CPP_FAILED failed (c++)" >> "$GITHUB_OUTPUT"
+            echo "color=red" >> "$GITHUB_OUTPUT"
           else
-            echo "message=${{ steps.tests.outputs.passed }}/${{ steps.tests.outputs.total }} passing" >> "$GITHUB_OUTPUT"
-            if [ "${{ steps.tests.outputs.failed }}" = "0" ]; then
-              echo "color=brightgreen" >> "$GITHUB_OUTPUT"
-            else
-              echo "color=red"         >> "$GITHUB_OUTPUT"
-            fi
+            # Both green and both run the same suite: report the shared count once.
+            echo "message=$MMA_PASSED/$MMA_TOTAL passing" >> "$GITHUB_OUTPUT"
+            echo "color=brightgreen" >> "$GITHUB_OUTPUT"
           fi
 
       # Publish to the Gist that shields.io reads. Only on push: PRs (esp. from
@@ -96,6 +143,17 @@ jobs:
             exit 1
           fi
           if [ "${{ steps.tests.outputs.failed }}" != "0" ]; then
-            echo "${{ steps.tests.outputs.failed }} test(s) failed."
+            echo "${{ steps.tests.outputs.failed }} test(s) failed on the Mathematica backend."
+            exit 1
+          fi
+          if [ "${{ steps.tests_cpp.outputs.failed }}" != "0" ]; then
+            echo "${{ steps.tests_cpp.outputs.failed }} test(s) failed on the C++ backend."
+            exit 1
+          fi
+          # A suite that reported nothing is a failure too: with FUNKIT_TEST_BACKEND=Cpp a missing
+          # toolchain aborts tests/init.m, which would otherwise leave the counts empty and pass.
+          if [ -z "${{ steps.tests.outputs.total }}" ] || [ "${{ steps.tests.outputs.total }}" = "0" ] \
+            || [ -z "${{ steps.tests_cpp.outputs.total }}" ] || [ "${{ steps.tests_cpp.outputs.total }}" = "0" ]; then
+            echo "A test suite produced no results."
             exit 1
           fi

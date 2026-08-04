@@ -958,6 +958,20 @@ FTruncate[setup_, expr_FEx] :=
                 $ProfilePostRI += AbsoluteTime[] - t0
             ];
         ];
+        (*Final in-truncation sweep. The expansion above prunes by construction, which leaves a
+          gap: getObjectCandidates only checks an object against the truncation while it still has
+          an AnyField leg on a closed index, so an object whose last AnyField is filled in by a
+          neighbour's expansion is accepted unconstrained. This makes the guarantee unconditional --
+          every object of a truncated type in the result is one the truncation lists. The rule list
+          is a memoized Dispatch and only fires on AnyField-free objects, so this is one pass.*)
+        Module[{t0 = AbsoluteTime[]},
+            ret0 = ret0 /. truncationList[setup];
+            (*A killed object leaves a literal 0 among the FTerm's factors: drop those terms*)
+            ret0 = DeleteCases[ret0, t_FTerm /; MemberQ[List @@ t, 0]];
+            If[ValueQ[$ProfileTruncSweep],
+                $ProfileTruncSweep += AbsoluteTime[] - t0
+            ];
+        ];
         FunKitDebug[1, "Finished truncating the given expression"];
         Module[{t0 = AbsoluteTime[]},
             ret0 = OrderFields[setup, FixIndices[setup, #]& /@ ret0];

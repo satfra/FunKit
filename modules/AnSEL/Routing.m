@@ -385,7 +385,11 @@ fermionicExtMomRouting[setup_, vertex_] :=
    per-vertex momentum conservation holds locally; externals/loops in
    subsequent components are renumbered to avoid collisions. *)
 
-FRoute[setup_, expr_FTerm] /; FDisconnectedQ[setup, expr] :=
+(* AssertFSetup runs inside the condition, before FDisconnectedQ touches the setup: this is the
+   first definition that consumes it, and an invalid setup reaching FDisconnectedQ produces a
+   cascade of raw Lookup/Join errors before the FunKit message the user should be reading. *)
+
+FRoute[setup_, expr_FTerm] /; (AssertFSetup[setup]; FDisconnectedQ[setup, expr]) :=
     Module[{components, mergedTerm = FTerm[], mergedExt = {}, mergedLoops = {}, extOffset = 0, loopOffset = 0, comp, routed, extNew, loopNew, nExt, nLoops, renameRules, k, routedTerm, newExtPairs, newLoopMoms},
         FunKitDebug[1, "FRoute: term is disconnected, splitting into connected components"];
         components = partitionFTermByConnectivity[setup, expr];
