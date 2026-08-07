@@ -21,12 +21,46 @@ if not exist "%wolfram_app_dir%\QMeSderivation" (
     move "%script_path%QMeS-Derivation-main" "%wolfram_app_dir%\QMeSderivation" >nul
 )
 
-:: Install FormTracer
-if not exist "%wolfram_app_dir%\FormTracer" (
-    echo Installing FormTracer to %wolfram_app_dir%\FormTracer
+:: Install FormTracer.
+:: FunKit requires the FormTracer bundled here, which carries fixes that upstream
+:: does not (getOpenIndices index census, leftover Levi-Civita contraction)
+:: without a version bump. So an installation that is already there but differs
+:: from the bundle is replaced, not kept -- a stale copy aborts FORM traces on
+:: well-formed expressions (see tests/CrossTests/GhostGluonFormTests.m). The
+:: comparison is on FormTracer.m alone: it is the entire package, everything else
+:: is documentation. Keep in step with install.sh.
+set ft_dir=%wolfram_app_dir%\FormTracer
+set ft_install=1
+
+if exist "%ft_dir%" (
     if exist "%script_path%FormTracer" rd /s /q "%script_path%FormTracer"
     powershell -Command "Expand-Archive -Path '%script_path%FormTracer.zip' -DestinationPath '%script_path%' -Force" >nul 2>&1
-    move "%script_path%FormTracer" "%wolfram_app_dir%\FormTracer" >nul
+    fc /b "%script_path%FormTracer\FormTracer.m" "%ft_dir%\FormTracer.m" >nul 2>&1
+    if !errorlevel! equ 0 (
+        set ft_install=0
+        rd /s /q "%script_path%FormTracer"
+    ) else (
+        echo The FormTracer at %ft_dir% differs from the one bundled with FunKit.
+        for /f "delims=" %%l in ('powershell -NoProfile -Command "if((Get-Item -LiteralPath '%ft_dir%' -Force).LinkType){'link'}else{'dir'}"') do set ft_link=%%l
+        if "!ft_link!"=="link" (
+            :: A linked development checkout. Renaming it would move the user's own
+            :: working tree out from under them, so refuse and let them update it.
+            echo   %ft_dir% is a link, so it is left untouched. 1>&2
+            echo   Update the FormTracer checkout it points at to match dependencies\FormTracer.zip. 1>&2
+            exit /b 1
+        )
+        echo   Moving the old installation to %ft_dir%.bak
+        if exist "%ft_dir%.bak" rd /s /q "%ft_dir%.bak"
+        move "%ft_dir%" "%ft_dir%.bak" >nul
+    )
+)
+
+if "!ft_install!"=="1" (
+    echo Installing FormTracer to %ft_dir%
+    if not exist "%script_path%FormTracer" (
+        powershell -Command "Expand-Archive -Path '%script_path%FormTracer.zip' -DestinationPath '%script_path%' -Force" >nul 2>&1
+    )
+    move "%script_path%FormTracer" "%ft_dir%" >nul
 )
 
 :: Install TensorBases.

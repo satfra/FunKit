@@ -16,11 +16,36 @@ if [[ ! -d "${wolfram_app_dir}/QMeSderivation" ]]; then
   mv ${script_path}/QMeS-Derivation-main ${wolfram_app_dir}/QMeSderivation
 fi
 
-if [[ ! -d "${wolfram_app_dir}/FormTracer" ]]; then
-  echo "Installing FormTracer to ${wolfram_app_dir}/FormTracer"
+# FunKit requires the FormTracer bundled here, which carries fixes that upstream
+# does not (getOpenIndices index census, leftover Levi-Civita contraction) without
+# a version bump. So an installation that is already there but differs from the
+# bundle is replaced, not kept -- a stale copy aborts FORM traces on well-formed
+# expressions (see tests/CrossTests/GhostGluonFormTests.m). The comparison is on
+# FormTracer.m alone: it is the entire package, everything else is documentation.
+ft_dir="${wolfram_app_dir}/FormTracer"
+
+if [[ -d "${ft_dir}" ]]; then
+  if ! unzip -p "${script_path}/FormTracer.zip" 'FormTracer/FormTracer.m' 2>/dev/null |
+      cmp -s - "${ft_dir}/FormTracer.m"; then
+    echo "The FormTracer at ${ft_dir} differs from the one bundled with FunKit."
+    if [[ -L "${ft_dir}" ]]; then
+      # A symlinked development checkout. Renaming it would move the user's own
+      # working tree out from under them, so refuse and let them update it.
+      echo "  ${ft_dir} is a symlink, so it is left untouched." >&2
+      echo "  Update the FormTracer checkout it points at to match dependencies/FormTracer.zip." >&2
+      exit 1
+    fi
+    echo "  Moving the old installation to ${ft_dir}.bak"
+    rm -rf "${ft_dir}.bak"
+    mv "${ft_dir}" "${ft_dir}.bak"
+  fi
+fi
+
+if [[ ! -d "${ft_dir}" ]]; then
+  echo "Installing FormTracer to ${ft_dir}"
   rm -rf ${script_path}/FormTracer/
   unzip ${script_path}/FormTracer.zip -d ${script_path} &>/dev/null
-  mv ${script_path}/FormTracer ${wolfram_app_dir}/FormTracer
+  mv ${script_path}/FormTracer "${ft_dir}"
 fi
 
 # TensorBases carries a minimum version, unlike the other two dependencies.
