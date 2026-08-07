@@ -17,10 +17,13 @@ FortranCodeForm[expr_] :=
         processedExpr = expr //. fmaGroup[a_, b_, c_] :> a * b + c;
         Fstr = ToString[System`FortranForm[processedExpr //. {
             E^x_ :> Global`tmp$$exp[x],
-            Complex[re_, im_] :> Global`tmp$$cmplx[re, im]
+            Complex[re_, im_] :> Global`tmp$$cmplx[re, im],
+            (*ArcTan[x, y] is x-part first, ATAN2(Y, X) is y-part first: swap before the
+              name map below, which would otherwise emit the arguments positionally.*)
+            ArcTan[a_, b_] :> Global`tmp$$atan2[b, a]
         }]];
         StringReplace[Fstr,
-        {"tmp$$exp" -> "exp", "tmp$$cmplx" -> "cmplx",
+        {"tmp$$exp" -> "exp", "tmp$$cmplx" -> "cmplx", "tmp$$atan2" -> "atan2",
         "Sqrt" -> "sqrt", "Log" -> "log",
         "Sin" -> "sin", "Cos" -> "cos", "Tan" -> "tan", "Cot" -> "cot",
         "ArcSin" -> "asin", "ArcCos" -> "acos", "ArcTan" -> "atan", "ArcCot" -> "acot",

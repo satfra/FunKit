@@ -16,13 +16,16 @@ JuliaForm[expr_] :=
         Fstr = ToString[FortranForm[expr //. {
             E^x_ :> Global`tmp$$exp[x],
             Complex[re_, im_] :> Global`tmp$$complex[re, im],
-            fmaGroup[a_, b_, c_] :> Global`tmp$$fma[a, b, c]
+            fmaGroup[a_, b_, c_] :> Global`tmp$$fma[a, b, c],
+            (*ArcTan[x, y] is x-part first, Julia's atan(y, x) is y-part first: swap before the
+              name map below, which would otherwise emit the arguments positionally.*)
+            ArcTan[a_, b_] :> Global`tmp$$atan2[b, a]
         }]];
         StringReplace[Fstr,
         {a_ ~~ "(i)" -> a ~~ "[i]", a_ ~~ "(-1 + i)" -> a ~~ "[i-1]", a_ ~~ "(1 + i)" -> a ~~ "[i+1]", "**" -> "^", ".*" -> "*", ".+" -> "+", "Pi" -> "\[Pi]",
         "Sqrt" -> "sqrt",
         "Log" -> "log", "Exp" -> "exp", "tmp$$exp" -> "exp", "tmp$$complex" -> "complex",
-        "tmp$$fma" -> "fma",
+        "tmp$$fma" -> "fma", "tmp$$atan2" -> "atan",
         "Sin" -> "sin", "Cos" -> "cos", "Tan" -> "tan", "Cot" -> "cot",
         "ArcSin" -> "asin", "ArcCos" -> "acos", "ArcTan" -> "atan", "ArcCot" -> "acot",
         "Sinh" -> "sinh", "Cosh" -> "cosh",  "Tanh" -> "tanh", "Coth" -> "coth",

@@ -114,13 +114,20 @@ cppFormCore[expr_, OptionsPattern[]] :=
           atom as Times[atom] and recurse forever via factorCode -> nest -> GenerateCode.*)
         CExpression /: GenerateCode[CExpression[Times[r_Real /; r == -1, a__]]] := "-" <> StringRiffle[factorCode /@ {a}, " * "];
         CExpression /: GenerateCode[CExpression[Times[f1_, frest__]]] := StringRiffle[factorCode /@ {f1, frest}, " * "];
-        (*recursion for +*)
+        (*sums: render all terms at once and join with sign merging ("+ -x" -> "- x").
+          Must NOT peel one term and recurse via nest[Plus[rest]]: that costs one evaluator
+          recursion level per term, and the decltype leaf sums of large split kernels have
+          thousands of terms — past $RecursionLimit, which silently corrupts the output.*)
         CExpression /: GenerateCode[CExpression[Plus[a_, b__]]] :=
-            With[{lhs = nest[a], rhs = nest[Plus[b]]},
-                If[StringStartsQ[rhs, "-"],
-                    lhs <> " - " <> StringDrop[rhs, 1]
+            Module[{parts = Map[nest, {a, b}]},
+                First[parts] <> StringJoin @ Map[
+                    If[StringStartsQ[#, "-"],
+                        " - " <> StringDrop[#, 1]
+                        ,
+                        " + " <> #
+                    ]&
                     ,
-                    lhs <> " + " <> rhs
+                    Rest[parts]
                 ]
             ];
         (*functions*)
@@ -177,7 +184,10 @@ cppFormCore[expr_, OptionsPattern[]] :=
         CExpression /: GenerateCode[CExpression[ArcSin[a_]]] := "asin(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[ArcCos[a_]]] := "acos(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[ArcTan[a_]]] := "atan(" <> nest[a] <> ")";
-        CExpression /: GenerateCode[CExpression[ArcTan[a_, b_]]] := "atan2(" <> nest[a] <> ", " <> nest[b] <> ")";
+        (*Mathematica's two-argument ArcTan[x, y] is x-part first, C's atan2(y, x) is y-part first.
+          Emitting them positionally reflects the angle about the pi/4 axis, which for the
+          S0/S1/SPhi vertex grids is not a leg permutation and so cannot be absorbed elsewhere.*)
+        CExpression /: GenerateCode[CExpression[ArcTan[a_, b_]]] := "atan2(" <> nest[b] <> ", " <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[ArcCot[a_]]] := If[$CppPowr, "atan(powr<-1>(" <> nest[a] <> "))", "atan(pow(" <> nest[a] <> ", -1))"];
         CExpression /: GenerateCode[CExpression[Sinh[a_]]] := "sinh(" <> nest[a] <> ")";
         CExpression /: GenerateCode[CExpression[Cosh[a_]]] := "cosh(" <> nest[a] <> ")";
@@ -258,41 +268,46 @@ WriteCodeToFile[fileName_String, expression_String] :=
         ]
     ];
 
+(* The codegen pipeline emits one statement per line (see the formatCppInProcess note
+   below), so over-long statements are fenced per LINE. Splitting on ";" (the old
+   approach) glued the "off" marker onto the previous statement's line — where the
+   formatters, which match markers at line start, never saw it — and turned each
+   chunk's leading newline into a spurious blank line.
+   - StringSplit[..., All] keeps zero-length pieces, so the newline structure
+     round-trips exactly through StringRiffle.
+   - inOff skips lines already inside an off-region: the sub-kernel path emits its
+     own fence around the giant "using _T = decltype(...)" line, whose line text
+     contains no marker and must not be double-wrapped. The StringFreeQ guard skips
+     marker-bearing lines themselves. *)
 wrapLargeStatementsForClangFormat[code_String] :=
-    Module[{parts, n, trailingSemi},
-        parts = StringSplit[code, ";"];
-(* StringSplit drops a trailing empty string when code ends with ";",
-   so track whether the original code ended with ";" to restore it *)
-        trailingSemi = StringTake[code, -1] === ";";
-        n = Length[parts];
-        StringJoin @
-            MapIndexed[
-                Function[{stmt, idx},
-                    Module[
-                        {s}
-                        ,
-                        (* Re-attach ";" to every part, plus the last if original ended with ";" *)
-                        s =
-                            If[idx[[1]] < n || trailingSemi,
-                                stmt <> ";"
-                                ,
-                                stmt
-                            ];
-                        (* Skip wrapping if this part already contains clang-format directives *)
-                        If[StringLength[s] > $codeFormatStatementLimit && StringFreeQ[s, "// clang-format"],
-                            (* Trailing \n is mandatory: fixClangFormatOffIndentation
-                               rewrites any line starting with "// clang-format on" to
-                               just that directive, discarding anything appended on the
-                               same line. *)
-                            "// clang-format off\n" <> s <> "\n// clang-format on\n"
+    Module[{inOff = False},
+        StringRiffle[
+            Flatten @ Map[
+                Function[ln,
+                    Module[{t = StringTrim[ln]},
+                        Which[
+                            StringStartsQ[t, "// clang-format off"],
+                                inOff = True;
+                                {ln}
                             ,
-                            s
+                            StringStartsQ[t, "// clang-format on"],
+                                inOff = False;
+                                {ln}
+                            ,
+                            !inOff && StringLength[ln] > $codeFormatStatementLimit && StringFreeQ[ln, "// clang-format"],
+                                {"// clang-format off", ln, "// clang-format on"}
+                            ,
+                            True,
+                                {ln}
                         ]
                     ]
                 ]
                 ,
-                parts
+                StringSplit[code, "\n", All]
             ]
+            ,
+            "\n"
+        ]
     ];
 
 fixClangFormatOffIndentation[code_String] :=
@@ -303,12 +318,12 @@ fixClangFormatOffIndentation[code_String] :=
         indent = "";
         Do[
             Which[
-                StringStartsQ[lines[[i]], "// clang-format off"],
+                StringStartsQ[StringTrim[lines[[i]]], "// clang-format off"],
                     (* Determine indent from the previous non-empty formatted line *)indent = First[StringCases[SelectFirst[Reverse @ result, StringLength[#] > 0&, ""], RegularExpression["^(\\s*)"] :> "$1"], ""];
                     inOff = True;
                     AppendTo[result, indent <> "// clang-format off"]
                 ,
-                StringStartsQ[lines[[i]], "// clang-format on"],
+                StringStartsQ[StringTrim[lines[[i]]], "// clang-format on"],
                     inOff = False;
                     AppendTo[result, indent <> "// clang-format on"]
                 ,
@@ -489,6 +504,59 @@ CppCodeFORM[expr_] :=
 
 (* ::Input::Initialization:: *)
 
+(* ---- cheap accumulator-type deduction -------------------------------------------------------
+
+   `_T` must be the type of the FULL SUM: terms mix plain double, autodiff and complex leaves, and
+   only summing all of them lets C++ promote to the common type (complex + AD is AD<complex>).
+   Deducing from one term would silently pick the wrong type when an AD or complex dressing appears
+   in only some of the traces. But the POLYNOMIAL STRUCTURE contributes nothing to the type — only
+   the leaves do — so one occurrence of each distinct leaf deduces the same type in a fraction of
+   the text. The raw expression written out for this is otherwise the single largest thing in a
+   generated kernel and the only part with no CSE at all: measured 73-85% of the file on the dense
+   QCD kernels, 3.35 MB of 4.42 MB on hPhiL.
+
+   A definition only matters here if it INTRODUCES a type, i.e. its right-hand side is not pure
+   arithmetic over things that already exist. `_cse`-style definitions minted by the per-sub-kernel
+   passes are arithmetic by construction, so they can be ignored — which matters, because those are
+   scoped inside their sub-kernel block AND their names are reused across blocks (each block renumbers
+   from 1). Interpolator/regulator calls do introduce a type; those come from the GLOBAL hoisting pass,
+   so their names are unique and they can safely be lifted out of the block to be nameable here. *)
+
+introducesTypeQ[rhs_] :=
+  Cases[rhs, h_[___] /; !MemberQ[{Plus, Times, Power}, h], {0, Infinity}] =!= {};
+
+(* Leaves of `expr` whose types matter: descend arithmetic, drop numeric literals, keep the rest.
+
+   `skipDefs` maps each skipped (arithmetic-only) definition name to its right-hand side. Such a name
+   is NOT simply dropped: its own type is implied by its inputs, but those inputs may include a type
+   the rest of the expression never mentions — an AD or complex parameter used only inside one
+   `_cse`, say `_cse7 = d1V*2.` with `d1V` appearing nowhere else. Dropping the name would lose that
+   parameter's contribution to the promotion and silently deduce a narrower `_T`, which truncates
+   (an AD derivative or an imaginary part) instead of failing to compile. So descend into the
+   definition. `seen` guards against revisiting a shared sub-definition. *)
+
+accTypeLeaves[expr_, skipDefs_] :=
+  Module[{bag = Internal`Bag[], walk, seen = <||>, skipNames = Keys[skipDefs]},
+    walk[e_] :=
+      Which[
+        NumericQ[e], Null,
+        MemberQ[skipNames, e],
+          If[!KeyExistsQ[seen, e], seen[e] = True; walk[skipDefs[e]]],
+(* type-transparent arithmetic: descend. fmaGroup is a*b+c, so all three arguments contribute —
+   treating it as opaque both loses the shrink AND drags block-scoped names into the decltype. *)
+        Head[e] === Plus || Head[e] === Times || Head[e] === fmaGroup, walk /@ (List @@ e),
+        Head[e] === Power, walk[e[[1]]],
+(* Any other call is a leaf — UNLESS it still mentions a name we are skipping, which would be
+   emitted verbatim into a scope where that name does not exist. Descending is then both necessary
+   and safe: the globally-hoisted calls (the ones whose type is NOT their argument's) never appear
+   inline in the terms, so anything left here is an arithmetic wrapper. *)
+        skipNames =!= {} && !FreeQ[e, Alternatives @@ skipNames], walk /@ (List @@ e),
+        True, Internal`StuffBag[bag, e]
+      ];
+    walk[expr];
+    DeleteDuplicates @ Internal`BagPart[bag, All]
+  ];
+
 Options[CppCode] = {"ReturnTransform" -> Identity};
 
 CppCode[equation_, OptionsPattern[]] :=
@@ -498,23 +566,53 @@ CppCode[equation_, OptionsPattern[]] :=
         varNames = getAllVarNames[optimized];
         (* Sub-kernel pattern (level 3) *)
         If[TrueQ[optimized["UseSubKernels"]],
-            Module[{subKernels, sharedDefs, sharedCode, allNames, subCode, declLine, rawExprCode, accSym, accStr, wrappedReturn},
+            Module[{subKernels, sharedDefs, sharedCode, liftCode, allNames, subCode, declLine, accSym, accStr, wrappedReturn, lifted, liftedNames, arithNames, leaves},
                 sharedDefs = optimized["SharedDefinitions"];
                 subKernels = optimized["SubKernels"];
                 allNames = Join[sharedDefs[[All, 1]], Flatten @ Map[#["Definitions"][[All, 1]]&, subKernels]];
-                (* Type deduction from original unoptimized expression. _acc accumulates
-                   un-transformed terms (each sub-kernel does _acc += terms); the
-                   ReturnTransform is applied only at the final return. *)
-                rawExprCode = CppForm[equation, "Format" -> False];
-                declLine = "// clang-format off\nusing _T = decltype(" <> rawExprCode <> ");\n// clang-format on\n";
-                (* Shared definitions *)
-                sharedCode = formatDefinitions[sharedDefs];
-                sharedCode = stripQuotedNames[sharedCode, allNames];
-                (* Scoped accumulation with per-subkernel local defs *)
+(* Type deduction (see accTypeLeaves above). _acc accumulates un-transformed terms; the
+   ReturnTransform is applied only at the final return.
+   `lifted` = the sub-kernel-local definitions that INTRODUCE a type (a call, not arithmetic). Only
+   those have to be nameable at the decltype, so only those leave their block.
+
+   They are NOT all products of the global hoisting pass, so their names are NOT automatically
+   unique: a `_cse` name is renumbered from 1 by every block, and introducesTypeQ classifies plenty
+   of those as type-introducing (`_cse1 = powr<-1>(l1)` is a call as far as it is concerned). When
+   two blocks both CSE the same subexpression they both mint `_cse1`, both get lifted, and the
+   emitted function has two `const auto _cse1` in one scope -- a hard C++ error
+   ("conflicting declaration"), first hit by a three-coordinate vertex kernel large enough to be
+   split into several sub-kernels.
+
+   Same name + identical rhs is the same value, so collapsing them is exactly equivalent; keep the
+   first occurrence to preserve definition order, since lifted defs may reference earlier ones. Same
+   name + DIFFERENT rhs would be a miscompile, so refuse loudly rather than silently pick one. *)
+                lifted = Select[Flatten[Map[#["Definitions"]&, subKernels], 1], introducesTypeQ[#[[2]]]&];
+                Module[{conflicts},
+                    conflicts = Select[GroupBy[lifted, First], Length[DeleteDuplicates[#[[All, 2]]]] > 1&];
+                    If[Length[conflicts] > 0,
+                        Print["MakeCppFunction: cannot lift sub-kernel definitions -- these names carry "
+                            <> "different right-hand sides in different sub-kernels: ", Keys[conflicts]];
+                        Abort[]]];
+                lifted = DeleteDuplicatesBy[lifted, First];
+                liftedNames = lifted[[All, 1]];
+(* the arithmetic-only sub-kernel defs, as name -> rhs: accTypeLeaves descends INTO these rather than
+   dropping them, so a type reachable only through one of them (an AD or complex parameter used in a
+   single `_cse`) still reaches the promotion. *)
+                arithNames = Association[Rule @@@ Select[Flatten[Map[#["Definitions"]&, subKernels], 1],
+                    !MemberQ[liftedNames, #[[1]]]&]];
+                leaves = DeleteDuplicates @ Join[sharedDefs[[All, 1]], liftedNames,
+                    accTypeLeaves[Total[Map[#["Terms"]&, subKernels]], arithNames]];
+                declLine =
+                    "// clang-format off\nusing _T = decltype(" <>
+                      If[leaves === {}, "0.", stripQuotedNames[CppForm[Total[leaves], "Format" -> False], allNames]] <>
+                      ");\n// clang-format on\n";
+                sharedCode = stripQuotedNames[formatDefinitions[sharedDefs], allNames];
+                liftCode = If[lifted === {}, "", stripQuotedNames[formatDefinitions[lifted], allNames]];
+                (* Scoped accumulation; only the arithmetic-only defs remain inside the block *)
                 subCode =
                     Table[
                         Module[{localDefs, termsCode},
-                            localDefs = formatDefinitions[subKernels[[i]]["Definitions"]];
+                            localDefs = formatDefinitions[Select[subKernels[[i]]["Definitions"], !introducesTypeQ[#[[2]]]&]];
                             localDefs = stripQuotedNames[localDefs, allNames];
                             termsCode = CppForm[subKernels[[i]]["Terms"]];
                             termsCode = stripQuotedNames[termsCode, allNames];
@@ -526,7 +624,7 @@ CppCode[equation_, OptionsPattern[]] :=
                 accSym = Unique["postAcc"];
                 accStr = ToString[accSym];
                 wrappedReturn = StringReplace[CppForm[transform[accSym]], accStr -> "_acc"];
-                Return[declLine <> sharedCode <> "_T _acc{};\n" <> StringJoin[subCode] <> "return " <> wrappedReturn <> ";"]
+                Return[sharedCode <> liftCode <> declLine <> "_T _acc{};\n" <> StringJoin[subCode] <> "return " <> wrappedReturn <> ";"]
             ]
         ];
         (* Standard path: definitions + return *)
@@ -636,8 +734,12 @@ MakeCppFunction[OptionsPattern[]] :=
     Module[{functionPrefix, functionSuffix, functionName, functionParameters, functionTemplates, idx, functionBody, parameters},
         FunKitDebug[1, "Preparing Cpp function..."];
         (*Create prefixes for the function, e.g. static or such + the return value*)
-        functionPrefix = OptionValue["Prefix"];
-        functionPrefix = functionPrefix <> " " <> OptionValue["Return"] <> " ";
+        functionPrefix =
+            If[OptionValue["Prefix"] === "",
+                ""
+                ,
+                OptionValue["Prefix"] <> " "
+            ] <> OptionValue["Return"] <> " ";
         functionSuffix =
             If[OptionValue["Suffix"] =!= "",
                 " " <> OptionValue["Suffix"] <> " "
@@ -692,7 +794,10 @@ MakeCppFunction[OptionsPattern[]] :=
             If[OptionValue["Body"] === None,
                 ";"
                 ,
-                StringReplace["{\n" <> OptionValue["Body"] <> "\n}", "\n\n" -> ""]
+                (* Collapse every run of newlines to a single one: replacing "\n\n" with the
+                   empty string glued adjacent statements together, and the
+                   formatDefinitions/CppCode joins produce runs of up to three newlines. *)
+                StringReplace["{\n" <> OptionValue["Body"] <> "\n}", "\n" ~~ ("\n" ..) -> "\n"]
             ];
         FunKitDebug[2, "  Prepared Cpp function; now parsing code."];
         Return[FormatCppCode[functionTemplates <> functionPrefix <> functionName <> functionParameters <> functionSuffix <> "\n" <> functionBody]]
@@ -816,10 +921,21 @@ MakeCppFunctionSplit[expr_, opts : OptionsPattern[]] :=
                all live; and the sub-functions carry no lookup code (just the polynomial). This
                separates the lookup working-set from the polynomial working-set into distinct
                register frames. *)
-            Module[{sharedNames, declLine, rawExprCode, perSubShared, blocks},
+            Module[{sharedNames, declLine, leafCode, perSubShared, blocks},
                 sharedNames = sharedDefs[[All, 1]];
-                rawExprCode = CppForm[expr, "Format" -> False];
-                declLine = "// clang-format off\nusing _T = decltype(" <> rawExprCode <> ");\n// clang-format on\n";
+(* Accumulator type from the type-determining LEAVES of the expression rather than the expression
+   itself (see accTypeLeaves). Same deduced type — the promotion of a sum-of-products is fixed by its
+   leaves — but the text is bounded by the number of DISTINCT leaves instead of by the polynomial,
+   and this decltype is otherwise the only part of the emission with no CSE at all (73-85% of the
+   file on the dense kernels).
+   Unlike the CppCode sub-kernel path, nothing is hoisted here and no scope changes: `expr` is the
+   pre-CSE expression, so its leaves are raw calls and parameters, all of which are already in scope
+   at function level. The per-sub blocks keep their own shared-def declarations exactly as before, so
+   the register-frame separation this path exists for is untouched. *)
+                leafCode =
+                  With[{lv = accTypeLeaves[expr, <||>]},
+                    If[lv === {}, "0.", CppForm[Total[lv], "Format" -> False]]];
+                declLine = "// clang-format off\nusing _T = decltype(" <> leafCode <> ");\n// clang-format on\n";
                 (* Shared (globally-unique) defs each sub transitively needs — traversing both
                    the sub's terms and its own (locally-named) defs. Only these are passed as
                    scalars; per-sub local CSE keep their (reused) names and stay inside the sub. *)

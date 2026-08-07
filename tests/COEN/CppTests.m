@@ -91,6 +91,42 @@ AppendTo[tests, VerificationTest[exec2 =!= $Failed, True, TestID -> "Verify comp
 AppendTo[tests, VerificationTest[output2, expected, TestID -> "Verify return value of C++ function with arithmetic operations"]];
 
 (**********************************************************************************
+    Two-argument ArcTan -> atan2
+
+    Mathematica's ArcTan[x, y] takes the x-part first, C's atan2(y, x) the y-part first.
+    Emitting the arguments positionally reflects the angle about the pi/4 axis, which agrees
+    with the truth only on that axis -- so the test has to probe all four quadrants.
+**********************************************************************************)
+
+atan2Pts = {{1., 2.}, {-1., 2.}, {-1., -2.}, {1., -2.}};
+
+funBodyAtan2 = MakeCppFunction[ArcTan[a, b], "Name" -> "funAtan2",
+    "Body" -> "using namespace std; const auto a = x; const auto b = y;", "Parameters" -> {"x", "y"}];
+
+execAtan2 = CreateExecutable["
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+
+" <> powrCode <> "
+" <> funBodyAtan2 <> "
+
+int main () {
+  std::cout << std::setprecision (10);
+" <> StringJoin[("  std::cout << funAtan2 (" <> ToString[NumberForm[#[[1]], 10]] <> ", " <>
+    ToString[NumberForm[#[[2]], 10]] <> ") << std::endl;\n") & /@ atan2Pts] <> "}
+", "FunKitCppTestAtan2", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
+
+outputAtan2 = Import["!" <> QuoteFile[execAtan2], "Text"];
+
+expectedAtan2 = StringRiffle[
+    ToString[NumberForm[N@ArcTan[#[[1]], #[[2]]], 10]] & /@ atan2Pts, "\n"];
+
+AppendTo[tests, VerificationTest[execAtan2 =!= $Failed, True, TestID -> "Verify compilation of C++ function with two-argument ArcTan"]];
+
+AppendTo[tests, VerificationTest[outputAtan2, expectedAtan2, TestID -> "Verify two-argument ArcTan maps to atan2 with the correct argument order"]];
+
+(**********************************************************************************
     Optimization enabled (True) produces valid C++ code
 **********************************************************************************)
 
@@ -489,3 +525,107 @@ AppendTo[tests, VerificationTest[StringContainsQ[FunKit`CppForm[Cot[x]], "powr<-
 AppendTo[tests, VerificationTest[StringContainsQ[FunKit`CppForm[Exp[x] - 1], "expm1"], True, TestID -> "exp(x)-1 emits expm1"]];
 
 AppendTo[tests, VerificationTest[StringContainsQ[FunKit`CppForm[1 - Exp[x]], "expm1"], True, TestID -> "1-exp(x) emits expm1"]];
+
+(**********************************************************************************
+    Regression: newline/brace formatting of MakeCppFunction output.
+    "\n\n" -> "" in the body assembly glued the opening brace to the first
+    statement ("{const auto ..."), and the ";"-based clang-format wrapper glued
+    its markers mid-line (";// clang-format off") while leaving spurious blank
+    lines around the fenced region; see Cpp.m wrapLargeStatementsForClangFormat
+    and MakeCppFunction.
+**********************************************************************************)
+
+ClearAll[a, b];
+
+(* -- small default function: brace on its own line, nothing glued, no blank lines *)
+
+fmtSmall = MakeCppFunction[a + b, "Name" -> "fmtSmall", "Body" -> "const auto a = in;\nconst auto b = in;", "Parameters" -> {"in"}];
+
+AppendTo[tests, VerificationTest[StringContainsQ[fmtSmall, "\n{\n"], True, TestID -> "Formatting: opening brace sits on its own line"]];
+
+AppendTo[tests, VerificationTest[StringFreeQ[fmtSmall, "{const"], True, TestID -> "Formatting: opening brace is not glued to the first statement"]];
+
+AppendTo[tests, VerificationTest[StringFreeQ[fmtSmall, "\n\n"], True, TestID -> "Formatting: no blank lines inside a small function"]];
+
+AppendTo[tests, VerificationTest[StringStartsQ[fmtSmall, " "], False, TestID -> "Formatting: empty Prefix leaves no leading space in the signature"]];
+
+(* -- long return statement (> $codeFormatStatementLimit) triggers the fence; markers
+      must land on their own lines, with nothing glued and no blank lines *)
+
+ClearAll[a];
+
+Block[{FunKit`Private`$codeOptimize = False},
+    longRetBody = MakeCppFunction[Sum[Sin[a + i], {i, 1, 200}], "Name" -> "longRet", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+];
+
+AppendTo[tests, VerificationTest[StringContainsQ[longRetBody, "// clang-format off"], True, TestID -> "Long statement: over-long return line is fenced"]];
+
+AppendTo[tests, VerificationTest[StringFreeQ[longRetBody, ";// clang-format"], True, TestID -> "Long statement: fence marker is not glued to the previous statement"]];
+
+AppendTo[tests, VerificationTest[StringFreeQ[longRetBody, "\n\n"], True, TestID -> "Long statement: fencing introduces no blank lines"]];
+
+AppendTo[tests, VerificationTest[
+    AllTrue[Select[StringSplit[longRetBody, "\n"], StringContainsQ[#, "// clang-format"]&],
+        StringMatchQ[StringTrim[#], "// clang-format " ~~ ("off" | "on")]&],
+    True, TestID -> "Long statement: every clang-format marker occupies its own line"]];
+
+(* -- existing long-signature scenario: additionally assert clean formatting *)
+
+AppendTo[tests, VerificationTest[StringFreeQ[longSigBody, ";// clang-format"], True, TestID -> "Long signature: fence marker not glued mid-line"]];
+
+AppendTo[tests, VerificationTest[StringFreeQ[longSigBody, "\n\n"], True, TestID -> "Long signature: no blank lines in output"]];
+
+(* -- sub-kernel path: the decltype fence emitted by CppCode must not be
+      double-wrapped; off/on markers must strictly alternate *)
+
+ClearAll[a];
+
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms = 200},
+    subkBody = MakeCppFunction[largeExprSplit, "Name" -> "subkFmt", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+];
+
+subkMarkers = Select[StringTrim /@ StringSplit[subkBody, "\n"], StringStartsQ[#, "// clang-format"]&];
+
+AppendTo[tests, VerificationTest[
+    EvenQ[Length[subkMarkers]] && subkMarkers === Flatten[ConstantArray[{"// clang-format off", "// clang-format on"}, Length[subkMarkers] / 2]],
+    True, TestID -> "Sub-kernel path: clang-format markers alternate off/on (no double-wrapping)"]];
+
+AppendTo[tests, VerificationTest[StringFreeQ[subkBody, "\n\n"], True, TestID -> "Sub-kernel path: no blank lines inside the function"]];
+
+(* -- MakeCppFunctionSplit: the per-function newline collapsing must not eat the
+      "\n\n" separators BETWEEN the emitted sub-functions *)
+
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$codeMaxKernelTerms = 200},
+    splitFns = MakeCppFunctionSplit[largeExprSplit, "Name" -> "splitFmt", "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+];
+
+AppendTo[tests, VerificationTest[StringContainsQ[splitFns, "splitFmt_sub1"] && StringContainsQ[splitFns, "}\n\n"], True, TestID -> "MakeCppFunctionSplit: blank-line separators between sub-functions survive"]];
+
+(* -- "Body" -> None: pure declaration, no braces *)
+
+declOnly = MakeCppFunction["Name" -> "declOnly", "Parameters" -> {"in"}, "Body" -> None];
+
+AppendTo[tests, VerificationTest[StringFreeQ[declOnly, "{"] && StringEndsQ[StringTrim[declOnly], ";"], True, TestID -> "Body None: emits a brace-free declaration ending in a semicolon"]];
+
+(* -- Class/Templates/Prefix/Suffix signature shape *)
+
+shapeFn = MakeCppFunction[a + b, "Name" -> "shape", "Class" -> "MyClass", "Templates" -> {"T"}, "Prefix" -> "static", "Suffix" -> "const", "Body" -> "const auto a = in;\nconst auto b = in;", "Parameters" -> {"in"}];
+
+AppendTo[tests, VerificationTest[
+    StringContainsQ[shapeFn, "template<typename T"] && StringContainsQ[shapeFn, "static auto MyClass::shape"] && StringContainsQ[shapeFn, ") const"] && StringFreeQ[shapeFn, "\n\n"],
+    True, TestID -> "Signature shapes: Class/Templates/Prefix/Suffix compose without blank lines"]];
+
+(* -- multi-line user Body with blank lines and comments (Yang-Mills DSEAcbc1Loop
+      style): blank lines collapse instead of gluing, comments survive *)
+
+ClearAll[k, l1];
+
+ymUserBody = "using namespace DiFfRG;\nusing namespace DiFfRG::compute;\n\n// shorthand definitions\nconst double p = 1.;\n";
+
+ymFn = MakeCppFunction[dtZA[(1 + k^6) ^ (1/6)] + RB[k^2, l1^2] * ZA[l1], "Name" -> "ymKernel", "Parameters" -> {"k", "l1"}, "Body" -> ymUserBody];
+
+AppendTo[tests, VerificationTest[StringFreeQ[ymFn, "{using"] && StringFreeQ[ymFn, "{const"], True, TestID -> "User Body: first body line not glued to opening brace"]];
+
+AppendTo[tests, VerificationTest[StringContainsQ[ymFn, "// shorthand definitions"], True, TestID -> "User Body: comments survive newline collapsing"]];
+
+AppendTo[tests, VerificationTest[StringFreeQ[ymFn, "\n\n"], True, TestID -> "User Body: blank lines in user Body are collapsed, not glued"]];
