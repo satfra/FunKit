@@ -146,6 +146,9 @@ ResetCodegenProfile[] :=
         $ProfileCgSimplifySimple = 0; $ProfileCgSimplifyTotLeaf = 0;
         $ProfileCgSimplifyMaxLeaf = 0;
         $ProfileCgCppFormCount = 0; $ProfileCgClangFormatCount = 0;
+        $ProfileCgTopoSort = 0.; $ProfileCgStripNames = 0.; $ProfileCgEmitScaffold = 0.;
+        $ProfileCgHoistDiv = 0.;
+        $ProfileCgSubKernelTimes = {};
         $ProfileCodegenOn = True;
     );
 
@@ -156,17 +159,19 @@ PrintCodegenProfile[] :=
     Module[{fmt, pct, total},
         fmt[t_] := ToString[NumberForm[N[t], {7, 4}]];
         (* "Wallclock" reference = the disjoint top-level passes that make up CppCode. *)
-        total = $ProfileCgHoist + $ProfileCgSplit + $ProfileCgCSE + $ProfileCgPowerNorm +
-            $ProfileCgFactor + $ProfileCgTranscendental + $ProfileCgFMA +
-            $ProfileCgSimplify + $ProfileCgCppForm + $ProfileCgClangFormat;
+        total = $ProfileCgHoist + $ProfileCgHoistDiv + $ProfileCgSplit + $ProfileCgCSE + $ProfileCgPowerNorm +
+            $ProfileCgTopoSort + $ProfileCgFactor + $ProfileCgTranscendental + $ProfileCgFMA +
+            $ProfileCgSimplify + $ProfileCgCppForm + $ProfileCgStripNames + $ProfileCgClangFormat;
         pct[t_] := If[total > 0, ToString[NumberForm[100. t / total, {4, 1}]] <> "%", "-"];
         Print["  --- optimizeExpression passes ---"];
         Print["  hoistInterpolators:    ", fmt[$ProfileCgHoist], " s  (", pct[$ProfileCgHoist], ")"];
+        Print["  hoistDivisions:        ", fmt[$ProfileCgHoistDiv], " s  (", pct[$ProfileCgHoistDiv], ")"];
         Print["  earlySplit/split:      ", fmt[$ProfileCgSplit], " s  (", pct[$ProfileCgSplit], ")"];
         Print["  dagCSE (total):        ", fmt[$ProfileCgCSE], " s  (", pct[$ProfileCgCSE], ")"];
         Print["    OptimizeExpression:  ", fmt[$ProfileCgOptExpr], " s"];
         Print["    fallbackCSE:         ", fmt[$ProfileCgFallbackCSE], " s"];
         Print["  normalizePowerBases:   ", fmt[$ProfileCgPowerNorm], " s  (", pct[$ProfileCgPowerNorm], ")"];
+        Print["  topological re-sort:   ", fmt[$ProfileCgTopoSort], " s  (", pct[$ProfileCgTopoSort], ")"];
         Print["  algebraicFactor:       ", fmt[$ProfileCgFactor], " s  (", pct[$ProfileCgFactor], ")"];
         Print["  hoistTranscendentals:  ", fmt[$ProfileCgTranscendental], " s  (", pct[$ProfileCgTranscendental], ")"];
         Print["  fmaRestructure:        ", fmt[$ProfileCgFMA], " s  (", pct[$ProfileCgFMA], ")"];
@@ -175,9 +180,24 @@ PrintCodegenProfile[] :=
         Print["    calls/exprs:         ", $ProfileCgSimplifyCount, "  (FullSimplify: ", $ProfileCgSimplifyFull, ", Simplify: ", $ProfileCgSimplifySimple, ")"];
         Print["    leaf total/max:      ", $ProfileCgSimplifyTotLeaf, " / ", $ProfileCgSimplifyMaxLeaf];
         Print["  CppForm:               ", fmt[$ProfileCgCppForm], " s  (", pct[$ProfileCgCppForm], ")  [", $ProfileCgCppFormCount, " calls]"];
+        Print["  stripQuotedNames:      ", fmt[$ProfileCgStripNames], " s  (", pct[$ProfileCgStripNames], ")"];
         Print["  clang-format:          ", fmt[$ProfileCgClangFormat], " s  (", pct[$ProfileCgClangFormat], ")  [", $ProfileCgClangFormatCount, " calls]"];
         Print["  ----------------------------------"];
         Print["  Sum of passes:         ", fmt[total], " s"];
+(* Sub-kernel work is the unit any parallelisation of the emission would map over, so its COUNT
+   bounds the achievable speedup and its SKEW bounds it again: earlySplit chunks by term count,
+   not by cost, so one dominant sub-kernel caps the win no matter how many kernels are up. *)
+        If[Length[$ProfileCgSubKernelTimes] > 0,
+            Print["  --- sub-kernels ---"];
+            Print["  count / emission time: ", Length[$ProfileCgSubKernelTimes], " / ",
+                fmt[$ProfileCgEmitScaffold], " s"];
+            Print["  optimise total/max:    ", fmt[Total[$ProfileCgSubKernelTimes]], " s / ",
+                fmt[Max[$ProfileCgSubKernelTimes]], " s  (max/total = ",
+                ToString[NumberForm[N[Max[$ProfileCgSubKernelTimes] / Total[$ProfileCgSubKernelTimes]], {4, 3}]],
+                ", parallel ceiling ",
+                ToString[NumberForm[N[Total[$ProfileCgSubKernelTimes] / Max[$ProfileCgSubKernelTimes]], {4, 2}]],
+                "x)"];
+        ];
     ];
 
 (**********************************************************************************

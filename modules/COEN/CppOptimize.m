@@ -30,6 +30,25 @@
 **********************************************************************************)
 
 (**********************************************************************************
+    O(1) membership for the placeholder-name lists.
+
+    The split path filters definition lists by name over and over -- once per sub-kernel in
+    earlySplit, splitIntoSubKernels and the emitters. Those lists are as long as the kernel has
+    hoisted definitions (thousands on a large flow), so a linear MemberQ makes the whole split
+    quadratic. Selection ORDER is unchanged: these only replace the predicate, never the list
+    being filtered.
+
+    Named makeNameSet rather than nameSet because optimizeSubKernel's topological re-sort already
+    has a Module local of that name holding a name -> INDEX map, which is a different thing.
+**********************************************************************************)
+
+makeNameSet[names_List] :=
+    Association @ Map[# -> True&, names];
+
+inNameSet[set_Association, name_] :=
+    TrueQ @ Lookup[set, name, False];
+
+(**********************************************************************************
     Pass 1: Interpolator Call Hoisting
     Extract ALL unique function calls matching $codeOptimizeInterps.
     These are global memory reads (~400 cycle latency) and must be computed once.
@@ -45,8 +64,18 @@ hoistInterpolators[expr_] :=
         ];
         (* Use strings as placeholders — CppForm quotes them, stripQuotedNames fixes it *)
         names = Table["_interp" <> ToString[i], {i, 1, Length[uniqueCalls]}];
-        rules = Thread[uniqueCalls -> names];
-        newExpr = expr //. rules;
+(* Dispatch, not a bare rule list. A plain list is scanned linearly at every subexpression, so
+   the rewrite costs O(|expr| * |rules|) -- and both factors grow with the flow, which made this
+   the single largest cost in code generation on a NumTracer kernel (measured: 51 s of a 124 s
+   run at 1834 hoisted calls; 2.4 s with Dispatch, byte-identical output). Dispatch only changes
+   how the matcher indexes the rules, never which one fires.
+
+   /. rather than //., which is the same thing here at half the cost: every replacement is a
+   String, ReplaceAll does not descend into what it replaced, and no pattern in
+   $codeOptimizeInterps can match an atom -- so one pass already reaches the fixed point and //.
+   only ever paid for a second pass that finds nothing. *)
+        rules = Dispatch @ Thread[uniqueCalls -> names];
+        newExpr = expr /. rules;
         <|"Expr" -> newExpr, "Definitions" -> Table[{names[[i]], uniqueCalls[[i]]}, {i, 1, Length[uniqueCalls]}], "Count" -> Length[uniqueCalls]|>
     ];
 
@@ -81,7 +110,11 @@ hoistDivisions[expr_] :=
         ];
         names = Table["_den" <> ToString[i], {i, 1, Length[uniqueDens]}];
         rules = Thread[uniqueDens -> names];
-        newExpr = expr //. rules;
+(* Dispatch + /. for the whole-expression rewrite, for the reason spelled out in
+   hoistInterpolators: a bare rule list is rescanned at every subexpression, and the replacements
+   are atoms so one pass is already the fixed point. The per-def bodies below keep the plain list:
+   each needs its OWN rule dropped, so they cannot share one Dispatch, and each body is small. *)
+        newExpr = expr /. Dispatch[rules];
         (* def body for _denI: replace NESTED denominators (all rules except its own,
            which would otherwise collapse the whole body to its own name) *)
         defs = Table[{names[[i]], uniqueDens[[i]] //. Drop[rules, {i}]}, {i, 1, Length[uniqueDens]}];
@@ -515,7 +548,7 @@ earlySplit[interpDefs_, expr_] :=
         interpNames = #[[1]]& /@ interpDefs;
         interpsByName = Association @ Table[interpDefs[[i, 1]] -> interpDefs[[i]], {i, Length[interpDefs]}];
         Module[
-            {chunkRefs, useCounts, sharedNames, sharedDefs, defsByName}
+            {chunkRefs, useCounts, sharedNames, sharedSet, sharedDefs, defsByName}
             ,
             (* name -> definition, for transitive reference expansion *)
             defsByName = Association @ Table[interpDefs[[i, 1]] -> interpDefs[[i]], {i, Length[interpDefs]}];
@@ -546,13 +579,15 @@ earlySplit[interpDefs_, expr_] :=
             (* Count how many chunks reference each interp/den *)
             useCounts = Counts[Flatten[chunkRefs]];
             sharedNames = Keys @ Select[useCounts, # > 1&];
-            sharedDefs = Select[interpDefs, MemberQ[sharedNames, #[[1]]]&];
+            sharedSet = makeNameSet[sharedNames];
+            sharedDefs = Select[interpDefs, inNameSet[sharedSet, #[[1]]]&];
             (* Build sub-kernel data with local interps *)
             subKernelData =
                 Table[
-                    Module[{localInterpNames, localInterps},
-                        localInterpNames = Select[chunkRefs[[i]], Not @ MemberQ[sharedNames, #]&];
-                        localInterps = Select[interpDefs, MemberQ[localInterpNames, #[[1]]]&];
+                    Module[{localInterpNames, localSet, localInterps},
+                        localInterpNames = Select[chunkRefs[[i]], Not @ inNameSet[sharedSet, #]&];
+                        localSet = makeNameSet[localInterpNames];
+                        localInterps = Select[interpDefs, inNameSet[localSet, #[[1]]]&];
                         <|"Expr" -> chunks[[i]], "InterpDefs" -> localInterps|>
                     ]
                     ,
@@ -585,7 +620,7 @@ optimizeSubKernel[expr_, sharedDefCount_Integer] :=
    (e.g. _cse6 = 1/_cse7 when _cse7 = l1^2) by rewriting powers in terms
    of later-defined temporaries.  Re-sort so each def comes after its deps. *)
         If[Length[cseDefs] > 1,
-            cseDefs = Module[{names, nameSet, deps, visited, order, visit},
+            cseDefs = cgTimed[$ProfileCgTopoSort, Module[{names, nameSet, deps, visited, order, visit},
                 names = cseDefs[[All, 1]];
                 nameSet = Association @ Table[names[[i]] -> i, {i, Length[names]}];
                 deps = Map[
@@ -602,20 +637,27 @@ optimizeSubKernel[expr_, sharedDefCount_Integer] :=
                 );
                 Do[visit[i], {i, 1, Length[cseDefs]}];
                 cseDefs[[order]]
-            ];
+            ]];
         ];
         FunKitDebug[2, "  Power basis normalization done"];
         (* Algebraic factoring *)
         cgTimed[$ProfileCgFactor,
             If[Length[cseDefs] > 0,
+(* Serial, deliberately. This used to take the same opportunistic ParallelMap that
+   parallelSimplify does -- gated on item COUNT alone, which says nothing about the work. It is a
+   measured loss in every regime, because FactorTerms on these inputs is far cheaper than one WSTP
+   round trip, and on a split kernel the map runs once per sub-kernel:
+
+     regime                              ParallelMap   serial
+     NumTracer, unsplit (few huge defs)     0.010 s    0.0003 s
+     NumTracer, 120 sub-kernels             1.338 s    0.131 s
+     ZA4 (dense polynomial)                 0.035 s    0.0002 s
+
+   parallelSimplify keeps its parallel branch -- there it wins in every one of those regimes
+   (17.4 -> 3.8 s on the first), because Simplify actually is expensive per item. *)
                 Module[{allExprsToFactor, factoredExprs},
                     allExprsToFactor = Prepend[cseDefs[[All, 2]], e];
-                    factoredExprs =
-                        If[Length[allExprsToFactor] >= $codeParallelThreshold && Length[Kernels[]] > 0,
-                            ParallelMap[algebraicFactor, allExprsToFactor, DistributedContexts -> Automatic]
-                            ,
-                            Map[algebraicFactor, allExprsToFactor]
-                        ];
+                    factoredExprs = Map[algebraicFactor, allExprsToFactor];
                     e = factoredExprs[[1]];
                     cseDefs = Table[{cseDefs[[idx, 1]], factoredExprs[[idx + 1]]}, {idx, 1, Length[cseDefs]}];
                 ];
@@ -688,20 +730,22 @@ splitIntoSubKernels[allDefs_, finalExpr_] :=
                             referencedNames = DeleteDuplicates @ Join[referencedNames, Intersection[defNames, Flatten @ Map[Cases[defsByName[#][[2]], _String, Infinity]&, referencedNames]]];
                         ];
                     ];
-                    relevantDefs = Select[allDefs, MemberQ[referencedNames, #[[1]]]&];
+                    relevantDefs = With[{refSet = makeNameSet[referencedNames]},
+                        Select[allDefs, inNameSet[refSet, #[[1]]]&]];
                     <|"Terms" -> chunkExpr, "Definitions" -> relevantDefs|>
                 ]
                 ,
                 {chunk, chunks}
             ];
         (* Find definitions used by multiple sub-kernels — these are "shared" *)
-        Module[{allUsed, useCounts, sharedNames},
+        Module[{allUsed, useCounts, sharedNames, sharedSet},
             allUsed = Flatten @ Map[#["Definitions"][[All, 1]]&, subKernels];
             useCounts = Counts[allUsed];
             sharedNames = Keys @ Select[useCounts, # > 1&];
-            sharedDefs = Select[allDefs, MemberQ[sharedNames, #[[1]]]&];
+            sharedSet = makeNameSet[sharedNames];
+            sharedDefs = Select[allDefs, inNameSet[sharedSet, #[[1]]]&];
             (* Remove shared defs from per-kernel defs *)
-            subKernels = Map[<|"Terms" -> #["Terms"], "Definitions" -> Select[#["Definitions"], Not @ MemberQ[sharedNames, #[[1]]]&]|>&, subKernels];
+            subKernels = Map[<|"Terms" -> #["Terms"], "Definitions" -> Select[#["Definitions"], Not @ inNameSet[sharedSet, #[[1]]]&]|>&, subKernels];
         ];
         <|"UseSubKernels" -> True, "SharedDefinitions" -> sharedDefs, "SubKernels" -> subKernels|>
     ];
@@ -729,7 +773,7 @@ optimizeExpression[equation_] :=
         interpCount = interpResult["Count"];
         FunKitDebug[2, "Hoisted ", interpCount, " interpolator calls"];
         (* Pass 1b: Composite-denominator hoisting — share reciprocals across chunks *)
-        divResult = cgTimed[$ProfileCgHoist, hoistDivisions[expr]];
+        divResult = cgTimed[$ProfileCgHoistDiv, hoistDivisions[expr]];
         expr = divResult["Expr"];
         divCount = divResult["Count"];
         FunKitDebug[2, "Hoisted ", divCount, " composite denominators"];
@@ -744,11 +788,17 @@ optimizeExpression[equation_] :=
             sharedDefs = splitResult["SharedDefs"];
             subKernels =
                 Table[
-                    Module[{kernelResult, localInterpDefs, totalShared},
+                    Module[{kernelResult, localInterpDefs, totalShared, t0},
                         localInterpDefs = splitResult["SubKernels"][[i]]["InterpDefs"];
                         totalShared = Length[sharedDefs] + Length[localInterpDefs];
                         FunKitDebug[2, "Optimizing sub-kernel ", i, " of ", Length[splitResult["SubKernels"]], " (shared=", Length[sharedDefs], ", localInterps=", Length[localInterpDefs], ")"];
+(* Per-sub-kernel wall time, recorded only under the profiling switch: this loop is the unit any
+   parallelisation maps over, so its skew is the Amdahl bound on that. See PrintCodegenProfile. *)
+                        t0 = If[TrueQ[$ProfileCodegenOn], AbsoluteTime[], 0];
                         kernelResult = optimizeSubKernel[splitResult["SubKernels"][[i]]["Expr"], totalShared];
+                        If[TrueQ[$ProfileCodegenOn],
+                            AppendTo[$ProfileCgSubKernelTimes, AbsoluteTime[] - t0]
+                        ];
                         <|"Terms" -> kernelResult["Expr"], "Definitions" -> Join[localInterpDefs, kernelResult["Definitions"]]|>
                     ]
                     ,
@@ -783,15 +833,51 @@ formatDefinitions[defs_] :=
         ];
         (* FullSimplify is the dominant cost — parallelize it across definitions *)
         simplifiedExprs = parallelSimplify[defs[[All, 2]]];
-        result = StringJoin @ Table["const auto " <> defs[[i, 1]] <> " = " <> CppForm[simplifiedExprs[[i]]] <> ";\n", {i, 1, Length[defs]}];
+(* One printer-rule installation for the whole batch, not one per definition (see
+   withCppFormRules in Cpp.m). A split kernel calls this once per sub-kernel with a definition
+   list each time, so the per-call install was over half of CppForm's total cost. *)
+        result =
+            withCppFormRules[
+                StringJoin @ Table["const auto " <> defs[[i, 1]] <> " = " <> cppFormBatched[simplifiedExprs[[i]]] <> ";\n", {i, 1, Length[defs]}]
+            ];
         result <> "\n"
     ];
 
 formatReturnStatement[expr_] :=
     "  return " <> CppForm[expr] <> ";";
 
+(* One pass over the code with an O(1) membership test, not one StringReplace rule per name.
+   The rule-list form costs O(|code| * |names|), and BOTH grow with the flow: `names` is every
+   placeholder in the whole kernel and this is called once per sub-kernel, so on a NumTracer
+   kernel it was 5.6 s of a 124 s run, against 0.05 s here for byte-identical output.
+
+   The scanned token is restricted to the placeholder alphabet -- an underscore-or-word-character
+   run, which is what hoistInterpolators/hoistDivisions/dagCSE/hoistTranscendentals mint (_interpN,
+   _denN, _cseN, _tranN) -- rather than "anything between two quotes". That matters for an EMPTY
+   string literal in the emitted code: `"" + "_cse1"` would let a quote-agnostic scan pair the
+   closing quote of `""` with the opening quote of `"_cse1"`, shifting the parity for the rest of
+   the line and leaving the real placeholder quoted. A name-character run cannot start on the `"`
+   of an empty literal, so the scan re-syncs.
+
+   Note WordCharacter does NOT include "_", so the alternative below has to spell it out; a guard
+   that forgets it sends every call down the slow fallback and the pass silently goes quadratic
+   again. Names outside the alphabet do fall back to the exact rule-list form, so correctness
+   never depends on the caller's naming scheme. *)
+
+$placeholderNameChar = "_" | WordCharacter;
+
 stripQuotedNames[code_String, names_List] :=
-    StringReplace[code, Map["\"" <> # <> "\"" -> #&, names]];
+    cgTimed[$ProfileCgStripNames,
+        If[AllTrue[names, StringMatchQ[#, $placeholderNameChar ..]&],
+            With[{nameLookup = Association[Thread[names -> True]]},
+                StringReplace[code,
+                    "\"" ~~ n : $placeholderNameChar .. ~~ "\"" :>
+                        If[TrueQ[nameLookup[n]], n, "\"" <> n <> "\""]]
+            ]
+            ,
+            StringReplace[code, Map["\"" <> # <> "\"" -> #&, names]]
+        ]
+    ];
 
 getAllVarNames[optimized_] :=
     If[TrueQ[optimized["UseSubKernels"]],

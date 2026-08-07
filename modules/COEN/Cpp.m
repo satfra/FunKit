@@ -71,23 +71,42 @@ $CppPrecision = 20;
 
 Options[CppForm] = {"Format" -> False};
 
-Options[cppFormCore] = {"Format" -> False};
+Options[cppFormEmit] = {"Format" -> False};
 
-(* Thin codegen-profiling wrapper (see Tools.m: cgTimed, zero overhead when disabled).
-   The work lives in cppFormCore so its internal Return[]s resolve at that function's
-   call boundary, leaving the timing Module in cgTimed intact. *)
+(* The printer is split into an INSTALL and an EMIT.
+
+   withCppFormRules installs the CExpression rules below -- about fifty of them, plus nest and
+   factorCode -- into an Internal`InheritedBlock. cppFormEmit assumes they are already installed
+   and just renders one expression. CppForm is the two composed, so its public contract is
+   unchanged; callers that render many expressions in a row (formatDefinitions) wrap the whole
+   batch in withCppFormRules once and call cppFormBatched per expression instead.
+
+   The split exists because the install is a fixed per-call cost -- measured at 0.67 s of
+   CppForm's 1.17 s over the 2447 calls a large split kernel makes, i.e. more than half of the
+   pass was reinstalling the same rules.
+
+   $CppPowr, $codeFastMath and $codePrecision are read at INSTALL time (they select which rules
+   get defined), so a batch sees the values they had when the batch opened. Nothing mutates them
+   mid-emission. withCppFormRules nests safely: an inner InheritedBlock inherits the outer's
+   already-installed rules, so a stray CppForm inside a batch costs time, never correctness. *)
+
+SetAttributes[withCppFormRules, HoldFirst];
 
 CppForm[expr_, opts : OptionsPattern[]] :=
+    withCppFormRules[cppFormBatched[expr, opts]];
+
+(* Profiled emit for callers already inside withCppFormRules. *)
+
+cppFormBatched[expr_, opts : OptionsPattern[cppFormEmit]] :=
     (
         If[TrueQ[$ProfileCodegenOn], $ProfileCgCppFormCount++];
-        cgTimed[$ProfileCgCppForm, cppFormCore[expr, opts]]
+        cgTimed[$ProfileCgCppForm, cppFormEmit[expr, opts]]
     );
 
-cppFormCore[expr_, OptionsPattern[]] :=
+withCppFormRules[body_] :=
     Internal`InheritedBlock[
-        {processedExpr, nest, factorCode, $MinPrecision = $CppPrecision, $MaxPrecision = $CppPrecision, CExpression}
+        {nest, factorCode, $MinPrecision = $CppPrecision, $MaxPrecision = $CppPrecision, CExpression}
         ,
-        processedExpr = N[expr /. Power[E, x_] :> cppExp[x]];
         nest := GenerateCode[CExpression[#]]&;
         (*a factor of a product: a sum must be wrapped in parentheses, since * binds tighter than + in C++*)
         factorCode[p_Plus] := "(" <> nest[p] <> ")";
@@ -213,16 +232,23 @@ cppFormCore[expr_, OptionsPattern[]] :=
             CExpression /: GenerateCode[CExpression[Cos[a_]]] := "__cosf(" <> nest[a] <> ")";
             CExpression /: GenerateCode[CExpression[Tan[a_]]] := "__tanf(" <> nest[a] <> ")";
         ];
-        (* GenerateCode applies the CExpression rules above directly. ToCCodeString does
-           the same but carries ~26 ms/call of fixed SymbolicC overhead (line-wrapping
-           bookkeeping) — catastrophic when CppForm is called 65-110x per kernel. Our
-           rules already emit fully-parenthesized code, and clang-format normalizes
-           whitespace downstream, so the output is equivalent (whitespace-only delta). *)
+        body
+    ];
+
+(* GenerateCode applies the CExpression rules installed above directly. ToCCodeString does
+   the same but carries ~26 ms/call of fixed SymbolicC overhead (line-wrapping
+   bookkeeping) — catastrophic when CppForm is called 65-110x per kernel. Our
+   rules already emit fully-parenthesized code, and clang-format normalizes
+   whitespace downstream, so the output is equivalent (whitespace-only delta). *)
+
+cppFormEmit[expr_, OptionsPattern[]] :=
+    Module[{processedExpr},
+        processedExpr = N[expr /. Power[E, x_] :> cppExp[x]];
         If[TrueQ[OptionValue["Format"]],
-            Return[FormatCppCode[GenerateCode[CExpression[processedExpr]]]]
+            FormatCppCode[GenerateCode[CExpression[processedExpr]]]
             ,
-            Return[GenerateCode[CExpression[processedExpr]]]
-        ];
+            GenerateCode[CExpression[processedExpr]]
+        ]
     ];
 
 clangFormatExists = Quiet[RunProcess[{"clang-format", "--help"}]] =!= $Failed;
@@ -522,8 +548,11 @@ CppCodeFORM[expr_] :=
    from 1). Interpolator/regulator calls do introduce a type; those come from the GLOBAL hoisting pass,
    so their names are unique and they can safely be lifted out of the block to be nameable here. *)
 
+(* The `1` caps the search at the first hit: the result is only ever compared against {}, and on a
+   large kernel this runs once per definition over the whole right-hand side. *)
+
 introducesTypeQ[rhs_] :=
-  Cases[rhs, h_[___] /; !MemberQ[{Plus, Times, Power}, h], {0, Infinity}] =!= {};
+  Cases[rhs, h_[___] /; !MemberQ[{Plus, Times, Power}, h], {0, Infinity}, 1] =!= {};
 
 (* Leaves of `expr` whose types matter: descend arithmetic, drop numeric literals, keep the rest.
 
@@ -536,11 +565,16 @@ introducesTypeQ[rhs_] :=
    definition. `seen` guards against revisiting a shared sub-definition. *)
 
 accTypeLeaves[expr_, skipDefs_] :=
-  Module[{bag = Internal`Bag[], walk, seen = <||>, skipNames = Keys[skipDefs]},
+(* skipAlt is built ONCE. It used to be `Alternatives @@ skipNames` inside the Which below, i.e.
+   rebuilt from a list as long as the kernel's definition table at every non-arithmetic node --
+   and the membership test above it was a linear MemberQ over the same list. Both are per-node
+   costs in a walk over the whole sub-kernel expression, which is what made this quadratic. *)
+  Module[{bag = Internal`Bag[], walk, seen = <||>, skipNames = Keys[skipDefs], skipAlt},
+    skipAlt = Alternatives @@ skipNames;
     walk[e_] :=
       Which[
         NumericQ[e], Null,
-        MemberQ[skipNames, e],
+        KeyExistsQ[skipDefs, e],
           If[!KeyExistsQ[seen, e], seen[e] = True; walk[skipDefs[e]]],
 (* type-transparent arithmetic: descend. fmaGroup is a*b+c, so all three arguments contribute —
    treating it as opaque both loses the shrink AND drags block-scoped names into the decltype. *)
@@ -550,7 +584,7 @@ accTypeLeaves[expr_, skipDefs_] :=
    emitted verbatim into a scope where that name does not exist. Descending is then both necessary
    and safe: the globally-hoisted calls (the ones whose type is NOT their argument's) never appear
    inline in the terms, so anything left here is an arithmetic wrapper. *)
-        skipNames =!= {} && !FreeQ[e, Alternatives @@ skipNames], walk /@ (List @@ e),
+        skipNames =!= {} && !FreeQ[e, skipAlt], walk /@ (List @@ e),
         True, Internal`StuffBag[bag, e]
       ];
     walk[expr];
@@ -598,8 +632,9 @@ CppCode[equation_, OptionsPattern[]] :=
 (* the arithmetic-only sub-kernel defs, as name -> rhs: accTypeLeaves descends INTO these rather than
    dropping them, so a type reachable only through one of them (an AD or complex parameter used in a
    single `_cse`) still reaches the promotion. *)
-                arithNames = Association[Rule @@@ Select[Flatten[Map[#["Definitions"]&, subKernels], 1],
-                    !MemberQ[liftedNames, #[[1]]]&]];
+                arithNames = With[{liftedSet = makeNameSet[liftedNames]},
+                    Association[Rule @@@ Select[Flatten[Map[#["Definitions"]&, subKernels], 1],
+                        !inNameSet[liftedSet, #[[1]]]&]]];
                 leaves = DeleteDuplicates @ Join[sharedDefs[[All, 1]], liftedNames,
                     accTypeLeaves[Total[Map[#["Terms"]&, subKernels]], arithNames]];
                 declLine =
@@ -609,18 +644,27 @@ CppCode[equation_, OptionsPattern[]] :=
                 sharedCode = stripQuotedNames[formatDefinitions[sharedDefs], allNames];
                 liftCode = If[lifted === {}, "", stripQuotedNames[formatDefinitions[lifted], allNames]];
                 (* Scoped accumulation; only the arithmetic-only defs remain inside the block *)
+(* Each block is stripped against the SHARED names plus its own, not against allNames.
+   allNames carries one entry per definition of every sub-kernel -- and dagCSE renumbers _cseN
+   from 1 inside each -- so it is roughly `#subkernels` times longer than the set any single
+   block can mention. Passing the long list made stripQuotedNames rebuild its lookup (and
+   re-check its fast-path guard) over thousands of names once per block. Equivalent by
+   construction: a block's code only ever names a shared def or one of its own, and a name that
+   does not occur in a string cannot be stripped from it. *)
                 subCode =
+                    cgTimed[$ProfileCgEmitScaffold,
                     Table[
-                        Module[{localDefs, termsCode},
+                        Module[{localDefs, termsCode, blockNames},
+                            blockNames = Join[sharedDefs[[All, 1]], subKernels[[i]]["Definitions"][[All, 1]]];
                             localDefs = formatDefinitions[Select[subKernels[[i]]["Definitions"], !introducesTypeQ[#[[2]]]&]];
-                            localDefs = stripQuotedNames[localDefs, allNames];
+                            localDefs = stripQuotedNames[localDefs, blockNames];
                             termsCode = CppForm[subKernels[[i]]["Terms"]];
-                            termsCode = stripQuotedNames[termsCode, allNames];
+                            termsCode = stripQuotedNames[termsCode, blockNames];
                             "{ // subkernel " <> ToString[i] <> "\n" <> localDefs <> "_acc += " <> termsCode <> ";\n}\n"
                         ]
                         ,
                         {i, Length[subKernels]}
-                    ];
+                    ]];
                 accSym = Unique["postAcc"];
                 accStr = ToString[accSym];
                 wrappedReturn = StringReplace[CppForm[transform[accSym]], accStr -> "_acc"];
@@ -836,7 +880,7 @@ transitiveDefRefs[expr_, orderedNames_, defsByName_] :=
             refs = DeleteDuplicates @ Join[refs,
                 Intersection[orderedNames, Flatten @ Map[Cases[defsByName[#][[2]], _String, {0, Infinity}]&, refs]]];
         ];
-        Select[orderedNames, MemberQ[refs, #]&]
+        With[{refSet = makeNameSet[refs]}, Select[orderedNames, inNameSet[refSet, #]&]]
     ];
 
 ClearAll[MakeCppFunctionSplit];
@@ -948,7 +992,7 @@ MakeCppFunctionSplit[expr_, opts : OptionsPattern[]] :=
                                 Table[localDefs[[j, 1]] -> localDefs[[j]], {j, Length[localDefs]}]];
                             allOrdered = Join[sharedNames, localDefs[[All, 1]]];
                             refs = transitiveDefRefs[subKernels[[i]]["Terms"], allOrdered, defsByName];
-                            Select[sharedNames, MemberQ[refs, #]&]
+                            With[{refSet = makeNameSet[refs]}, Select[sharedNames, inNameSet[refSet, #]&]]
                         ]
                         ,
                         {i, Length[subKernels]}
@@ -971,7 +1015,8 @@ MakeCppFunctionSplit[expr_, opts : OptionsPattern[]] :=
                     Table[
                         Module[{usedShared, usedDefs, defCode},
                             usedShared = perSubShared[[i]];
-                            usedDefs = Select[sharedDefs, MemberQ[usedShared, #[[1]]]&];
+                            usedDefs = With[{usedSet = makeNameSet[usedShared]},
+                                Select[sharedDefs, inNameSet[usedSet, #[[1]]]&]];
                             defCode = stripQuotedNames[formatDefinitions[usedDefs], allNames];
                             "{\n" <> defCode <> "_acc += " <> name <> "_sub" <> ToString[i] <> "(" <> StringRiffle[Join[argNames, usedShared], ", "] <> ");\n}\n"
                         ]
