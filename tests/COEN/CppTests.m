@@ -295,6 +295,74 @@ AppendTo[tests, VerificationTest[StringContainsQ[splitCode, "// subkernel 1"], T
 AppendTo[tests, VerificationTest[StringContainsQ[splitCode, "// subkernel 2"], True, TestID -> "Verify sub-kernel splitting produces at least 2 blocks"]];
 
 (**********************************************************************************
+    Sub-kernel name uniqueness and transitive lifting
+
+    dagCSE/fallbackCSE/hoistTranscendentals each number their temporaries from 1 on
+    every call, and the split calls them once per block -- so `_cse6`/`_tran1` in one
+    block and in another are unrelated values. CppCode lifts type-introducing defs into
+    ONE shared scope so they are nameable at the `_T` decltype, which brings those names
+    together. optimizeExpression therefore suffixes each block's minted names with the
+    block index; without that, this expression aborts generation with
+    "cannot lift sub-kernel definitions ... {_tran1, _tran2}".
+
+    The same lift also has to be transitive: a lifted def is emitted ABOVE every block,
+    so a block-local def it references must come with it, or the emitted C++ names an
+    undeclared identifier.
+
+    Both are properties of the emitted CODE rather than of any single pass, so the check
+    is a compile plus a numerical comparison against Mathematica. The budget is
+    deliberately tight -- a split into many small blocks is what makes two blocks mint
+    the same name.
+**********************************************************************************)
+
+ClearAll[a];
+
+liftExpr = Sum[Exp[-(a + i)^2/10] * Sqrt[2 + a^2 * i] / (1 + i * a), {i, 1, 50}];
+
+Block[{FunKit`Private`$codeOptimize = True, FunKit`Private`$availableRegisters = 5,
+       FunKit`Private`$codeMaxKernelTerms = 50},
+    liftSplitQ = TrueQ[FunKit`Private`optimizeExpression[liftExpr]["UseSubKernels"]];
+    funBodyLift = MakeCppFunction[liftExpr, "Name" -> "funLift",
+        "Body" -> "using namespace std; const auto a = in;", "Parameters" -> {"in"}];
+];
+
+(* guard: if this stopped splitting, the two tests after it prove nothing *)
+
+AppendTo[tests, VerificationTest[liftSplitQ, True, TestID -> "Verify lift regression case actually splits into sub-kernels"]];
+
+execLift = CreateExecutable["
+#include <iostream>
+#include <iomanip>
+#include <cmath>
+using NumberType = double;
+
+" <> fmaCode <> "
+" <> powrCode <> "
+" <> funBodyLift <> "
+
+int main () {
+  std::cout << std::setprecision (10) << funLift (1.5) << std::endl;
+}
+", "FunKitCppTestLift", "CompilerName" -> CppCompiler, "SystemCompileOptions" -> "-std=c++20"];
+
+outputLift = If[execLift === $Failed, "COMPILE-FAILED", StringTrim @ Import["!" <> QuoteFile[execLift], "Text"]];
+
+expectedLift = ToString[NumberForm[N[liftExpr /. a -> 1.5], 10]];
+
+AppendTo[tests, VerificationTest[execLift =!= $Failed, True, TestID -> "Verify split kernel with per-block transcendentals compiles"]];
+
+AppendTo[tests, VerificationTest[outputLift, expectedLift, TestID -> "Verify numerical agreement of split kernel with per-block transcendentals"]];
+
+(* fmaGroup is a*b+c: it introduces no type its arguments do not already carry, so it must NOT
+   count as type-introducing. When it did, every `_cse` that is a sum containing a product was
+   lifted out of its block -- which both defeats the split's register budget and made the name
+   collision above near-certain on any split kernel. *)
+
+AppendTo[tests, VerificationTest[
+    FunKit`Private`introducesTypeQ[FunKit`Private`fmaGroup[a, b, c]], False,
+    TestID -> "Verify fmaGroup is not treated as type-introducing"]];
+
+(**********************************************************************************
     Transcendental hoisting
 **********************************************************************************)
 

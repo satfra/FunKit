@@ -799,6 +799,31 @@ optimizeExpression[equation_] :=
                         If[TrueQ[$ProfileCodegenOn],
                             AppendTo[$ProfileCgSubKernelTimes, AbsoluteTime[] - t0]
                         ];
+(* Disambiguate this block's minted names. dagCSE/fallbackCSE/hoistTranscendentals each number from
+   1 on every call, so `_cse6` in this block and `_cse6` in another are unrelated values. That is
+   harmless while both stay block-scoped, but CppCode lifts type-introducing defs into one shared
+   scope to make them nameable at the `_T` decltype -- and two same-named lifts are a miscompile
+   (see the guard in Cpp.m). Suffixing here is the fix: the minters stay simple, and the caller,
+   which is the only place that knows the block index, makes the names globally unique.
+
+   Only kernelResult's names are renamed. localInterpDefs are `_interpN`/`_denN` from the GLOBAL
+   hoisting passes -- already unique, and shared by reference across blocks, so renaming them per
+   block would break exactly the sharing they exist for.
+
+   The names are String atoms in the expression, so ReplaceAll matches whole names: no `_cse1`
+   vs `_cse12` prefix hazard. Suffix rather than prefix keeps the `_cse`/`_tran` prefix grammar
+   intact for the other backends, and `_cse6_k3` stays inside $placeholderNameChar so
+   stripQuotedNames keeps its fast path. *)
+                        Module[{localNames, renameRules},
+                            localNames = kernelResult["Definitions"][[All, 1]];
+                            If[localNames =!= {},
+                                renameRules = Thread[localNames -> Map[# <> "_k" <> ToString[i]&, localNames]];
+                                kernelResult = <|
+                                    "Expr" -> (kernelResult["Expr"] /. renameRules),
+                                    "Definitions" -> Map[{#[[1]] /. renameRules, #[[2]] /. renameRules}&, kernelResult["Definitions"]]
+                                |>;
+                            ];
+                        ];
                         <|"Terms" -> kernelResult["Expr"], "Definitions" -> Join[localInterpDefs, kernelResult["Definitions"]]|>
                     ]
                     ,
