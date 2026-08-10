@@ -542,17 +542,62 @@ CppCodeFORM[expr_] :=
    QCD kernels, 3.35 MB of 4.42 MB on hPhiL.
 
    A definition only matters here if it INTRODUCES a type, i.e. its right-hand side is not pure
-   arithmetic over things that already exist. `_cse`-style definitions minted by the per-sub-kernel
-   passes are arithmetic by construction, so they can be ignored — which matters, because those are
-   scoped inside their sub-kernel block AND their names are reused across blocks (each block renumbers
-   from 1). Interpolator/regulator calls do introduce a type; those come from the GLOBAL hoisting pass,
-   so their names are unique and they can safely be lifted out of the block to be nameable here. *)
+   arithmetic over things that already exist. Most `_cse`-style definitions minted by the
+   per-sub-kernel passes are arithmetic by construction and can be ignored — which matters, because
+   those are scoped inside their sub-kernel block. Interpolator/regulator calls do introduce a type;
+   those come from the GLOBAL hoisting pass, and a `_cse`/`_tran` that wraps one has a name made
+   unique per block by optimizeExpression, so either can safely be lifted out of the block to be
+   nameable here.
+
+   `fmaGroup` MUST be in the transparent list: it is a*b+c, so it introduces nothing its arguments
+   do not already carry, and accTypeLeaves below relies on exactly that. Omitting it is not a
+   conservative choice — fmaRestructure runs over the definitions themselves, so every `_cse` that
+   is a sum containing a product becomes an fmaGroup, and treating those as type-introducing lifts
+   nearly the whole CSE table out of its block. That both defeats the split (the temporaries the
+   register budget exists to keep block-scoped end up live across the entire function) and turns the
+   name-collision guard below into a near-certain abort on any split kernel. *)
 
 (* The `1` caps the search at the first hit: the result is only ever compared against {}, and on a
    large kernel this runs once per definition over the whole right-hand side. *)
 
 introducesTypeQ[rhs_] :=
-  Cases[rhs, h_[___] /; !MemberQ[{Plus, Times, Power}, h], {0, Infinity}, 1] =!= {};
+  Cases[rhs, h_[___] /; !MemberQ[{Plus, Times, Power, fmaGroup}, h], {0, Infinity}, 1] =!= {};
+
+(* Split ONE sub-kernel's definition list into {lifted, local}.
+
+   A type-introducing def has to leave its block to be nameable at the `_T` decltype -- but it is
+   emitted at the enclosing scope, ABOVE every block, so anything it references has to be visible
+   there too. Selecting on introducesTypeQ alone breaks that: `_cse6 = Log[_cse3]` lifts while its
+   arithmetic-only input `_cse3 = a+b` stays behind, and the lifted line names an identifier that is
+   declared nowhere in its scope. So close the seed set over its block-local dependencies and lift
+   those with it.
+
+   Order is preserved on both sides. Each block's defs arrive topologically sorted (optimizeSubKernel
+   does that explicitly, because normalizePowerBases can introduce forward references), and taking
+   two order-preserving subsequences of a valid order leaves both valid: a lifted def's own deps are
+   in `lifted` before it by construction, and a local def may reference a lifted one because the
+   whole lift block precedes the sub-kernel blocks. *)
+
+partitionLiftedDefs[defs_List] :=
+  Module[{n = Length[defs], nameIndex, deps, liftQ, changed},
+    If[n === 0, Return[{{}, {}}]];
+    nameIndex = Association @ Table[defs[[i, 1]] -> i, {i, n}];
+    (* level {0, Infinity}: a def whose rhs is a bare name is still a dependency *)
+    deps = Table[
+      DeleteDuplicates @ Cases[
+        DeleteDuplicates @ Cases[defs[[i, 2]], _String, {0, Infinity}],
+        s_ /; KeyExistsQ[nameIndex, s] :> nameIndex[s]],
+      {i, n}];
+    liftQ = Table[TrueQ @ introducesTypeQ[defs[[i, 2]]], {i, n}];
+    changed = True;
+    While[changed,
+      changed = False;
+      Do[
+        If[liftQ[[i]],
+          Do[If[!liftQ[[j]], liftQ[[j]] = True; changed = True], {j, deps[[i]]}]],
+        {i, n}]];
+    {Pick[defs, liftQ, True], Pick[defs, liftQ, False]}
+  ];
 
 (* Leaves of `expr` whose types matter: descend arithmetic, drop numeric literals, keep the rest.
 
@@ -569,11 +614,18 @@ accTypeLeaves[expr_, skipDefs_] :=
    rebuilt from a list as long as the kernel's definition table at every non-arithmetic node --
    and the membership test above it was a linear MemberQ over the same list. Both are per-node
    costs in a walk over the whole sub-kernel expression, which is what made this quadratic. *)
-  Module[{bag = Internal`Bag[], walk, seen = <||>, skipNames = Keys[skipDefs], skipAlt},
+  Module[{bag = Internal`Bag[], walk, seen = <||>, skipNames = Keys[skipDefs], skipAlt, complexSample = None},
     skipAlt = Alternatives @@ skipNames;
     walk[e_] :=
       Which[
-        NumericQ[e], Null,
+(* Numeric literals carry no type — EXCEPT complex ones. When every trace/leaf is real and the
+   imaginary bookkeeping lives purely in the COEFFICIENTS (NumTracer's dressed GPU kernels emit
+   exactly that: real trN(fenv) times complex<double>(0.,c)), dropping them narrows `_T` to
+   double while the terms are complex — `_acc += <complex>` then fails to compile (first hit:
+   regenerated ZA3_gpu, 2026-08-08). One sample is enough for the promotion; keeping every
+   distinct coefficient would just bloat the decltype this function exists to shrink. *)
+        NumericQ[e],
+          If[Head[e] === Complex && complexSample === None, complexSample = e],
         KeyExistsQ[skipDefs, e],
           If[!KeyExistsQ[seen, e], seen[e] = True; walk[skipDefs[e]]],
 (* type-transparent arithmetic: descend. fmaGroup is a*b+c, so all three arguments contribute —
@@ -588,6 +640,8 @@ accTypeLeaves[expr_, skipDefs_] :=
         True, Internal`StuffBag[bag, e]
       ];
     walk[expr];
+    (* the one retained complex-coefficient sample joins the leaves so the sum promotes to complex *)
+    If[complexSample =!= None, Internal`StuffBag[bag, complexSample]];
     DeleteDuplicates @ Internal`BagPart[bag, All]
   ];
 
@@ -600,27 +654,24 @@ CppCode[equation_, OptionsPattern[]] :=
         varNames = getAllVarNames[optimized];
         (* Sub-kernel pattern (level 3) *)
         If[TrueQ[optimized["UseSubKernels"]],
-            Module[{subKernels, sharedDefs, sharedCode, liftCode, allNames, subCode, declLine, accSym, accStr, wrappedReturn, lifted, liftedNames, arithNames, leaves},
+            Module[{subKernels, sharedDefs, sharedCode, liftCode, allNames, subCode, declLine, accSym, accStr, wrappedReturn, blockParts, lifted, liftedNames, arithNames, leaves},
                 sharedDefs = optimized["SharedDefinitions"];
                 subKernels = optimized["SubKernels"];
                 allNames = Join[sharedDefs[[All, 1]], Flatten @ Map[#["Definitions"][[All, 1]]&, subKernels]];
 (* Type deduction (see accTypeLeaves above). _acc accumulates un-transformed terms; the
    ReturnTransform is applied only at the final return.
-   `lifted` = the sub-kernel-local definitions that INTRODUCE a type (a call, not arithmetic). Only
-   those have to be nameable at the decltype, so only those leave their block.
+   `lifted` = the sub-kernel definitions that INTRODUCE a type, plus the block-local defs they
+   depend on. Only those have to be nameable at the decltype, so only those leave their block.
 
-   They are NOT all products of the global hoisting pass, so their names are NOT automatically
-   unique: a `_cse` name is renumbered from 1 by every block, and introducesTypeQ classifies plenty
-   of those as type-introducing (`_cse1 = powr<-1>(l1)` is a call as far as it is concerned). When
-   two blocks both CSE the same subexpression they both mint `_cse1`, both get lifted, and the
-   emitted function has two `const auto _cse1` in one scope -- a hard C++ error
-   ("conflicting declaration"), first hit by a three-coordinate vertex kernel large enough to be
-   split into several sub-kernels.
-
-   Same name + identical rhs is the same value, so collapsing them is exactly equivalent; keep the
-   first occurrence to preserve definition order, since lifted defs may reference earlier ones. Same
-   name + DIFFERENT rhs would be a miscompile, so refuse loudly rather than silently pick one. *)
-                lifted = Select[Flatten[Map[#["Definitions"]&, subKernels], 1], introducesTypeQ[#[[2]]]&];
+   ONE partition per block, computed here and reused for the block bodies below: recomputing the
+   split at the emission site is how a def ends up emitted twice or not at all. *)
+                blockParts = Map[partitionLiftedDefs[#["Definitions"]]&, subKernels];
+                lifted = Flatten[blockParts[[All, 1]], 1];
+(* Names are made unique per block by optimizeExpression, which is what lets defs from different
+   blocks share this one scope at all. Kept as an assertion rather than dropped: the failure it
+   catches is a silent miscompile (same name, two different values), it costs one pass over a list
+   bounded by the register budget, and it is the only thing standing between a naming regression
+   upstream and wrong numbers downstream. *)
                 Module[{conflicts},
                     conflicts = Select[GroupBy[lifted, First], Length[DeleteDuplicates[#[[All, 2]]]] > 1&];
                     If[Length[conflicts] > 0,
@@ -632,9 +683,7 @@ CppCode[equation_, OptionsPattern[]] :=
 (* the arithmetic-only sub-kernel defs, as name -> rhs: accTypeLeaves descends INTO these rather than
    dropping them, so a type reachable only through one of them (an AD or complex parameter used in a
    single `_cse`) still reaches the promotion. *)
-                arithNames = With[{liftedSet = makeNameSet[liftedNames]},
-                    Association[Rule @@@ Select[Flatten[Map[#["Definitions"]&, subKernels], 1],
-                        !inNameSet[liftedSet, #[[1]]]&]]];
+                arithNames = Association[Rule @@@ Flatten[blockParts[[All, 2]], 1]];
                 leaves = DeleteDuplicates @ Join[sharedDefs[[All, 1]], liftedNames,
                     accTypeLeaves[Total[Map[#["Terms"]&, subKernels]], arithNames]];
                 declLine =
@@ -645,18 +694,17 @@ CppCode[equation_, OptionsPattern[]] :=
                 liftCode = If[lifted === {}, "", stripQuotedNames[formatDefinitions[lifted], allNames]];
                 (* Scoped accumulation; only the arithmetic-only defs remain inside the block *)
 (* Each block is stripped against the SHARED names plus its own, not against allNames.
-   allNames carries one entry per definition of every sub-kernel -- and dagCSE renumbers _cseN
-   from 1 inside each -- so it is roughly `#subkernels` times longer than the set any single
-   block can mention. Passing the long list made stripQuotedNames rebuild its lookup (and
-   re-check its fast-path guard) over thousands of names once per block. Equivalent by
-   construction: a block's code only ever names a shared def or one of its own, and a name that
-   does not occur in a string cannot be stripped from it. *)
+   allNames carries one entry per definition of every sub-kernel, so it is roughly `#subkernels`
+   times longer than the set any single block can mention. Passing the long list made
+   stripQuotedNames rebuild its lookup (and re-check its fast-path guard) over thousands of names
+   once per block. Equivalent by construction: a block's code only ever names a shared def or one
+   of its own, and a name that does not occur in a string cannot be stripped from it. *)
                 subCode =
                     cgTimed[$ProfileCgEmitScaffold,
                     Table[
                         Module[{localDefs, termsCode, blockNames},
                             blockNames = Join[sharedDefs[[All, 1]], subKernels[[i]]["Definitions"][[All, 1]]];
-                            localDefs = formatDefinitions[Select[subKernels[[i]]["Definitions"], !introducesTypeQ[#[[2]]]&]];
+                            localDefs = formatDefinitions[blockParts[[i, 2]]];
                             localDefs = stripQuotedNames[localDefs, blockNames];
                             termsCode = CppForm[subKernels[[i]]["Terms"]];
                             termsCode = stripQuotedNames[termsCode, blockNames];
