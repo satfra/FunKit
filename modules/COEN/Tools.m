@@ -6,7 +6,8 @@
       FSetCodeOptimization       -- Enables/disables code optimization pipeline
       FSetFastMath               -- Enables/disables fast math GPU intrinsics
       FSetMaxKernelTerms         -- Sets max terms per sub-kernel before splitting
-      FSetCodePrecision          -- Sets code precision ("single" or "double")
+      FSetCodePrecision          -- Sets code precision ("single" or "double"); "single" prints
+                                    float literals (0.5f, 2.f) and complex<float>
       FSetFullSimplifyLimit      -- LeafCount above which Simplify replaces FullSimplify
 
     Internal:

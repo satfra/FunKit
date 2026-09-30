@@ -154,7 +154,10 @@ withCppFormRules[body_] :=
         (*string placeholders — CSE variable names are Mathematica strings; output as bare identifiers*)
         CExpression /: GenerateCode[CExpression[a_String]] := a;
         (*number conversion*)
-        CExpression /: GenerateCode[CExpression[I]] := "complex<double>(0,1)";
+        (*single precision: float literals and complex<float>, so nothing promotes back to double*)
+        With[{cplx = If[$codePrecision === "single", "complex<float>(", "complex<double>("],
+              sfx = If[$codePrecision === "single", "f", ""]},
+        CExpression /: GenerateCode[CExpression[I]] := cplx <> "0,1)";
         CExpression /: GenerateCode[CExpression[a_Real]] :=
             ToString[
                 NumberForm[
@@ -171,10 +174,11 @@ withCppFormRules[body_] :=
                             ]&
                         )
                 ]
-            ];
+            ] <> sfx;
         CExpression /: GenerateCode[CExpression[Rational[a_, b_]]] := nest[N[a / b, $CppPrecision]];
-        CExpression /: GenerateCode[CExpression[Complex[r_, i_]]] := "complex<double>(" <> nest[r] <> "," <> nest[i] <> ")";
-        CExpression /: GenerateCode[CExpression[a_Integer]] := ToString[a] <> ".";
+        CExpression /: GenerateCode[CExpression[Complex[r_, i_]]] := cplx <> nest[r] <> "," <> nest[i] <> ")";
+        CExpression /: GenerateCode[CExpression[a_Integer]] := ToString[a] <> "." <> sfx;
+        ];
         CExpression /: GenerateCode[CExpression[a_]] /; NumericQ[a] && Not @ IntegerQ[a] := nest[N[a, $CppPrecision]];
         CExpression /: GenerateCode[CExpression[Re[v_]]] := "real(" <> nest[v] <> ")";
         CExpression /: GenerateCode[CExpression[Im[v_]]] := "imag(" <> nest[v] <> ")";
