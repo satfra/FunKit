@@ -174,7 +174,7 @@ ClearAll["FunKit`Private`*"];
 $FunKitDirectory=SelectFirst[
 Join[
 {
-If[StringQ[$InputFileName]&&FileBaseName[$InputFileName]==="FunKit",FileNameDrop[$InputFileName,-1],Nothing],
+If[StringQ[$InputFileName]&&FileBaseName[$InputFileName]==="FunKit"&&DirectoryQ[FileNameJoin[{FileNameDrop[$InputFileName,-1],"modules"}]],FileNameDrop[$InputFileName,-1],Nothing],
 FileNameJoin[{$UserBaseDirectory,"Applications","FunKit"}],
 FileNameJoin[{$BaseDirectory,"Applications","FunKit"}],
 FileNameJoin[{$InstallationDirectory,"AddOns","Applications","FunKit"}],

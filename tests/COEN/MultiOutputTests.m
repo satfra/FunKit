@@ -163,3 +163,10 @@ If[multiCompiler =!= "",
         TestID -> "COEN-SharedGrids-SplitKernel"]
     ];
 ];
+
+(* a one-element transform list on a single output acts like the function itself *)
+AppendTo[tests, VerificationTest[
+    CppCode[multiExprs[[1]], "ReturnTransform" -> {2 #&}],
+    CppCode[multiExprs[[1]], "ReturnTransform" -> (2 #&)],
+    TestID -> "COEN-Multi-OneTransformList"]
+];

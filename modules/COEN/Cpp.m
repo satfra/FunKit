@@ -672,9 +672,8 @@ CppCode[equation_, OptionsPattern[]] :=
 multiReturnStatement[multiReturn_String, values_List] :=
     "return " <> multiReturn <> "(" <> StringRiffle[values, ", "] <> ");";
 
-cppCode[equation_, transformOpt_, multiReturn_] :=
-    Module[{transform, optimized, varNames, definitions, returnStatement, multi, nOut, transforms},
-        transform = transformOpt;
+cppCode[equation_, transform_, multiReturn_] :=
+    Module[{optimized, varNames, definitions, returnStatement, multi, nOut, transforms},
         multi = ListQ[equation];
         nOut = If[multi, Length[equation], 1];
         If[multi && !StringQ[multiReturn],
@@ -773,7 +772,7 @@ cppCode[equation_, transformOpt_, multiReturn_] :=
                 "  " <> multiReturnStatement[multiReturn,
                     Table[CppForm[transforms[[j]][optimized["Expr"][[j]]]], {j, nOut}]]
                 ,
-                formatReturnStatement[transform[optimized["Expr"]]]
+                formatReturnStatement[First[transforms][optimized["Expr"]]]
             ];
         returnStatement = stripQuotedNames[returnStatement, varNames];
         FunKitDebug[2, "Definitions: ", definitions];

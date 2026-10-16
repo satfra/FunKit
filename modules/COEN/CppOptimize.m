@@ -80,7 +80,7 @@ hoistInterpolators[expr_] :=
             {gixDefs, bodies} = shareGridIndices[uniqueCalls];
             <|"Expr" -> newExpr,
               "Definitions" -> Join[gixDefs, Table[{names[[i]], bodies[[i]]}, {i, 1, Length[uniqueCalls]}]],
-              "Count" -> Length[gixDefs] + Length[uniqueCalls]|>
+              "Count" -> Length[uniqueCalls]|>
         ]
     ];
 
