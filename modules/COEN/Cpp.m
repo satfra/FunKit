@@ -149,6 +149,9 @@ withCppFormRules[body_] :=
                     Rest[parts]
                 ]
             ];
+        (*member function calls, obj.method(args); before the generic function rule*)
+        CExpression /: GenerateCode[CExpression[CppMemberCall[obj_, method_String, args___]]] :=
+            nest[obj] <> "." <> method <> "(" <> StringRiffle[nest /@ {args}, ", "] <> ")";
         (*functions*)
         CExpression /: GenerateCode[CExpression[a_[args___]]] := nest[a] <> "(" <> StringJoin @ StringRiffle[nest /@ {args}, ", "] <> ")";
         (*string placeholders — CSE variable names are Mathematica strings; output as bare identifiers*)
@@ -649,16 +652,45 @@ accTypeLeaves[expr_, skipDefs_] :=
     DeleteDuplicates @ Internal`BagPart[bag, All]
   ];
 
-Options[CppCode] = {"ReturnTransform" -> Identity};
+(* A List of expressions is a kernel with several outputs: they are optimized together (one CSE
+   table, one sub-kernel split) and returned as `MultiReturn(e1, e2, ...)`, with MultiReturn the
+   name of a C++ type constructible from the N values. In a split kernel every output has its own
+   accumulator `_accJ`. ReturnTransform is one function for all outputs or a list, one per output. *)
+
+Options[CppCode] = {"ReturnTransform" -> Identity, "MultiReturn" -> None, "SharedGrids" -> {}};
+
+CppCode::multireturn = "A list of `1` expressions needs the option \"MultiReturn\" (the C++ type returned).";
+
+CppCode::transforms = "\"ReturnTransform\" is a list of `1` functions for `2` outputs.";
 
 CppCode[equation_, OptionsPattern[]] :=
-    Module[{transform, optimized, varNames, definitions, returnStatement},
-        transform = OptionValue["ReturnTransform"];
+    Block[{$codeSharedInterpolatorGrids = OptionValue["SharedGrids"]},
+        cppCode[equation, OptionValue["ReturnTransform"], OptionValue["MultiReturn"]]
+    ];
+
+(* The return statement of a kernel with several outputs; `values` are C++ expressions. *)
+multiReturnStatement[multiReturn_String, values_List] :=
+    "return " <> multiReturn <> "(" <> StringRiffle[values, ", "] <> ");";
+
+cppCode[equation_, transformOpt_, multiReturn_] :=
+    Module[{transform, optimized, varNames, definitions, returnStatement, multi, nOut, transforms},
+        transform = transformOpt;
+        multi = ListQ[equation];
+        nOut = If[multi, Length[equation], 1];
+        If[multi && !StringQ[multiReturn],
+            Message[CppCode::multireturn, nOut];
+            Abort[]
+        ];
+        transforms = If[ListQ[transform], transform, ConstantArray[transform, nOut]];
+        If[Length[transforms] =!= nOut,
+            Message[CppCode::transforms, Length[transforms], nOut];
+            Abort[]
+        ];
         optimized = optimizeExpression[equation];
         varNames = getAllVarNames[optimized];
         (* Sub-kernel pattern (level 3) *)
         If[TrueQ[optimized["UseSubKernels"]],
-            Module[{subKernels, sharedDefs, sharedCode, liftCode, allNames, subCode, declLine, accSym, accStr, wrappedReturn, blockParts, lifted, liftedNames, arithNames, leaves},
+            Module[{subKernels, sharedDefs, sharedCode, liftCode, allNames, subCode, declLine, accSym, accStr, wrappedReturn, blockParts, lifted, liftedNames, arithNames, leaves, accNames, accDecls},
                 sharedDefs = optimized["SharedDefinitions"];
                 subKernels = optimized["SubKernels"];
                 allNames = Join[sharedDefs[[All, 1]], Flatten @ Map[#["Definitions"][[All, 1]]&, subKernels]];
@@ -689,7 +721,9 @@ CppCode[equation_, OptionsPattern[]] :=
    single `_cse`) still reaches the promotion. *)
                 arithNames = Association[Rule @@@ Flatten[blockParts[[All, 2]], 1]];
                 leaves = DeleteDuplicates @ Join[sharedDefs[[All, 1]], liftedNames,
-                    accTypeLeaves[Total[Map[#["Terms"]&, subKernels]], arithNames]];
+                    accTypeLeaves[Total[Flatten[Map[#["Terms"]&, subKernels]]], arithNames]];
+                (* a shared grid index (_gixK) is not a value, and would not add to a double *)
+                leaves = Select[leaves, !(StringQ[#] && StringStartsQ[#, "_gix"])&];
                 declLine =
                     "// clang-format off\nusing _T = decltype(" <>
                       If[leaves === {}, "0.", stripQuotedNames[CppForm[Total[leaves], "Format" -> False], allNames]] <>
@@ -703,30 +737,44 @@ CppCode[equation_, OptionsPattern[]] :=
    stripQuotedNames rebuild its lookup (and re-check its fast-path guard) over thousands of names
    once per block. Equivalent by construction: a block's code only ever names a shared def or one
    of its own, and a name that does not occur in a string cannot be stripped from it. *)
+                (* one accumulator, or one per output: _acc0, _acc1, ... *)
+                accNames = If[multi, Table["_acc" <> ToString[j - 1], {j, nOut}], {"_acc"}];
+                accDecls = StringJoin @ Map["_T " <> # <> "{};\n"&, accNames];
                 subCode =
                     cgTimed[$ProfileCgEmitScaffold,
                     Table[
-                        Module[{localDefs, termsCode, blockNames},
+                        Module[{localDefs, blockNames, terms, accLines},
                             blockNames = Join[sharedDefs[[All, 1]], subKernels[[i]]["Definitions"][[All, 1]]];
                             localDefs = formatDefinitions[blockParts[[i, 2]]];
                             localDefs = stripQuotedNames[localDefs, blockNames];
-                            termsCode = CppForm[subKernels[[i]]["Terms"]];
-                            termsCode = stripQuotedNames[termsCode, blockNames];
-                            "{ // subkernel " <> ToString[i] <> "\n" <> localDefs <> "_acc += " <> termsCode <> ";\n}\n"
+                            terms = If[multi, subKernels[[i]]["Terms"], {subKernels[[i]]["Terms"]}];
+                            (* an output with no terms in this block (0) gets no line *)
+                            accLines = StringJoin @ Table[
+                                If[terms[[j]] === 0, "",
+                                    accNames[[j]] <> " += " <> stripQuotedNames[CppForm[terms[[j]]], blockNames] <> ";\n"],
+                                {j, nOut}];
+                            "{ // subkernel " <> ToString[i] <> "\n" <> localDefs <> accLines <> "}\n"
                         ]
                         ,
                         {i, Length[subKernels]}
                     ]];
                 accSym = Unique["postAcc"];
                 accStr = ToString[accSym];
-                wrappedReturn = StringReplace[CppForm[transform[accSym]], accStr -> "_acc"];
-                Return[sharedCode <> liftCode <> declLine <> "_T _acc{};\n" <> StringJoin[subCode] <> "return " <> wrappedReturn <> ";"]
+                wrappedReturn = Table[StringReplace[CppForm[transforms[[j]][accSym]], accStr -> accNames[[j]]], {j, nOut}];
+                Return[sharedCode <> liftCode <> declLine <> accDecls <> StringJoin[subCode] <>
+                    If[multi, multiReturnStatement[multiReturn, wrappedReturn], "return " <> First[wrappedReturn] <> ";"]]
             ]
         ];
         (* Standard path: definitions + return *)
         definitions = formatDefinitions[optimized["Definitions"]];
         definitions = stripQuotedNames[definitions, varNames];
-        returnStatement = formatReturnStatement[transform[optimized["Expr"]]];
+        returnStatement =
+            If[multi,
+                "  " <> multiReturnStatement[multiReturn,
+                    Table[CppForm[transforms[[j]][optimized["Expr"][[j]]]], {j, nOut}]]
+                ,
+                formatReturnStatement[transform[optimized["Expr"]]]
+            ];
         returnStatement = stripQuotedNames[returnStatement, varNames];
         FunKitDebug[2, "Definitions: ", definitions];
         FunKitDebug[2, "returnStatement: ", returnStatement];
@@ -824,7 +872,7 @@ MakeParameterString[it_] :=
 
 ClearAll[MakeCppFunction];
 
-Options[MakeCppFunction] = {"Return" -> "auto", "Parameters" -> {}, "Name" -> "function", "Prefix" -> "", "Suffix" -> "", "CodeParser" -> "Cpp", "Body" -> "", "Class" -> "", "Templates" -> {}, "ReturnTransform" -> Identity};
+Options[MakeCppFunction] = {"Return" -> "auto", "Parameters" -> {}, "Name" -> "function", "Prefix" -> "", "Suffix" -> "", "CodeParser" -> "Cpp", "Body" -> "", "Class" -> "", "Templates" -> {}, "ReturnTransform" -> Identity, "MultiReturn" -> None, "SharedGrids" -> {}};
 
 MakeCppFunction[OptionsPattern[]] :=
     Module[{functionPrefix, functionSuffix, functionName, functionParameters, functionTemplates, idx, functionBody, parameters},
@@ -905,12 +953,17 @@ MakeCppFunction[expr_, OptionsPattern[]] :=
         transform = OptionValue["ReturnTransform"];
         generated =
             If[useFORM,
+                If[ListQ[expr],
+                    Message[FunKit::warning, "CodeParser \"FORM\" does not support several outputs."];
+                    Abort[]
+                ];
                 If[transform =!= Identity,
                     Message[FunKit::warning, "ReturnTransform is not supported with CodeParser \"FORM\"; ignoring."]
                 ];
                 CppCodeFORM[expr]
                 ,
-                CppCode[expr, "ReturnTransform" -> transform]
+                CppCode[expr, "ReturnTransform" -> transform, "MultiReturn" -> OptionValue["MultiReturn"],
+                    "SharedGrids" -> OptionValue["SharedGrids"]]
             ];
         newBody = OptionValue["Body"] <> "\n" <> generated;
         MakeCppFunction @@ (Evaluate @ Join[{"Body" -> newBody}, Thread[Rule @@ {#, OptionValue[MakeCppFunction, #]}]& @ Keys[Options[MakeCppFunction]]])
@@ -945,7 +998,20 @@ MakeCppFunctionSplit::bothinterp = "Options \"Interpolators\" and \"NotInterpola
    persistent _acc + per-block lookups outweigh the per-sub recompute, so recompute wins. *)
 Options[MakeCppFunctionSplit] = Join[Options[MakeCppFunction], {"Decorator" -> "static KOKKOS_FUNCTION", "Interpolators" -> Automatic, "NotInterpolators" -> Automatic, "ShareInterpolators" -> False, "SeparateLookups" -> False}];
 
+MakeCppFunctionSplit::multi = "MakeCppFunctionSplit does not support several outputs; use MakeCppFunction.";
+
+MakeCppFunctionSplit[expr_List, OptionsPattern[]] :=
+    (
+        Message[MakeCppFunctionSplit::multi];
+        Abort[]
+    );
+
 MakeCppFunctionSplit[expr_, opts : OptionsPattern[]] :=
+    Block[{$codeSharedInterpolatorGrids = OptionValue["SharedGrids"]},
+        makeCppFunctionSplit[expr, opts]
+    ];
+
+makeCppFunctionSplit[expr_, opts : OptionsPattern[MakeCppFunctionSplit]] :=
     Module[{transform, optimized, prologue, name, decorator, params, argNames, argStr,
             sharedDefs, subKernels, allNames, sharedCode, subFns, kernelBody, kernelFn,
             accSym, wrappedReturn},
@@ -974,9 +1040,10 @@ MakeCppFunctionSplit[expr_, opts : OptionsPattern[]] :=
                 defs = opt["Definitions"]; finalExpr = opt["Expr"]; varNamesL = getAllVarNames[opt];
                 (* Lookups = the hoisted interpolator calls named _interp...; the _den... and
                    _cse... defs are cheap arithmetic and stay inside eval. *)
-                lookupDefs = Select[defs, StringStartsQ[#[[1]], "_interp"]&];
-                restDefs = Select[defs, Not @ StringStartsQ[#[[1]], "_interp"]&];
-                lookupNames = lookupDefs[[All, 1]];
+                lookupDefs = Select[defs, StringStartsQ[#[[1]], "_interp" | "_gix"]&];
+                restDefs = Select[defs, Not @ StringStartsQ[#[[1]], "_interp" | "_gix"]&];
+                (* only the looked-up values are passed on; a _gixK index is used by the lookups alone *)
+                lookupNames = Select[lookupDefs[[All, 1]], StringStartsQ[#, "_interp"]&];
                 evalParams = Join[paramsL, Map[<|"Name" -> #, "Type" -> "auto", "Const" -> True, "Reference" -> True|>&, lookupNames]];
                 restCode = stripQuotedNames[formatDefinitions[restDefs], varNamesL];
                 retStmt = stripQuotedNames[formatReturnStatement[transformL[finalExpr]], varNamesL];

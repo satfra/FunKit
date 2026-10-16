@@ -209,6 +209,12 @@ $codeOptimizeFunctions = {a_Symbol[__] /; Not @ MatchQ[a, Times | Plus | Power |
 
 $codeOptimizeInterps = {a_Symbol[__] /; Not @ MatchQ[a, Times | Plus | Power | Rational | Complex | Real | Integer]};
 
+(* Groups of interpolators that live on one coordinate grid, as lists of their names (symbols or
+   strings). Lookups of interpolators in one group with identical arguments share the coordinate
+   transform: one `_gixK = f.index(args)`, then `g.at(_gixK)` per lookup. Set per call through the
+   "SharedGrids" option of CppCode/MakeCppFunction; empty = no sharing. *)
+$codeSharedInterpolatorGrids = {};
+
 (* Composite-denominator (negative integer power of a Plus/Times base) global hoisting.
    These reciprocals are NOT interpolator leaves, so without this they fall to the
    PER-SUB-KERNEL CSE and get recomputed once per chunk when the term-sum is split.
