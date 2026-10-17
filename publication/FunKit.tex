@@ -1640,7 +1640,7 @@ Should the need arise, the modular design of \FunKit makes the addition of furth
 
 Using the \DiFfRG \cite{Sattler:2024ozv} numerical framework, we provide an implementation example for a Yang--Mills theory with full momentum dependences in the \FunKit repository \cite{FunKitRepo} at \texttt{examples/Yang-Mills/}.
 
-The corresponding notebook at \texttt{examples/Yang-Mills/Yang-Mills.nb} uses \FunKit and \TensorBases to derive the flow equations. 
+The corresponding script at \texttt{examples/Yang-Mills/Yang-Mills.wl} uses \FunKit and \TensorBases to derive the flow equations. It is a \texttt{.wl} package, so it carries the section structure of a notebook and opens as one in the front end, but it is plain text and also runs headless via \texttt{wolfram -script Yang-Mills.wl}.
 The flow equations are built into a C++ library, which is assembled from the Mathematica expressions using the code export facilities of \FunKit that are called and assembled by an interface layer provided by \DiFfRG.
 These flow equations are then assembled into the full integro-differential system in a model specification \texttt{examples/Yang-Mills/model.hh} which can be solved by \DiFfRG. To build this example, the user should install first \DiFfRG, e.g. by the provided install script, then create a folder inside \texttt{examples/Yang-Mills/} and build:
 %
