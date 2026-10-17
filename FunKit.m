@@ -169,9 +169,12 @@ ClearAll["FunKit`Private`*"];
 
 
 (* ::Input::Initialization:: *)
+(* The directory this file was loaded from comes first, so that a second checkout (a git worktree,
+   loaded by path) uses its own modules instead of the installed copy's. *)
 $FunKitDirectory=SelectFirst[
 Join[
 {
+If[StringQ[$InputFileName]&&FileBaseName[$InputFileName]==="FunKit"&&DirectoryQ[FileNameJoin[{FileNameDrop[$InputFileName,-1],"modules"}]],FileNameDrop[$InputFileName,-1],Nothing],
 FileNameJoin[{$UserBaseDirectory,"Applications","FunKit"}],
 FileNameJoin[{$BaseDirectory,"Applications","FunKit"}],
 FileNameJoin[{$InstallationDirectory,"AddOns","Applications","FunKit"}],

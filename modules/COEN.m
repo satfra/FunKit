@@ -66,6 +66,10 @@ If the expression does not split, falls back to MakeCppFunction[expr, ...].
 Options: all Options[MakeCppFunction] plus \"Decorator\" (sub-function prefix), and the mutually-exclusive
 \"Interpolators\"->{...} / \"NotInterpolators\"->{...} (see Options).";
 
+CppMemberCall::usage = "CppMemberCall[obj, \"method\", args...]
+Prints as the C++ member function call obj.method(args...). Used for the shared coordinate
+transforms of interpolator lookups (see the \"SharedGrids\" option of MakeCppFunction).";
+
 MakeJuliaFunction::usage = "MakeJuliaFunction[\"Name\"->name, \"Return\"->returnType, \"Parameters\"->paramList, \"Body\"->body, ...]
 Generates a Julia function definition based on specified options. See Options[MakeJuliaFunction] for available settings.";
 

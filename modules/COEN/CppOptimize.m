@@ -76,7 +76,49 @@ hoistInterpolators[expr_] :=
    only ever paid for a second pass that finds nothing. *)
         rules = Dispatch @ Thread[uniqueCalls -> names];
         newExpr = expr /. rules;
-        <|"Expr" -> newExpr, "Definitions" -> Table[{names[[i]], uniqueCalls[[i]]}, {i, 1, Length[uniqueCalls]}], "Count" -> Length[uniqueCalls]|>
+        Module[{gixDefs, bodies},
+            {gixDefs, bodies} = shareGridIndices[uniqueCalls];
+            <|"Expr" -> newExpr,
+              "Definitions" -> Join[gixDefs, Table[{names[[i]], bodies[[i]]}, {i, 1, Length[uniqueCalls]}]],
+              "Count" -> Length[uniqueCalls]|>
+        ]
+    ];
+
+(**********************************************************************************
+    Pass 1a: Shared coordinate transforms of interpolator lookups
+    A lookup f(x) is f.at(f.index(x)), and index() -- the coordinate transform -- is the
+    expensive half (log/asinh on the logarithmic grids). Lookups of interpolators on ONE grid
+    with identical arguments can share it. Which interpolators share a grid is only known to
+    the caller, through $codeSharedInterpolatorGrids.
+
+    Returns {gixDefs, bodies}: the `_gixK` index definitions, and per hoisted call its new
+    definition body -- the call itself, or CppMemberCall[f, "at", "_gixK"].
+**********************************************************************************)
+
+gridGroupOf[head_] :=
+    Module[{name = If[Head[head] === Symbol, SymbolName[head], ToString[head]]},
+        FirstPosition[$codeSharedInterpolatorGrids,
+            g_List /; MemberQ[Map[If[Head[#] === Symbol, SymbolName[#], ToString[#]]&, g], name], None, {1}]
+    ];
+
+shareGridIndices[calls_List] :=
+    Module[{keys, groups, gixDefs = {}, bodies = calls, k = 0},
+        If[$codeSharedInterpolatorGrids === {}, Return[{{}, calls}]];
+        keys = Map[{gridGroupOf[Head[#]], List @@ #}&, calls];
+        groups = Select[PositionIndex[keys], Length[#] > 1&];
+        KeyValueMap[
+            Function[{key, positions},
+                If[key[[1]] =!= None,
+                    k++;
+                    With[{gix = "_gix" <> ToString[k]},
+                        AppendTo[gixDefs, {gix, CppMemberCall[Head[calls[[First[positions]]]], "index", Sequence @@ key[[2]]]}];
+                        Scan[(bodies[[#]] = CppMemberCall[Head[calls[[#]]], "at", gix])&, positions]
+                    ]
+                ]
+            ],
+            groups
+        ];
+        {gixDefs, bodies}
     ];
 
 (**********************************************************************************
@@ -315,6 +357,10 @@ fallbackCSE[expr_, maxVars_Integer] :=
     Apply FactorTerms to group additive terms by common multiplicative factors.
 **********************************************************************************)
 
+(* per output: FactorTerms on a List could pull a factor common to all outputs out of the List *)
+algebraicFactor[exprs_List] :=
+    Map[algebraicFactor, exprs];
+
 algebraicFactor[expr_] :=
     Module[{result, prev},
         If[Not @ $codeFactorTerms,
@@ -544,6 +590,51 @@ earlySplit[interpDefs_, expr_] :=
                 ,
                 chunks
             ];
+        earlySplitChunks[interpDefs, chunks]
+    ];
+
+(* Multi-output (List) expressions. Every output's summation core is flattened into one list of
+   {output, term}, so the splitter chunks the terms of all outputs together; a chunk is then a List
+   with, per output, its prefactor times its terms in the chunk (0 where it has none). *)
+taggedSummationTerms[exprs_List] :=
+    Module[{cores = Map[extractSummationCore, exprs], tagged},
+        tagged = Flatten[Table[Map[{j, #}&, cores[[j, 2]]], {j, Length[cores]}], 1];
+        If[$kernelSplitLevel > 1,
+            tagged = Flatten[Map[Function[{tt}, Map[{tt[[1]], #}&, splitDeep[tt[[2]], $kernelSplitLevel]]], tagged], 1]
+        ];
+        {cores[[All, 1]], tagged}
+    ];
+
+taggedChunkExpr[chunk_List, prefactors_List] :=
+    Table[
+        With[{ts = Cases[chunk, {j, t_} :> t]},
+            If[ts === {}, 0, prefactors[[j]] * Plus @@ ts]
+        ],
+        {j, Length[prefactors]}
+    ];
+
+(* Chunk size of the splitters: Automatic if the terms stay in one kernel. *)
+splitChunkSize[numTerms_, totalWeight_] :=
+    If[(totalWeight <= $codeMaxKernelTerms && numTerms <= $codeMaxKernelTerms) || numTerms <= 1,
+        Automatic
+        ,
+        Ceiling[numTerms / Max[2, Ceiling[totalWeight / $codeMaxKernelTerms]]]
+    ];
+
+earlySplit[interpDefs_, exprs_List] :=
+    Module[{prefactors, tagged, chunkSize},
+        {prefactors, tagged} = taggedSummationTerms[exprs];
+        chunkSize = splitChunkSize[Length[tagged], Length[interpDefs] + Total[LeafCount /@ tagged[[All, 2]]]];
+        FunKitDebug[2, "Early split check (", Length[exprs], " outputs): ", Length[tagged], " terms, chunk size ", chunkSize];
+        If[chunkSize === Automatic,
+            Return[<|"Split" -> False, "Expr" -> exprs, "SharedDefs" -> interpDefs|>]
+        ];
+        earlySplitChunks[interpDefs, Map[taggedChunkExpr[#, prefactors]&, Partition[tagged, UpTo[chunkSize]]]]
+    ];
+
+(* The sub-kernels of earlySplit for the given chunk expressions. *)
+earlySplitChunks[interpDefs_, chunks_] :=
+    Module[{interpNames, interpsByName, subKernelData},
         (* Partition interp defs: shared (used by 2+ chunks) vs local (1 chunk) *)
         interpNames = #[[1]]& /@ interpDefs;
         interpsByName = Association @ Table[interpDefs[[i, 1]] -> interpDefs[[i]], {i, Length[interpDefs]}];
@@ -708,18 +799,30 @@ splitIntoSubKernels[allDefs_, finalExpr_] :=
         ];
         (* Partition into sub-kernel chunks *)
         chunks = Partition[terms, UpTo[chunkSize]];
+        subKernelsOfChunks[allDefs,
+            Map[If[prefactor =!= 1, prefactor * Plus @@ #, Plus @@ #]&, chunks]]
+    ];
+
+splitIntoSubKernels[allDefs_, finalExprs_List] :=
+    Module[{prefactors, tagged, chunkSize},
+        {prefactors, tagged} = taggedSummationTerms[finalExprs];
+        chunkSize = splitChunkSize[Length[tagged], Length[allDefs] + Total[LeafCount /@ tagged[[All, 2]]]];
+        If[chunkSize === Automatic,
+            Return[<|"UseSubKernels" -> False, "Definitions" -> allDefs, "Expr" -> finalExprs|>]
+        ];
+        subKernelsOfChunks[allDefs, Map[taggedChunkExpr[#, prefactors]&, Partition[tagged, UpTo[chunkSize]]]]
+    ];
+
+(* The sub-kernels of splitIntoSubKernels for the given chunk expressions. *)
+subKernelsOfChunks[allDefs_, chunkExprs_] :=
+    Module[{defNames, defsByName, subKernels, sharedDefs},
         (* Build name -> definition mapping *)
         defNames = #[[1]]& /@ allDefs;
         defsByName = Association @ Table[allDefs[[i, 1]] -> allDefs[[i]], {i, Length[allDefs]}];
         (* For each chunk, find which definitions it references *)
         subKernels =
             Table[
-                Module[{chunkExpr, referencedNames, relevantDefs},
-                    chunkExpr = Plus @@ chunk;
-                    (* Multiply by prefactor if present *)
-                    If[prefactor =!= 1,
-                        chunkExpr = prefactor * chunkExpr;
-                    ];
+                Module[{referencedNames, relevantDefs},
                     referencedNames = Intersection[defNames, DeleteDuplicates @ Cases[chunkExpr, _String, Infinity]];
                     (* Also include definitions referenced by other definitions (transitive) *)
                     Module[{prevLen = 0},
@@ -735,7 +838,7 @@ splitIntoSubKernels[allDefs_, finalExpr_] :=
                     <|"Terms" -> chunkExpr, "Definitions" -> relevantDefs|>
                 ]
                 ,
-                {chunk, chunks}
+                {chunkExpr, chunkExprs}
             ];
         (* Find definitions used by multiple sub-kernels — these are "shared" *)
         Module[{allUsed, useCounts, sharedNames, sharedSet},
