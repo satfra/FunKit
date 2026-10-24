@@ -586,6 +586,19 @@ Block[{FunKit`Private`$CppPowr = False},
 AppendTo[tests, VerificationTest[StringContainsQ[FunKit`CppForm[Cot[x]], "powr<-1>"], True, TestID -> "Cot uses powr<-1> when $CppPowr is True (default)"]];
 
 (**********************************************************************************
+    Half-integer powers a^(n/2) emit powr<n>(sqrt(a)), which is exact on the principal branch
+    also for complex a; sqrt(powr<n>(a)) is not. Sqrt[1/x^2] is a square root of x^-2, not x^(-1).
+**********************************************************************************)
+
+AppendTo[tests, VerificationTest[FunKit`CppForm[Sqrt[x]], "sqrt(x)", TestID -> "Sqrt emits sqrt"]];
+
+AppendTo[tests, VerificationTest[FunKit`CppForm[1 / Sqrt[x]], "powr<-1>(sqrt(x))", TestID -> "x^(-1/2) emits powr<-1>(sqrt(x))"]];
+
+AppendTo[tests, VerificationTest[FunKit`CppForm[x^(3/2)], "powr<3>(sqrt(x))", TestID -> "x^(3/2) emits powr<3>(sqrt(x))"]];
+
+AppendTo[tests, VerificationTest[FunKit`CppForm[Sqrt[1 / x^2]], "sqrt(powr<-2>(x))", TestID -> "Sqrt[1/x^2] stays sqrt(powr<-2>(x))"]];
+
+(**********************************************************************************
     expm1: exp(x)-1 should emit expm1 (more accurate near x=0). The patterns must
     match the -1./1. that N[] produces, not the literal integer -1/1.
 **********************************************************************************)

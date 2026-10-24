@@ -114,11 +114,13 @@ withCppFormRules[body_] :=
         (*powr*)
         If[$CppPowr,
             CExpression /: GenerateCode[CExpression[Power[a_, b_Integer]]] := "powr<" <> ToString[b] <> ">(" <> nest[a] <> ")";
+            (*half-integer powers: a^(n/2) = (sqrt a)^n holds for every a on the principal branch, whereas
+              sqrt(a^n) flips sign for complex a with |arg a| > pi/|n|*)
             CExpression /: GenerateCode[CExpression[Power[a_, b_ /; Element[b + 1/2, Integers]]]] :=
                 If[b === 1/2,
                     "sqrt(" <> nest[a] <> ")"
                     ,
-                    "sqrt(powr<" <> ToString[2 b] <> ">(" <> nest[a] <> "))"
+                    "powr<" <> ToString[2 b] <> ">(sqrt(" <> nest[a] <> "))"
                 ];
             ,
             CExpression /: GenerateCode[CExpression[Power[a_, b_Integer]]] := "pow(" <> nest[a] <> ", " <> ToString[b] <> ")";
