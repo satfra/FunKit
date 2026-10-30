@@ -861,6 +861,21 @@ TEST_CASE("simplify: symmetry merge carries the factor", "[simplify][symmetry][d
   REQUIRE(merges[0].value == 2.);
 }
 
+TEST_CASE("simplify: empty equation with derivative symmetries", "[simplify][symmetry][driver]")
+{
+  // E.g. the psi-psi 2-point flow, which vanishes in a charge-conserving
+  // truncation: no terms, hence no external legs to resolve labels against.
+  auto [setup, feq] = parse(BOILERPLATE_DIR + "yukawa.toml");
+  const FieldIdx phi = setup.field_to_idx("phi");
+  const FieldIdx psi = setup.field_to_idx("psi");
+  setup.derivatives = {{psi, 101}, {psi, 102}, {phi, 103}, {phi, 104}};
+  setup.symmetries = make_symmetries({{{{101, 102}}, -1}});
+
+  FEq eq;
+  REQUIRE_NOTHROW(simplify(setup, eq));
+  REQUIRE(eq.empty());
+}
+
 TEST_CASE("simplify: flow matrix with symmetries matches the default Mathematica pipeline",
           "[simplify][symmetry][driver][integration]")
 {

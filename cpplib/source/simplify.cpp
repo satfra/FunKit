@@ -663,6 +663,8 @@ namespace FunKit
     normalize(setup, feq);
     reduce(feq);
     canonicalize_indices(feq);
+    // A vanishing flow has no external legs to check the symmetries against.
+    if (feq.empty()) return;
 
     const std::size_t before = feq.size();
     const Idx n = static_cast<Idx>(feq.size());
