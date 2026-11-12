@@ -4,6 +4,7 @@
     Internal (all used by CppCode/JuliaCode via optimizeExpression):
       optimizeExpression         -- Pipeline orchestrator: runs all passes
       hoistInterpolators         -- Pass 1: extracts global interpolator calls
+      orderLookupDefinitions     -- Pass 1 helper: places shared-index defs before their users
       earlySplit                 -- Pass 2: decides single vs multi-kernel split
       dagCSE                     -- Pass 3: DAG-based common subexpression elimination
       fallbackCSE                -- Pass 3 fallback: weighted-frequency CSE
@@ -55,7 +56,7 @@ inNameSet[set_Association, name_] :=
 **********************************************************************************)
 
 hoistInterpolators[expr_] :=
-    Module[{interpPatterns, interpCalls, uniqueCalls, names, rules, newExpr},
+    Module[{interpPatterns, interpCalls, uniqueCalls, names, rules, newExpr, calls},
         interpPatterns = $codeOptimizeInterps;
         interpCalls = Flatten @ Map[Cases[expr, #, Infinity]&, interpPatterns];
         uniqueCalls = DeleteDuplicates[interpCalls];
@@ -76,12 +77,43 @@ hoistInterpolators[expr_] :=
    only ever paid for a second pass that finds nothing. *)
         rules = Dispatch @ Thread[uniqueCalls -> names];
         newExpr = expr /. rules;
+(* A hoisted call can also sit in the ARGUMENTS of other hoisted calls -- sin(phi) inside
+   RF(k^2, l^2 - S1 sin(phi)), next to its own _interpK = sin(phi). The definitions name it there
+   too, so that it is evaluated once: device compilers do not merge the repeats (nvcc inlines a
+   range reduction with local-memory stores per textual sinf), and on a large GPU kernel ~1000
+   copies of one sin() in the lookup arguments cost ptxas several times the arithmetic.
+   Rewriting only the arguments, with all the rules, never maps a call onto its own name, since a
+   call cannot contain itself; and Cases lists a subexpression before anything containing it, so
+   every name a definition uses is that of an earlier definition. *)
+        calls = Map[Head[#] @@ ((List @@ #) /. rules)&, uniqueCalls];
         Module[{gixDefs, bodies},
-            {gixDefs, bodies} = shareGridIndices[uniqueCalls];
+            {gixDefs, bodies} = shareGridIndices[calls];
             <|"Expr" -> newExpr,
-              "Definitions" -> Join[gixDefs, Table[{names[[i]], bodies[[i]]}, {i, 1, Length[uniqueCalls]}]],
+              "Definitions" -> orderLookupDefinitions[gixDefs, Transpose[{names, bodies}]],
               "Count" -> Length[uniqueCalls]|>
         ]
+    ];
+
+(* The _gixK index definitions go in front of the lookups, except one whose argument names a
+   hoisted call: that one goes right before the first lookup that reads it. *)
+orderLookupDefinitions[gixDefs_List, interpDefs_List] :=
+    Module[{interpSet, late},
+        If[gixDefs === {}, Return[interpDefs, Module]];
+        interpSet = makeNameSet[interpDefs[[All, 1]]];
+        late = Association @ Map[#[[1]] -> #&,
+            Select[gixDefs, AnyTrue[Cases[#[[2]], _String, {0, Infinity}], inNameSet[interpSet, #]&]&]];
+        If[late === <||>, Return[Join[gixDefs, interpDefs], Module]];
+        Join[
+            Select[gixDefs, !KeyExistsQ[late, #[[1]]]&],
+            Flatten[
+                Map[
+                    Function[d,
+                        Append[
+                            Map[With[{g = late[#]}, late = KeyDrop[late, #]; g]&,
+                                Select[DeleteDuplicates @ Cases[d[[2]], _String, {0, Infinity}], KeyExistsQ[late, #]&]],
+                            d]],
+                    interpDefs],
+                1]]
     ];
 
 (**********************************************************************************

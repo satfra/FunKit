@@ -102,16 +102,54 @@ AppendTo[tests, VerificationTest[
     TestID -> "COEN-Hoist-InterpReconstructs"]
 ];
 
-(* Nested calls: the outer call is hoisted whole, so exactly the distinct calls found by
-   Cases become definitions and the reconstruction still has to be exact. *)
+(* Nested calls: exactly the distinct calls found by Cases become definitions, and an outer
+   call's body names the inner one (see the next test), so the reconstruction needs
+   ReplaceRepeated. *)
 AppendTo[tests, VerificationTest[
     Module[{expr, r},
         expr = ZA[Zq[p^2]] + Zq[p^2];
         r = hoistInterp[expr];
-        (r["Expr"] /. Map[Rule @@ #&, r["Definitions"]]) === expr
+        {r["Count"], (r["Expr"] //. Map[Rule @@ #&, r["Definitions"]]) === expr}
     ],
-    True,
+    {2, True},
     TestID -> "COEN-Hoist-InterpNestedReconstructs"]
+];
+
+(* A call nested in the arguments of other hoisted calls is evaluated once: every body names
+   it instead of repeating it. Device compilers do not merge the repeats of e.g. sin() (nvcc
+   inlines a range reduction with local-memory stores per textual call), and a GPU kernel with
+   ~1000 copies of one sin() in its lookup arguments cost ptxas several times its arithmetic.
+   The definitions must also stay ordered: each body may only name earlier definitions. *)
+hoistOrderedQ[defs_List] :=
+    And @@ MapIndexed[
+        SubsetQ[defs[[;; First[#2] - 1, 1]], Intersection[defs[[All, 1]], Cases[#1[[2]], _String, {0, Infinity}]]]&, defs];
+
+AppendTo[tests, VerificationTest[
+    Module[{expr, r, bodies},
+        expr = RF[k^2, l^2 - S1 Sin[phi]] + RB[k^2, l^2 + S1 Sin[phi]] + ZA[Sqrt[1 - S1 Sin[phi]]] + Sin[phi] Cos[phi];
+        r = hoistInterp[expr];
+        bodies = r["Definitions"][[All, 2]];
+        {Count[bodies, Sin[phi], {0, Infinity}], Count[bodies, Cos[phi], {0, Infinity}],
+         hoistOrderedQ[r["Definitions"]], (r["Expr"] //. Map[Rule @@ #&, r["Definitions"]]) === expr}
+    ],
+    {1, 1, True, True},
+    TestID -> "COEN-Hoist-InterpNestedArgumentsNamed"]
+];
+
+(* The same with a shared coordinate transform: a _gix index whose argument names a hoisted
+   call is defined after that call, not in front of all of them. *)
+AppendTo[tests, VerificationTest[
+    Block[{FunKit`Private`$codeSharedInterpolatorGrids = {{ZA, ZB}}},
+        Module[{expr, r, defs},
+            expr = ZA[Sqrt[1 - Sin[phi]]] + ZB[Sqrt[1 - Sin[phi]]] + ZA[p] + ZB[p];
+            r = hoistInterp[expr];
+            defs = r["Definitions"];
+            {Count[defs[[All, 2]], Sin[phi], {0, Infinity}], Length[Select[defs[[All, 1]], StringStartsQ[#, "_gix"]&]],
+             hoistOrderedQ[defs]}
+        ]
+    ],
+    {1, 2, True},
+    TestID -> "COEN-Hoist-InterpNestedGridIndexOrdered"]
 ];
 
 AppendTo[tests, VerificationTest[
