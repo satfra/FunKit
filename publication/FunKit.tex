@@ -29,7 +29,7 @@
 \newcommand{\cmark}{\ding{51}}
 \newcommand{\xmark}{\ding{55}}
 
-% graphics and colours
+\newcommand{\diagram}[1]{\includegraphics[scale=0.5]{diagrams/#1}} % graphics and colours; \diagram: figures from diagrams/MakeDiagrams.wls, all at one scale
 \usepackage{graphicx}
 \usepackage{array}[=2016-10-06]
 
@@ -390,7 +390,7 @@ This workflow is also shown in \Cref{fig:workflow} and precisely corresponds to 
 \end{mmaCell}
 %
 \vspace{-0.5ex}
-\noindent\hspace{3.0em}\includegraphics[width=0.4\linewidth]{diagram_0.png}
+\noindent\hspace{3.0em}\diagram{diagram_0}
 \vspace{-1.5ex}
 \begin{equation*}
 \wideleft{\footnotesize$%
@@ -856,7 +856,7 @@ $}
 \end{equation*}
 \vspace{-2ex}
 
-\noindent\hspace{3.0em}\includegraphics[width=0.38\linewidth]{diagram_1.png}\\
+\noindent\hspace{3.0em}\diagram{diagram_1}\\
 %
 In the above, $(-1)^{ab}$ is the fermionic minus sign as defined in \labelcref{eq:fminus}, represented in \FunKit as \mmaInlineCell{Input}{\mmaDef{FMinus}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{a,b\}]}. Note additionally that, $\gamma_{ab}$ is represented as \mmaInlineCell{Input}{\mmaDef{\(\pmb{\gamma}\)}[\{\mmaDef{AnyField},\mmaDef{AnyField}\},\{-a,-b\}]}, see also \Cref{tab:notation} for an overview of the notation.
 
@@ -959,7 +959,7 @@ $}
 \end{equation*}
 \vspace{-1ex}
 
-\noindent\hspace{3.0em}\includegraphics[width=0.78\linewidth]{diagram_3.png}\\
+\noindent\hspace{3.0em}\diagram{diagram_3}\\
 %
 \begin{tcolorbox}[title=Algorithm details: Truncation,
 	title filled=false,
@@ -1054,7 +1054,7 @@ gluonDSE = \mmaDef{FTakeDerivatives}[\mmaDef{FMakeDSE}[A[i1]], \{A[i2]\}]//\mmaD
 $}
 \end{equation*}
 \vspace{-1.0ex}
-\noindent\hspace{3.0em}\includegraphics[width=0.75\linewidth]{diagram_4.png}\\[1ex]
+\noindent\hspace{3.0em}\diagram{diagram_4}\\[1ex]
 %
 The output of \mathem{\mmaDef{FRoute}} returns an association with keys as \mathem{"0-Loop"}, \mathem{"1-Loop"}, and so on, where all diagrams are grouped that have the same number of loops. Each of these elements is again an association that holds all necessary information about the result.
 The respective keys are:
@@ -1175,7 +1175,7 @@ If we now plot again the flow of the gluon propagator, as calculated above, it l
 \mmaDef{FTakeDerivatives}[\mmaDef{wEq},\{A[i1],A[i2]\}]//\mmaDef{FTruncate}//\mmaDef{FPlot};
 \end{mmaCell}
 \vspace{-1ex}
-\noindent\hspace{3.0em}\includegraphics[width=0.8\linewidth]{diagram_9.png}\\
+\noindent\hspace{3.0em}\diagram{diagram_9}\\
 %
 Additionally, one can give hints to \FunKit which objects should be interpreted as edges, and which ones as vertices, by using the keys \mathem{"Vertices"} and \mathem{"Edges"}, and override the default vertex shape and size via \mathem{"VertexStyles"} and \mathem{"VertexSizes"}.
 Additionally, external-leg labelling can be turned off with \mathem{"ExternalIndexLabels"->\mmaDef{False}}.
@@ -1223,7 +1223,7 @@ diagGhostFlow = \mmaDef{FTakeDerivatives}[\mmaDef{wEq}, \{cb[i1], c[i2]\}]//\mma
 \end{equation*}
 \vspace{-0.5ex}
 
-\noindent\hspace{3.0em}\includegraphics[width=0.6\linewidth]{diagram_5.png}\\
+\noindent\hspace{3.0em}\diagram{diagram_5}\\
 %
 %
 To proceed, we require the explicit group structure of the ghost and gluon propagators, as well as the ghost-gluon vertex. We have already derived the necessary rules for the ghost vertices in \Cref{sec:Notation}. Assuming Landau gauge, a possible parametrisation of the gluon two-point vertex reads
@@ -1403,7 +1403,7 @@ DSEAcbc = \mmaDef{FTakeDerivatives}[\mmaDef{FMakeDSE}[A[i1]], \{cb[i2],c[i3]\}]/
 \end{mmaCell}
 \vspace{-1.0ex}
 
-\noindent\hspace{3.0em}\includegraphics[width=0.85\linewidth]{diagram_8.png}\\[1ex]
+\noindent\hspace{3.0em}\diagram{diagram_8}\\[1ex]
 %
 In the following, we trace the third diagram of the above.
 In many situations, the symmetric-point approximation can be a good momentum configuration to obtain a reduced system of correlation functions. Specifically, if angular dependencies can be assumed to be mild, a system of symmetric-point diagrams defines a closed system of diagrams in DSE or fRG applications, see also \cite{Ihssen:2024miv, Eichmann:2014xya, Eichmann:2015nra, Eichmann:2025etg} for more explicit treatments of 3- to 5-point~functions.
@@ -2091,7 +2091,7 @@ Flow2FTrunc = \mmaDef{FTruncate}[\mmaDef{setup4F}, Flow2F];
 \end{mmaCell}
 \vspace{-1ex}
 
-\noindent\hspace{3.0em}\includegraphics[width=0.11\linewidth]{diagram_6.png}\\
+\noindent\hspace{3.0em}\diagram{diagram_6}\\
 %
 After routing and tracing, we obtain the flow equation as
 %
@@ -2117,7 +2117,7 @@ Flow4FTrunc = \mmaDef{FTruncate}[\mmaDef{setup4F},Flow4F];
 \mmaDef{FPlot}[\mmaDef{setup4F},Flow4FTrunc]
 \end{mmaCell}
 
-\noindent\hspace{3.0em}\includegraphics[width=0.7\linewidth]{diagram_7.png}
+\noindent\hspace{3.0em}\diagram{diagram_7}
 
 \begin{mmaCell}{Input}
 Flow4FRouted = \mmaDef{FRoute}[\mmaDef{setup4F},\mmaDef{Flow4FTrunc}];

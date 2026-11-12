@@ -1,21 +1,23 @@
 #!/usr/bin/env python3
-"""Visualize FunKit benchmark CSV as grouped bar charts."""
+"""Visualize FunKit benchmark CSV as grouped bar charts.
 
-import pandas as pd
+Usage (from benchmarks/):
+    python plot_benchmarks.py                       # latest CSV in results/
+    python plot_benchmarks.py results/X.csv --reference results/Y.csv
+
+--reference fills the QMeS/DoFun columns from an earlier full run, for CSVs
+produced with FUNKIT_BENCH_ONLY=1. Both runs must come from the same machine.
+"""
+
+import argparse
+import glob
+import math
+
 import matplotlib.pyplot as plt
 import numpy as np
-import math
-import glob
-import os
+import pandas as pd
 
 # ── Configuration ────────────────────────────────────────────────────────────
-
-# Grab the latest CSV file from the "results" folder and set it here.
-CSV_FILE = max(glob.glob("results/benchmark_*.csv"), key=os.path.getctime)
-
-# Which titles to include. Set to a list of exact title strings to filter,
-# or None to include all.
-SELECTED_TITLES = None
 
 # Subplot grouping: key = subplot title, value = list of substrings to match
 # against the Title column.
@@ -26,101 +28,138 @@ GROUPS = {
     "Yukawa": ["Yukawa"],
 }
 
-# Tools to compare (column prefixes)
-TOOLS = ["FunKit", "DoFun", "QMeS"]
-COLORS = {"FunKit": "#FF7F0E", "QMeS": "#2077B4", "DoFun": "#2CA02C"}
+# FunKit rows: CSV stage -> bar label
+FUNKIT_STAGES = {
+    "mathematica": ("Full derivation", "FunKit (Mathematica)"),
+    "cpp": ("Full derivation (C++)", "FunKit (C++)"),
+}
+REFERENCE_TOOLS = ["DoFun", "QMeS"]
+COLORS = {
+    "FunKit (Mathematica)": "#FDB863",
+    "FunKit (C++)": "#FF7F0E",
+    "QMeS": "#2077B4",
+    "DoFun": "#2CA02C",
+}
 
 # ── Script ───────────────────────────────────────────────────────────────────
 
-df_all = pd.read_csv(CSV_FILE)
 
-# Cross-tool comparison uses the "Full derivation" rows, except that the FunKit
-# column is taken from the C++ backend stage ("Full derivation (C++)") so that
-# FunKit is represented by its C++ numbers rather than the bare derivation.
-df = df_all[df_all["Stage"] == "Full derivation"].copy()
-cpp = df_all[df_all["Stage"] == "Full derivation (C++)"].copy()
+def parse_args():
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("csv", nargs="?", help="benchmark CSV (default: latest in results/)")
+    parser.add_argument("--reference", help="CSV to take the QMeS/DoFun columns from")
+    parser.add_argument(
+        "--funkit",
+        choices=["cpp", "mathematica", "both"],
+        default="cpp",
+        help="which FunKit backend(s) to plot (default: cpp)",
+    )
+    parser.add_argument("-o", "--output", default="benchmark_plot.pdf")
+    return parser.parse_args()
 
-# Convert numeric columns (empty strings → NaN)
-for frame in (df, cpp):
-    for tool in TOOLS:
-        frame[f"{tool}_Mean"] = pd.to_numeric(frame[f"{tool}_Mean"], errors="coerce")
-        frame[f"{tool}_StdDev"] = pd.to_numeric(frame[f"{tool}_StdDev"], errors="coerce")
 
-# Overwrite FunKit means/stddevs with the C++ backend numbers (matched by Title)
-cpp_funkit = cpp.set_index("Title")[["FunKit_Mean", "FunKit_StdDev"]]
-df["FunKit_Mean"] = df["Title"].map(cpp_funkit["FunKit_Mean"])
-df["FunKit_StdDev"] = df["Title"].map(cpp_funkit["FunKit_StdDev"])
+def load(path):
+    df = pd.read_csv(path)
+    for col in df.columns:
+        if col.endswith("_Mean") or col.endswith("_StdDev"):
+            df[col] = pd.to_numeric(df[col], errors="coerce")
+    return df
 
-# Optional title filter
-if SELECTED_TITLES is not None:
-    df = df[df["Title"].isin(SELECTED_TITLES)]
 
-# Build groups
-grouped = {}
-for group_name, patterns in GROUPS.items():
-    mask = df["Title"].apply(lambda t: any(p in t for p in patterns))
-    sub = df[mask]
-    if not sub.empty:
-        grouped[group_name] = sub
+def build_table(df_all, df_ref, funkit_choice):
+    """One row per benchmark title; columns '<label>_Mean' / '<label>_StdDev'."""
+    full = df_all[df_all["Stage"] == "Full derivation"].set_index("Title")
+    table = pd.DataFrame(index=full.index)
 
-n_groups = len(grouped)
-if n_groups == 0:
-    raise SystemExit("No data matched the configured groups/titles.")
+    backends = ["mathematica", "cpp"] if funkit_choice == "both" else [funkit_choice]
+    for backend in backends:
+        stage, label = FUNKIT_STAGES[backend]
+        rows = df_all[df_all["Stage"] == stage].set_index("Title")
+        table[f"{label}_Mean"] = rows["FunKit_Mean"]
+        table[f"{label}_StdDev"] = rows["FunKit_StdDev"]
 
-ncols = math.ceil(math.sqrt(n_groups))
-nrows = math.ceil(n_groups / ncols)
+    ref_full = full
+    if df_ref is not None:
+        ref_full = df_ref[df_ref["Stage"] == "Full derivation"].set_index("Title")
+        missing = sorted(set(table.index) - set(ref_full.index))
+        if missing:
+            print("No reference numbers for:", *missing, sep="\n  ")
+    for tool in REFERENCE_TOOLS:
+        table[f"{tool}_Mean"] = ref_full[f"{tool}_Mean"].reindex(table.index)
+        table[f"{tool}_StdDev"] = ref_full[f"{tool}_StdDev"].reindex(table.index)
 
-fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3 * nrows), squeeze=False)
-axes = axes.flatten()
+    labels = [FUNKIT_STAGES[b][1] for b in backends] + REFERENCE_TOOLS
+    return table.reset_index(), labels
 
-# Hide unused subplots
-for ax in axes[n_groups:]:
-    ax.set_visible(False)
 
-bar_width = 0.25
+def plot(table, tools, output):
+    grouped = {}
+    for group_name, patterns in GROUPS.items():
+        sub = table[table["Title"].apply(lambda t: any(p in t for p in patterns))]
+        if not sub.empty:
+            grouped[group_name] = sub
+    if not grouped:
+        raise SystemExit("No data matched the configured groups.")
 
-for ax, (group_name, sub) in zip(axes, grouped.items()):
-    # Short labels: strip "Category: " prefix and shorten common suffixes
-    labels = [t.split(": ", 1)[-1] if ": " in t else t for t in sub["Title"]]
-    labels = [
-        l.replace(" (Wetterich)", " flow")
-        .replace(" function", "")
-        .replace(" vertex", "")
-        for l in labels
-    ]
-    x = np.arange(len(labels))
+    ncols = math.ceil(math.sqrt(len(grouped)))
+    nrows = math.ceil(len(grouped) / ncols)
+    fig, axes = plt.subplots(nrows, ncols, figsize=(4 * ncols, 3 * nrows), squeeze=False)
+    axes = axes.flatten()
+    for ax in axes[len(grouped):]:
+        ax.set_visible(False)
 
-    for i, tool in enumerate(TOOLS):
-        means = sub[f"{tool}_Mean"].values
-        stds = sub[f"{tool}_StdDev"].values
-        # Only plot bars where data exists
-        valid = ~np.isnan(means)
-        if not valid.any():
-            continue
-        positions = x[valid] + i * bar_width
-        ax.bar(
-            positions,
-            means[valid],
-            bar_width,
-            yerr=stds[valid],
-            label=tool,
-            color=COLORS[tool],
-            capsize=3,
-        )
+    bar_width = 0.75 / len(tools)
 
-    ax.set_title(group_name)
-    ax.set_xticks(x + bar_width)
-    ax.set_xticklabels(labels, rotation=30, ha="right", fontsize=8)
-    ax.set_ylabel("Time (s)")
-    ax.set_yscale("log")
+    for ax, (group_name, sub) in zip(axes, grouped.items()):
+        # Short labels: strip "Category: " prefix and shorten common suffixes
+        labels = [t.split(": ", 1)[-1] for t in sub["Title"]]
+        labels = [
+            l.replace(" (Wetterich)", " flow").replace(" function", "").replace(" vertex", "")
+            for l in labels
+        ]
+        x = np.arange(len(labels))
 
-# Single legend from first axes
-handles, lbls = axes[0].get_legend_handles_labels()
-fig.legend(handles, lbls, loc=(0.86, 0.49), fontsize=9)
+        for i, tool in enumerate(tools):
+            means = sub[f"{tool}_Mean"].values
+            stds = sub[f"{tool}_StdDev"].values
+            valid = ~np.isnan(means)
+            if not valid.any():
+                continue
+            ax.bar(
+                x[valid] + i * bar_width,
+                means[valid],
+                bar_width,
+                yerr=stds[valid],
+                label=tool,
+                color=COLORS[tool],
+                capsize=3,
+            )
 
-# fig.suptitle("  ", fontsize=13, y=1.02)
-plt.tight_layout()
-# add some padding at the right for the legend
-plt.subplots_adjust(right=0.85)
-plt.savefig("benchmark_plot.pdf", dpi=150, bbox_inches="tight")
-# plt.show()
+        ax.set_title(group_name)
+        ax.set_xticks(x + bar_width * (len(tools) - 1) / 2)
+        ax.set_xticklabels(labels, rotation=30, ha="right", fontsize=8)
+        ax.set_ylabel("Time (s)")
+        ax.set_yscale("log")
+
+    handles, lbls = axes[0].get_legend_handles_labels()
+    plt.tight_layout()
+    fig.legend(handles, lbls, loc="upper center", bbox_to_anchor=(0.5, 0.0), ncol=len(tools), fontsize=9)
+    plt.savefig(output, dpi=150, bbox_inches="tight")
+    print("Wrote", output)
+
+
+def main():
+    args = parse_args()
+    # File names carry a sortable timestamp (benchmark_YYYYMMDD_HHMM.csv).
+    csv = args.csv or max(glob.glob("results/benchmark_*.csv"))
+    print("FunKit numbers from:", csv)
+    df_ref = None
+    if args.reference:
+        print("QMeS/DoFun numbers from:", args.reference)
+        df_ref = load(args.reference)
+    table, tools = build_table(load(csv), df_ref, args.funkit)
+    plot(table, tools, args.output)
+
+
+if __name__ == "__main__":
+    main()

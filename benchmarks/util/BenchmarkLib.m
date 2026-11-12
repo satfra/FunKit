@@ -1,5 +1,11 @@
 (* BenchmarkLib.m — Shared benchmark utilities *)
 
+(* FUNKIT_BENCH_ONLY=1 skips the QMeS and DoFun rows, which dominate the
+   runtime. Their columns stay empty in the CSV; plot_benchmarks.py can take
+   them from an earlier full run. *)
+
+$BenchmarkFunKitOnly = MemberQ[{"1", "true", "True"}, Environment["FUNKIT_BENCH_ONLY"]];
+
 (**********************************************************************************
     Timing
 **********************************************************************************)
@@ -138,7 +144,7 @@ BenchmarkCase[title_String, derivList_List, fkSetup_Association, qmesSetup_, doF
         (* Restore AutoSimplify *)
         FSetAutoSimplify[True];
         (* QMeS — without ReduceIdenticalFlowDiagrams for fair comparison *)
-        If[qmesSetup =!= None,
+        If[qmesSetup =!= None && !$BenchmarkFunKitOnly,
             results["QMeS-Full"] =
                 BenchmarkThunk[
                     "QMeS Full"
@@ -153,7 +159,7 @@ BenchmarkCase[title_String, derivList_List, fkSetup_Association, qmesSetup_, doF
                 ];
         ];
         (* DoFun — with identify->False to skip diagram reduction for fair comparison *)
-        If[doFunSetupStr =!= None,
+        If[doFunSetupStr =!= None && !$BenchmarkFunKitOnly,
             results["DoFun-Full"] =
                 BenchmarkThunk[
                     "DoFun Full"
@@ -288,7 +294,7 @@ BenchmarkDSECase[title_String, field_, derivList_List, fkSetup_Association, qmes
         (* Restore AutoSimplify *)
         FSetAutoSimplify[True];
         (* QMeS — for DSE, the derivative list includes the DSE field as the last entry *)
-        If[qmesSetup =!= None,
+        If[qmesSetup =!= None && !$BenchmarkFunKitOnly,
             qmesDerivList = Join[derivList, {field}];
             results["QMeS-Full"] =
                 BenchmarkThunk[
@@ -307,7 +313,7 @@ BenchmarkDSECase[title_String, field_, derivList_List, fkSetup_Association, qmes
                 ];
         ];
         (* DoFun — with identify->False to skip diagram reduction for fair comparison *)
-        If[doFunSetupStr =!= None,
+        If[doFunSetupStr =!= None && !$BenchmarkFunKitOnly,
             results["DoFun-Full"] =
                 BenchmarkThunk[
                     "DoFun Full"
